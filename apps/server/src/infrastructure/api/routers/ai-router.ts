@@ -12,13 +12,12 @@ import {
 } from "@solid-imager/core/tagging";
 import { localConnectionSchema } from "@solid-imager/core/sources";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import sharp from "sharp";
 import { inferenceLifecycle } from "~/infrastructure/ai/inference-lifecycle";
 import { nativeInferenceProcess } from "~/infrastructure/ai/native-inference-process";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { db } from "~/infrastructure/db";
-import { jobs } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
@@ -470,12 +469,12 @@ export const aiRouter = os.router({
 				input.mediaId,
 			);
 			const latestJob = await db.query.jobs.findFirst({
-				where: and(
-					eq(jobs.type, "extract_ccip_vector"),
-					eq(jobs.mediaSourceId, input.mediaSourceId),
-					sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
-				),
-				orderBy: desc(jobs.createdAt),
+				where: {
+					type: "extract_ccip_vector",
+					mediaSourceId: input.mediaSourceId,
+					RAW: (job) => sql`${job.payload}->>'mediaId' = ${input.mediaId}`,
+				},
+				orderBy: { createdAt: "desc" },
 			});
 			if (status.status === "ready" || status.status === "stale") {
 				return status;

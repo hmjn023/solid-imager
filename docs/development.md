@@ -12,18 +12,19 @@ cp apps/server/.env.example apps/server/.env
 ```
 
 既存の `.env` がある場合は上書きせず、exampleとの差分を確認する。
-テンプレートの既定は PGlite です。PostgreSQL は [mise Daemons](#mise-でサービスを起動) または Compose で起動できます。Compose を使う場合は `apps/server/.env` の `DB_HOST=127.0.0.1` と接続情報を設定し、Compose にも同じファイルを渡します。
+テンプレートの既定は PGlite です。保存先は `PGLITE_DATA_DIR` で指定でき、未指定なら `apps/server/.data/pglite` です。PostgreSQL は [mise Daemons](#mise-でサービスを起動) または Compose で起動できます。Compose を使う場合は `apps/server/.env` の `DB_HOST=127.0.0.1` と接続情報を設定し、Compose にも同じファイルを渡します。
 
 ```bash
 docker compose --env-file apps/server/.env --project-directory . up -d
-bun --filter @solid-imager/server run db:migrate
 ```
 
-PGliteを使う場合のマイグレーションは以下。保存先は `PGLITE_DATA_DIR`、未指定なら `apps/server/.data/pglite`。schemaやrepositoryの変更は `database-schema` を参照する。
+PGlite と PostgreSQL のどちらも、同じコマンドでマイグレーションを適用します。
 
 ```bash
-bun --filter @solid-imager/server run db:migrate:pglite
+bun run --cwd apps/server db:migrate
 ```
+
+Drizzle 0.x から更新する既存環境では、DBをバックアップしてから `db:migrate` を実行する。初回実行時にDrizzleが適用履歴をv1形式に更新し、未適用のマイグレーションを実行する。リポジトリの履歴は `bun run --cwd apps/server db:check` で検証できる。schemaやrepositoryの変更は `database-schema` を参照する。
 
 ## mise でサービスを起動
 

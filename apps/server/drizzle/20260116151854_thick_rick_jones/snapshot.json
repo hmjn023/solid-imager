@@ -1,0 +1,57 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "fbeedf7c-8a3d-4e26-b30d-3ed9a6d0f9bd",
+  "prevIds": [
+    "6cedd404-fa2b-4d5a-a102-98646b0de103"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media",
+        "idx_media_file_size"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_file_size",
+        "n|idx|public.idx_media_file_size",
+        "e|idx|public.idx_media_file_size",
+        "n|rel|public.idx_media_file_size"
+      ],
+      "reads": [
+        "n|tbl|public.media",
+        "n|sch|public",
+        "n|col|public.media.file_size"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media",
+        "name": "idx_media_file_size",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "file_size",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

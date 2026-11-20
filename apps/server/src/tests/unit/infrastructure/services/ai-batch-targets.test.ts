@@ -4,7 +4,7 @@ import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
 } from "@solid-imager/application/ccip";
-import { createRepositories } from "@solid-imager/db";
+import { relations, createRepositories } from "@solid-imager/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq, sql } from "drizzle-orm";
@@ -58,7 +58,7 @@ import { processBatchCcipDispatchJob } from "~/infrastructure/jobs/ccip-jobs";
 
 describe("AI batch target counts", () => {
 	const client = createPglite();
-	const database = drizzle(client, { schema });
+	const database = drizzle({ client, relations });
 	const repository = createRepositories(() => database, {
 		info: mocks.info,
 		error: mocks.error,

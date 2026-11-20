@@ -1,0 +1,60 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "b854634b-fb16-47b6-a59b-e8ff1cc5cc10",
+  "prevIds": [
+    "0ba4ad97-b02f-48a5-8b0e-4a1c8c42c540"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "image_embeddings",
+        "idx_image_embeddings_cosine"
+      ],
+      "writes": [
+        "s|idx|public.idx_image_embeddings_cosine",
+        "n|idx|public.idx_image_embeddings_cosine",
+        "e|idx|public.idx_image_embeddings_cosine",
+        "n|rel|public.idx_image_embeddings_cosine"
+      ],
+      "reads": [
+        "n|tbl|public.image_embeddings",
+        "n|sch|public",
+        "n|col|public.image_embeddings.embedding"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "idx_image_embeddings_cosine",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "embedding",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": {
+              "name": "vector_cosine_ops",
+              "default": false
+            }
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "hnsw",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

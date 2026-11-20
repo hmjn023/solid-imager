@@ -150,11 +150,11 @@ const { mockDbInstance } = vi.hoisted(() => {
 				const { createPglite } = await import("~/infrastructure/db/pglite");
 				const { drizzle } = await import("drizzle-orm/pglite");
 				const { migrate } = await import("drizzle-orm/pglite/migrator");
-				const schema = await import("~/infrastructure/db/schema");
+				const { relations } = await import("@solid-imager/db");
 				const nodePath = await import("node:path");
 
 				const client = createPglite();
-				const testDb = drizzle(client, { schema });
+				const testDb = drizzle({ client, relations });
 				// Use absolute path to ensure it works from any CWD (monorepo root or app root)
 				const migrationsFolder = process.cwd().endsWith("apps/server")
 					? nodePath.resolve(process.cwd(), "drizzle")

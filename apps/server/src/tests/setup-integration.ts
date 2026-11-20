@@ -226,10 +226,10 @@ const { mockDbFactory } = vi.hoisted(() => {
 			const { createPglite } = await import("~/infrastructure/db/pglite");
 			const { drizzle } = await import("drizzle-orm/pglite");
 			const { migrate } = await import("drizzle-orm/pglite/migrator");
-			const schema = await import("~/infrastructure/db/schema");
+			const { relations } = await import("@solid-imager/db");
 
 			const client = createPglite();
-			const testDb = drizzle(client, { schema });
+			const testDb = drizzle({ client, relations });
 			await migrate(testDb, { migrationsFolder: MIGRATIONS_DIR });
 
 			dbInstance = { db: testDb };

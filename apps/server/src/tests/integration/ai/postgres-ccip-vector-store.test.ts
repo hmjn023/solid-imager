@@ -1,3 +1,4 @@
+import { relations } from "@solid-imager/db";
 import path from "node:path";
 import {
 	type CcipVectorRecord,
@@ -16,7 +17,6 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { createPglite } from "~/infrastructure/db/pglite";
-import * as schema from "~/infrastructure/db/schema";
 
 const SOURCE_A_ID = "11111111-1111-4111-8111-111111111111";
 const SOURCE_B_ID = "22222222-2222-4222-8222-222222222222";
@@ -64,7 +64,7 @@ describe("PostgresCcipVectorStore", () => {
 
 	it("persists and searches CCIP vectors with pgvector", async () => {
 		client = createPglite();
-		const database = drizzle(client, { schema });
+		const database = drizzle({ client, relations });
 		const migrationsFolder = process.cwd().endsWith("apps/server")
 			? path.resolve(process.cwd(), "drizzle")
 			: path.resolve(process.cwd(), "apps/server/drizzle");

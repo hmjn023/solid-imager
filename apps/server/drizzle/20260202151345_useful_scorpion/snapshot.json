@@ -1,0 +1,90 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "67f9cf91-be55-45cb-8397-158552ff685f",
+  "prevIds": [
+    "50b08fb0-05fb-4305-9e8c-9ff307e7eb5c"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "jobs",
+        "parent_id"
+      ],
+      "writes": [
+        "s|col|public.jobs.parent_id",
+        "n|col|public.jobs.parent_id",
+        "e|col|public.jobs.parent_id"
+      ],
+      "reads": [
+        "n|tbl|public.jobs",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "jobs"
+      ],
+      "writes": [
+        "s|fk|public.jobs.jobs_parent_id_jobs_id_fk",
+        "n|fk|public.jobs.jobs_parent_id_jobs_id_fk",
+        "e|fk|public.jobs.jobs_parent_id_jobs_id_fk",
+        "n|con|public.jobs.jobs_parent_id_jobs_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.jobs",
+        "n|sch|public",
+        "n|tbl|public.jobs",
+        "n|sch|public",
+        "n|col|public.jobs.parent_id",
+        "n|col|public.jobs.id",
+        "e|uniqueness|public.jobs.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "jobs",
+        "name": "parent_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "jobs",
+        "name": "jobs_parent_id_jobs_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "parent_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "jobs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    }
+  ]
+}

@@ -18,8 +18,8 @@ const relatedEndpoint = "**/api/rpc/media/getRelated";
 const relatedSection = (page: Page) =>
 	page.getByRole("region", { name: "関連メディア", exact: true });
 
-function mockEmptyRelatedMedia(page: Page): Promise<void> {
-	return page.route(relatedEndpoint, (route) =>
+async function mockEmptyRelatedMedia(page: Page): Promise<void> {
+	await page.route(relatedEndpoint, (route) =>
 		route.fulfill({
 			json: {
 				json: {
