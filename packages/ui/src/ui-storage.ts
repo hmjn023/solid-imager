@@ -12,6 +12,14 @@ export const UI_STORAGE_KEYS = {
 const SEARCH_STATE_STORAGE_PREFIX = "solid-imager:search-state:";
 const SEARCH_SCROLL_STORAGE_PREFIX = "solid-imager:search-scroll:";
 
+export function getSessionStorage(): Storage | null {
+	try {
+		return typeof sessionStorage === "undefined" ? null : sessionStorage;
+	} catch {
+		return null;
+	}
+}
+
 /** Read a UI preference or media-navigation value. */
 export function readUiStorageValue(
 	storage: Storage,

@@ -2,6 +2,7 @@ import type { Preset } from "@solid-imager/core/presets";
 import {
 	type SimilarityModel,
 	calculateNextModeState,
+	encodeSearchSession,
 	getSearchConditionFromState,
 	preparePresetState,
 	defaultState,
@@ -10,7 +11,7 @@ import {
 } from "@solid-imager/core/search";
 import { batch, createSignal } from "solid-js";
 import { createStore } from "solid-js/store";
-import { getSearchStateStorageKey } from "../ui-storage";
+import { getSearchStateStorageKey, getSessionStorage } from "../ui-storage";
 
 export const [searchState, setSearchState] = createStore<SearchState>({
 	...defaultState,
@@ -23,14 +24,6 @@ const [globalSimilarityActivation, setGlobalSimilarityActivation] =
 export const getGlobalSimilarityActivation = globalSimilarityActivation;
 const [searchFiltersRevision, setSearchFiltersRevision] = createSignal(0);
 export const getSearchFiltersRevision = searchFiltersRevision;
-
-function getSessionStorage(): Storage | null {
-	try {
-		return typeof sessionStorage === "undefined" ? null : sessionStorage;
-	} catch {
-		return null;
-	}
-}
 
 export const resetSearchState = () => {
 	setSearchState({ ...defaultState });
@@ -62,25 +55,9 @@ function persistSearchState(state: SearchState): void {
 	const storage = getSessionStorage();
 	if (!storage) return;
 
-	const condition = getSearchConditionFromState(state) ?? {
-		type: "group" as const,
-		operator: "and" as const,
-		children: [],
-	};
-	const storageKey = getSearchStateStorageKey("current-all");
 	storage.setItem(
-		storageKey,
-		JSON.stringify({
-			value: condition,
-			selectedSource: state.selectedSource,
-			sort: state.sortBy,
-			order: state.sortOrder,
-			mode: state.mode,
-			similarityAnchorMediaId: state.similarityAnchorMediaId,
-			similarityTopK: state.similarityTopK,
-			similarityModel: state.similarityModel,
-			semanticQuery: state.semanticQuery,
-		}),
+		getSearchStateStorageKey("current-all"),
+		encodeSearchSession(state),
 	);
 }
 
