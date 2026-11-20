@@ -6,8 +6,10 @@ image = "docker.io/pgvector/pgvector:pg18"
 proxy = false
 data_mount = "/var/lib/postgresql"
 data_dir = ".data/mise-postgres"
-command = ["postgres", "-c", "listen_addresses=127.0.0.1"]
+command = ["postgres", "-c", "listen_addresses=127.0.0.1", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
+env = { POSTGRES_INITDB_ARGS = "--auth-host=scram-sha-256" }
 runtime_args = ["--network=host", "--shm-size=256m", "--env=PGPORT", "--env=POSTGRES_DB", "--env=POSTGRES_USER", "--env=POSTGRES_PASSWORD"]
+volumes = ["./tools/mise/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro"]
 ready_cmd = { run = '''{{ runtime }} exec {{ container }} sh -c 'test "$(cat /proc/1/comm)" = postgres && pg_isready -h /var/run/postgresql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"' ''', timeout = "180s" }
 
 [daemons.app]

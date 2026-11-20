@@ -42,7 +42,7 @@ mise daemons stop
 
 `start nginx` は PostgreSQL 18 + pgvector を起動し、DB マイグレーションを適用してから `bun run start` でアプリを起動します。アプリの `/api/health` と nginx のワーカー起動を順に確認します。初回起動時に mise が Pitchfork をインストールします。
 
-ポートを省略すると PostgreSQL は `5432`、Bun は `3000`、nginx は HTTP `80` と HTTPS `443` を使います。上書きする場合は `.env` の `PGPORT`、`NITRO_PORT`、`NGINX_PORT`、`NGINX_TLS_PORT` を設定します。80 番へのバインド権限がない場合は `NGINX_PORT=8080` などを指定してください。
+ポートを省略すると PostgreSQL は `5432`、Bun は `3000`、nginx は HTTP `80` と HTTPS `443` を使います。上書きする場合は `.env` の `PGPORT`、`NITRO_PORT`、`NGINX_PORT`、`NGINX_TLS_PORT` を設定します。80 番へのバインド権限がない場合は `NGINX_PORT=8080` などを指定してください。mise の PostgreSQL は [専用の認証設定](../tools/mise/pg_hba.conf) を使い、既存のデータディレクトリでも TCP 接続に SCRAM パスワード認証を要求します。
 
 mise で `NGINX_CONFIG` を省略すると `nginx.conf.example` のループバック HTTP 設定を使います。公開用や Compose 用には `nginx.conf.example` を `nginx.conf` にコピーし、接続先・待ち受け・TLS の該当箇所を切り替えます。mise でコピーを使う場合は `.env` に `NGINX_CONFIG=./nginx.conf` を設定します。相対パスはリポジトリルートが基準です。指定ファイルはコンテナに読み取り専用で渡し、起動時にポート変数を展開します。
 

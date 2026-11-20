@@ -27,12 +27,16 @@ if (host === "pglite") {
     throw new Error("Database environment variables are not set for PostgreSQL");
   }
 
-  const url = `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(database)}`;
+  // Drizzle Kit enables TLS if ssl is omitted. Match pg's PGSSLMODE defaults.
+  const sslMode = process.env.PGSSLMODE ?? "";
+  const ssl = sslMode === "no-verify"
+    ? { rejectUnauthorized: false }
+    : /^(prefer|require|verify-ca|verify-full)$/.test(sslMode);
   config = {
     schema: "./src/infrastructure/db/schema.ts",
     out: "./drizzle",
     dialect: "postgresql",
-    dbCredentials: { url },
+    dbCredentials: { host, port: Number(port), user, password, database, ssl },
     verbose: true,
     strict: true,
   };
