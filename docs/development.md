@@ -12,7 +12,7 @@ cp apps/server/.env.example apps/server/.env
 ```
 
 既存の `.env` がある場合は上書きせず、exampleとの差分を確認する。
-テンプレートの既定はPGlite。PostgreSQLを使う場合は `apps/server/.env` の `DB_HOST=localhost` と接続情報を設定し、Composeにも同じファイルを渡す。
+テンプレートの既定はPGlite。PostgreSQLは [mise Daemons](#mise-でサービスを起動) または Compose で起動できます。Composeを使う場合は `apps/server/.env` の `DB_HOST=localhost` と接続情報を設定し、Composeにも同じファイルを渡す。
 
 ```bash
 docker compose --env-file apps/server/.env --project-directory . up -d
@@ -24,6 +24,29 @@ PGliteを使う場合のマイグレーションは以下。保存先は `PGLITE
 ```bash
 bun --filter @solid-imager/server run db:migrate:pglite
 ```
+
+## mise でサービスを起動
+
+Linux で mise 2026.11.10 以降、Docker または Podman、`curl` を用意します。ルートの `.env` に `.env.example` の接続先と待ち受け設定を揃えます。DB 名と認証情報は PostgreSQL とアプリで共用します。作成済みの DB を使う場合は初期化時の認証情報を指定してください。初回とアプリのコード変更後は、リポジトリルートでサーバーをビルドします。
+
+```bash
+bun run --cwd apps/server build
+```
+
+```bash
+mise daemons start nginx
+mise daemons status
+mise daemons logs --follow
+mise daemons stop
+```
+
+`start nginx` は PostgreSQL 18 + pgvector を起動し、DB マイグレーションを適用してから `bun run start` でアプリを起動します。アプリの `/api/health` と nginx のワーカー起動を順に確認します。初回起動時に mise が Pitchfork をインストールします。
+
+ルートの `.env` に `NGINX_CONFIG=./nginx.conf` を設定すると、そのファイルが nginx コンテナに読み取り専用でマウントされます。相対パスはリポジトリルートが基準です。未指定なら `nginx.dev.conf.example` を使い、`http://127.0.0.1:8080` でアクセスできます。nginx の設定だけを差し替える場合は `mise daemons stop nginx` に続けて `mise daemons start nginx` を実行します。
+
+nginx は Linux のホストネットワークを使います。公開用の設定では `proxy_pass` の接続先を `.env` の `NITRO_PORT` に合わせます。既定は `http://127.0.0.1:13000` です。`NGINX_CONFIG` を指定した場合、ホストの `~/.config/letsencrypt` があればコンテナの `/etc/letsencrypt` から参照できます。TLS を使う場合は必要に応じて `.env` に `REST_PUBLIC_ORIGIN` と `MCP_ALLOWED_HOSTS` を設定します。
+
+アプリは `127.0.0.1:55432` の PostgreSQL を使い、DB データは `.data/mise-postgres` に保存します。Compose から切り替える場合は、既存 DB を論理ダンプから復元し、公開用のポートを空けてから起動します。
 
 ## Modern Web Guidance
 

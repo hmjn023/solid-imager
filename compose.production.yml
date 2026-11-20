@@ -27,7 +27,7 @@ services:
       - db
 
   nginx:
-    image: nginx:alpine
+    image: docker.io/library/nginx:trixie
     container_name: solid-imager-nginx
     restart: always
     ports:

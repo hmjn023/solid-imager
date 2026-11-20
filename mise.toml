@@ -1,3 +1,36 @@
+[settings]
+experimental = true
+
+[daemons.postgres]
+image = "docker.io/pgvector/pgvector:pg18"
+port = 55432
+container_port = 5432
+proxy = false
+data_mount = "/var/lib/postgresql"
+data_dir = ".data/mise-postgres"
+init = ". ./tools/mise/init-postgres.sh"
+runtime_args = ["--shm-size=256m", "--env=POSTGRES_DB", "--env=POSTGRES_USER", "--env=POSTGRES_PASSWORD"]
+ready_cmd = { run = '''{{ runtime }} exec {{ container }} sh -c 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' ''', timeout = "180s" }
+
+[daemons.app]
+depends = ["postgres"]
+proxy = false
+init = "sh ./tools/mise/init-app.sh"
+run = "exec bun run --cwd apps/server start"
+ready_cmd = { run = 'curl -fsS -o /dev/null --max-time 3 --noproxy 127.0.0.1 "http://127.0.0.1:${NITRO_PORT:?}/api/health"', timeout = "60s" }
+
+[daemons.nginx]
+depends = ["app"]
+image = "docker.io/library/nginx:trixie"
+proxy = false
+runtime_args = ["--network=host"]
+init = "sh ./tools/mise/init-nginx.sh"
+volumes = [
+    "./.data/mise-nginx/nginx.conf:/etc/nginx/nginx.conf:ro",
+    "./.data/mise-nginx/letsencrypt:/etc/letsencrypt:ro",
+]
+ready_cmd = { run = '''{{ runtime }} exec {{ container }} sh -c 'grep -zFxq "nginx: worker process" /proc/[0-9]*/cmdline 2>/dev/null' ''', timeout = "180s" }
+
 [tasks.attach_db]
 run = "psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
 

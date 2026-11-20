@@ -192,6 +192,8 @@ fi
 `APP_ARTIFACT_DIR` には `node_modules/` と `apps/server/.output/` を含む、ビルドホストのプロジェクトディレクトリを指定してください。
 `APP_RUNTIME_IMAGE` を指定した場合は、Python 3 がインストール済みの互換イメージを使用してください。この場合、`app` はローカルビルドせず、指定イメージをそのまま使用します。
 
+mise Daemons で PostgreSQL・Bun・nginx を起動する場合は、[開発環境と管理スクリプト](docs/development.md#mise-でサービスを起動)を参照してください。
+
 ## 主要スクリプト
 
 | コマンド                                            | 用途                      |
