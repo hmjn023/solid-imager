@@ -54,11 +54,14 @@ test("keeps the selected batch's read error when an earlier tracked GET finishes
 	const oldId = randomUUID();
 	const selectedId = randomUUID();
 	let oldReadRequested = false;
+	let selectedReadFailed = false;
 	const releaseOld = gate();
 	browserHealth.allowResponseFailure(/\/api\/rpc\/jobs\/get(?:\?|$)/);
 	browserHealth.allowConsole(/Failed to load resource:.*503/);
 	await page.route("**/api/rpc/jobs/activeBatches", (route) =>
-		route.fulfill({ json: { json: [snapshot(selectedId)] } }),
+		route.fulfill({
+			json: { json: selectedReadFailed ? [] : [snapshot(selectedId)] },
+		}),
 	);
 	await page.route("**/api/rpc/ai/startBatchTagging", (route) =>
 		route.fulfill({
@@ -75,7 +78,9 @@ test("keeps the selected batch's read error when an earlier tracked GET finishes
 			oldReadRequested = true;
 			await releaseOld.promise;
 			await route.fulfill({ json: { json: snapshot(oldId) } });
-		} else
+		} else {
+			// An unrelated stream refresh must not provide a newer successful snapshot.
+			selectedReadFailed = true;
 			await route.fulfill({
 				status: 503,
 				json: {
@@ -85,9 +90,12 @@ test("keeps the selected batch's read error when an earlier tracked GET finishes
 					message: "Selected batch unavailable",
 				},
 			});
+		}
 	});
-	await page.goto("/manager");
+	await page.goto("/about");
 	await waitForAppHydration(page);
+	await page.getByRole("link", { name: "管理", exact: true }).click();
+	await expect(page).toHaveURL(/\/manager$/);
 	await category(page, "一括タグ付け");
 	await page
 		.getByRole("button", { name: "タグ付けを開始", exact: true })

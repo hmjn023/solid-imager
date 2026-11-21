@@ -1,11 +1,27 @@
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search/history";
+import { InitialSearchProvider } from "@solid-imager/ui/search";
 import { createFileRoute } from "@tanstack/solid-router";
+import { loadInitialSearch } from "~/infrastructure/api-clients/load-initial-search";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 import { SourceMediaPage } from "./components/source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	validateSearch: searchHistoryQuerySchema,
-	ssr: false,
-	pendingComponent: () => null,
+	loaderDeps: ({ search }: { search: { search?: string } }) => ({
+		snapshotId: search.search,
+	}),
+	loader: ({
+		context,
+		params,
+		deps,
+	}: RouteLoaderContext<{ mediaSourceId: string }> & {
+		deps: { snapshotId?: string };
+	}) =>
+		loadInitialSearch(
+			context.queryClient,
+			deps.snapshotId,
+			params.mediaSourceId,
+		),
 	remountDeps: ({ params }: { params: { mediaSourceId: string } }) => [
 		params.mediaSourceId,
 	],
@@ -14,5 +30,10 @@ export const Route = createFileRoute("/sources/$mediaSourceId/")({
 
 function SourceMediaRoute() {
 	const params = Route.useParams();
-	return <SourceMediaPage mediaSourceId={() => params().mediaSourceId} />;
+	const initial = Route.useLoaderData();
+	return (
+		<InitialSearchProvider initial={initial()}>
+			<SourceMediaPage mediaSourceId={() => params().mediaSourceId} />
+		</InitialSearchProvider>
+	);
 }

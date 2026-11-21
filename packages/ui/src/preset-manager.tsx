@@ -1,3 +1,4 @@
+import { useRenderedSearchState } from "./search-initial-state";
 import { t } from "@solid-imager/i18n";
 import {
 	type MediaSort,
@@ -43,7 +44,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./select";
-import { searchState, setSearchState } from "./stores/search-store";
+import { setSearchState } from "./stores/search-store";
 import { toast } from "./toast";
 import { cn } from "./utils/cn";
 
@@ -90,7 +91,8 @@ function createClearedSearchState(state: SearchState): SearchState {
 
 export function PresetManager(props: PresetManagerProps) {
 	const [data, { refetch }] = createResource(() => props.presetClient.list());
-	const currentState = () => props.state ?? searchState;
+	const renderedState = useRenderedSearchState();
+	const currentState = () => props.state ?? renderedState();
 	const updateState = props.setState ?? setSearchState;
 
 	const presets = () =>

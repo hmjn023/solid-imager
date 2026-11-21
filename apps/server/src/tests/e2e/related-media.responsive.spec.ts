@@ -353,8 +353,20 @@ test(
 			await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
 			await page.goBack();
 			await expect(page).toHaveURL("/about");
+			const jobsReady = Promise.all(
+				["list", "types"].map((procedure) =>
+					page.waitForResponse(
+						(response) =>
+							response.ok() &&
+							new URL(response.url()).pathname === `/api/rpc/jobs/${procedure}`,
+					),
+				),
+			);
 			await page.getByRole("link", { name: "ジョブ", exact: true }).click();
 			await expect(page).toHaveURL("/jobs");
+			await Promise.all(
+				(await jobsReady).map((response) => response.finished()),
+			);
 			await page.getByRole("link", { name: "管理", exact: true }).click();
 			await selectManagerCategory(page, "キャラクタークラスタリング");
 			await page

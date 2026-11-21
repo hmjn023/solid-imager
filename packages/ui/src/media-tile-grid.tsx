@@ -18,11 +18,7 @@ import {
 } from "solid-js";
 import { observePageBoundary } from "./hooks/observe-page-boundary";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
-import {
-	getMediaGridColumnCount,
-	MediaGridSkeleton,
-	mediaGridClassName,
-} from "./skeleton";
+import { getMediaGridColumnCount, mediaGridClassName } from "./skeleton";
 import {
 	getCollectionNavigationIndex,
 	isCollectionNavigationKey,
@@ -38,7 +34,7 @@ const ELEMENT_RETAIN_ROWS = 4;
 // the number of mounted grid items.
 const LOAD_MORE_ROWS_AHEAD = 12;
 const INITIAL_PRIORITY_ROWS = 2;
-const INITIAL_SKELETON_ROWS = 3;
+const INITIAL_GRID_ITEMS = 24;
 const FOCUS_RESTORE_FRAME_LIMIT = 6;
 
 export const HIGH_PRIORITY_THUMBNAILS = 2;
@@ -604,75 +600,71 @@ export function MediaTileGrid<T extends { id: string | number }>(
 			}}
 		>
 			<Show
-				when={!virtualizationPending()}
+				when={shouldVirtualize()}
 				fallback={
-					<MediaGridSkeleton
-						aspectRatio={props.itemAspectRatio === 4 / 3 ? "4/3" : "3/4"}
-						count={columnCount() * INITIAL_SKELETON_ROWS}
-					/>
+					<div class={mediaGridClassName}>
+						<For
+							each={
+								virtualizationPending()
+									? props.items.slice(0, INITIAL_GRID_ITEMS)
+									: props.items
+							}
+						>
+							{(item, index) => {
+								const eager = () =>
+									index() < (props.eagerCount ?? initialPriorityMediaCount());
+								const policy: MediaGridImageLoadPolicy | undefined =
+									props.scrollMode === "element"
+										? {
+												enabled: true,
+												get fetchpriority() {
+													return index() < HIGH_PRIORITY_THUMBNAILS
+														? "high"
+														: undefined;
+												},
+												get loading() {
+													return eager() ? "eager" : "lazy";
+												},
+											}
+										: undefined;
+								return props.renderItem(
+									item,
+									policy,
+									policy ? eager() : undefined,
+								);
+							}}
+						</For>
+					</div>
 				}
 			>
-				<Show
-					when={shouldVirtualize()}
-					fallback={
-						<div class={mediaGridClassName}>
-							<For each={props.items}>
-								{(item, index) => {
-									const eager = () =>
-										index() < (props.eagerCount ?? initialPriorityMediaCount());
-									const policy: MediaGridImageLoadPolicy | undefined =
-										props.scrollMode === "element"
-											? {
-													enabled: true,
-													get fetchpriority() {
-														return index() < HIGH_PRIORITY_THUMBNAILS
-															? "high"
-															: undefined;
-													},
-													get loading() {
-														return eager() ? "eager" : "lazy";
-													},
-												}
-											: undefined;
-									return props.renderItem(
+				<For each={visibleRows()}>
+					{(row) => (
+						<div
+							class={`absolute top-0 left-0 w-full ${mediaGridClassName} virtualized-media-row`}
+							style={{
+								"--media-grid-columns": columnCount(),
+								"--media-grid-row-height": `${row.size}px`,
+								"--media-grid-row-offset": `${row.start - scrollMargin()}px`,
+							}}
+						>
+							<For each={getRowMedia(row.index)}>
+								{(item, index) =>
+									props.renderItem(
 										item,
-										policy,
-										policy ? eager() : undefined,
-									);
-								}}
+										props.scrollMode === "element"
+											? createElementImageLoadPolicy(
+													row.index,
+													row.index * columnCount() + index(),
+												)
+											: undefined,
+										props.scrollMode === "element" &&
+											row.index < INITIAL_PRIORITY_ROWS,
+									)
+								}
 							</For>
 						</div>
-					}
-				>
-					<For each={visibleRows()}>
-						{(row) => (
-							<div
-								class={`absolute top-0 left-0 w-full ${mediaGridClassName} virtualized-media-row`}
-								style={{
-									"--media-grid-columns": columnCount(),
-									"--media-grid-row-height": `${row.size}px`,
-									"--media-grid-row-offset": `${row.start - scrollMargin()}px`,
-								}}
-							>
-								<For each={getRowMedia(row.index)}>
-									{(item, index) =>
-										props.renderItem(
-											item,
-											props.scrollMode === "element"
-												? createElementImageLoadPolicy(
-														row.index,
-														row.index * columnCount() + index(),
-													)
-												: undefined,
-											props.scrollMode === "element" &&
-												row.index < INITIAL_PRIORITY_ROWS,
-										)
-									}
-								</For>
-							</div>
-						)}
-					</For>
-				</Show>
+					)}
+				</For>
 			</Show>
 		</section>
 	);

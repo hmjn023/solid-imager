@@ -16,7 +16,7 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 const BULK_RETRY_CONCURRENCY = 8;
 
-export function JobsPage() {
+export function JobsPage(props: { replaySince?: number }) {
 	const jobsList = useJobsList(orpc.jobs);
 	const jobsQuery = jobsList.query;
 	const workspace = useWorkspaceNavigation();
@@ -33,7 +33,12 @@ export function JobsPage() {
 	}));
 	const queryClient = useQueryClient();
 
-	useJobsQueryEvents((signal) => orpc.jobs.events(undefined, { signal }));
+	const replaySince = props.replaySince;
+	useJobsQueryEvents((signal) =>
+		orpc.jobs.events(replaySince === undefined ? undefined : { replaySince }, {
+			signal,
+		}),
+	);
 
 	return (
 		<JobsScreen

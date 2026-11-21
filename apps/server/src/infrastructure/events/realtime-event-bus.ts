@@ -130,7 +130,10 @@ export const RealtimeEventBus = {
 		);
 	},
 
-	subscribeToJobs(listener: (event: JobEvent) => void): () => void {
+	subscribeToJobs(
+		listener: (event: JobEvent) => void,
+		replaySince?: number,
+	): () => void {
 		// Deduplicate only during replay, when a reentrant publish can deliver
 		// the same event through both the live subscription and replay buffer.
 		let replaying = true;
@@ -146,8 +149,9 @@ export const RealtimeEventBus = {
 		};
 		const unsubscribe = subscribe(JOB_EVENTS_CHANNEL, deliver);
 		pruneRecentJobEvents(Date.now());
-		for (const { event } of recentJobEvents) {
-			deliver(event);
+		for (const { event, publishedAt } of recentJobEvents) {
+			if (replaySince === undefined || publishedAt >= replaySince)
+				deliver(event);
 		}
 		replaying = false;
 		deliveredEvents.clear();

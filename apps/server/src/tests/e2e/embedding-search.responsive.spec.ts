@@ -8,7 +8,7 @@ import {
 	getFixtureMediaPath,
 } from "./support/fixture";
 import { selectManagerCategory } from "./support/manager-navigation";
-import { expect, test as base } from "./support/test";
+import { expect, test as base, waitForAppHydration } from "./support/test";
 
 const test = base.extend<{
 	embeddingSource: { sourceId: string; sourceName: string };
@@ -77,6 +77,11 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	// Leaving Manager and reloading detail intentionally close its job stream;
 	// Chromium can report the final abort after the next document has loaded.
 	browserHealth.allowRequestFailure(/\/api\/rpc\/jobs\/events(?:\?|$)/);
+	// Starting a similarity search can dispose a pending detail query.
+	browserHealth.allowRequestFailure(
+		/\/api\/rpc\/media\/getDetails$/,
+		"net::ERR_ABORTED",
+	);
 	const { sourceId, sourceName } = embeddingSource;
 	let primaryId = "";
 	await expect
@@ -94,6 +99,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		})
 		.toBe(2);
 	await page.goto(`/sources/${sourceId}/${primaryId}`);
+	await waitForAppHydration(page);
 	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
 	const extractionResponse = page.waitForResponse(
 		(response) =>
@@ -139,6 +145,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	).toBeVisible({ timeout: 180_000 });
 
 	await page.goto(`/sources/${sourceId}`);
+	await waitForAppHydration(page);
 	const sourceFilters = page.getByRole("button", { name: /^検索フィルター/ });
 	await sourceFilters.click();
 	const naturalLanguageSearch = "自然言語検索（EmbeddingGemma 2）";
@@ -170,6 +177,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	).toBeVisible({ timeout: 60_000 });
 
 	await page.goto("/search");
+	await waitForAppHydration(page);
 	const filters = page.getByRole("button", { name: /^検索フィルター、/ });
 	await filters.click();
 	const dialog = page.getByRole("dialog", {
@@ -193,7 +201,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	await dialog
 		.getByRole("button", { name: "文章で画像・動画を検索", exact: true })
 		.click();
-	await dialog.getByRole("button", { name: "適用", exact: true }).click();
+	await expect(dialog).toBeHidden();
 	await expect(
 		page.getByRole("button", {
 			name: "文章:アニメのキャラクターを解除",
@@ -203,7 +211,16 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 	).toBeVisible();
+	await page.waitForFunction(() => {
+		const snapshot = history.state?.searchSnapshot;
+		return (
+			snapshot?.id === new URL(location.href).searchParams.get("search") &&
+			snapshot?.state?.semanticQuery === "アニメのキャラクター"
+		);
+	});
+	const semanticReload = browserHealth.requestCheckpoint();
 	await page.reload();
+	await waitForAppHydration(page);
 	await expect(
 		page.getByRole("button", {
 			name: "文章:アニメのキャラクターを解除",
@@ -213,6 +230,12 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 	).toBeVisible();
+	expect(
+		browserHealth.apiRequestCountPathSince(
+			semanticReload,
+			"/api/rpc/media/searchSemantic",
+		),
+	).toBe(0);
 	await expect
 		.poll(() =>
 			page.evaluate(
@@ -224,6 +247,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		.toBeLessThanOrEqual(1);
 
 	await page.goto(`/sources/${sourceId}/${primaryId}`);
+	await waitForAppHydration(page);
 	const relatedMedia = page.getByRole("region", {
 		name: "関連メディア",
 		exact: true,
@@ -254,10 +278,25 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 	).toHaveCount(0);
+	await page.waitForFunction((anchorId) => {
+		const snapshot = history.state?.searchSnapshot;
+		return (
+			snapshot?.id === new URL(location.href).searchParams.get("search") &&
+			snapshot?.state?.similarityAnchorMediaId === anchorId
+		);
+	}, primaryId);
+	const similarityReload = browserHealth.requestCheckpoint();
 	await page.reload();
+	await waitForAppHydration(page);
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_SIMILAR_FILE_NAME) }),
 	).toBeVisible();
+	expect(
+		browserHealth.apiRequestCountPathSince(
+			similarityReload,
+			"/api/rpc/media/searchSimilar",
+		),
+	).toBe(0);
 	await filters.click();
 	await expect(
 		dialog.getByRole("button", { name: /^類似検索モデル/ }),
@@ -277,6 +316,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	});
 	// Both collection entry points must preserve the explicitly chosen model.
 	await page.goto(`/sources/${sourceId}`);
+	await waitForAppHydration(page);
 	await page
 		.locator(`[data-media-id="${primaryId}"]`)
 		.click({ button: "right" });
@@ -294,6 +334,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 	).toHaveCount(0);
 	await page.reload();
+	await waitForAppHydration(page);
 	const similarMedia = page.getByRole("link", {
 		name: new RegExp(E2E_SIMILAR_FILE_NAME),
 	});

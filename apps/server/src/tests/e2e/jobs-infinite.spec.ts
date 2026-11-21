@@ -1,4 +1,5 @@
 import type { JobDto, JobListRequest } from "@solid-imager/core/jobs";
+import type { Page } from "@playwright/test";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 const date = new Date("2026-01-01T00:00:00Z");
@@ -37,6 +38,20 @@ const jobs: JobDto[] = Array.from({ length: 240 }, (_, i) => ({
 	targetMediaId: null,
 	targetMediaModifiedAt: null,
 }));
+
+async function openJobsFromWorkspace(page: Page): Promise<void> {
+	await page.goto("/about");
+	await waitForAppHydration(page);
+	const menu = page.getByRole("button", {
+		name: "メニューを開く",
+		exact: true,
+	});
+	const mobile = await menu.isVisible();
+	if (mobile) await menu.click();
+	await page.getByRole("link", { name: "ジョブ", exact: true }).click();
+	await expect(page).toHaveURL(/\/jobs$/);
+	if (mobile) await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+}
 
 test("keeps the active job status visible on a phone", async ({ page }) => {
 	await page.setViewportSize({ width: 430, height: 932 });
@@ -118,8 +133,7 @@ test("loads more jobs on scroll and counts all status/type matches beyond the fi
 			},
 		});
 	});
-	await page.goto("/jobs");
-	await waitForAppHydration(page);
+	await openJobsFromWorkspace(page);
 	const rows = page.getByRole("table").locator("tbody tr");
 	await expect(rows).toHaveCount(200);
 	await expect(
@@ -171,7 +185,10 @@ test("loads more jobs on scroll and counts all status/type matches beyond the fi
 	});
 	await page.reload();
 	await waitForAppHydration(page);
-	await expect(rows).toHaveCount(200);
+	await expect(
+		page.getByRole("tab", { name: /^すべて/, selected: true }),
+	).toBeVisible();
+	await expect(type).toHaveText("すべての種類");
 });
 
 test("returns to the scrolled job and restores focus on a phone", async ({
@@ -184,11 +201,10 @@ test("returns to the scrolled job and restores focus on a phone", async ({
 	await page.route("**/api/rpc/jobs/get", (route) =>
 		route.fulfill({ json: { json: jobs[30] } }),
 	);
-	await page.goto("/jobs");
-	await waitForAppHydration(page);
+	await openJobsFromWorkspace(page);
 	const row = page.getByRole("table").locator("tbody tr").nth(30);
 	const selected = row.locator("button[aria-pressed]");
-	await selected.scrollIntoViewIfNeeded();
+	await selected.click({ trial: true });
 	const scrollArea = page.locator("[data-management-scroll]").first();
 	const offset = await scrollArea.evaluate((element) => element.scrollTop);
 	expect(offset).toBeGreaterThan(100);

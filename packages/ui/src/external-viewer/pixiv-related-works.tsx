@@ -62,10 +62,12 @@ export function PixivRelatedWorks(props: {
 	let disposed = false;
 	let section!: HTMLElement;
 	let frame: number | undefined;
+	let restoreObserver: ResizeObserver | undefined;
 	onCleanup(() => {
 		disposed = true;
 		if (frame !== undefined) cancelAnimationFrame(frame);
 		if (saveTimer !== undefined) clearTimeout(saveTimer);
+		restoreObserver?.disconnect();
 	});
 	function scroller() {
 		let element = section.parentElement;
@@ -74,6 +76,22 @@ export function PixivRelatedWorks(props: {
 				return element;
 			element = element.parentElement;
 		}
+	}
+	function restoreScroll(top: number) {
+		const restore = () => {
+			if (!disposed && key() === initialKey) {
+				const area = scroller();
+				if (!area) return false;
+				area.scrollTop = top;
+			}
+			restoring = false;
+			restoreObserver?.disconnect();
+			return true;
+		};
+		if (restore()) return;
+		// The grid can mount before the stylesheet establishes its scroll area.
+		restoreObserver = new ResizeObserver(restore);
+		restoreObserver.observe(section);
 	}
 	function remember(focusId?: number) {
 		if (restoring || disposed || !query.data || !section) return;
@@ -92,21 +110,21 @@ export function PixivRelatedWorks(props: {
 	onMount(() => {
 		setOnline(onlineManager.isOnline());
 		onCleanup(onlineManager.subscribe(setOnline));
-		const area = scroller();
-		const save = () => {
+		const save = (event: Event) => {
+			if (event.target !== scroller()) return;
 			if (saveTimer !== undefined) clearTimeout(saveTimer);
 			saveTimer = setTimeout(() => {
 				saveTimer = undefined;
 				remember();
 			}, 200);
 		};
-		area?.addEventListener("scroll", save, { passive: true });
+		document.addEventListener("scroll", save, { capture: true, passive: true });
 		window.addEventListener("pagehide", rememberPage);
 		function rememberPage() {
 			remember();
 		}
 		onCleanup(() => {
-			area?.removeEventListener("scroll", save);
+			document.removeEventListener("scroll", save, true);
 			window.removeEventListener("pagehide", rememberPage);
 		});
 	});
@@ -225,11 +243,9 @@ export function PixivRelatedWorks(props: {
 											: Promise.resolve(false)
 									).then(() => {
 										if (disposed) return;
-										frame = requestAnimationFrame(() => {
-											const area = scroller();
-											if (area) area.scrollTop = saved.scrollTop;
-											restoring = false;
-										});
+										frame = requestAnimationFrame(() =>
+											restoreScroll(saved.scrollTop),
+										);
 									});
 								});
 							}}

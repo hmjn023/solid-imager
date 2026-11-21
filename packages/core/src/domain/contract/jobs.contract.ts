@@ -94,5 +94,19 @@ export const jobsContract = {
 					"ジョブの進捗や状態変化をリアルタイムに受け取るイベントストリームを開始します。",
 			}),
 		)
+		.input(
+			z
+				.object({
+					replaySince: z
+						.number()
+						.int()
+						.nonnegative()
+						.optional()
+						.describe(
+							"再送するイベントの最古の時刻（Unix epoch ミリ秒、指定時刻を含む）",
+						),
+				})
+				.optional(),
+		)
 		.output(asyncIteratorObject(jobEventSchema)),
 };

@@ -47,7 +47,13 @@ async function expectSearchState(
 
 test("search results remain traversable across detail navigation", async ({
 	page,
+	browserHealth,
 }) => {
+	// Leaving detail can dispose its job stream before the response headers arrive.
+	browserHealth.allowRequestFailure(
+		/\/api\/rpc\/jobs\/events$/,
+		"net::ERR_ABORTED",
+	);
 	await page.goto("/search");
 	await expect(
 		page.getByText("すべてのメディア", { exact: true }),

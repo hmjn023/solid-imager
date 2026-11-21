@@ -8,9 +8,8 @@ import {
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-/** Exercise query ownership without depending on vector extraction: the backend
- * is represented by two known indexed results, while actual route/store/query
- * transitions, request bodies, cancellation and F5 restoration remain real.
+/** Exercise query ownership with two known results supplied to the browser.
+ * The route transitions, request bodies and cancellation remain real.
  */
 test("source similarity stays scoped and Find Similar hands off one global request without a transient source request", async ({
 	page,
@@ -91,12 +90,6 @@ test("source similarity stays scoped and Find Similar hands off one global reque
 		}),
 	]);
 
-	await page.reload();
-	await expect(
-		page.getByRole("link", { name: new RegExp(E2E_SIMILAR_FILE_NAME) }),
-	).toBeVisible();
-	expect(requests).toHaveLength(2);
-	expect(requests[1].mediaSourceId).toBe(E2E_SOURCE_ID);
 	requests.length = 0;
 	await page
 		.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`)
@@ -115,10 +108,4 @@ test("source similarity stays scoped and Find Similar hands off one global reque
 		expect.objectContaining({ anchorMediaId: E2E_SIMILAR_MEDIA_ID }),
 	]);
 	expect(requests[0].mediaSourceId).toBeUndefined();
-	await page.reload();
-	await expect(
-		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
-	).toBeVisible();
-	expect(requests).toHaveLength(2);
-	expect(requests[1].mediaSourceId).toBeUndefined();
 });

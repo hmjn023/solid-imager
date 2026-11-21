@@ -40,10 +40,14 @@ function sourceTypeLabel(source: SafeMediaSource): string {
 		: source.type.toUpperCase();
 }
 
-const syncDateFormatter = new Intl.DateTimeFormat(getLocale(), {
+const syncDateFormatOptions = {
 	dateStyle: "short",
 	timeStyle: "short",
-});
+} as const;
+const syncDateFormatters = {
+	ja: new Intl.DateTimeFormat("ja", syncDateFormatOptions),
+	en: new Intl.DateTimeFormat("en", syncDateFormatOptions),
+};
 
 function sourceSyncDetail(source: SafeMediaSource): string {
 	if (source.syncStatus === "syncing") return t("sourceList.syncing");
@@ -54,7 +58,9 @@ function sourceSyncDetail(source: SafeMediaSource): string {
 	}
 	if (source.lastSyncCompletedAt) {
 		return t("sourceList.lastSyncValue", {
-			value0: String(syncDateFormatter.format(source.lastSyncCompletedAt)),
+			value0: syncDateFormatters[getLocale()].format(
+				source.lastSyncCompletedAt,
+			),
 		});
 	}
 	return t("sourceList.notSynced");

@@ -85,13 +85,23 @@ test("large author lists debounce suggestions and preserve selections @desktop-o
 			},
 		}),
 	);
-	await page.goto("/manager");
+	// Finish the initial SSE reconciliation before advancing the browser clock.
+	await Promise.all([
+		page.waitForResponse(
+			(response) =>
+				response.ok() &&
+				new URL(response.url()).pathname === "/api/rpc/jobs/activeBatches",
+		),
+		page.goto("/manager"),
+	]);
 	await waitForAppHydration(page);
 	await openAuthors(page);
 	await page.getByRole("button", { name: /修正対象の作者の候補/ }).click();
 	await expect(page.getByRole("option")).toHaveCount(100);
-	await page.clock.install();
-	await page.clock.pauseAt(new Date());
+	const pauseAt = Date.now();
+	// The browser clock runs between installation and the pause command.
+	await page.clock.install({ time: pauseAt - 60_000 });
+	await page.clock.pauseAt(pauseAt);
 	const source = page.getByRole("combobox", {
 		name: "修正対象の作者",
 		exact: true,

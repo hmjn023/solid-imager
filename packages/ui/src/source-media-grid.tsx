@@ -579,7 +579,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		);
 	};
 
-	const gridContent = (
+	const GridContent = () => (
 		<MediaTileGrid
 			items={props.mediaResults()}
 			ariaLabel={t("sourceMediaScreen.mediaList")}
@@ -662,7 +662,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			value0: String((bytes / (1024 * 1024)).toFixed(1)),
 		});
 	};
-	const listContent = (
+	const ListContent = () => (
 		<div class="overflow-hidden rounded-md border border-border bg-card">
 			<Table class="min-w-table-extra-wide border-collapse text-left text-sm">
 				<TableCaption class="sr-only mt-0">
@@ -937,9 +937,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		</div>
 	);
 
-	const collectionContent = (
-		<Show fallback={gridContent} when={viewMode() === "list"}>
-			{listContent}
+	const CollectionContent = () => (
+		<Show fallback={<GridContent />} when={viewMode() === "list"}>
+			<ListContent />
 		</Show>
 	);
 
@@ -998,10 +998,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					</Show>
 
 					{/* Grid and list share the same target-safe context menu. */}
-					<Show
-						fallback={collectionContent}
-						when={!disableContextMenu() && Boolean(collectionRoot())}
-					>
+					<Show fallback={<CollectionContent />} when={!disableContextMenu()}>
 						<ContextMenu
 							onOpenChange={(open) => {
 								if (!open) clearContextMenuTarget();
@@ -1029,7 +1026,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										}
 									}}
 								>
-									{collectionContent}
+									<CollectionContent />
 								</section>
 							</ContextMenuTrigger>
 							<MediaContextMenuContent onShortcut={handleContextMenuKeyDown}>

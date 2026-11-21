@@ -9,6 +9,17 @@ import {
 } from "../query-options/jobs-query";
 import { toQueryUiState } from "../query-state";
 
+export function jobTypesQueryOptions(
+	client: Pick<AppContractClient["jobs"], "types">,
+) {
+	return {
+		queryKey: jobsQueryKeys.types(),
+		queryFn: ({ signal }: { signal: AbortSignal }) =>
+			client.types(undefined, { signal }),
+		staleTime: 30_000,
+	};
+}
+
 /** Shared Web/Tauri list: server filters, matching totals, and independently cached pages. */
 export function useJobsList(
 	client: Pick<AppContractClient["jobs"], "list" | "types">,
@@ -21,11 +32,7 @@ export function useJobsList(
 			(input, signal) => client.list(input, { signal }),
 		),
 	);
-	const types = createQuery(() => ({
-		queryKey: jobsQueryKeys.types(),
-		queryFn: ({ signal }) => client.types(undefined, { signal }),
-		staleTime: 30_000,
-	}));
+	const types = createQuery(() => jobTypesQueryOptions(client));
 	const data = createMemo(() => flattenJobPages(query.data));
 	const list = {
 		get data() {

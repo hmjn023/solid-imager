@@ -96,6 +96,10 @@ test("restores an archive's original media and metadata into the selected source
 			.getByRole("button", { name: "ダンプファイルを選択", exact: true })
 			.click();
 		await (await chooser).setFiles(archive);
+		await page
+			.getByRole("alertdialog")
+			.getByRole("button", { name: "復元を実行", exact: true })
+			.click();
 		const response = await queued;
 		expect(response.ok(), await response.text()).toBe(true);
 		const job = z

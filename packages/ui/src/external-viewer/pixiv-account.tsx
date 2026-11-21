@@ -25,6 +25,7 @@ import {
 } from "../dialog";
 import { Input } from "../input";
 import { Label } from "../label";
+import { pixivQueryScope } from "./query-options";
 
 const SESSION_CHECK_INTERVAL_MS = 60_000;
 
@@ -148,11 +149,7 @@ export function createPixivAccount(
 		setNotice,
 		transport,
 		base,
-		scope: () => [
-			base,
-			session()?.userId ?? "guest",
-			session()?.expiresAt ?? 0,
-		],
+		scope: () => pixivQueryScope(base, session()?.userId, session()?.expiresAt),
 		async login(value: string, useCookie: boolean) {
 			if (!canTransferPixivSession(new URL(base)))
 				throw new Error(t("pixivAccount.useAnHTTPSOrLocalhostServerToConnect"));
@@ -211,16 +208,17 @@ export function PixivAccountDialog(props: {
 				if (useCookie()) setCode("");
 				await account.login(value, useCookie());
 			}
-			close(false);
 		} catch (error) {
 			account.setNotice(
 				error instanceof Error
 					? error.message
 					: t("pixivAccount.couldNotChangeTheConnection"),
 			);
+			return;
 		} finally {
 			setBusy(false);
 		}
+		close(false);
 	}
 	return (
 		<Dialog open={props.open} onOpenChange={close}>

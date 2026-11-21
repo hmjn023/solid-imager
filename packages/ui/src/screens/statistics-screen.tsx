@@ -6,15 +6,18 @@ import type {
 } from "@solid-imager/core/statistics";
 import { createQuery } from "@tanstack/solid-query";
 import { Link, useLocation } from "@tanstack/solid-router";
-import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { createSignal, For, Match, onMount, Show, Switch } from "solid-js";
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Button } from "../button";
 import { Card } from "../card";
 import { saveMediaContext } from "../media-context";
+import {
+	statisticsPeriod,
+	statisticsQueryOptions,
+} from "../query-options/statistics-query";
 import { CardGridSkeleton, LoadingRegion, Skeleton } from "../skeleton";
 import { ToggleGroup, ToggleGroupItem } from "../toggle-group";
 import { ManagementHeader } from "../workspace/management-layout";
-
 import {
 	ImportTrend,
 	MediaComposition,
@@ -22,8 +25,15 @@ import {
 	Ranking,
 } from "./statistics/charts";
 
+export {
+	STATISTICS_TIME_ZONE_COOKIE,
+	statisticsQueryOptions,
+} from "../query-options/statistics-query";
+
 export function StatisticsScreen(props: {
 	selection: StatisticsSelection;
+	initialTimeZone?: string;
+	onTimeZoneResolved?: (timeZone: string) => void;
 	change: (selection: StatisticsSelection) => void;
 	load: (
 		request: StatisticsRequest,
@@ -32,23 +42,24 @@ export function StatisticsScreen(props: {
 }) {
 	const location = useLocation();
 	const [cumulative, setCumulative] = createSignal(false);
-	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const [timeZone, setTimeZone] = createSignal(props.initialTimeZone);
+	onMount(() => {
+		const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		if (browserTimeZone !== props.initialTimeZone)
+			props.onTimeZoneResolved?.(browserTimeZone);
+		setTimeZone(browserTimeZone);
+	});
 	const isFiltered = () =>
 		Boolean(
 			props.selection.bucket ||
 			props.selection.ipId ||
 			props.selection.characterId,
 		);
-	// Earlier drill-down URLs without a period used the recent window.
-	const period = () =>
-		props.selection.period ?? (isFiltered() ? "recent" : "all");
-	const query = createQuery(() => {
-		const input = { ...props.selection, period: period(), timeZone };
-		return {
-			queryKey: ["media", "statistics", input],
-			queryFn: ({ signal }) => props.load(input, signal),
-		};
-	});
+	const period = () => statisticsPeriod(props.selection);
+	const query = createQuery(() => ({
+		...statisticsQueryOptions(props.selection, timeZone() ?? "UTC", props.load),
+		enabled: timeZone() !== undefined,
+	}));
 	const recent = () => period() === "recent";
 	const periodLabel = () => {
 		const bucket = props.selection.bucket;

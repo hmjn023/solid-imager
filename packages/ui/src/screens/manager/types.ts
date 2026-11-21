@@ -42,69 +42,113 @@ export type ManagerTransferActions = {
 
 export const MANAGER_CATEGORIES: ManagerCategory[] = [
 	{
-		description: t("tagDictionary.navigationDescription"),
+		get description() {
+			return t("tagDictionary.navigationDescription");
+		},
 		group: "Entities",
-		label: t("tagDictionary.title"),
+		get label() {
+			return t("tagDictionary.title");
+		},
 		value: "tagDictionary",
 	},
 	{
-		description: t("types.reviewAnalysisNoiseAndDifferencesBetweenSettings"),
+		get description() {
+			return t("types.reviewAnalysisNoiseAndDifferencesBetweenSettings");
+		},
 		group: "Tools",
-		label: t("jobTypes.character_clustering"),
+		get label() {
+			return t("jobTypes.character_clustering");
+		},
 		value: "clustering",
 	},
 	{
-		description: t("types.reviewReassignAndMergeIncorrectRegistrations"),
+		get description() {
+			return t("types.reviewReassignAndMergeIncorrectRegistrations");
+		},
 		group: "Entities",
-		label: t("types.authorsAndExternalAccounts"),
+		get label() {
+			return t("types.authorsAndExternalAccounts");
+		},
 		value: "authors",
 	},
 	{
-		description: t("types.collectionsAndWork"),
+		get description() {
+			return t("types.collectionsAndWork");
+		},
 		group: "Entities",
-		label: t("labels.projects"),
+		get label() {
+			return t("labels.projects");
+		},
 		value: "projects",
 	},
 	{
-		description: t("types.seriesAndFranchises"),
+		get description() {
+			return t("types.seriesAndFranchises");
+		},
 		group: "Entities",
-		label: t("labels.ips"),
+		get label() {
+			return t("labels.ips");
+		},
 		value: "ips",
 	},
 	{
-		description: t("types.peopleAndSubjects"),
+		get description() {
+			return t("types.peopleAndSubjects");
+		},
 		group: "Entities",
-		label: t("labels.characters"),
+		get label() {
+			return t("labels.characters");
+		},
 		value: "characters",
 	},
 	{
-		description: t("types.submitAITagJobs"),
+		get description() {
+			return t("types.submitAITagJobs");
+		},
 		group: "Tools",
-		label: t("jobTypes.bulk_tagging_parent"),
+		get label() {
+			return t("jobTypes.bulk_tagging_parent");
+		},
 		value: "tagging",
 	},
 	{
-		description: t("types.buildImageOrCharacterEmbeddings"),
+		get description() {
+			return t("types.buildImageOrCharacterEmbeddings");
+		},
 		group: "Tools",
-		label: t("types.vectorExtraction"),
+		get label() {
+			return t("types.vectorExtraction");
+		},
 		value: "vectors",
 	},
 	{
-		description: t("types.warmResponsiveImageCache"),
+		get description() {
+			return t("types.warmResponsiveImageCache");
+		},
 		group: "Tools",
-		label: t("types.thumbnails"),
+		get label() {
+			return t("types.thumbnails");
+		},
 		value: "thumbnails",
 	},
 	{
-		description: t("types.reviewMatchingMedia"),
+		get description() {
+			return t("types.reviewMatchingMedia");
+		},
 		group: "Tools",
-		label: t("types.duplicates"),
+		get label() {
+			return t("types.duplicates");
+		},
 		value: "duplicates",
 	},
 	{
-		description: t("types.exportAndRestoreSourceData"),
+		get description() {
+			return t("types.exportAndRestoreSourceData");
+		},
 		group: "Tools",
-		label: t("types.dataTransfer"),
+		get label() {
+			return t("types.dataTransfer");
+		},
 		value: "transfer",
 	},
 ];
