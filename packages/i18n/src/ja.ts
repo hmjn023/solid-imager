@@ -831,6 +831,11 @@ export const ja = defineLocale({
 	"jobsScreen.pageValueOfValueValue": "{value2}ページ中{value0}ページ ",
 	"jobsScreen.previousPage": "前のページ",
 	"jobsScreen.progress": "進捗",
+	"jobsScreen.stageProgress": "工程別の進捗",
+	"jobsScreen.stageProgressScope":
+		"工程が追加されると、その工程の総件数も増えます。",
+	"jobsScreen.stageProgressCounts":
+		"完了 {completed} · 実行中 {running} · 待機 {pending} · 失敗 {failed}",
 	"jobsScreen.refreshing": "更新中...",
 	"jobsScreen.reloadTheJobOrSelectAnotherOneFromThe":
 		"ジョブを再取得するか一覧から別のジョブを選択してください。",

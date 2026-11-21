@@ -37,6 +37,7 @@ describe("JobRepository", () => {
 			update: vi.fn().mockReturnThis(),
 			select: vi.fn().mockReturnThis(),
 			from: vi.fn().mockReturnThis(),
+			orderBy: vi.fn().mockResolvedValue([]),
 			limit: vi.fn().mockResolvedValue([]),
 			set: vi.fn().mockReturnThis(),
 			where: vi.fn().mockReturnThis(),

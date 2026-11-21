@@ -3,11 +3,12 @@ import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { randomUUID } from "node:crypto";
 import {
 	relations,
+	createImportBatch,
 	createRepositories,
 	type DrizzleExecutor,
 } from "@solid-imager/db";
 import { jobs, mediaSources } from "@solid-imager/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -793,6 +794,141 @@ describe("persisted import, attempt and batch transitions", () => {
 			expect(await recovered.job.findById(parent.id)).toEqual(finishedParent);
 		},
 	);
+
+	it.each([
+		{ outcome: "completed", scanFlag: null, status: "completed" },
+		{ outcome: "failed", scanFlag: null, status: "failed" },
+		{ outcome: "cancelled", scanFlag: null, status: "cancelled" },
+		{ outcome: "completed", scanFlag: "scanFailed", status: "failed" },
+		{ outcome: "completed", scanFlag: "collecting", status: "failed" },
+	] as const)(
+		"recovers a stale legacy import as $status with a $outcome target and scan flag $scanFlag",
+		async ({ outcome, scanFlag, status }) => {
+			const parent = await database.transaction((tx) =>
+				createImportBatch(tx, SOURCE_ID, [
+					{ label: "existing", skipped: true, work: { type: "downloadImage" } },
+					{ label: "download", work: { type: "downloadImage" } },
+				]),
+			);
+			const [work] = await repositories.job.claimPending(1);
+			await repositories.job.finishAttempt(
+				work.id,
+				1,
+				outcome === "failed"
+					? { status: outcome, error: "Download failed" }
+					: { status: outcome, result: null },
+			);
+			const original = {
+				total: 2,
+				processed: 1,
+				failed: 0,
+				...(scanFlag && { [scanFlag]: true }),
+			};
+			const counter = outcome === "completed" ? "processed" : outcome;
+			// The legacy writer concatenated a JSONB string with an outcome fragment.
+			await database
+				.update(jobs)
+				.set({
+					payload: sql`to_jsonb(${JSON.stringify(original)}::text) || jsonb_build_object(${counter}::text, 1)`,
+					status: "in_progress",
+					updatedAt: new Date(0),
+					finishedAt: null,
+					cancelledAt: null,
+				})
+				.where(eq(jobs.id, parent.id));
+			const cutoff = new Date();
+			await repositories.job.requeueStaleInProgress(cutoff);
+			const repaired = await repositories.job.findById(parent.id);
+			expect(repaired).toMatchObject({
+				status,
+				finishedAt: expect.any(Date),
+				cancelledAt: status === "cancelled" ? expect.any(Date) : null,
+				payload: {
+					total: 2,
+					processed: outcome === "completed" ? 2 : 1,
+					failed: outcome === "failed" ? 1 : 0,
+					...(outcome === "cancelled" && { cancelled: 1 }),
+					...(scanFlag && { scanFailed: true }),
+				},
+			});
+			expect(
+				await call(jobsRouter.list, { status: "active", offset: 0, limit: 10 }),
+			).toMatchObject({ total: 0, items: [] });
+			expect(await repositories.job.requeueStaleInProgress(cutoff)).toBe(0);
+			expect(await repositories.job.findById(parent.id)).toEqual(repaired);
+			expect(await repositories.job.claimPending(1)).toEqual([]);
+		},
+	);
+
+	it("does not close a damaged import with work still running under a terminal target", async () => {
+		const parent = await database.transaction((tx) =>
+			createImportBatch(tx, SOURCE_ID, [
+				{ label: "download", work: { type: "downloadImage" } },
+			]),
+		);
+		const [work] = await repositories.job.claimPending(1);
+		await database
+			.update(jobs)
+			.set({ status: "completed" })
+			.where(eq(jobs.parentId, parent.id));
+		await database
+			.update(jobs)
+			.set({
+				payload: sql`to_jsonb(payload::text) || '{"processed":1}'::jsonb`,
+				updatedAt: new Date(0),
+			})
+			.where(eq(jobs.id, parent.id));
+		const before = await repositories.job.findById(parent.id);
+		await repositories.job.requeueStaleInProgress(
+			new Date(Date.now() - 60_000),
+		);
+		expect(await repositories.job.findById(parent.id)).toEqual(before);
+		expect(await repositories.job.findById(work.id)).toMatchObject({
+			status: "in_progress",
+			attemptCount: 1,
+		});
+	});
+
+	it("keeps a live import running during recovery and settles a stringified root on its last outcome", async () => {
+		const parent = await database.transaction((tx) =>
+			createImportBatch(tx, SOURCE_ID, [
+				{ label: "existing", skipped: true, work: { type: "downloadImage" } },
+				{ label: "download", work: { type: "downloadImage" } },
+			]),
+		);
+		const [work] = await repositories.job.claimPending(1);
+		const cutoff = new Date(Date.now() - 60_000);
+		await database
+			.update(jobs)
+			.set({ updatedAt: new Date(0) })
+			.where(eq(jobs.id, parent.id));
+		const activeParent = await repositories.job.findById(parent.id);
+		await repositories.job.requeueStaleInProgress(cutoff);
+		expect(await repositories.job.findById(parent.id)).toEqual(activeParent);
+		await database
+			.update(jobs)
+			.set({
+				payload: sql`to_jsonb(payload::text)`,
+			})
+			.where(inArray(jobs.id, [parent.id, work.id]));
+		expect(
+			await call(jobsRouter.targets, { id: parent.id, offset: 2, limit: 1 }),
+		).toMatchObject({
+			items: [],
+			stages: [{ type: "downloadImage", running: 1, total: 1 }],
+		});
+		expect(
+			await repositories.job.finishAttempt(work.id, 1, {
+				status: "completed",
+				result: null,
+			}),
+		).toBe("completed");
+		expect(await repositories.job.findById(parent.id)).toMatchObject({
+			status: "completed",
+			finishedAt: expect.any(Date),
+			payload: { total: 2, processed: 2, failed: 0 },
+		});
+	});
 
 	it("rolls back stale child cancellation when its parent cannot be finalized", async () => {
 		const parent = await repositories.job.create({

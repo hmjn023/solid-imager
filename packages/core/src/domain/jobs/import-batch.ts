@@ -8,7 +8,16 @@ export const importBatchContextSchema = z.object({
 export type ImportBatchContext = z.infer<typeof importBatchContextSchema>;
 
 export function readImportBatch(job: Pick<Job, "payload" | "parentId">) {
-	const parsed = importBatchContextSchema.safeParse(job.payload);
+	if (!job.parentId) return undefined;
+	let payload = job.payload;
+	if (typeof payload === "string") {
+		try {
+			payload = JSON.parse(payload);
+		} catch {
+			return undefined;
+		}
+	}
+	const parsed = importBatchContextSchema.safeParse(payload);
 	return parsed.success && parsed.data.importTargetId === job.parentId
 		? parsed.data
 		: undefined;
