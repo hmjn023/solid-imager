@@ -225,7 +225,7 @@ function JobStatusBadge(props: { status: JobDto["status"] }) {
 	);
 }
 
-function JobProgress(props: { progress: JobDto["progress"] }) {
+function JobProgress(props: { progress: JobDto["progress"]; label?: string }) {
 	const finished = () =>
 		props.progress
 			? props.progress.processed +
@@ -251,9 +251,10 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 						</span>
 					</div>
 					<Progress
-						aria-label={t("jobsScreen.valueComplete", {
-							value0: String(percent()),
-						})}
+						aria-label={
+							props.label ??
+							t("jobsScreen.valueComplete", { value0: String(percent()) })
+						}
 						class="h-1.5 bg-border [&>div]:bg-border [&>div>div]:rounded-full"
 						maxValue={100}
 						minValue={0}
@@ -262,6 +263,53 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 				</div>
 			)}
 		</Show>
+	);
+}
+
+function ImportStageProgress(props: {
+	stages: NonNullable<BatchTargets["stages"]>;
+	active: boolean;
+}) {
+	const heading = createUniqueId();
+	return (
+		<section
+			aria-labelledby={heading}
+			class="mb-5 rounded-md border border-border bg-card p-3"
+		>
+			<h3 id={heading} class="font-semibold text-sm">
+				{t("jobsScreen.stageProgress")}
+			</h3>
+			<Show when={props.active}>
+				<p class="mt-1 text-xs text-muted-foreground">
+					{t("jobsScreen.stageProgressScope")}
+				</p>
+			</Show>
+			<ul class="mt-3 grid gap-x-5 gap-y-4 @lg:grid-cols-2">
+				<For each={props.stages}>
+					{(stage) => (
+						<li class="min-w-0 space-y-1">
+							<p class="font-medium text-sm">{jobTypeLabel(stage.type)}</p>
+							<JobProgress progress={stage} label={jobTypeLabel(stage.type)} />
+							<p class="text-xs text-muted-foreground tabular-nums">
+								{t("jobsScreen.stageProgressCounts", {
+									completed: stage.processed.toLocaleString(),
+									running: stage.running.toLocaleString(),
+									pending: stage.pending.toLocaleString(),
+									failed: stage.failed.toLocaleString(),
+								})}
+							</p>
+							<Show when={stage.cancelled > 0}>
+								<p class="text-xs text-muted-foreground tabular-nums">
+									{t("jobsScreen.cancelledCount", {
+										count: stage.cancelled.toLocaleString(),
+									})}
+								</p>
+							</Show>
+						</li>
+					)}
+				</For>
+			</ul>
+		</section>
 	);
 }
 
@@ -579,6 +627,7 @@ function BatchTargetThumbnail(props: {
 }
 
 function BatchTargetList(props: {
+	active: boolean;
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	id: string;
 	load: LoadTargets;
@@ -634,6 +683,11 @@ function BatchTargetList(props: {
 			<Show when={query.data}>
 				{(data) => (
 					<>
+						<Show when={data().stages}>
+							{(stages) => (
+								<ImportStageProgress stages={stages()} active={props.active} />
+							)}
+						</Show>
 						<h3 class="mb-3 font-semibold text-base">
 							{t("jobsScreen.batchTargets")}
 						</h3>
@@ -972,6 +1026,10 @@ function JobsInspector(props: {
 									<Show when={props.loadTargets}>
 										{(load) => (
 											<BatchTargetList
+												active={
+													job().status === "pending" ||
+													job().status === "in_progress"
+												}
 												buildThumbnailUrl={props.buildThumbnailUrl}
 												id={id}
 												load={load()}

@@ -2,8 +2,10 @@ import {
 	importAiStages,
 	type ImportBatchContext,
 } from "@solid-imager/core/jobs";
-import { and, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { isRecord } from "@solid-imager/core/utils";
+import { and, eq, inArray, isNotNull, lt, sql, type SQL } from "drizzle-orm";
 import { jobs } from "../schema";
+import { normalizedPayloadExpression } from "./job-payload";
 import type { DrizzleExecutor } from "../types";
 
 type Executor = Pick<
@@ -40,6 +42,7 @@ export async function createImportBatch(
 	scanId?: string,
 ) {
 	if (scanId) await lockBatchAdmissions(tx, scanId);
+	const payload = normalizedPayloadExpression(sql`jobs.payload`);
 	const skipped = items.filter((item) => item.skipped).length;
 	const insert = tx.insert(jobs).values({
 		id: scanId,
@@ -60,10 +63,10 @@ export async function createImportBatch(
 				.onConflictDoUpdate({
 					target: jobs.id,
 					set: {
-						payload: sql`jobs.payload || jsonb_build_object('total',(jobs.payload->>'total')::int + ${items.length}::int, 'processed', (jobs.payload->>'processed')::int + ${skipped}::int)`,
+						payload: sql`${payload} || jsonb_build_object('total',(${payload}->>'total')::int + ${items.length}::int, 'processed', (${payload}->>'processed')::int + ${skipped}::int)`,
 						updatedAt: new Date(),
 					},
-					setWhere: sql`jobs.payload->>'collecting'='true' AND jobs.status='in_progress' AND jobs.cancel_requested_at IS NULL`,
+					setWhere: sql`${payload}->>'collecting'='true' AND jobs.status='in_progress' AND jobs.cancel_requested_at IS NULL`,
 				})
 				.returning()
 		: await insert.returning();
@@ -165,14 +168,15 @@ export async function settleImportTarget(
 			: failed
 				? "failed"
 				: "processed";
-	const done = sql`coalesce(payload->>'collecting','false') <> 'true' AND (payload->>'processed')::int + (payload->>'failed')::int + coalesce((payload->>'cancelled')::int,0) + 1 >= (payload->>'total')::int`;
+	const payload = normalizedPayloadExpression();
+	const done = sql`coalesce(${payload}->>'collecting','false') <> 'true' AND (${payload}->>'processed')::int + (${payload}->>'failed')::int + coalesce((${payload}->>'cancelled')::int,0) + 1 >= (${payload}->>'total')::int`;
 	await tx
 		.update(jobs)
 		.set({
-			payload: sql`payload || jsonb_build_object(${key}::text, coalesce((payload->>${key})::int,0) + 1)`,
-			status: sql`CASE WHEN ${done} THEN (CASE WHEN cancel_requested_at IS NOT NULL THEN 'cancelled' WHEN payload->>'scanFailed'='true' OR ${key === "failed"} OR (payload->>'failed')::int > 0 THEN 'failed' WHEN ${key === "cancelled"} OR coalesce((payload->>'cancelled')::int,0)>0 THEN 'cancelled' ELSE 'completed' END)::job_status ELSE status END`,
+			payload: sql`${payload} || jsonb_build_object(${key}::text, coalesce((${payload}->>${key})::int,0) + 1)`,
+			status: sql`CASE WHEN ${done} THEN (CASE WHEN cancel_requested_at IS NOT NULL THEN 'cancelled' WHEN ${payload}->>'scanFailed'='true' OR ${key === "failed"} OR (${payload}->>'failed')::int > 0 THEN 'failed' WHEN ${key === "cancelled"} OR coalesce((${payload}->>'cancelled')::int,0)>0 THEN 'cancelled' ELSE 'completed' END)::job_status ELSE status END`,
 			finishedAt: sql`CASE WHEN ${done} THEN NOW() ELSE NULL END`,
-			cancelledAt: sql`CASE WHEN ${done} AND (cancel_requested_at IS NOT NULL OR coalesce((payload->>'cancelled')::int,0)>0 OR ${key === "cancelled"}) THEN NOW() END`,
+			cancelledAt: sql`CASE WHEN ${done} AND (cancel_requested_at IS NOT NULL OR coalesce((${payload}->>'cancelled')::int,0)>0 OR ${key === "cancelled"}) THEN NOW() END`,
 			updatedAt: new Date(),
 		})
 		.where(
@@ -204,7 +208,7 @@ export function importStageReady() {
 		))`;
 	});
 	return sql`(jobs.payload->>'importBatchId' IS NULL OR ((jobs.type IN ('downloadImage','processMedia') OR NOT EXISTS (
-		SELECT 1 FROM jobs root WHERE root.id = CASE WHEN pg_input_is_valid(jobs.payload->>'importBatchId', 'uuid') THEN (jobs.payload->>'importBatchId')::uuid END AND root.payload->>'collecting' = 'true'
+		SELECT 1 FROM jobs root WHERE root.id = CASE WHEN pg_input_is_valid(jobs.payload->>'importBatchId', 'uuid') THEN (jobs.payload->>'importBatchId')::uuid END AND ${normalizedPayloadExpression(sql`root.payload`)}->>'collecting' = 'true'
 	)) AND ${sql.join(guards, sql` AND `)}))`;
 }
 
@@ -214,14 +218,18 @@ export async function bindImportMedia(
 	owner: ImportBatchContext,
 	mediaId: string,
 ) {
+	const targetPayload = normalizedPayloadExpression();
 	const [target] = await tx
-		.select()
+		.select({
+			id: jobs.id,
+			mediaSourceId: jobs.mediaSourceId,
+			payload: targetPayload,
+		})
 		.from(jobs)
-		.where(eq(jobs.id, owner.importTargetId))
+		.where(and(eq(jobs.id, owner.importTargetId), isNotNull(jobs.payload)))
 		.for("update");
 	const payload = target?.payload;
-	if (!target || !payload || typeof payload !== "object")
-		throw new Error("Missing import target");
+	if (!target || !isRecord(payload)) throw new Error("Missing import target");
 	if (!("mediaId" in payload) || payload.mediaId === mediaId) {
 		await tx
 			.update(jobs)
@@ -236,7 +244,7 @@ export async function bindImportMedia(
 			and(
 				eq(jobs.parentId, owner.importBatchId),
 				eq(jobs.type, "import_batch_target"),
-				sql`payload->>'origin' = ${target.id} AND payload->>'mediaId' = ${mediaId}`,
+				sql`${targetPayload}->>'origin' = ${target.id} AND ${targetPayload}->>'mediaId' = ${mediaId}`,
 			),
 		)
 		.limit(1);
@@ -251,10 +259,11 @@ export async function bindImportMedia(
 			payload: { ...payload, mediaId, origin: target.id },
 		})
 		.returning();
+	const parentPayload = normalizedPayloadExpression();
 	await tx
 		.update(jobs)
 		.set({
-			payload: sql`payload || jsonb_build_object('total', (payload->>'total')::int + 1)`,
+			payload: sql`${parentPayload} || jsonb_build_object('total', (${parentPayload}->>'total')::int + 1)`,
 		})
 		.where(eq(jobs.id, owner.importBatchId));
 	return created.id;
@@ -265,21 +274,133 @@ export async function sealImportScan(
 	condition: SQL,
 	interrupted = false,
 ) {
-	const done = sql`(payload->>'processed')::int + (payload->>'failed')::int + coalesce((payload->>'cancelled')::int,0) >= (payload->>'total')::int`;
+	const payload = normalizedPayloadExpression();
+	const done = sql`(${payload}->>'processed')::int + (${payload}->>'failed')::int + coalesce((${payload}->>'cancelled')::int,0) >= (${payload}->>'total')::int`;
 	await tx
 		.update(jobs)
 		.set({
-			payload: sql`(payload - 'collecting') || CASE WHEN ${interrupted} THEN '{"scanFailed":true}'::jsonb ELSE '{}'::jsonb END`,
+			payload: sql`(${payload} - 'collecting') || CASE WHEN ${interrupted} THEN '{"scanFailed":true}'::jsonb ELSE '{}'::jsonb END`,
 			error: interrupted ? "Directory scan interrupted" : null,
-			status: sql`CASE WHEN ${done} THEN (CASE WHEN ${interrupted} OR (payload->>'failed')::int > 0 THEN 'failed' WHEN coalesce((payload->>'cancelled')::int,0)>0 THEN 'cancelled' ELSE 'completed' END)::job_status ELSE status END`,
+			status: sql`CASE WHEN ${done} THEN (CASE WHEN ${interrupted} OR (${payload}->>'failed')::int > 0 THEN 'failed' WHEN coalesce((${payload}->>'cancelled')::int,0)>0 THEN 'cancelled' ELSE 'completed' END)::job_status ELSE status END`,
 			finishedAt: sql`CASE WHEN ${done} THEN NOW() ELSE NULL END`,
 			updatedAt: new Date(),
 		})
 		.where(
 			and(
 				eq(jobs.type, "import_batch_parent"),
-				sql`payload->>'collecting' = 'true'`,
+				sql`${payload}->>'collecting' = 'true'`,
 				condition,
 			),
 		);
+}
+
+/** A legacy JSONB string concatenated with counter updates produced an array of patches. */
+function readImportMetadata(payload: unknown) {
+	let metadata: Record<string, unknown> = {};
+	const parts: readonly unknown[] = Array.isArray(payload)
+		? payload
+		: [payload];
+	for (let part of parts) {
+		if (typeof part === "string") {
+			try {
+				part = JSON.parse(part);
+			} catch {
+				return null;
+			}
+		}
+		if (!isRecord(part)) return null;
+		metadata = { ...metadata, ...part };
+	}
+	return metadata;
+}
+
+/** Rebuild stranded imports from their terminal targets after ordinary work recovery has committed. */
+export async function reconcileStaleImportBatches(
+	db: DrizzleExecutor,
+	olderThan: Date,
+) {
+	const stale = and(
+		eq(jobs.type, "import_batch_parent"),
+		eq(jobs.status, "in_progress"),
+		lt(jobs.updatedAt, olderThan),
+	);
+	const candidates = await db
+		.select({ id: jobs.id })
+		.from(jobs)
+		.where(
+			and(
+				stale,
+				sql`EXISTS (SELECT 1 FROM jobs t WHERE t.parent_id=jobs.id AND t.type='import_batch_target')`,
+				sql`NOT EXISTS (SELECT 1 FROM jobs t WHERE t.parent_id=jobs.id AND t.status IN ('pending','in_progress'))`,
+			),
+		)
+		.orderBy(jobs.id);
+	for (const { id } of candidates) {
+		await db.transaction(async (tx) => {
+			// Follow the cancellation/retry lock order, then take a fresh descendant
+			// snapshot. A concurrent admission or last finisher may have changed it.
+			await lockBatchAdmissions(tx, id, true);
+			const [parent] = await tx
+				.select({
+					payload: normalizedPayloadExpression(),
+					cancelRequestedAt: jobs.cancelRequestedAt,
+					finishedAt: jobs.finishedAt,
+					updatedAt: jobs.updatedAt,
+					error: jobs.error,
+				})
+				.from(jobs)
+				.where(and(stale, eq(jobs.id, id)))
+				.for("update");
+			if (!parent) return;
+			const metadata = readImportMetadata(parent.payload);
+			if (!metadata) return;
+			const [targets] = await tx
+				.select({
+					total: sql<number>`count(*)::int`,
+					processed: sql<number>`count(*) FILTER (WHERE status='completed')::int`,
+					failed: sql<number>`count(*) FILTER (WHERE status='failed')::int`,
+					cancelled: sql<number>`count(*) FILTER (WHERE status='cancelled')::int`,
+					lastFinished: sql`max(coalesce(finished_at, updated_at))`.mapWith(
+						jobs.updatedAt,
+					),
+				})
+				.from(jobs)
+				.where(eq(jobs.parentId, id)).having(sql`
+				count(*) > 0 AND bool_and(type='import_batch_target' AND status IN ('completed','failed','cancelled'))
+				AND NOT EXISTS (SELECT 1 FROM jobs t JOIN jobs w ON w.parent_id=t.id
+					WHERE t.parent_id=${id}::uuid AND w.status IN ('pending','in_progress'))`);
+			if (!targets) return;
+			const { collecting, ...flags } = metadata;
+			const { lastFinished, ...counts } = targets;
+			const interrupted = collecting === true;
+			const status = parent.cancelRequestedAt
+				? "cancelled"
+				: interrupted ||
+					  flags.scanFailed === true ||
+					  parent.error !== null ||
+					  counts.failed
+					? "failed"
+					: counts.cancelled
+						? "cancelled"
+						: "completed";
+			const finishedAt =
+				parent.finishedAt ??
+				new Date(Math.max(parent.updatedAt.getTime(), lastFinished.getTime()));
+			await tx
+				.update(jobs)
+				.set({
+					payload: {
+						...flags,
+						...counts,
+						...(interrupted && { scanFailed: true }),
+					},
+					status,
+					error: interrupted ? "Directory scan interrupted" : parent.error,
+					finishedAt,
+					cancelledAt: status === "cancelled" ? finishedAt : null,
+					updatedAt: new Date(),
+				})
+				.where(eq(jobs.id, id));
+		});
+	}
 }

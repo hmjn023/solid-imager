@@ -28,12 +28,14 @@ import {
 } from "drizzle-orm";
 import {
 	bindImportMedia,
+	reconcileStaleImportBatches,
 	sealImportScan,
 	importStageReady,
 	lockBatchAdmissions,
 	settleImportTarget,
 } from "./import-batch";
 import { jobs } from "../schema";
+import { normalizedPayloadExpression } from "./job-payload";
 import type { DrizzleExecutor } from "../types";
 
 type RawClaimedJob = {
@@ -161,7 +163,9 @@ export function createJobRepository(
 					) {
 						await tx
 							.update(jobs)
-							.set({ payload: sql`payload || '{"skipped":true}'::jsonb` })
+							.set({
+								payload: sql`${normalizedPayloadExpression()} || '{"skipped":true}'::jsonb`,
+							})
 							.where(eq(jobs.id, importBatch.importTargetId));
 					}
 					await settleImportTarget(tx, importBatch);
@@ -427,13 +431,15 @@ export function createJobRepository(
 				}
 				// Keep successful later stages and attempts. Only the next claim advances
 				// attempt_count, so a late outcome from the old attempt cannot win.
+				const payload = normalizedPayloadExpression();
+				const workPayload = normalizedPayloadExpression(sql`w.payload`);
 				await tx.execute(sql`
 					WITH reopened_work AS (
 						UPDATE jobs w SET status='pending',error=NULL,result=NULL,started_at=NULL,finished_at=NULL,
 							cancel_requested_at=NULL,cancelled_at=NULL,updated_at=now(),
 							payload=CASE WHEN w.type IN ('import_upload','import_register')
-								THEN w.payload || jsonb_build_object('retrySubmission',true,'awaitingFile',
-									w.type='import_upload' AND (w.id IS NOT DISTINCT FROM ${replacementUploadId ?? null}::uuid OR coalesce((w.payload#>>'{uploadInput,expiresAt}')::bigint,0) <= extract(epoch from now())*1000))
+								THEN ${workPayload} || jsonb_build_object('retrySubmission',true,'awaitingFile',
+									w.type='import_upload' AND (w.id IS NOT DISTINCT FROM ${replacementUploadId ?? null}::uuid OR coalesce((${workPayload}#>>'{uploadInput,expiresAt}')::bigint,0) <= extract(epoch from now())*1000))
 								ELSE w.payload END
 						FROM jobs target WHERE target.parent_id=${id}::uuid AND target.type='import_batch_target'
 						  AND target.status='failed' AND w.parent_id=target.id AND w.status='failed'
@@ -443,7 +449,7 @@ export function createJobRepository(
 						WHERE id IN (SELECT parent_id FROM reopened_work) RETURNING 1
 					), delta AS (SELECT count(*)::int n FROM reopened_targets)
 					UPDATE jobs SET status='in_progress', error=NULL,finished_at=NULL,cancel_requested_at=NULL,cancelled_at=NULL,updated_at=now(),
-						payload=payload || jsonb_build_object('failed',(payload->>'failed')::int - delta.n)
+						payload=${payload} || jsonb_build_object('failed',(${payload}->>'failed')::int - delta.n)
 					FROM delta WHERE id=${id}::uuid AND delta.n>0`);
 				const [reopened] = await tx
 					.select()
@@ -471,7 +477,8 @@ export function createJobRepository(
 						FROM jobs target
 						WHERE target.parent_id=${id}::uuid AND target.type='import_batch_target'
 						  AND w.parent_id=target.id AND w.status IN ('pending','in_progress')`);
-					const done = sql`(payload->>'processed')::int + (payload->>'failed')::int + coalesce((payload->>'cancelled')::int,0) + delta.n >= (payload->>'total')::int`;
+					const payload = normalizedPayloadExpression();
+					const done = sql`(${payload}->>'processed')::int + (${payload}->>'failed')::int + coalesce((${payload}->>'cancelled')::int,0) + delta.n >= (${payload}->>'total')::int`;
 					await tx.execute(sql`
 						WITH cancelled_targets AS (
 							UPDATE jobs target SET status=CASE WHEN EXISTS (SELECT 1 FROM jobs w WHERE w.parent_id=target.id AND w.status='failed') THEN 'failed'::job_status ELSE 'cancelled'::job_status END,finished_at=now(),updated_at=now(),cancelled_at=now()
@@ -480,7 +487,7 @@ export function createJobRepository(
 							RETURNING target.status
 						), delta AS (SELECT count(*)::int n, count(*) FILTER (WHERE status='failed')::int failed FROM cancelled_targets)
 						UPDATE jobs SET cancel_requested_at=coalesce(cancel_requested_at,now()),updated_at=now(),
-							payload=(payload - 'collecting') || jsonb_build_object('failed',(payload->>'failed')::int + delta.failed, 'cancelled',coalesce((payload->>'cancelled')::int,0) + delta.n - delta.failed),
+							payload=(${payload} - 'collecting') || jsonb_build_object('failed',(${payload}->>'failed')::int + delta.failed, 'cancelled',coalesce((${payload}->>'cancelled')::int,0) + delta.n - delta.failed),
 							status=CASE WHEN ${done} THEN 'cancelled'::job_status ELSE status END,
 							cancelled_at=CASE WHEN ${done} THEN now() END,
 							finished_at=CASE WHEN ${done} THEN now() END
@@ -787,7 +794,7 @@ export function createJobRepository(
 		},
 
 		async requeueStaleInProgress(olderThan: Date): Promise<number> {
-			return db().transaction(async (tx) => {
+			const recovered = await db().transaction(async (tx) => {
 				const staleBaseCondition = and(
 					eq(jobs.status, "in_progress"),
 					lt(jobs.updatedAt, olderThan),
@@ -882,6 +889,8 @@ export function createJobRepository(
 
 				return rows.length + cancelledRows.length + expired.length;
 			});
+			await reconcileStaleImportBatches(db(), olderThan);
+			return recovered;
 		},
 	};
 }
@@ -1125,16 +1134,6 @@ function parseJsonColumn(value: unknown, fieldName: string): unknown {
 	} catch {
 		throw new Error(`Invalid claimed job row: ${fieldName}`);
 	}
-}
-
-function normalizedPayloadExpression() {
-	return sql`COALESCE(
-		CASE
-			WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
-			ELSE payload
-		END,
-		'{}'::jsonb
-	)`;
 }
 
 async function incrementBatchCount(

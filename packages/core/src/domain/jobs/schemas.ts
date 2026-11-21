@@ -160,6 +160,24 @@ export const batchTargetsInputSchema = jobIdRequestSchema.extend({
 	limit: z.number().int().min(1).max(200).default(25),
 	offset: z.number().int().nonnegative().default(0),
 });
+
+export const importStageTypeSchema = z.enum([
+	"downloadImage",
+	"import_upload",
+	"import_register",
+	"processMedia",
+	"auto_tagging",
+	"extract_embedding_vector",
+	"extract_ccip_vector",
+]);
+
+const importStageProgressSchema = jobProgressSchema.unwrap().extend({
+	type: importStageTypeSchema,
+	pending: z.number().int().nonnegative(),
+	running: z.number().int().nonnegative(),
+	cancelled: z.number().int().nonnegative(),
+});
+
 export const batchTargetsSchema = z.object({
 	items: z.array(
 		z.object({
@@ -174,5 +192,11 @@ export const batchTargetsSchema = z.object({
 		}),
 	),
 	total: z.number().int().nonnegative(),
+	stages: z
+		.array(importStageProgressSchema)
+		.optional()
+		.describe(
+			"Counts of scheduled work across the entire import batch, independent of target pagination.",
+		),
 });
 export type BatchTargets = z.infer<typeof batchTargetsSchema>;

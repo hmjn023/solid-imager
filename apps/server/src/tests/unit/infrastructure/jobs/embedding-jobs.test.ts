@@ -285,6 +285,23 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		const [a, b] = await repo.claimPending(2, {
 			includeTypes: ["processMedia"],
 		});
+		expect(
+			await listBatchTargets({ id: parent.id, offset: 26, limit: 1 }),
+		).toMatchObject({
+			total: 27,
+			items: [expect.anything()],
+			stages: [
+				{
+					type: "processMedia",
+					processed: 0,
+					failed: 0,
+					cancelled: 0,
+					pending: 0,
+					running: 2,
+					total: 2,
+				},
+			],
+		});
 		for (const job of [a, b]) {
 			const owner = importWorkOwner(job);
 			assert.isDefined(owner);
@@ -320,6 +337,14 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			status: "failed",
 			error: "tagger",
 		});
+		expect(
+			(await listBatchTargets({ id: parent.id, offset: 0, limit: 1 })).stages,
+		).toMatchObject([
+			{ type: "processMedia", total: 2, processed: 2 },
+			{ type: "auto_tagging", total: 2, failed: 1, running: 1 },
+			{ type: "extract_embedding_vector", total: 2, pending: 2 },
+			{ type: "extract_ccip_vector", total: 2, pending: 2 },
+		]);
 		expect(
 			await repo.claimPending(3, {
 				includeTypes: ["extract_embedding_vector"],
