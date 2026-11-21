@@ -3,7 +3,6 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db";
 import {
@@ -159,7 +158,7 @@ describe("BackupService ZIP Integration", () => {
 
 		// 4. Verify Data in Source 2
 		const restoredMedia = await db.query.medias.findFirst({
-			where: eq(medias.mediaSourceId, sourceId2),
+			where: { mediaSourceId: sourceId2 },
 			with: {
 				tags: { with: { tag: true } },
 				authors: { with: { author: true } },

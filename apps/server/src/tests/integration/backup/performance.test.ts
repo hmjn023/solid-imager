@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db";
 import {
@@ -77,7 +76,7 @@ describe("BackupService Performance", () => {
 
 		// Verify DB count
 		const mediaCount = await db.query.medias.findMany({
-			where: eq(medias.mediaSourceId, testSourceId),
+			where: { mediaSourceId: testSourceId },
 		});
 		expect(mediaCount).toHaveLength(itemCount);
 

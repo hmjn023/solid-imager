@@ -1,0 +1,371 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "71f8c539-8b46-4e55-8e4e-6b8de6762fef",
+  "prevIds": [
+    "545f5402-2773-4f3e-ab06-eda82edcdcbe"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "author_accounts",
+        "idx_author_accounts_platform_account_unique"
+      ],
+      "writes": [
+        "s|idx|public.idx_author_accounts_platform_account_unique",
+        "n|idx|public.idx_author_accounts_platform_account_unique",
+        "e|idx|public.idx_author_accounts_platform_account_unique",
+        "n|rel|public.idx_author_accounts_platform_account_unique"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "e|col|public.author_accounts.platform",
+        "e|col|public.author_accounts.account_id"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.author_accounts.account_id.platform"
+      ]
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "authors",
+        "idx_authors_account_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_authors_account_id",
+        "n|idx|public.idx_authors_account_id",
+        "e|idx|public.idx_authors_account_id",
+        "n|rel|public.idx_authors_account_id"
+      ],
+      "reads": [
+        "e|tbl|public.authors",
+        "n|sch|public",
+        "e|col|public.authors.account_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "author_accounts",
+        "remote_id"
+      ],
+      "writes": [
+        "s|col|public.author_accounts.remote_id",
+        "n|col|public.author_accounts.remote_id",
+        "e|col|public.author_accounts.remote_id"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "author_accounts",
+        "display_name"
+      ],
+      "writes": [
+        "s|col|public.author_accounts.display_name",
+        "n|col|public.author_accounts.display_name",
+        "e|col|public.author_accounts.display_name"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "author_accounts",
+        "observed_at"
+      ],
+      "writes": [
+        "s|col|public.author_accounts.observed_at",
+        "n|col|public.author_accounts.observed_at",
+        "e|col|public.author_accounts.observed_at"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "authors",
+        "account_id"
+      ],
+      "writes": [
+        "s|col|public.authors.account_id",
+        "n|col|public.authors.account_id",
+        "e|col|public.authors.account_id"
+      ],
+      "reads": [
+        "n|tbl|public.authors",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "author_accounts",
+        "platform"
+      ],
+      "writes": [
+        "s|colprop|public.author_accounts.platform.notNull"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "n|col|public.author_accounts.platform"
+      ],
+      "sqlHash": "b40c52b600a34124"
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "author_accounts",
+        "idx_author_accounts_remote_identity"
+      ],
+      "writes": [
+        "s|idx|public.idx_author_accounts_remote_identity",
+        "n|idx|public.idx_author_accounts_remote_identity",
+        "e|idx|public.idx_author_accounts_remote_identity",
+        "n|rel|public.idx_author_accounts_remote_identity"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "n|col|public.author_accounts.platform",
+        "n|col|public.author_accounts.remote_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "author_accounts",
+        "idx_author_accounts_unresolved_identity"
+      ],
+      "writes": [
+        "s|idx|public.idx_author_accounts_unresolved_identity",
+        "n|idx|public.idx_author_accounts_unresolved_identity",
+        "e|idx|public.idx_author_accounts_unresolved_identity",
+        "n|rel|public.idx_author_accounts_unresolved_identity"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "n|col|public.author_accounts.platform",
+        "n|col|public.author_accounts.account_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "author_accounts",
+        "idx_author_accounts_handle"
+      ],
+      "writes": [
+        "s|idx|public.idx_author_accounts_handle",
+        "n|idx|public.idx_author_accounts_handle",
+        "e|idx|public.idx_author_accounts_handle",
+        "n|rel|public.idx_author_accounts_handle"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "n|col|public.author_accounts.platform",
+        "n|col|public.author_accounts.account_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "remote_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "display_name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "observed_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "idx_author_accounts_remote_identity",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "platform",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "remote_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"remote_id\" IS NOT NULL",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "idx_author_accounts_unresolved_identity",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "platform",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "account_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"remote_id\" IS NULL",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "idx_author_accounts_handle",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "platform",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "account_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"authors\",\"account_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_authors_account_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_author_accounts_platform_account_unique\"]"
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"author_accounts\",\"platform\"]",
+      "set": {
+        "notNull": false
+      }
+    }
+  ]
+}

@@ -40,6 +40,13 @@ const jobs: JobDto[] = Array.from({ length: 240 }, (_, i) => ({
 
 test("keeps the active job status visible on a phone", async ({ page }) => {
 	await page.setViewportSize({ width: 430, height: 932 });
+	// Other scenarios can leave cancelled jobs in the shared E2E database.
+	await page.route("**/api/rpc/jobs/list", (route) => {
+		if (route.request().postDataJSON()?.json?.status !== "cancelled") {
+			return route.continue();
+		}
+		return route.fulfill({ json: { json: { items: [], total: 0 } } });
+	});
 	await page.goto("/jobs");
 	await waitForAppHydration(page);
 	const status = page.getByRole("button", { name: "ジョブの状態で絞り込む" });

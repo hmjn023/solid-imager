@@ -1,0 +1,63 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2883a03b-a7d9-4f78-a322-64eb54f571d6",
+  "prevIds": [
+    "fbeedf7c-8a3d-4e26-b30d-3ed9a6d0f9bd"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_relations",
+        "idx_media_relations_parent"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_relations_parent",
+        "n|idx|public.idx_media_relations_parent",
+        "e|idx|public.idx_media_relations_parent",
+        "n|rel|public.idx_media_relations_parent"
+      ],
+      "reads": [
+        "e|tbl|public.media_relations",
+        "n|sch|public",
+        "e|col|public.media_relations.parent_media_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "tags",
+        "idx_tags_name"
+      ],
+      "writes": [
+        "s|idx|public.idx_tags_name",
+        "n|idx|public.idx_tags_name",
+        "e|idx|public.idx_tags_name",
+        "n|rel|public.idx_tags_name"
+      ],
+      "reads": [
+        "e|tbl|public.tags",
+        "n|sch|public",
+        "e|col|public.tags.name"
+      ],
+      "sharedWrites": []
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_media_relations_parent\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_tags_name\"]"
+    }
+  ]
+}

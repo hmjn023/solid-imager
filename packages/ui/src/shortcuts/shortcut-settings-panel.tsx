@@ -124,6 +124,17 @@ export function ShortcutSettingsPanel(
 
 	const recorder = createHotkeyRecorder({
 		ignoreInputs: false,
+		validate: (hotkey, { event }) => {
+			const id = activeShortcutId();
+			if (id === null) return true;
+			const conflict = preferences.findConflict(id, hotkey, event);
+			if (conflict === null) return true;
+			describeUpdateResult(id, { status: "conflict", conflict });
+			return false;
+		},
+		onReject: ({ reason }) => {
+			if (reason === "validation") stopActiveRecording();
+		},
 		onRecord: (hotkey: Hotkey) => {
 			const id = activeShortcutId();
 			if (id === null || hotkey.length === 0) {

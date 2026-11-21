@@ -1,0 +1,226 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c1e2da8f-84ed-4212-9301-253e5394cace",
+  "prevIds": [
+    "4ecb0ecb-6215-4f4e-bc4e-b7cba90ea6f6"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "image_embeddings"
+      ],
+      "writes": [
+        "s|tbl|public.image_embeddings",
+        "n|tbl|public.image_embeddings",
+        "e|tbl|public.image_embeddings",
+        "n|rel|public.image_embeddings",
+        "n|type|public.image_embeddings",
+        "n|rel|public.image_embeddings_pkey",
+        "n|rel|public.uq_image_embeddings_media_model_version"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "image_embeddings"
+      ],
+      "writes": [
+        "s|fk|public.image_embeddings.image_embeddings_media_id_media_id_fk",
+        "n|fk|public.image_embeddings.image_embeddings_media_id_media_id_fk",
+        "e|fk|public.image_embeddings.image_embeddings_media_id_media_id_fk",
+        "n|con|public.image_embeddings.image_embeddings_media_id_media_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.image_embeddings",
+        "n|sch|public",
+        "n|tbl|public.media",
+        "n|sch|public",
+        "n|col|public.image_embeddings.media_id",
+        "n|col|public.media.id",
+        "e|uniqueness|public.media.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "image_embeddings",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "uuidv7()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "media_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "embedding",
+        "type": "vector(768)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "version",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "media_modified_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "updated_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "image_embeddings_media_id_media_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "media_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "media",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "image_embeddings_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "image_embeddings",
+        "name": "uq_image_embeddings_media_model_version",
+        "nameExplicit": true,
+        "columns": [
+          "media_id",
+          "model",
+          "version"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    }
+  ]
+}

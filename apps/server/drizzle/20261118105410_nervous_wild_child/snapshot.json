@@ -1,0 +1,545 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "71a8a78f-771f-437e-8f44-5542ccef8de0",
+  "prevIds": [
+    "546b5e6c-1f9c-4af5-a383-0664145c284d"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "tag_dictionary_attributes"
+      ],
+      "writes": [
+        "s|tbl|public.tag_dictionary_attributes",
+        "n|tbl|public.tag_dictionary_attributes",
+        "e|tbl|public.tag_dictionary_attributes",
+        "n|rel|public.tag_dictionary_attributes",
+        "n|type|public.tag_dictionary_attributes",
+        "n|rel|public.tag_dictionary_attributes_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "tag_dictionary_snapshots"
+      ],
+      "writes": [
+        "s|tbl|public.tag_dictionary_snapshots",
+        "n|tbl|public.tag_dictionary_snapshots",
+        "e|tbl|public.tag_dictionary_snapshots",
+        "n|rel|public.tag_dictionary_snapshots",
+        "n|type|public.tag_dictionary_snapshots",
+        "n|rel|public.tag_dictionary_snapshots_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "tag_dictionary_tags"
+      ],
+      "writes": [
+        "s|tbl|public.tag_dictionary_tags",
+        "n|tbl|public.tag_dictionary_tags",
+        "e|tbl|public.tag_dictionary_tags",
+        "n|rel|public.tag_dictionary_tags",
+        "n|type|public.tag_dictionary_tags",
+        "n|rel|public.tag_dictionary_tags_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "tag_dictionary_wiki"
+      ],
+      "writes": [
+        "s|tbl|public.tag_dictionary_wiki",
+        "n|tbl|public.tag_dictionary_wiki",
+        "e|tbl|public.tag_dictionary_wiki",
+        "n|rel|public.tag_dictionary_wiki",
+        "n|type|public.tag_dictionary_wiki",
+        "n|rel|public.tag_dictionary_wiki_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "jobs",
+        "uq_jobs_active_tag_dictionary_refresh"
+      ],
+      "writes": [
+        "s|idx|public.uq_jobs_active_tag_dictionary_refresh",
+        "n|idx|public.uq_jobs_active_tag_dictionary_refresh",
+        "e|idx|public.uq_jobs_active_tag_dictionary_refresh",
+        "n|rel|public.uq_jobs_active_tag_dictionary_refresh"
+      ],
+      "reads": [
+        "n|tbl|public.jobs",
+        "n|sch|public",
+        "n|col|public.jobs.type"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "tag_dictionary_tags",
+        "idx_tag_dictionary_popular"
+      ],
+      "writes": [
+        "s|idx|public.idx_tag_dictionary_popular",
+        "n|idx|public.idx_tag_dictionary_popular",
+        "e|idx|public.idx_tag_dictionary_popular",
+        "n|rel|public.idx_tag_dictionary_popular"
+      ],
+      "reads": [
+        "n|tbl|public.tag_dictionary_tags",
+        "n|sch|public",
+        "n|col|public.tag_dictionary_tags.post_count",
+        "n|col|public.tag_dictionary_tags.name"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "tag_dictionary_attributes",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "tag_dictionary_snapshots",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "tag_dictionary_tags",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "tag_dictionary_wiki",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_attributes",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_attributes",
+        "name": "attributes",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_snapshots",
+        "name": "source",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_snapshots",
+        "name": "version",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_snapshots",
+        "name": "count",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_snapshots",
+        "name": "installed_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "category",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "post_count",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "japanese",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "aliases",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "search_text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_wiki",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_wiki",
+        "name": "body",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_wiki",
+        "name": "other_names",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_wiki",
+        "name": "search_text",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_wiki",
+        "name": "updated_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "jobs",
+        "name": "uq_jobs_active_tag_dictionary_refresh",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "type",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"type\" = 'tag_dictionary_refresh' AND \"status\" IN ('pending', 'in_progress')",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "idx_tag_dictionary_popular",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "post_count",
+            "isExpression": false,
+            "asc": false,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "name",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_attributes",
+        "name": "tag_dictionary_attributes_pkey",
+        "columns": [
+          "name"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_snapshots",
+        "name": "tag_dictionary_snapshots_pkey",
+        "columns": [
+          "source"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "tag_dictionary_tags_pkey",
+        "columns": [
+          "name"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_wiki",
+        "name": "tag_dictionary_wiki_pkey",
+        "columns": [
+          "name"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

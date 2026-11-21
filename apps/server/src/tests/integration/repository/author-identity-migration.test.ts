@@ -20,7 +20,7 @@ describe("author account migration", () => {
    `);
 			const migration = await readFile(
 				new URL(
-					"../../../../drizzle/0030_small_impossible_man.sql",
+					"../../../../drizzle/20261001230622_small_impossible_man/migration.sql",
 					import.meta.url,
 				),
 				"utf8",

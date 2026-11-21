@@ -1,0 +1,336 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "1928bf68-5088-4c28-9755-00116d14c19c",
+  "prevIds": [
+    "ec9e26e5-be2a-4d22-a83c-b8a89b260acf"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_enum",
+      "statementTarget": [
+        "enum",
+        "public",
+        "author_platform"
+      ],
+      "writes": [
+        "s|enum|public.author_platform",
+        "n|enum|public.author_platform",
+        "e|enum|public.author_platform",
+        "n|type|public.author_platform"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "author_accounts"
+      ],
+      "writes": [
+        "s|tbl|public.author_accounts",
+        "n|tbl|public.author_accounts",
+        "e|tbl|public.author_accounts",
+        "n|rel|public.author_accounts",
+        "n|type|public.author_accounts",
+        "n|rel|public.author_accounts_pkey"
+      ],
+      "reads": [
+        "n|sch|public",
+        "n|enum|public.author_platform"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "author_accounts",
+        "idx_author_accounts_author_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_author_accounts_author_id",
+        "n|idx|public.idx_author_accounts_author_id",
+        "e|idx|public.idx_author_accounts_author_id",
+        "n|rel|public.idx_author_accounts_author_id"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "n|col|public.author_accounts.author_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "author_accounts",
+        "idx_author_accounts_platform_account_unique"
+      ],
+      "writes": [
+        "s|idx|public.idx_author_accounts_platform_account_unique",
+        "n|idx|public.idx_author_accounts_platform_account_unique",
+        "e|idx|public.idx_author_accounts_platform_account_unique",
+        "n|rel|public.idx_author_accounts_platform_account_unique"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "n|col|public.author_accounts.platform",
+        "n|col|public.author_accounts.account_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "author_accounts"
+      ],
+      "writes": [
+        "s|fk|public.author_accounts.author_accounts_author_id_authors_id_fk",
+        "n|fk|public.author_accounts.author_accounts_author_id_authors_id_fk",
+        "e|fk|public.author_accounts.author_accounts_author_id_authors_id_fk",
+        "n|con|public.author_accounts.author_accounts_author_id_authors_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "n|tbl|public.authors",
+        "n|sch|public",
+        "n|col|public.author_accounts.author_id",
+        "n|col|public.authors.id",
+        "e|uniqueness|public.authors.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "author_accounts",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "author_platform",
+        "values": [
+          "twitter",
+          "pixiv-fanbox",
+          "danbooru"
+        ],
+        "entityType": "enums"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "author_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "platform",
+        "type": "author_platform",
+        "typeSchema": "public",
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "account_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "profile_url",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "created_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "updated_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "idx_author_accounts_author_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "author_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "idx_author_accounts_platform_account_unique",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "platform",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "account_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "author_accounts_author_id_authors_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "author_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "authors",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "author_accounts",
+        "name": "author_accounts_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

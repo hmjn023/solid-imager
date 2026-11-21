@@ -61,9 +61,6 @@ import {
 	type SQLWrapper,
 	sql,
 } from "drizzle-orm";
-import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import type { PgliteDatabase } from "drizzle-orm/pglite";
 import {
 	authors,
 	characters,
@@ -115,16 +112,6 @@ type MediaWithRelations = InferSelectModel<typeof medias> & {
 
 const DEFAULT_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
-
-function getRelationalClient(client: DrizzleExecutor) {
-	// DrizzleExecutor union type doesn't expose .query correctly in TS
-	return (
-		client as
-			| BunSQLDatabase<typeof import("../schema")>
-			| NodePgDatabase<typeof import("../schema")>
-			| PgliteDatabase<typeof import("../schema")>
-	).query;
-}
 
 // ============================================================================
 // Mapping Functions
@@ -1222,8 +1209,8 @@ export function createMediaRepository(
 		): Promise<MediaDetails | null> {
 			try {
 				const client = getExecutor(tx);
-				const result = await getRelationalClient(client).medias.findFirst({
-					where: eq(medias.id, mediaId),
+				const result = await client.query.medias.findFirst({
+					where: { id: mediaId },
 					with: {
 						tags: {
 							with: {

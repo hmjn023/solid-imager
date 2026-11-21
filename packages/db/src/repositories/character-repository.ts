@@ -48,7 +48,7 @@ export function createCharacterRepository(
 		async findById(id: string, tx?: unknown): Promise<Character | null> {
 			try {
 				const result = await getExecutor(tx).query.characters.findFirst({
-					where: eq(characters.id, id),
+					where: { id },
 					with: {
 						ips: {
 							with: {
@@ -72,7 +72,7 @@ export function createCharacterRepository(
 		async findByName(name: string, tx?: unknown): Promise<Character | null> {
 			try {
 				const result = await getExecutor(tx).query.characters.findFirst({
-					where: eq(characters.name, name),
+					where: { name },
 					with: {
 						ips: {
 							with: {
@@ -99,7 +99,7 @@ export function createCharacterRepository(
 			}
 			try {
 				const results = await getExecutor(tx).query.characters.findMany({
-					where: inArray(characters.name, names),
+					where: { name: { in: names } },
 					with: {
 						ips: {
 							with: {
@@ -319,7 +319,7 @@ export function createCharacterRepository(
 				const client = getExecutor(tx);
 				// Use query builder to get relations
 				const results = await client.query.mediaCharacters.findMany({
-					where: eq(mediaCharacters.mediaId, mediaId),
+					where: { mediaId },
 					with: {
 						character: {
 							with: {
@@ -354,7 +354,7 @@ export function createCharacterRepository(
 			try {
 				const client = getExecutor(tx);
 				const results = await client.query.mediaCharacters.findMany({
-					where: eq(mediaCharacters.mediaId, mediaId),
+					where: { mediaId },
 					with: {
 						character: {
 							with: {
@@ -535,7 +535,7 @@ export function createCharacterRepository(
 
 			// Fetch all characters with their IPs using the returned IDs
 			const results = await client.query.characters.findMany({
-				where: inArray(characters.id, characterIds),
+				where: { id: { in: characterIds } },
 				with: {
 					ips: {
 						with: {

@@ -1,0 +1,584 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "184a752e-e13b-4b5d-b953-4bb0fbf4f8ab",
+  "prevIds": [
+    "9f6b56e9-be0c-4968-a900-374c2ad6b3c1"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_categories",
+        "idx_media_categories_category_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_categories_category_id",
+        "n|idx|public.idx_media_categories_category_id",
+        "e|idx|public.idx_media_categories_category_id",
+        "n|rel|public.idx_media_categories_category_id"
+      ],
+      "reads": [
+        "e|tbl|public.media_categories",
+        "n|sch|public",
+        "e|col|public.media_categories.category_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_ips",
+        "idx_media_ips_ip_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_ips_ip_id",
+        "n|idx|public.idx_media_ips_ip_id",
+        "e|idx|public.idx_media_ips_ip_id",
+        "n|rel|public.idx_media_ips_ip_id"
+      ],
+      "reads": [
+        "e|tbl|public.media_ips",
+        "n|sch|public",
+        "e|col|public.media_ips.ip_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_projects",
+        "idx_media_projects_project_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_projects_project_id",
+        "n|idx|public.idx_media_projects_project_id",
+        "e|idx|public.idx_media_projects_project_id",
+        "n|rel|public.idx_media_projects_project_id"
+      ],
+      "reads": [
+        "e|tbl|public.media_projects",
+        "n|sch|public",
+        "e|col|public.media_projects.project_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "authors",
+        "idx_authors_name"
+      ],
+      "writes": [
+        "s|idx|public.idx_authors_name",
+        "n|idx|public.idx_authors_name",
+        "e|idx|public.idx_authors_name",
+        "n|rel|public.idx_authors_name"
+      ],
+      "reads": [
+        "n|tbl|public.authors",
+        "n|sch|public",
+        "n|col|public.authors.name"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "characters",
+        "idx_characters_ip_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_characters_ip_id",
+        "n|idx|public.idx_characters_ip_id",
+        "e|idx|public.idx_characters_ip_id",
+        "n|rel|public.idx_characters_ip_id"
+      ],
+      "reads": [
+        "n|tbl|public.characters",
+        "n|sch|public",
+        "n|col|public.characters.ip_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_authors",
+        "idx_media_authors_author_id_media_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_authors_author_id_media_id",
+        "n|idx|public.idx_media_authors_author_id_media_id",
+        "e|idx|public.idx_media_authors_author_id_media_id",
+        "n|rel|public.idx_media_authors_author_id_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_authors",
+        "n|sch|public",
+        "n|col|public.media_authors.author_id",
+        "n|col|public.media_authors.media_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_categories",
+        "idx_media_categories_category_id_media_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_categories_category_id_media_id",
+        "n|idx|public.idx_media_categories_category_id_media_id",
+        "e|idx|public.idx_media_categories_category_id_media_id",
+        "n|rel|public.idx_media_categories_category_id_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_categories",
+        "n|sch|public",
+        "n|col|public.media_categories.category_id",
+        "n|col|public.media_categories.media_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_characters",
+        "idx_media_characters_character_id_media_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_characters_character_id_media_id",
+        "n|idx|public.idx_media_characters_character_id_media_id",
+        "e|idx|public.idx_media_characters_character_id_media_id",
+        "n|rel|public.idx_media_characters_character_id_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_characters",
+        "n|sch|public",
+        "n|col|public.media_characters.character_id",
+        "n|col|public.media_characters.media_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_ips",
+        "idx_media_ips_ip_id_media_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_ips_ip_id_media_id",
+        "n|idx|public.idx_media_ips_ip_id_media_id",
+        "e|idx|public.idx_media_ips_ip_id_media_id",
+        "n|rel|public.idx_media_ips_ip_id_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_ips",
+        "n|sch|public",
+        "n|col|public.media_ips.ip_id",
+        "n|col|public.media_ips.media_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_projects",
+        "idx_media_projects_project_id_media_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_projects_project_id_media_id",
+        "n|idx|public.idx_media_projects_project_id_media_id",
+        "e|idx|public.idx_media_projects_project_id_media_id",
+        "n|rel|public.idx_media_projects_project_id_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_projects",
+        "n|sch|public",
+        "n|col|public.media_projects.project_id",
+        "n|col|public.media_projects.media_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_tags",
+        "idx_media_tags_tag_id_tag_type_media_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_tags_tag_id_tag_type_media_id",
+        "n|idx|public.idx_media_tags_tag_id_tag_type_media_id",
+        "e|idx|public.idx_media_tags_tag_id_tag_type_media_id",
+        "n|rel|public.idx_media_tags_tag_id_tag_type_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_tags",
+        "n|sch|public",
+        "n|col|public.media_tags.tag_id",
+        "n|col|public.media_tags.tag_type",
+        "n|col|public.media_tags.media_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "projects",
+        "idx_projects_name"
+      ],
+      "writes": [
+        "s|idx|public.idx_projects_name",
+        "n|idx|public.idx_projects_name",
+        "e|idx|public.idx_projects_name",
+        "n|rel|public.idx_projects_name"
+      ],
+      "reads": [
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.projects.name"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "tags",
+        "idx_tags_author_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_tags_author_id",
+        "n|idx|public.idx_tags_author_id",
+        "e|idx|public.idx_tags_author_id",
+        "n|rel|public.idx_tags_author_id"
+      ],
+      "reads": [
+        "n|tbl|public.tags",
+        "n|sch|public",
+        "n|col|public.tags.author_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "authors",
+        "name": "idx_authors_name",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "name",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "characters",
+        "name": "idx_characters_ip_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "ip_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_authors",
+        "name": "idx_media_authors_author_id_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "author_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_categories",
+        "name": "idx_media_categories_category_id_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "category_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_characters",
+        "name": "idx_media_characters_character_id_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "character_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_ips",
+        "name": "idx_media_ips_ip_id_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "ip_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_projects",
+        "name": "idx_media_projects_project_id_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_tags",
+        "name": "idx_media_tags_tag_id_tag_type_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "tag_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "tag_type",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "projects",
+        "name": "idx_projects_name",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "name",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tags",
+        "name": "idx_tags_author_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "author_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_media_categories_category_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_media_ips_ip_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_media_projects_project_id\"]"
+    }
+  ]
+}
