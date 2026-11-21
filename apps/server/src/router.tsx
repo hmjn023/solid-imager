@@ -15,7 +15,19 @@ import { routeTree } from "#route-tree";
 import type { logger as LoggerInstance } from "./infrastructure/logger";
 
 function createAppQueryClient(): QueryClient {
-	return new QueryClient(createAppQueryClientConfig(isTransientApiError));
+	const config = createAppQueryClientConfig(isTransientApiError);
+	if (isServer) {
+		// The request owns this cache. Avoid retaining it in garbage collection timers.
+		config.defaultOptions = {
+			...config.defaultOptions,
+			queries: {
+				...config.defaultOptions?.queries,
+				gcTime: Infinity,
+				retry: false,
+			},
+		};
+	}
+	return new QueryClient(config);
 }
 
 let serverLogger: typeof LoggerInstance | null = null;

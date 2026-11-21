@@ -10,6 +10,17 @@ import {
 import { DanbooruScreen } from "../screens/danbooru-screen";
 import { PixivScreen } from "../screens/pixiv-screen";
 
+export {
+	initialViewerSearchOptions,
+	pixivQueryScope,
+	viewerPostQueryOptions,
+} from "./query-options";
+
+export function parseViewerPostId(value?: string) {
+	const id = value && /^\d+$/.test(value) ? Number(value) : 0;
+	return id > 0 && Number.isSafeInteger(id) ? id : undefined;
+}
+
 export function ExternalViewerRoute(
 	props: {
 		client: Pick<AppContractClient, "viewer" | "danbooru" | "imports">;
@@ -39,11 +50,7 @@ export function ExternalViewerRoute(
 	};
 	const selectedPostId = () => {
 		const path = location().pathname.split("/");
-		const id =
-			path[1] === props.provider && /^\d+$/.test(path[2] ?? "")
-				? Number(path[2])
-				: 0;
-		return id > 0 && Number.isSafeInteger(id) ? id : undefined;
+		return path[1] === props.provider ? parseViewerPostId(path[2]) : undefined;
 	};
 	const navigation = {
 		get selectedPostId() {

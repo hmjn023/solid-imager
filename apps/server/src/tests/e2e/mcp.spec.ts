@@ -168,7 +168,13 @@ test("HTTP MCP and visible WebMCP tools edit the same media tags", async ({
 test("sources created through HTTP MCP and WebMCP are persisted and discoverable", async ({
 	page,
 	request,
+	browserHealth,
 }) => {
+	// A source event can supersede the list refresh started by the creation tool.
+	browserHealth.allowRequestFailure(
+		/\/api\/rpc\/sources\/list$/,
+		"net::ERR_ABORTED",
+	);
 	const directory = await mkdtemp(path.join(getE2eRuntimeDir(), "mcp-source-"));
 	const sourceIds: string[] = [];
 	const call = (name: string, args: object) =>
@@ -315,10 +321,20 @@ test("WebMCP shows searches, opens images, and preserves visible history across 
 		selected_count: 1,
 		items: [{ id: E2E_PRIMARY_MEDIA_ID, selected: true }],
 	});
-	const opened = await page.webmcp.callTool("open_media", {
-		sourceId: E2E_SOURCE_ID,
-		mediaId: E2E_PRIMARY_MEDIA_ID,
-	});
+	// Leave the detail page after its job-event subscription has opened.
+	const [, opened] = await Promise.all([
+		page.waitForResponse(
+			(response) =>
+				new URL(response.url()).pathname === "/api/rpc/jobs/events" &&
+				response.ok() &&
+				response.headers()["content-type"]?.startsWith("text/event-stream") ===
+					true,
+		),
+		page.webmcp.callTool("open_media", {
+			sourceId: E2E_SOURCE_ID,
+			mediaId: E2E_PRIMARY_MEDIA_ID,
+		}),
+	]);
 	expect(opened).toMatchObject({ view: "media", id: E2E_PRIMARY_MEDIA_ID });
 	await expect(
 		page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),

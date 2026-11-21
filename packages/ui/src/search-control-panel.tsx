@@ -1,3 +1,4 @@
+import { useRenderedSearchState } from "./search-initial-state";
 import { t } from "@solid-imager/i18n";
 import { getSearchExecutionKind } from "./search-execution";
 import type { Author } from "@solid-imager/core/authors";
@@ -10,7 +11,7 @@ import {
 } from "@solid-imager/core/search";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { TagResponse } from "@solid-imager/core/tags";
-import { Show } from "solid-js";
+import { Show, Suspense } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Button } from "./button";
 import { EmbeddingSearchControls } from "./embedding-search-controls";
@@ -62,7 +63,8 @@ export type SearchControlPanelProps = {
 };
 
 export function SearchControlPanel(props: SearchControlPanelProps) {
-	const currentState = () => props.state ?? searchState;
+	const renderedState = useRenderedSearchState();
+	const currentState = () => props.state ?? renderedState();
 	const updateState = props.setState ?? setSearchState;
 	const isOrdinarySearch = () =>
 		getSearchExecutionKind(currentState()) === "ordinary";
@@ -146,12 +148,14 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 
 			<Show when={isOrdinarySearch()}>
 				<div class="mt-4">
-					<PresetManager
-						class="w-full flex-col items-stretch"
-						presetClient={props.presetClient}
-						setState={props.setState}
-						state={props.state}
-					/>
+					<Suspense fallback={<p>{t("status.loading")}</p>}>
+						<PresetManager
+							class="w-full flex-col items-stretch"
+							presetClient={props.presetClient}
+							setState={props.setState}
+							state={props.state}
+						/>
+					</Suspense>
 				</div>
 			</Show>
 

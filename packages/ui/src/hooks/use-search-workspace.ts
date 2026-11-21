@@ -1,10 +1,13 @@
 import type { Media } from "@solid-imager/core/media";
-import type { SimilarityModel } from "@solid-imager/core/search";
+import {
+	getSearchConditionFromState,
+	type SimilarityModel,
+} from "@solid-imager/core/search";
 import type { SearchHistoryClient } from "../search-history-client";
+import { useRenderedSearchState } from "../search-initial-state";
+import { SEARCH_COLLECTION_PAGE_SIZE } from "../query-options/search-query";
 import {
 	activateSimilaritySearch,
-	getSearchCondition,
-	searchState,
 	setSearchState,
 } from "../stores/search-store";
 import { persistSearchScrollPosition } from "./use-current-search-persistence";
@@ -27,6 +30,7 @@ export type SearchWorkspaceOptions = Pick<
 
 /** Builds the same search, history, scroll and collection workflows for both apps. */
 export function useSearchWorkspace(options: SearchWorkspaceOptions) {
+	const state = useRenderedSearchState();
 	const history = useSearchHistoryPersistence("all", {
 		client: options.historyClient,
 	});
@@ -35,15 +39,15 @@ export function useSearchWorkspace(options: SearchWorkspaceOptions) {
 		searchSimilar: options.searchSimilar,
 		searchSemantic: options.searchSemantic,
 		queries: options.queries,
-		similarityModel: () => searchState.similarityModel,
-		semanticQuery: () => searchState.semanticQuery,
-		selectedSource: () => searchState.selectedSource,
-		getSearchCondition,
-		sortBy: () => searchState.sortBy,
-		sortOrder: () => searchState.sortOrder,
+		similarityModel: () => state().similarityModel,
+		semanticQuery: () => state().semanticQuery,
+		selectedSource: () => state().selectedSource,
+		getSearchCondition: () => getSearchConditionFromState(state()),
+		sortBy: () => state().sortBy,
+		sortOrder: () => state().sortOrder,
 		// Fetch complete rows for up to eight columns without tiny scroll pages.
-		limit: () => Math.max(searchState.limit, 200),
-		scrollY: () => searchState.scrollY,
+		limit: () => Math.max(state().limit, SEARCH_COLLECTION_PAGE_SIZE),
+		scrollY: () => state().scrollY,
 		setScrollY: (value) => {
 			setSearchState("scrollY", value);
 			persistSearchScrollPosition("all", value, {
@@ -51,9 +55,9 @@ export function useSearchWorkspace(options: SearchWorkspaceOptions) {
 			});
 		},
 		setOffset: (value) => setSearchState("offset", value),
-		mode: () => searchState.mode,
-		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
-		similarityTopK: () => searchState.similarityTopK,
+		mode: () => state().mode,
+		similarityAnchorMediaId: () => state().similarityAnchorMediaId,
+		similarityTopK: () => state().similarityTopK,
 		refreshDebounceMs: 300,
 		isSearchStateRestored: history.isRestored,
 		commitSearchHistory: history.commitNow,
@@ -72,7 +76,7 @@ export function useSearchWorkspace(options: SearchWorkspaceOptions) {
 		page,
 		history,
 		actions,
-		selectedSource: () => searchState.selectedSource,
+		selectedSource: () => state().selectedSource,
 		selectSource: (id: string) => setSearchState("selectedSource", id),
 		findSimilar: (media: Media, model?: SimilarityModel) =>
 			activateSimilaritySearch(media.id, model),

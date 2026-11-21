@@ -186,15 +186,42 @@ test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", asyn
 	const searches = await mockDanbooru(page);
 	const appPath = (path: string) =>
 		testInfo.project.name === "tauri" ? `/#${path}` : path;
-	await page.goto(appPath("/search"));
-	await expect(
-		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
-	).toBeVisible();
 	const menu = page.getByRole("button", {
 		name: "メニューを開く",
 		exact: true,
 	});
-	if (await menu.isVisible()) await menu.click();
+	if (testInfo.project.name === "responsive-390") {
+		const scripts = Promise.withResolvers<void>();
+		const holdScripts = async (route: Route) => {
+			if (route.request().resourceType() === "script") await scripts.promise;
+			await route.fallback();
+		};
+		await page.route("**/*", holdScripts);
+		try {
+			await page.goto(appPath("/search"), { waitUntil: "commit" });
+			await expect(menu).toBeVisible();
+			await expect(page.locator("html")).toHaveAttribute(
+				"data-hydrated",
+				"false",
+			);
+			await expect(menu).toBeDisabled();
+		} finally {
+			scripts.resolve();
+			await page.unroute("**/*", holdScripts);
+		}
+	} else {
+		await page.goto(appPath("/search"));
+	}
+	await expect(
+		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+	).toBeVisible();
+	if (await menu.isVisible()) {
+		await expect(menu).toBeEnabled();
+		await menu.click();
+		await expect(
+			page.getByRole("dialog", { name: "ナビゲーション" }),
+		).toBeVisible();
+	}
 	await page
 		.getByRole("link", { name: "Danbooru", exact: true })
 		.filter({ visible: true })
@@ -531,6 +558,7 @@ test("the shared search field completes a tag at the caret and submits the full 
 	await page.keyboard.press("Escape");
 	await expect(helpPanel).toBeHidden();
 	await expect(help).toBeFocused();
+	await expect(page.locator('[role="dialog"]')).toHaveCount(0);
 
 	await moreActions.focus();
 	await moreActions.press("ArrowDown");
@@ -539,6 +567,7 @@ test("the shared search field completes a tag at the caret and submits the full 
 	).toHaveAttribute("href", "https://danbooru.donmai.us");
 	await page.keyboard.press("Escape");
 	await expect(moreActions).toBeFocused();
+	await expect(page.locator('[role="menu"]')).toHaveCount(0);
 	await expectNoOverflow(page);
 
 	await page.keyboard.press("/");

@@ -8,7 +8,7 @@ import {
 	E2E_SIMILAR_MEDIA_ID,
 	getE2eRuntimeDir,
 } from "./support/fixture";
-import { expect, test } from "./support/test";
+import { expect, test, waitForAppHydration } from "./support/test";
 
 // Both projects execute this same scenario through their own route and API adapters.
 test("shared search selection, bulk dialog, copy, move and delete workflows", async ({
@@ -101,6 +101,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 		await page.goto(
 			testInfo.project.name === "tauri" ? "/#/search" : "/search",
 		);
+		if (testInfo.project.name !== "tauri") await waitForAppHydration(page);
 		await expect(mediaItem(E2E_PRIMARY_MEDIA_ID)).toBeVisible();
 		await expect(mediaItem(E2E_SIMILAR_MEDIA_ID)).toBeVisible();
 		await mediaItem(E2E_PRIMARY_MEDIA_ID).click({ modifiers: ["Control"] });

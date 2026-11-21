@@ -1,5 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import {
+	children,
 	createSignal,
 	For,
 	type JSX,
@@ -24,6 +25,7 @@ export function MediaDetailLayout(props: {
 	related?: JSX.Element;
 	sidebar: JSX.Element;
 }) {
+	const related = children(() => props.related);
 	const [isDesktop, setIsDesktop] = createSignal(true);
 	onMount(() => {
 		const media = window.matchMedia("(min-width: 1024px)");
@@ -45,12 +47,10 @@ export function MediaDetailLayout(props: {
 					data-media-scroll={isDesktop() ? "detail" : undefined}
 				>
 					<div class="snap-start lg:h-full lg:snap-always">{props.viewer}</div>
-					<Show when={props.related}>
-						{(related) => (
-							<div class="snap-start lg:min-h-scrollport lg:snap-always">
-								{related()}
-							</div>
-						)}
+					<Show when={related()}>
+						<div class="empty:hidden snap-start lg:min-h-scrollport lg:snap-always">
+							{related()}
+						</div>
 					</Show>
 				</div>
 				<section

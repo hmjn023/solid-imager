@@ -95,33 +95,53 @@ import { formatDate } from "./manager/utils";
 
 const JOB_FILTERS = [
 	{
-		description: t("jobsScreen.allJobs"),
+		get description() {
+			return t("jobsScreen.allJobs");
+		},
 		icon: Clock3,
-		label: t("jobsScreen.all"),
+		get label() {
+			return t("jobsScreen.all");
+		},
 		value: "all",
 	},
 	{
-		description: t("jobsScreen.runningAndQueued"),
+		get description() {
+			return t("jobsScreen.runningAndQueued");
+		},
 		icon: RefreshCw,
-		label: t("jobsScreen.active"),
+		get label() {
+			return t("jobsScreen.active");
+		},
 		value: "active",
 	},
 	{
-		description: t("jobsScreen.jobsRequiringAttention"),
+		get description() {
+			return t("jobsScreen.jobsRequiringAttention");
+		},
 		icon: CircleAlert,
-		label: t("status.failed"),
+		get label() {
+			return t("status.failed");
+		},
 		value: "failed",
 	},
 	{
-		description: t("jobsScreen.finishedJobs"),
+		get description() {
+			return t("jobsScreen.finishedJobs");
+		},
 		icon: CircleCheck,
-		label: t("status.completed"),
+		get label() {
+			return t("status.completed");
+		},
 		value: "completed",
 	},
 	{
-		description: t("jobsScreen.cancelledJobs"),
+		get description() {
+			return t("jobsScreen.cancelledJobs");
+		},
 		icon: Ban,
-		label: t("status.cancelled"),
+		get label() {
+			return t("status.cancelled");
+		},
 		value: "cancelled",
 	},
 ] as const;

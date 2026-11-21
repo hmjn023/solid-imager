@@ -128,9 +128,9 @@ export const activateTagSearch = (tagName: string) => {
 export const getSearchCondition = () =>
 	getSearchConditionFromState(searchState);
 
-export const hasSearchConditions = () =>
+export const hasSearchConditions = (state = searchState) =>
 	Boolean(
-		getSearchCondition()?.children.length ||
-		searchState.similarityAnchorMediaId ||
-		searchState.semanticQuery.trim(),
+		getSearchConditionFromState(state)?.children.length ||
+		state.similarityAnchorMediaId ||
+		state.semanticQuery.trim(),
 	);

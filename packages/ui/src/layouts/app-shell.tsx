@@ -11,6 +11,7 @@ import {
 	SheetTitle,
 } from "../sheet";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
+import { hasOpenDialog } from "../shortcuts/preferences-provider";
 import { SidebarProvider } from "../sidebar";
 import { SourceDeleteModal } from "../source-delete-modal";
 import { SourceFormModal } from "../source-form-modal";
@@ -83,7 +84,7 @@ export function AppShell(props: AppShellProps) {
 				shortcutHelpOpen() ||
 				props.sourcePage.showFormModal() ||
 				props.sourcePage.showDeleteModal() ||
-				document.querySelector('[role="dialog"], [role="alertdialog"]')
+				hasOpenDialog()
 			) {
 				return;
 			}

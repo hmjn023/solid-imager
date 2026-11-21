@@ -114,6 +114,32 @@ describe("RealtimeEventBus", () => {
 
 		expect(listener).toHaveBeenCalledWith(event);
 	});
+
+	it("replays events from the start of the snapshot and still delivers live events", () => {
+		const now = vi.spyOn(Date, "now");
+		try {
+			const replaySince = Date.now();
+			now.mockReturnValue(replaySince - 1);
+			RealtimeEventBus.publishJob("job-completed", {
+				jobId: "before-snapshot",
+			});
+			now.mockReturnValue(replaySince);
+			RealtimeEventBus.publishJob("job-completed", {
+				jobId: "during-snapshot",
+			});
+
+			const listener = vi.fn();
+			cleanups.push(RealtimeEventBus.subscribeToJobs(listener, replaySince));
+			now.mockReturnValue(replaySince + 1);
+			RealtimeEventBus.publishJob("job-completed", { jobId: "live" });
+
+			const jobIds = listener.mock.calls.map(([event]) => event.data.jobId);
+			expect(jobIds).not.toContain("before-snapshot");
+			expect(jobIds.slice(-2)).toEqual(["during-snapshot", "live"]);
+		} finally {
+			now.mockRestore();
+		}
+	});
 });
 
 it("does not retain live job events after replay", () => {

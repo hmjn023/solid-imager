@@ -5,20 +5,64 @@ import type { Locale, MessageArguments, MessageKey } from "./schema";
 export type { Locale, MessageKey, StaticMessageKey } from "./schema";
 
 const LOCALE_STORAGE_KEY = "solid-imager.locale";
-function readBrowserLocale(): Locale {
-	if (typeof document === "undefined") return "ja";
+
+function parseLocale(value: string | null | undefined): Locale | undefined {
+	return value === "ja" || value === "en" ? value : undefined;
+}
+
+export function readLocaleCookie(cookies: string): Locale | undefined {
+	const prefix = `${LOCALE_STORAGE_KEY}=`;
+	const cookie = cookies
+		.split(";")
+		.find((value) => value.trimStart().startsWith(prefix));
+	return parseLocale(cookie?.trim().slice(prefix.length));
+}
+
+function readStoredLocale(): Locale | undefined {
 	try {
-		return localStorage.getItem(LOCALE_STORAGE_KEY) === "en" ? "en" : "ja";
+		return parseLocale(localStorage.getItem(LOCALE_STORAGE_KEY));
 	} catch {
-		return "ja";
+		return undefined;
 	}
 }
 
-// A browser session has one immutable locale. SSR never reads or mutates client preferences.
+function isServerRenderedDocument(): boolean {
+	return (
+		typeof document !== "undefined" &&
+		document.documentElement?.dataset?.serverRendered !== undefined
+	);
+}
+
+function readBrowserLocale(): Locale {
+	if (isServerRenderedDocument())
+		return parseLocale(document.documentElement.lang) ?? "ja";
+	return typeof document === "undefined" ? "ja" : (readStoredLocale() ?? "ja");
+}
+
 const browserLocale = readBrowserLocale();
+let readRequestLocale: (() => Locale | undefined) | undefined;
+
+export function configureRequestLocale(reader: () => Locale | undefined): void {
+	readRequestLocale = reader;
+}
 
 export function getLocale(): Locale {
-	return browserLocale;
+	return readRequestLocale?.() ?? browserLocale;
+}
+
+function writeLocaleCookie(locale: Locale): void {
+	const secure = location.protocol === "https:" ? "; Secure" : "";
+	document.cookie = `${LOCALE_STORAGE_KEY}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+}
+
+/** Preserve the language selected before the web app started using a cookie. */
+export function migrateBrowserLocale(): boolean {
+	const locale = readStoredLocale();
+	if (!locale || readLocaleCookie(document.cookie)) return false;
+	writeLocaleCookie(locale);
+	return (
+		locale !== browserLocale && readLocaleCookie(document.cookie) === locale
+	);
 }
 
 /** Synchronize document language after hydration, or before rendering a standalone SPA. */
@@ -31,6 +75,7 @@ export function initializeBrowserLocale(): Locale {
 /** Reload so module-level options, active dialogs and third-party controls use one locale together. */
 export function changeLocale(locale: Locale): void {
 	localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+	if (isServerRenderedDocument()) writeLocaleCookie(locale);
 	location.reload();
 }
 
@@ -60,5 +105,5 @@ export function t<Key extends MessageKey>(
 	key: Key,
 	...args: MessageArguments<Key>
 ): string {
-	return translators[browserLocale](key, ...args);
+	return translators[getLocale()](key, ...args);
 }

@@ -297,10 +297,7 @@ export function useManagerPage(
 		useBatchJobEvents,
 		onBatchTaggingStart,
 	} = options;
-	const projects = createQuery<Project[]>(() => ({
-		...queryOptions.projects(),
-		enabled: !isServer,
-	}));
+	const projects = createQuery<Project[]>(queryOptions.projects);
 	const ipsQuery = createQuery<Ip[]>(() => ({
 		...queryOptions.ips(),
 		enabled: !isServer,
@@ -385,8 +382,11 @@ export function useManagerPage(
 	};
 	const taggingStatus = () => batchDisplay()?.message ?? null;
 
+	const activeBatchesKey = jobsQueryKeys.activeBatches();
+	const hadActiveBatches =
+		queryClient.getQueryData(activeBatchesKey) !== undefined;
 	const activeBatches = createQuery(() => ({
-		queryKey: ["jobs", "activeBatches"],
+		queryKey: activeBatchesKey,
 		queryFn: async () => {
 			const versions = batches.readVersions();
 			const jobs = await actions.getActiveBatches();
@@ -397,7 +397,9 @@ export function useManagerPage(
 			return jobs;
 		},
 		enabled: !isServer,
+		staleTime: 30_000,
 	}));
+	let connected = false;
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 	let disposed = false;
 	let reading = false;
@@ -780,7 +782,9 @@ export function useManagerPage(
 				refreshActiveBatches();
 		},
 		onConnected: () => {
-			refreshActiveBatches();
+			if (connected || (!hadActiveBatches && activeBatches.isError))
+				refreshActiveBatches();
+			connected = true;
 			if (trackedRun()) void trackedJob.refetch();
 		},
 	});

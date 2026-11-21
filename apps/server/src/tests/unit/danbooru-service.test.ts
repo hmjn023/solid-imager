@@ -125,6 +125,22 @@ describe("Danbooru service", () => {
 		]);
 	});
 
+	it("does not retain upstream results marked no-store", async () => {
+		const fetchRemote = vi.fn<typeof fetch>().mockImplementation(async () =>
+			Response.json([remotePost], {
+				headers: { "Cache-Control": "private, no-store" },
+			}),
+		);
+		const service = createDanbooruService({
+			fetch: fetchRemote,
+			wait: async () => undefined,
+		});
+		const input = { tags: "", page: 1, limit: 40 };
+		await service.search(input);
+		await service.search(input);
+		expect(fetchRemote).toHaveBeenCalledTimes(2);
+	});
+
 	it("keeps inaccessible media unavailable and rejects foreign media hosts", async () => {
 		const fetchRemote = vi.fn<typeof fetch>().mockResolvedValue(
 			Response.json({

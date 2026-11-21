@@ -53,8 +53,10 @@ test("display language changes the whole workspace and survives direct navigatio
 	);
 	await page.setViewportSize({ width: 375, height: 812 });
 	await expect(
-		page.getByRole("button", { name: /^Settings categories/ }),
-	).toHaveText("Interface");
+		page
+			.getByRole("tablist", { name: "Settings categories" })
+			.getByRole("tab", { name: "Interface", selected: true }),
+	).toBeVisible();
 	await expect(
 		page
 			.getByRole("tabpanel", { name: /^Interface/ })

@@ -144,57 +144,93 @@ function getLogLevelOptions(): LogLevelOption[] {
 
 const SETTINGS_CATEGORIES = [
 	{
-		description: t("locale.description"),
+		get description() {
+			return t("locale.description");
+		},
 		icon: Languages,
-		label: t("locale.category"),
+		get label() {
+			return t("locale.category");
+		},
 		value: "interface",
 	},
 	{
-		description: t("configScreen.concurrencyAndAutomation"),
+		get description() {
+			return t("configScreen.concurrencyAndAutomation");
+		},
 		icon: BriefcaseBusiness,
-		label: t("navigation.jobs"),
+		get label() {
+			return t("navigation.jobs");
+		},
 		value: "jobs",
 	},
 	{
-		description: t("configScreen.inferenceServiceConnection"),
+		get description() {
+			return t("configScreen.inferenceServiceConnection");
+		},
 		icon: Bot,
-		label: t("configScreen.aI"),
+		get label() {
+			return t("configScreen.aI");
+		},
 		value: "ai",
 	},
 	{
-		description: t("configScreen.downloadSpeedAndLimits"),
+		get description() {
+			return t("configScreen.downloadSpeedAndLimits");
+		},
 		icon: DownloadCloud,
-		label: t("configScreen.downloads"),
+		get label() {
+			return t("configScreen.downloads");
+		},
 		value: "downloads",
 	},
 	{
-		description: t("configScreen.thumbnailsAndStorageLocations"),
+		get description() {
+			return t("configScreen.thumbnailsAndStorageLocations");
+		},
 		icon: HardDrive,
-		label: t("configScreen.storage"),
+		get label() {
+			return t("configScreen.storage");
+		},
 		value: "storage",
 	},
 	{
-		description: t("configScreen.formatsAndMetadata"),
+		get description() {
+			return t("configScreen.formatsAndMetadata");
+		},
 		icon: Image,
-		label: t("configScreen.media"),
+		get label() {
+			return t("configScreen.media");
+		},
 		value: "media",
 	},
 	{
-		description: t("configScreen.keyboardControlsForThisDevice"),
+		get description() {
+			return t("configScreen.keyboardControlsForThisDevice");
+		},
 		icon: Keyboard,
-		label: t("configScreen.shortcuts"),
+		get label() {
+			return t("configScreen.shortcuts");
+		},
 		value: "shortcuts",
 	},
 	{
-		description: t("configScreen.toolAvailability"),
+		get description() {
+			return t("configScreen.toolAvailability");
+		},
 		icon: Wrench,
-		label: t("configScreen.mCP"),
+		get label() {
+			return t("configScreen.mCP");
+		},
 		value: "mcp",
 	},
 	{
-		description: t("configScreen.logOutputLevel"),
+		get description() {
+			return t("configScreen.logOutputLevel");
+		},
 		icon: Logs,
-		label: t("configScreen.logging"),
+		get label() {
+			return t("configScreen.logging");
+		},
 		value: "logging",
 	},
 ] as const;

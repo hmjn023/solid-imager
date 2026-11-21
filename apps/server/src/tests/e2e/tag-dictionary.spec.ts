@@ -111,9 +111,9 @@ test("browses the imported dictionary after reload and assigns a tag from the me
 	await expect(page.getByText("头发 / 发型", { exact: true })).toBeVisible();
 	await page.setViewportSize({ width: 375, height: 800 });
 	await expect(search).toBeVisible();
-	expect(
-		await page.evaluate(() => document.documentElement.scrollWidth),
-	).toBeLessThanOrEqual(375);
+	await expect
+		.poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+		.toBeLessThanOrEqual(375);
 	await page.setViewportSize({ width: 1440, height: 900 });
 
 	await page.goto(mediaPath());

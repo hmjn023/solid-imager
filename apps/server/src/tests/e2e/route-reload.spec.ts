@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
+	E2E_SIMILAR_MEDIA_ID,
+	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 	mediaPath,
 	sourcePath,
@@ -73,6 +75,7 @@ type RouteCase = {
 	readyMediaLink?: string;
 	readyButton?: string;
 	clientEndpoints?: readonly string[];
+	serverEndpoints?: readonly string[];
 	seedSearchSession?: boolean;
 	directBudgetMs: number;
 	reloadBudgetMs: number;
@@ -80,7 +83,12 @@ type RouteCase = {
 
 const routeCases: readonly RouteCase[] = [
 	...[
-		{ name: "jobs", path: "/jobs", heading: "ジョブ" },
+		{
+			name: "jobs",
+			path: "/jobs",
+			heading: "ジョブ",
+			serverEndpoints: ["/api/rpc/jobs/list", "/api/rpc/jobs/types"],
+		},
 		{ name: "about", path: "/about", heading: "Solid Imagerについて" },
 	].map((route) => ({
 		...route,
@@ -102,7 +110,7 @@ const routeCases: readonly RouteCase[] = [
 		name: "settings",
 		path: "/config",
 		heading: "設定",
-		clientEndpoints: ["/api/rpc/config/get"],
+		serverEndpoints: ["/api/rpc/config/get"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -110,6 +118,12 @@ const routeCases: readonly RouteCase[] = [
 		name: "entity manager",
 		path: "/manager",
 		heading: "管理",
+		serverEndpoints: [
+			"/api/rpc/projects/list",
+			"/api/rpc/ips/list",
+			"/api/rpc/characters/list",
+			"/api/rpc/jobs/activeBatches",
+		],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -125,17 +139,92 @@ const routeCases: readonly RouteCase[] = [
 		tag: "@dev-smoke",
 		path: mediaPath(),
 		heading: E2E_PRIMARY_FILE_NAME,
+		serverEndpoints: ["/api/rpc/media/getDetails"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_000 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
 ];
+
+test("workspace pages and selected data render with JavaScript disabled", async ({
+	browser,
+	baseURL,
+}) => {
+	const context = await browser.newContext({
+		baseURL,
+		javaScriptEnabled: false,
+	});
+	try {
+		const page = await context.newPage();
+		for (const { path, heading } of [
+			...routeCases,
+			{ path: "/statistics", heading: "ライブラリ統計" },
+			{ path: "/danbooru", heading: "Danbooru" },
+			{ path: "/danbooru/333", heading: "Danbooru #333" },
+			{ path: "/pixiv", heading: "pixiv" },
+			{ path: "/pixiv/333", heading: "pixiv #333" },
+		]) {
+			const response = await page.goto(path);
+			expect(response?.ok(), path).toBe(true);
+			await expect(
+				page.getByRole("link", { name: "ライブラリ", exact: true }),
+			).toBeVisible();
+			await expect(
+				page
+					.locator("#main-content")
+					.getByText(heading, { exact: true })
+					.first(),
+			).toBeVisible();
+		}
+		await context.addCookies([
+			{ name: "solid-imager.locale", value: "en", url: baseURL ?? page.url() },
+		]);
+		await page.goto("/about");
+		await expect(page.locator("html")).toHaveAttribute("lang", "en");
+		await expect(
+			page.getByRole("heading", { name: "About Solid Imager", level: 1 }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: "Library", exact: true }),
+		).toBeVisible();
+		await page.goto("/manager");
+		await expect(
+			page
+				.getByRole("navigation", { name: "Manager categories" })
+				.getByRole("button", { name: /Projects/ }),
+		).toBeVisible();
+		await page.goto("/design-lab");
+		await expect(
+			page.getByRole("navigation", { name: "デザイン案ナビゲーション" }),
+		).toBeVisible();
+	} finally {
+		await context.close();
+	}
+});
 
 test.describe("direct navigation and reload", () => {
 	for (const routeCase of routeCases) {
 		test(
 			`${routeCase.name} renders after direct navigation and reload`,
 			{ tag: routeCase.tag },
-			async ({ page, browserHealth }) => {
+			async ({ page, browserHealth, request }) => {
+				if (routeCase.name === "jobs") {
+					const reservation = await request.post(
+						"/api/rest/media/reserveUploads",
+						{
+							data: {
+								sourceId: E2E_SOURCE_ID,
+								filenames: ["route-reload-reservation.png"],
+							},
+						},
+					);
+					expect(reservation.ok()).toBe(true);
+					const { jobId } = await reservation.json();
+					const cancelled = await request.post("/api/rest/jobs/cancel", {
+						data: { id: jobId },
+					});
+					expect(cancelled.ok()).toBe(true);
+					expect(await cancelled.json()).toMatchObject({ status: "cancelled" });
+				}
 				if (routeCase.seedSearchSession) {
 					await page.addInitScript((fileName) => {
 						sessionStorage.setItem(
@@ -194,6 +283,14 @@ test.describe("direct navigation and reload", () => {
 					).toBeVisible();
 				}
 				await waitForAppHydration(page);
+				if (routeCase.seedSearchSession) {
+					await expect(page).toHaveURL(/\?search=[0-9a-f-]{36}$/);
+					await expect(
+						page.locator(
+							`#main-content [data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
+						),
+					).toHaveCount(0);
+				}
 				const directNavigationElapsedMs =
 					Date.now() - directNavigationStartedAt;
 				browserHealth.recordNavigation(
@@ -213,6 +310,15 @@ test.describe("direct navigation and reload", () => {
 						),
 						`Direct navigation should request ${endpoint} once`,
 					).toBe(1);
+				}
+				for (const endpoint of routeCase.serverEndpoints ?? []) {
+					expect(
+						browserHealth.apiRequestCountPathSince(
+							directRequestCheckpoint,
+							endpoint,
+						),
+						`Direct navigation should reuse the server results for ${endpoint}`,
+					).toBe(0);
 				}
 				await expectRouteHealthy(page);
 
@@ -262,8 +368,17 @@ test.describe("direct navigation and reload", () => {
 							reloadRequestCheckpoint,
 							endpoint,
 						),
-						`Reload should request ${endpoint} once`,
-					).toBe(1);
+						`Reload should reuse the server results for ${endpoint}`,
+					).toBe(0);
+				}
+				for (const endpoint of routeCase.serverEndpoints ?? []) {
+					expect(
+						browserHealth.apiRequestCountPathSince(
+							reloadRequestCheckpoint,
+							endpoint,
+						),
+						`Reload should reuse the server results for ${endpoint}`,
+					).toBe(0);
 				}
 				await expectRouteHealthy(page);
 			},

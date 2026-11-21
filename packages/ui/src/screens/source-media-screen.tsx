@@ -1,3 +1,4 @@
+import { useRenderedSearchState } from "../search-initial-state";
 import { t } from "@solid-imager/i18n";
 import Upload from "lucide-solid/icons/upload";
 import { createSignal, onMount, Show } from "solid-js";
@@ -25,6 +26,7 @@ import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
 /** Renders a source collection with search, upload, preview, and optional virtualized results. */
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
+	const searchState = useRenderedSearchState();
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
@@ -42,12 +44,15 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		const state = page().contentState();
 		return state.fetchState === "paused" && state.data !== undefined;
 	};
-	const shouldRenderGrid = () => !props.enableVirtualization || isMounted();
+	const shouldRenderGrid = () =>
+		!props.enableVirtualization ||
+		isMounted() ||
+		page().contentState().data !== undefined;
 	const showEmptySource = () =>
 		shouldRenderGrid() &&
 		page().contentState().phase === "empty" &&
 		!page().mediaQuery.isPlaceholderData &&
-		!hasSearchConditions();
+		!hasSearchConditions(searchState());
 	const clearSearch = () => {
 		clearPresetFilters();
 		page().handleSearch();
@@ -224,7 +229,8 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							onBulkAction={props.onBulkAction}
 							onClearSelection={props.onClearSelection}
 							onClearSearch={
-								!page().mediaQuery.isPlaceholderData && hasSearchConditions()
+								!page().mediaQuery.isPlaceholderData &&
+								hasSearchConditions(searchState())
 									? clearSearch
 									: undefined
 							}

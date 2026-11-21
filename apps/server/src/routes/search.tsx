@@ -1,13 +1,29 @@
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search/history";
-import { createFileRoute, lazyRouteComponent } from "@tanstack/solid-router";
+import { InitialSearchProvider } from "@solid-imager/ui/search";
+import { createFileRoute, useLoaderData } from "@tanstack/solid-router";
 
-const SearchRoute = lazyRouteComponent(
-	() => import("~/components/pages/search-content"),
-);
+import SearchContent from "~/components/pages/search-content";
+import { loadInitialSearch } from "~/infrastructure/api-clients/load-initial-search";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 
 export const Route = createFileRoute("/search")({
 	validateSearch: searchHistoryQuerySchema,
-	ssr: false,
-	pendingComponent: () => null,
+	loaderDeps: ({ search }: { search: { search?: string } }) => ({
+		snapshotId: search.search,
+	}),
+	loader: ({
+		context,
+		deps,
+	}: RouteLoaderContext & { deps: { snapshotId?: string } }) =>
+		loadInitialSearch(context.queryClient, deps.snapshotId),
 	component: SearchRoute,
 });
+
+function SearchRoute() {
+	const initial = useLoaderData({ from: "/search" });
+	return (
+		<InitialSearchProvider initial={initial()}>
+			<SearchContent />
+		</InitialSearchProvider>
+	);
+}

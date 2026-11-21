@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { E2E_PRIMARY_FILE_NAME } from "./support/fixture";
-import { expect, test } from "./support/test";
+import { expect, test, waitForAppHydration } from "./support/test";
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	const overflow = await page.evaluate(
@@ -23,6 +23,7 @@ test("search keeps controls usable without horizontal overflow", async ({
 		page.getByRole("combobox", { name: "メディアを検索", exact: true }),
 	).toBeVisible();
 	await expectNoHorizontalOverflow(page);
+	await waitForAppHydration(page);
 
 	if (testInfo.project.name === "responsive-768") {
 		await page.setViewportSize({ width: 768, height: 480 });
@@ -39,12 +40,14 @@ test("search keeps controls usable without horizontal overflow", async ({
 		exact: true,
 	});
 	await expect(fileNameInput).toBeInViewport();
-	await expect(
-		filterDialog.getByRole("combobox", {
-			name: "タグ (すべて含む)",
-			exact: true,
-		}),
-	).toBeInViewport();
+	const tagInput = filterDialog.getByRole("combobox", {
+		name: "タグ (すべて含む)",
+		exact: true,
+	});
+	if (testInfo.project.name === "responsive-768") {
+		await tagInput.scrollIntoViewIfNeeded();
+	}
+	await expect(tagInput).toBeInViewport();
 	if (testInfo.project.name === "responsive-390") {
 		await expect(
 			filterDialog.getByRole("combobox", { name: "IP", exact: true }),

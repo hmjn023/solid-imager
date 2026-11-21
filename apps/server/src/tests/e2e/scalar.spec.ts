@@ -46,12 +46,15 @@ test("Scalar sends its documented request to the local REST API", async ({
 	page,
 }) => {
 	await page.goto("/about");
+	const popup = page.waitForEvent("popup");
 	await page
 		.getByRole("main")
 		.getByRole("link", { name: "APIドキュメント", exact: true })
 		.click();
-	await expect(page).toHaveURL(/\/docs\/scalar\/?(?:#.*)?$/);
-	await listSourcesFromScalar(page, "/api/rest");
+	const reference = await popup;
+	await expect(reference).toHaveURL(/\/docs\/scalar\/?(?:#.*)?$/);
+	await listSourcesFromScalar(reference, "/api/rest");
+	await reference.close();
 });
 
 test("the published REST server shares RPC data and returns standard HTTP errors", async ({
@@ -133,11 +136,43 @@ test("REST accepts the documented multipart upload and detects an existing file"
 test("the standalone documentation bookmark opens the bundled Scalar page", async ({
 	page,
 }) => {
+	let specRequests = 0;
+	page.on("request", (request) => {
+		if (new URL(request.url()).pathname === "/openapi.json") specRequests++;
+	});
 	await page.goto("/api-docs.html");
 	await expect(page).toHaveURL(/\/docs\/scalar\/?(?:#.*)?$/);
 	await expect(
 		page.getByRole("heading", { name: "Solid Imager oRPC API", exact: true }),
 	).toBeVisible();
+	await page.reload();
+	await expect(
+		page.getByRole("heading", { name: "Solid Imager oRPC API", exact: true }),
+	).toBeVisible();
+	expect(specRequests).toBe(0);
+});
+
+test("the API reference lists operations with JavaScript disabled", async ({
+	browser,
+	baseURL,
+}) => {
+	const context = await browser.newContext({
+		baseURL,
+		javaScriptEnabled: false,
+	});
+	try {
+		const page = await context.newPage();
+		await page.goto("/docs/scalar");
+		await expect(
+			page.getByRole("heading", { name: "Solid Imager oRPC API" }),
+		).toBeVisible();
+		await page.getByText("API operations", { exact: true }).click();
+		await expect(
+			page.getByText("POST /tools/list_sources", { exact: true }),
+		).toBeVisible();
+	} finally {
+		await context.close();
+	}
 });
 
 test("Scalar works when a proxy serves only /imager/ and strips the prefix", async ({
@@ -161,11 +196,8 @@ test("Scalar works when a proxy serves only /imager/ and strips the prefix", asy
 			});
 		},
 	);
-	const spec = page.waitForResponse(
-		(response) => new URL(response.url()).pathname === prefix + "/openapi.json",
-	);
-	await page.goto(prefix + "/docs/scalar/");
-	expect((await spec).ok()).toBe(true);
+	const response = await page.goto(prefix + "/docs/scalar/");
+	expect(response?.ok()).toBe(true);
 	await listSourcesFromScalar(page, prefix + "/api/rest");
 });
 

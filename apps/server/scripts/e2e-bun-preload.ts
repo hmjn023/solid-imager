@@ -1,4 +1,5 @@
 import http from "node:http";
+import "./e2e-external-viewer";
 
 const nativeServe = Bun.serve;
 

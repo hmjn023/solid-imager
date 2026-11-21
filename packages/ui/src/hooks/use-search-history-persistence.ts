@@ -5,9 +5,17 @@ import {
 } from "@solid-imager/core/search";
 import type { HistoryLocation, RouterHistory } from "@tanstack/solid-router";
 import { useLocation, useRouter } from "@tanstack/solid-router";
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import {
+	batch,
+	createEffect,
+	createMemo,
+	createSignal,
+	onCleanup,
+	untrack,
+} from "solid-js";
 import { isServer } from "solid-js/web";
 import type { SearchHistoryClient } from "../search-history-client";
+import { useInitialSearch } from "../search-initial-state";
 import {
 	resetSearchState,
 	searchState,
@@ -147,6 +155,8 @@ export function useSearchHistoryPersistence(
 	options: SearchHistoryOptions,
 ) {
 	const sessionRestored = useCurrentSearchPersistence(sourceId, options);
+	const initialSearch = useInitialSearch();
+	const initialSnapshot = initialSearch?.initial()?.snapshot;
 	const router = useRouter();
 	// The UI package has no registered route tree, so type the library history API here.
 	const history = router.history as RouterHistory;
@@ -159,6 +169,11 @@ export function useSearchHistoryPersistence(
 	let commitTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const isRestored = createMemo(() => sessionRestored() && historyRestored());
+	const finishRestore = () =>
+		batch(() => {
+			setHistoryRestored(true);
+			initialSearch?.finish();
+		});
 
 	const currentHref = () => history.location.href;
 	const currentHistoryState = () => history.location.state;
@@ -229,7 +244,9 @@ export function useSearchHistoryPersistence(
 			} else if (queryId) {
 				try {
 					const snapshot: SafeSearchSnapshot =
-						await options.client.get(queryId);
+						initialSnapshot?.id === queryId
+							? initialSnapshot
+							: await options.client.get(queryId);
 					if (generation !== restoreGeneration) return;
 					snapshotState = snapshot.state;
 					// Keep a server-restored snapshot in the local history entry too.
@@ -268,7 +285,7 @@ export function useSearchHistoryPersistence(
 					}),
 				);
 				skipNextCommitState = stateKey(snapshotState);
-				setHistoryRestored(true);
+				finishRestore();
 				return;
 			}
 			if (!sessionReady) {
@@ -278,7 +295,7 @@ export function useSearchHistoryPersistence(
 
 			const state = readSnapshotState();
 			if (!state) {
-				setHistoryRestored(true);
+				finishRestore();
 				return;
 			}
 			skipNextCommitState = stateKey(state);
@@ -287,11 +304,11 @@ export function useSearchHistoryPersistence(
 				state,
 			};
 			const localEntryKey = replaceWithLocalEntry(entry);
-			setHistoryRestored(true);
+			finishRestore();
 			void captureForCurrentEntry(localEntryKey, state);
 		};
 
-		void restore();
+		void untrack(restore);
 	});
 
 	const commitCurrentState = () => {

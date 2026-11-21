@@ -334,7 +334,7 @@ export const jobsRouter = os.router({
 		return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
 	}),
 
-	events: os.events.handler(async function* ({ signal }) {
+	events: os.events.handler(async function* ({ input, signal }) {
 		const queue: JobEvent[] = [];
 		let resolve: (() => void) | null = null;
 
@@ -342,7 +342,7 @@ export const jobsRouter = os.router({
 			queue.push(event);
 			resolve?.();
 			resolve = null;
-		});
+		}, input?.replaySince);
 
 		try {
 			while (!signal?.aborted) {

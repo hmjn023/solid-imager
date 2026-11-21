@@ -1,4 +1,4 @@
-import { expect, test } from "./support/test";
+import { expect, test, waitForAppHydration } from "./support/test";
 import type { Locator, Page } from "@playwright/test";
 import {
 	viewerRequestSchema,
@@ -135,6 +135,7 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 		await route.fulfill({ json: { json: result } });
 	});
 	await page.goto(path("/danbooru"));
+	if (info.project.name !== "tauri") await waitForAppHydration(page);
 	const input = page.getByRole("combobox", { name: "Danbooru を検索" });
 	await input.fill("land");
 	await page.getByRole("option", { name: /landscape/ }).click();
@@ -1057,7 +1058,9 @@ test("searches for the exact artwork tag from Pixiv detail", async ({
 	await page.goto(
 		info.project.name === "tauri" ? "/#/pixiv/123" : "/pixiv/123",
 	);
-	await page.getByRole("button", { name: tag, exact: true }).press("Enter");
+	await page
+		.getByRole("button", { name: `「${tag}」で検索`, exact: true })
+		.press("Enter");
 	await expect(page).toHaveURL(/\/pixiv$/);
 	await expect(
 		page.getByRole("combobox", { name: "pixiv を検索" }),
@@ -1108,7 +1111,8 @@ for (const action of ["author", "tag"] as const) {
 		await page.getByRole("link", { name: "海の風景 を開く" }).click();
 		await page
 			.getByRole("button", {
-				name: action === "author" ? artwork.author : artwork.tags[0],
+				name:
+					action === "author" ? artwork.author : `「${artwork.tags[0]}」で検索`,
 				exact: true,
 			})
 			.click();
@@ -1180,7 +1184,9 @@ test("reapplies Pixiv search history with operators and exact tags after reload"
 		.poll(() => searches.at(-1)?.choices)
 		.toEqual({ landscape: "景色" });
 	await page.getByRole("link", { name: "海の風景 を開く" }).click();
-	await page.getByRole("button", { name: "Re:ゼロ", exact: true }).click();
+	await page
+		.getByRole("button", { name: "「Re:ゼロ」で検索", exact: true })
+		.click();
 	await expect.poll(() => searches.at(-1)?.literalPixivTag).toBe(true);
 
 	await page.reload();

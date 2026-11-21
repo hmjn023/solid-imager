@@ -1,3 +1,4 @@
+import { useRenderedSearchState } from "../search-initial-state";
 import { t } from "@solid-imager/i18n";
 import {
 	getSearchConditionCount,
@@ -280,6 +281,7 @@ function sortLabel(state: SearchState): string {
 }
 
 export function SearchToolbar(props: SearchToolbarProps) {
+	const state = useRenderedSearchState();
 	const [draft, setDraft] = createSignal("");
 	const [pendingSuggestions, setPendingSuggestions] = createSignal<
 		SearchSuggestion[]
@@ -291,7 +293,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	const tokens = createMemo(() => {
 		const removalIds = new Set(pendingRemovals().map(tokenId));
 		return [
-			...getSearchComposerTokens(searchState).filter(
+			...getSearchComposerTokens(state()).filter(
 				(token) => !removalIds.has(tokenId(token)),
 			),
 			...pendingSuggestions().map((suggestion) => ({
@@ -302,26 +304,26 @@ export function SearchToolbar(props: SearchToolbarProps) {
 		];
 	});
 	const appliedFilterCount = createMemo(() =>
-		getSearchExecutionKind(searchState) === "ordinary"
-			? getSearchConditionCount(searchState)
+		getSearchExecutionKind(state()) === "ordinary"
+			? getSearchConditionCount(state())
 			: 0,
 	);
 	let composerInput: HTMLInputElement | undefined;
 	let searchApplyTimer: ReturnType<typeof setTimeout> | undefined;
 	const applySuggestionAdditions = (additions: SearchSuggestion[]) => {
 		if (additions.length === 0) return;
-		if (searchState.mode === "pro") {
+		if (state().mode === "pro") {
 			setSearchState("mode", "simple");
 		}
-		if (searchState.semanticQuery) {
+		if (state().semanticQuery) {
 			setSearchState("semanticQuery", "");
 		}
-		if (searchState.similarityAnchorMediaId) {
+		if (state().similarityAnchorMediaId) {
 			setSearchState("similarityAnchorMediaId", null);
 		}
 		for (const suggestion of additions) {
 			setSearchState(suggestion.key, [
-				...new Set([...searchState[suggestion.key], suggestion.value]),
+				...new Set([...state()[suggestion.key], suggestion.value]),
 			]);
 		}
 	};
@@ -456,16 +458,16 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				</>
 			}
 		>
-			<Show when={getSearchExecutionKind(searchState) !== "ordinary"}>
+			<Show when={getSearchExecutionKind(state()) !== "ordinary"}>
 				<output class="mb-2 block text-xs text-muted-foreground">
 					{t("searchToolbar.filtersAndSortingForOrdinarySearchAreSavedThey")}
 				</output>
 			</Show>
 			<Show
 				when={
-					getSearchExecutionKind(searchState) === "ordinary" &&
-					searchState.mode === "pro" &&
-					searchState.advancedCondition
+					getSearchExecutionKind(state()) === "ordinary" &&
+					state().mode === "pro" &&
+					state().advancedCondition
 				}
 			>
 				<p class="mb-2 text-xs text-muted-foreground">
@@ -603,7 +605,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				>
 					<PopoverTrigger
 						aria-label={t("searchToolbar.sortCurrentlyValue", {
-							value0: String(sortLabel(searchState)),
+							value0: String(sortLabel(state())),
 						})}
 						as={Button}
 						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9 sm:w-56 sm:justify-between"
@@ -612,7 +614,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					>
 						<ArrowDownUp aria-hidden="true" size={15} />
 						<span class="hidden min-w-0 flex-1 truncate text-left sm:inline">
-							{sortLabel(searchState)}
+							{sortLabel(state())}
 						</span>
 						<ChevronDown aria-hidden="true" size={13} />
 					</PopoverTrigger>
@@ -624,12 +626,12 @@ export function SearchToolbar(props: SearchToolbarProps) {
 							onSimilarityTopKChange={(value) =>
 								setSearchState("similarityTopK", value)
 							}
-							similarityAnchorMediaId={searchState.similarityAnchorMediaId}
+							similarityAnchorMediaId={state().similarityAnchorMediaId}
 							similarityLimitId="sort-similarity-limit"
-							similarityTopK={searchState.similarityTopK}
-							semanticQuery={searchState.semanticQuery}
-							sortBy={searchState.sortBy}
-							sortOrder={searchState.sortOrder}
+							similarityTopK={state().similarityTopK}
+							semanticQuery={state().semanticQuery}
+							sortBy={state().sortBy}
+							sortOrder={state().sortOrder}
 						/>
 					</PopoverContent>
 				</Popover>
