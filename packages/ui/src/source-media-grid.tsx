@@ -766,15 +766,31 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	) => {
 		const Item = (itemProps: {
 			children: JSX.Element;
-			class?: string;
+			destructive?: boolean;
 			onSelect: () => void;
 		}) =>
 			kind === "context" ? (
-				<ContextMenuItem class={itemProps.class} onSelect={itemProps.onSelect}>
+				itemProps.destructive ? (
+					<ContextMenuItem
+						class="text-destructive focus:text-destructive"
+						onSelect={itemProps.onSelect}
+					>
+						{itemProps.children}
+					</ContextMenuItem>
+				) : (
+					<ContextMenuItem onSelect={itemProps.onSelect}>
+						{itemProps.children}
+					</ContextMenuItem>
+				)
+			) : itemProps.destructive ? (
+				<DropdownMenuItem
+					class="text-destructive focus:text-destructive"
+					onSelect={itemProps.onSelect}
+				>
 					{itemProps.children}
-				</ContextMenuItem>
+				</DropdownMenuItem>
 			) : (
-				<DropdownMenuItem class={itemProps.class} onSelect={itemProps.onSelect}>
+				<DropdownMenuItem onSelect={itemProps.onSelect}>
 					{itemProps.children}
 				</DropdownMenuItem>
 			);
@@ -788,19 +804,18 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			);
 		const GroupLabel = (labelProps: {
 			children: JSX.Element;
-			class?: string;
 			title?: string;
 		}) =>
 			kind === "context" ? (
 				<ContextMenuGroupLabel
-					class={labelProps.class}
+					class="max-w-72 truncate text-muted-foreground"
 					title={labelProps.title}
 				>
 					{labelProps.children}
 				</ContextMenuGroupLabel>
 			) : (
 				<DropdownMenuGroupLabel
-					class={labelProps.class}
+					class="max-w-72 truncate text-muted-foreground"
 					title={labelProps.title}
 				>
 					{labelProps.children}
@@ -809,12 +824,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 		return (
 			<Group>
-				<GroupLabel
-					class="max-w-72 truncate text-muted-foreground"
-					title={media.fileName}
-				>
-					{media.fileName}
-				</GroupLabel>
+				<GroupLabel title={media.fileName}>{media.fileName}</GroupLabel>
 				<Separator />
 				<Show when={!hasContextMenuActions(media)}>
 					<Show
@@ -896,10 +906,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				</Show>
 				<Show when={props.onDelete}>
 					<Separator />
-					<Item
-						class="text-destructive focus:text-destructive"
-						onSelect={() => props.onDelete?.(media.id)}
-					>
+					<Item destructive onSelect={() => props.onDelete?.(media.id)}>
 						<Trash2 aria-hidden="true" class="mr-2 shrink-0" size={14} />
 						{t("actions.delete")}
 						<Show when={kind === "context"}>
