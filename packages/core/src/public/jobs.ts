@@ -33,4 +33,8 @@ export {
 	readImportBatch,
 	type ImportBatchContext,
 } from "../domain/jobs/import-batch";
-export { batchTargetsSchema, type BatchTargets } from "../domain/jobs/schemas";
+export {
+	batchTargetsSchema,
+	importStageTypeSchema,
+	type BatchTargets,
+} from "../domain/jobs/schemas";

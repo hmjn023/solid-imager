@@ -17685,6 +17685,67 @@
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 9007199254740991
+                    },
+                    "stages": {
+                      "description": "Counts of scheduled work across the entire import batch, independent of target pagination.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "processed": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "failed": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "cancelled": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "total": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "downloadImage",
+                              "import_upload",
+                              "import_register",
+                              "processMedia",
+                              "auto_tagging",
+                              "extract_embedding_vector",
+                              "extract_ccip_vector"
+                            ]
+                          },
+                          "pending": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "running": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "processed",
+                          "failed",
+                          "cancelled",
+                          "total",
+                          "type",
+                          "pending",
+                          "running"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [

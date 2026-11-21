@@ -15,16 +15,15 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 		/\/api\/rpc\/jobs\/(list|targets|types)$/,
 		"net::ERR_ABORTED",
 	);
-	const filenames = Array.from(
-		{ length: 26 },
-		(_, i) => `batch-target-${i}.png`,
+	const filenames = Array.from({ length: 26 }, (_, i) =>
+		i === 0 ? E2E_PRIMARY_FILE_NAME : `batch-target-${i}.png`,
 	);
 	// The first dev navigation compiles the route before opening the stream.
 	const subscribed = page.waitForRequest(
 		(request) => request.url().endsWith("/jobs/events"),
 		{ timeout: 60_000 },
 	);
-	await page.goto("/jobs");
+	await page.goto("/jobs", { waitUntil: "domcontentloaded", timeout: 60_000 });
 	await waitForAppHydration(page);
 	await subscribed;
 	const response = await page.request.post("/api/rpc/media/reserveUploads", {
@@ -32,7 +31,7 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	});
 	expect(response.ok()).toBe(true);
 	const {
-		json: { jobId },
+		json: { jobId, reservations },
 	} = await response.json();
 	await page
 		.getByRole("button", { name: new RegExp(jobId) })
@@ -44,6 +43,30 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	const table = page
 		.getByRole("table", { name: /バッチの処理対象|Batch targets/i })
 		.filter({ visible: true });
+	const stages = page.getByRole("region", {
+		name: /工程別の進捗|Progress by stage/i,
+	});
+	const uploadProgress = stages.getByRole("progressbar", {
+		name: /アップロード|Upload/i,
+	});
+	await expect(uploadProgress).toHaveAttribute("aria-valuenow", "0");
+	await expect(stages).toContainText(/待機 26|Queued 26/);
+	const upload = await page.request.post("/api/rest/media/upload", {
+		multipart: {
+			sourceId: E2E_SOURCE_ID,
+			reservationId: reservations[0],
+			filename: E2E_PRIMARY_FILE_NAME,
+			file: {
+				name: E2E_PRIMARY_FILE_NAME,
+				mimeType: "image/png",
+				buffer: await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME)),
+			},
+		},
+	});
+	expect(upload.ok()).toBe(true);
+	// The upload came from a separate API client. The open inspector updates via SSE.
+	await expect(uploadProgress).toHaveAttribute("aria-valuenow", "4");
+	await expect(stages).toContainText(/待機 25|Queued 25/);
 	await expect(table.getByRole("row")).toHaveCount(26);
 	const firstPage = await table
 		.locator("tbody tr td:nth-child(2) > span")
@@ -55,6 +78,7 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 		.last()
 		.click();
 	await expect(table.getByRole("row")).toHaveCount(2);
+	await expect(stages).toContainText(/待機 25|Queued 25/);
 	const last = await table
 		.locator("tbody tr td:nth-child(2) > span")
 		.innerText();
@@ -62,20 +86,23 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	await page.reload();
 	await waitForAppHydration(page);
 	await expect(table.getByRole("row")).toHaveCount(26);
+	await expect(uploadProgress).toBeVisible();
 	await page
 		.getByRole("button", {
 			name: /一括取り込みをキャンセル|Cancel batch import/i,
 		})
 		.filter({ visible: true })
 		.click();
-	await expect(table.locator("tbody tr").first()).toContainText(
-		/キャンセル|cancelled/i,
-	);
+	await expect(uploadProgress).toHaveAttribute("aria-valuenow", "100");
+	await expect(stages).toContainText(/キャンセル 25件|Cancelled: 25/);
+	const cancelledRow = table
+		.locator("tbody tr")
+		.filter({ hasText: /キャンセル|cancelled/i })
+		.first();
+	await expect(cancelledRow).toBeVisible();
 	await page.reload();
 	await waitForAppHydration(page);
-	await expect(table.locator("tbody tr").first()).toContainText(
-		/キャンセル|cancelled/i,
-	);
+	await expect(cancelledRow).toBeVisible();
 });
 
 test("retries a failed upload from the parent and replaces only its file", async ({

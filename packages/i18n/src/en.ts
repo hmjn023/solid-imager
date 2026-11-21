@@ -835,6 +835,11 @@ export const en = defineMessages({
 	"jobsScreen.pageValueOfValueValue": "Page {value0} of {value2}",
 	"jobsScreen.previousPage": "Previous page",
 	"jobsScreen.progress": "Progress",
+	"jobsScreen.stageProgress": "Progress by stage",
+	"jobsScreen.stageProgressScope":
+		"Stage totals increase as more work is scheduled.",
+	"jobsScreen.stageProgressCounts":
+		"Completed {completed} · Running {running} · Queued {pending} · Failed {failed}",
 	"jobsScreen.refreshing": "Refreshing...",
 	"jobsScreen.reloadTheJobOrSelectAnotherOneFromThe":
 		"Reload the job or select another one from the list.",
