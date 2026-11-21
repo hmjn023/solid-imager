@@ -32,6 +32,7 @@ export type MediaSidebarContentProps = {
 	tagDictionaryLookup?: TagDictionaryLookup;
 	updatePositiveTags: (data: UpdatePositiveMediaTags) => Promise<unknown>;
 	isUpdating?: Accessor<boolean>;
+	onSearchTag?: (tagName: string) => void;
 	onUpdate?: () => void;
 	projectsForMediaQueryOptions: (
 		mediaSourceId: string,
@@ -140,7 +141,6 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					props.media.id,
 					characterId,
 				);
-				props.onUpdate?.();
 			}}
 			onPositiveTagsUpdate={async (tags) => {
 				await props.updatePositiveTags({
@@ -162,7 +162,6 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					props.media.id,
 					ipId,
 				);
-				props.onUpdate?.();
 			}}
 			onIpCreate={async (name) => {
 				const ip = await props.createIp({ name });
@@ -175,7 +174,6 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					props.media.id,
 					ipId,
 				);
-				props.onUpdate?.();
 			}}
 			onProjectAdd={async (projectId) => {
 				await props.addProjectToMedia(
@@ -184,7 +182,6 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					projectId,
 				);
 				await invalidateProjectsForMedia();
-				props.onUpdate?.();
 			}}
 			onProjectCreate={async (name) => {
 				const project = await props.createProject({ name });
@@ -200,8 +197,8 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					projectId,
 				);
 				await invalidateProjectsForMedia();
-				props.onUpdate?.();
 			}}
+			onSearchTag={props.onSearchTag}
 			onUpdate={props.onUpdate}
 			projects={projects.data || []}
 		/>

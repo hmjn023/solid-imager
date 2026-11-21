@@ -388,7 +388,8 @@ describe("persisted import, attempt and batch transitions", () => {
 		);
 		expect(approval.processedCount).toBe(3);
 		expect(approval.batchId).toBeDefined();
-		const batchId = approval.batchId!;
+		const batchId = approval.batchId;
+		if (!batchId) throw new Error("Expected an import batch ID");
 		const list = await call(jobsRouter.list, { limit: 200, offset: 0 });
 		expect(list.total).toBe(1);
 		expect(list.items).toEqual([

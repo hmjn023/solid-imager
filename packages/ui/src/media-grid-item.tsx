@@ -45,7 +45,6 @@ export type MediaGridLinkProps = {
 		| "step"
 		| "time"
 		| "true";
-	"aria-pressed"?: boolean;
 	onClick?: (event: MouseEvent) => void;
 	onContextMenu: (event: MouseEvent) => void;
 };
@@ -128,13 +127,16 @@ export function MediaGridTile(
 		<LinkComponent
 			class={cn(
 				"group relative block aspect-landscape overflow-hidden rounded-md bg-muted outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring",
-				(props.isSelected || props.isPreviewSelected) && "ring-2 ring-ring",
+				props.isSelected
+					? "ring-2 ring-primary"
+					: props.isPreviewSelected
+						? "ring-2 ring-foreground"
+						: undefined,
 				props.class,
 			)}
 			data-media-id={props.id}
 			href={props.href}
 			aria-current={props.isPreviewSelected ? "true" : undefined}
-			aria-pressed={props.isSelected}
 			onClick={undefined}
 			onContextMenu={(event) => props.onContextMenu?.(event)}
 		>
@@ -142,7 +144,12 @@ export function MediaGridTile(
 				<div class="absolute top-2 right-2 z-10 flex size-6 items-center justify-center">
 					<span
 						aria-hidden="true"
-						class="flex size-6 items-center justify-center rounded-full border border-white bg-black/55 font-bold text-white text-xs shadow-sm"
+						class={cn(
+							"flex size-6 items-center justify-center rounded-full border font-bold text-xs shadow-sm",
+							props.isSelected
+								? "border-primary bg-primary text-primary-foreground"
+								: "border-border bg-background/80 text-foreground",
+						)}
 					>
 						{props.isSelected ? "✓" : ""}
 					</span>

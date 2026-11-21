@@ -2,7 +2,13 @@ import type { PixivArtwork } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
 import { createEffect, For, onCleanup, onMount } from "solid-js";
 import { Button } from "../button";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "../dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
+	DialogTrigger,
+} from "../dialog";
 import { pixivImageHref } from "./post-media";
 
 type PixivPageReaderProps = {
@@ -16,7 +22,7 @@ type PixivPageReaderProps = {
 export function PixivPageReader(props: PixivPageReaderProps) {
 	return (
 		<Dialog>
-			<DialogTrigger as={Button} variant="outline">
+			<DialogTrigger as={Button} class="min-h-11 md:min-h-9" variant="outline">
 				{t("pixivArtworkDetail.verticalReader")}
 			</DialogTrigger>
 			<DialogContent
@@ -41,12 +47,15 @@ function PixivReaderContent(props: PixivPageReaderProps) {
 		pixivImageHref(props.apiBase, page.preview);
 
 	function jumpTo(index: number) {
-		reader.scrollTop = pages[index].offsetTop;
+		const page = pages[index];
+		if (!page || !reader) return;
+		reader.scrollTop = page.offsetTop;
 		props.onPageChange(index);
 		reader.focus({ preventScroll: true });
 	}
 
 	function trackPage() {
+		if (!reader) return;
 		const offset = reader.scrollTop + 1;
 		const index = pages.findLastIndex((page) => page.offsetTop <= offset);
 		if (index >= 0) props.onPageChange(index);
@@ -59,6 +68,7 @@ function PixivReaderContent(props: PixivPageReaderProps) {
 
 	createEffect(() => {
 		const thumbnail = thumbnailsByPage[props.index];
+		if (!thumbnail || !thumbnails) return;
 		const thumb = thumbnail.getBoundingClientRect();
 		const strip = thumbnails.getBoundingClientRect();
 		if (thumb.left < strip.left)
@@ -77,6 +87,9 @@ function PixivReaderContent(props: PixivPageReaderProps) {
 					>
 						{props.title}
 					</DialogTitle>
+					<DialogDescription class="sr-only">
+						{t("pixivArtworkDetail.verticalReader")}
+					</DialogDescription>
 					<span class="shrink-0 text-muted-foreground text-sm tabular-nums">
 						{props.index + 1} / {props.pages.length}
 					</span>

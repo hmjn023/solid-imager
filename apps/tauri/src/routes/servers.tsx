@@ -13,7 +13,7 @@ function ServersRoute() {
 		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<ManagementHeader
 				description={t("servers.addOrSwitchServersAndCheckConnectionStatus")}
-				eyebrow="Workspace"
+				eyebrow={t("managementLayout.workspace")}
 				title={t("servers.serverConnections")}
 			/>
 			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable">

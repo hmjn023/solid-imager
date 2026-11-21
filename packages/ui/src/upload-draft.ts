@@ -77,10 +77,15 @@ export function createUploadDraft(options: {
 		loadUrl,
 		version: () => generation,
 		isCurrent: (epoch: number) => active && generation === epoch,
-		open: (initialFile: File | null) =>
+		open: (initialFiles: File | File[] | null) =>
 			batch(() => {
 				active = true;
-				reset(initialFile ? [initialFile] : []);
+				const next = Array.isArray(initialFiles)
+					? initialFiles
+					: initialFiles
+						? [initialFiles]
+						: [];
+				reset(next);
 			}),
 		close: () =>
 			batch(() => {

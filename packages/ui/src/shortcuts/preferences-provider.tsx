@@ -3,6 +3,7 @@ import {
 	type Accessor,
 	createContext,
 	createSignal,
+	onCleanup,
 	onMount,
 	type ParentComponent,
 	useContext,
@@ -108,6 +109,16 @@ function getBrowserLocalStorage(): Storage | null {
 	}
 }
 
+const MODAL_SELECTOR =
+	'[role="dialog"]:not([hidden]), [role="alertdialog"]:not([hidden])';
+
+function hasVisibleModalInDom(): boolean {
+	return (
+		typeof document !== "undefined" &&
+		document.querySelector(MODAL_SELECTOR) !== null
+	);
+}
+
 /** Provides editable shortcut bindings, restoring browser preferences on mount and retaining in-memory changes if storage fails. */
 export const ShortcutPreferencesProvider: ParentComponent = (props) => {
 	const [bindings, setBindings] = createSignal<ShortcutBindings>(
@@ -115,9 +126,11 @@ export const ShortcutPreferencesProvider: ParentComponent = (props) => {
 	);
 	const [recordingShortcutId, setRecordingShortcutId] =
 		createSignal<ShortcutId | null>(null);
-	const [isSuspended, setSuspended] = createSignal(false);
+	const [manualSuspended, setManualSuspended] = createSignal(false);
+	const [modalSuspended, setModalSuspended] = createSignal(false);
 	let storage: Storage | null = null;
 	let platform: ShortcutPlatform = "linux";
+	let modalObserver: MutationObserver | undefined;
 
 	const persist = (nextBindings: ShortcutBindings): void => {
 		if (storage === null) {
@@ -189,11 +202,29 @@ export const ShortcutPreferencesProvider: ParentComponent = (props) => {
 		recordingShortcutId,
 		isRecording: () => recordingShortcutId() !== null,
 		setRecordingShortcutId,
-		isSuspended,
-		setSuspended,
+		isSuspended: () => manualSuspended() || modalSuspended(),
+		setSuspended: setManualSuspended,
 	};
 
+	onCleanup(() => {
+		modalObserver?.disconnect();
+	});
+
 	onMount(() => {
+		const syncModalSuspended = () => {
+			setModalSuspended(hasVisibleModalInDom());
+		};
+		syncModalSuspended();
+		if (typeof MutationObserver !== "undefined" && document.body) {
+			modalObserver = new MutationObserver(syncModalSuspended);
+			modalObserver.observe(document.body, {
+				attributes: true,
+				attributeFilter: ["role", "hidden", "aria-hidden"],
+				childList: true,
+				subtree: true,
+			});
+		}
+
 		platform = detectPlatform();
 		storage = getBrowserLocalStorage();
 		if (storage === null) {

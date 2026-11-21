@@ -9,6 +9,7 @@ import { getShortcutDefinition, type ShortcutId } from "./definitions";
 import { useShortcutPreferences } from "./preferences-provider";
 
 export interface AppShortcutOptions {
+	readonly allowWhenSuspended?: boolean;
 	readonly conflictBehavior?: ConflictBehavior;
 	readonly enabled?: boolean;
 	readonly eventType?: "keydown" | "keyup";
@@ -45,7 +46,8 @@ export function createAppShortcut(
 					resolvedOptions.enabled !== false &&
 					binding !== null &&
 					!preferences.isRecording() &&
-					!preferences.isSuspended(),
+					(!preferences.isSuspended() ||
+						resolvedOptions.allowWhenSuspended === true),
 				preventDefault: resolvedOptions.preventDefault ?? true,
 				stopPropagation: resolvedOptions.stopPropagation ?? true,
 				requireReset: resolvedOptions.requireReset ?? true,

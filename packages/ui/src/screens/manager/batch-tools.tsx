@@ -105,7 +105,7 @@ export function BatchToolPanel(props: {
 						<Label>{t("batchTools.existingResults")}</Label>
 						<Checkbox
 							checked={props.manager.forceRetag()}
-							class="flex min-h-9 items-center gap-2"
+							class="flex min-h-11 items-center gap-2 sm:min-h-9"
 							onChange={props.manager.setForceRetag}
 						>
 							<CheckboxControl />

@@ -4,7 +4,7 @@ import {
 	MediaMetadataSection,
 	MediaTagBadge,
 } from "./media-detail-metadata";
-import { t } from "@solid-imager/i18n";
+import { getLocale, t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
 import type {
@@ -65,6 +65,7 @@ export type MediaSidebarProps = {
 	isProjectsLoading?: boolean;
 	isAllIpsLoading?: boolean;
 	isAllCharactersLoading?: boolean;
+	onSearchTag?: (tagName: string) => void;
 	onUpdate?: () => void;
 	onPositiveTagsUpdate: (
 		tags: Pick<UpdatePositiveMediaTags, "entries" | "expected">,
@@ -143,6 +144,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<h2 class="font-semibold text-sm">{t("labels.description")}</h2>
 					<Show when={!isEditingDescription()}>
 						<Button
+							class="min-h-11 lg:min-h-8"
 							size="sm"
 							variant="outline"
 							onClick={() => setIsEditingDescription(true)}
@@ -183,7 +185,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						</TextField>
 						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
 							<Button
-								class="w-full lg:w-auto"
+								class="min-h-11 w-full lg:min-h-8 lg:w-auto"
 								onClick={() => {
 									void handleSaveDescription();
 								}}
@@ -192,7 +194,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								{t("actions.save")}
 							</Button>
 							<Button
-								class="w-full lg:w-auto"
+								class="min-h-11 w-full lg:min-h-8 lg:w-auto"
 								onClick={handleCancelEdit}
 								size="sm"
 								variant="outline"
@@ -345,10 +347,15 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									"border-input":
 										tag.source === "AI" || tag.source === "comfyui_workflow",
 									"bg-info": tag.source === "AI",
-									"dark:bg-info/20": tag.source === "AI",
+									"text-info-foreground": tag.source === "AI",
 									"bg-accent": tag.source === "comfyui_workflow",
 									"text-primary": tag.source === "comfyui_workflow",
 								}}
+								onSearch={
+									props.onSearchTag
+										? () => props.onSearchTag?.(tag.name)
+										: undefined
+								}
 								title={t("mediaSidebar.sourceValue", {
 									value0: String(tag.source),
 								})}
@@ -370,6 +377,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						<For each={negativeTags()}>
 							{(tag) => (
 								<MediaTagBadge
+									onSearch={
+										props.onSearchTag
+											? () => props.onSearchTag?.(tag.name)
+											: undefined
+									}
 									title={t("mediaSidebar.sourceValue", {
 										value0: String(tag.source),
 									})}
@@ -393,10 +405,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			>
 				<div class="space-y-2">
 					<Collapsible.Root>
-						<Collapsible.Trigger class="flex w-full items-center justify-between font-semibold text-sm">
+						<Collapsible.Trigger class="flex min-h-11 w-full items-center justify-between font-semibold text-sm lg:min-h-9">
 							{t("mediaSidebar.generationInfo")}
 							<ChevronDown
-								class="data-[expanded]:rotate-180 transition-transform"
+								class="motion-safe:transition-transform data-[expanded]:rotate-180"
 								size={14}
 							/>
 						</Collapsible.Trigger>
@@ -454,16 +466,27 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			<MediaFileInformation
 				title={t("mediaSidebar.fileInformation")}
 				rows={[
-					["Original date", new Date(props.media.createdAt).toLocaleString()],
-					["Registered", new Date(props.media.indexedAt).toLocaleString()],
-					["Resolution", `${props.media.width} × ${props.media.height}`],
 					[
-						"File Size",
-						props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A",
+						t("mediaSidebar.originalDate"),
+						new Date(props.media.createdAt).toLocaleString(getLocale()),
 					],
 					[
-						"Path",
-						<span class="break-all text-xs">{props.media.filePath}</span>,
+						t("mediaSidebar.registered"),
+						new Date(props.media.indexedAt).toLocaleString(getLocale()),
+					],
+					[
+						t("collectionInspector.resolution"),
+						props.media.width && props.media.height
+							? `${props.media.width} × ${props.media.height}`
+							: "—",
+					],
+					[
+						t("sortOptions.fileSize"),
+						props.media.fileSize ? formatBytes(props.media.fileSize) : "—",
+					],
+					[
+						t("proSearchBuilder.filePath"),
+						<span class="wrap-anywhere text-xs">{props.media.filePath}</span>,
 					],
 				]}
 			/>

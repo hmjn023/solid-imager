@@ -112,20 +112,25 @@ export function MediaTagBadge(
 		variant: props.variant,
 		classList: { ...props.classList, "cursor-help": !!props.wikiLookup },
 	});
+	const searchLabel = () =>
+		props.searchLabel ??
+		t("mediaSidebar.searchTagValue", { value0: props.name });
 	const contents = () => (
 		<>
 			<Show when={props.onSearch} fallback={props.name}>
 				<Button
+					aria-label={searchLabel()}
 					type="button"
 					variant="link"
-					class="h-auto min-w-0 whitespace-normal break-all p-0 text-left text-inherit font-semibold text-xs"
-					title={props.searchLabel}
+					class="h-auto min-w-0 whitespace-normal wrap-anywhere p-0 text-left font-semibold text-inherit text-xs focus-visible:ring-2 focus-visible:ring-ring"
+					title={searchLabel()}
 					onClick={() => props.onSearch?.()}
 				>
 					{props.name}
 				</Button>
 			</Show>
 			<ClipboardCopy
+				compact
 				class="ml-1.5 shrink-0 p-0.5"
 				iconSize={12}
 				text={props.name}

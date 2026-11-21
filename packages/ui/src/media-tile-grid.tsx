@@ -319,8 +319,17 @@ export function MediaTileGrid<T extends { id: string | number }>(
 
 	const resolveScrollElement = () => {
 		if (props.scrollMode !== "element") return null;
-		const element = mediaGridRef?.closest("[data-media-scroll]");
-		return element instanceof HTMLElement ? element : null;
+		let candidate = mediaGridRef?.closest("[data-media-scroll]") ?? null;
+		let fallback: HTMLElement | null = null;
+		while (candidate instanceof HTMLElement) {
+			if (!fallback) fallback = candidate;
+			if (/(auto|scroll|overlay)/.test(getComputedStyle(candidate).overflowY)) {
+				return candidate;
+			}
+			candidate =
+				candidate.parentElement?.closest("[data-media-scroll]") ?? null;
+		}
+		return fallback;
 	};
 
 	const updateMediaGridMetrics = () => {
@@ -355,6 +364,7 @@ export function MediaTileGrid<T extends { id: string | number }>(
 
 		const handleResize = () => {
 			setWindowWidth(window.innerWidth);
+			scheduleMediaGridMetrics();
 		};
 		window.addEventListener("resize", handleResize);
 
@@ -426,9 +436,13 @@ export function MediaTileGrid<T extends { id: string | number }>(
 			const last = visibleRows().at(-1);
 			if (last && last.index >= rows - LOAD_MORE_ROWS_AHEAD) onNearEnd();
 		};
+		const frameId = requestAnimationFrame(handleScroll);
 		const target = props.scrollMode === "element" ? scrollElement() : window;
 		target?.addEventListener("scroll", handleScroll, { passive: true });
-		onCleanup(() => target?.removeEventListener("scroll", handleScroll));
+		onCleanup(() => {
+			cancelAnimationFrame(frameId);
+			target?.removeEventListener("scroll", handleScroll);
+		});
 	});
 
 	const tileElement = (id: T["id"]) =>

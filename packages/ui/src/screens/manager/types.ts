@@ -1,4 +1,5 @@
 import { t } from "@solid-imager/i18n";
+import type { DuplicateGroup } from "@solid-imager/core/media";
 import type { ManagerEntityType } from "../../hooks/use-manager-page";
 
 export type ManagerCategoryValue =
@@ -16,6 +17,14 @@ export type ManagerCategory = {
 };
 
 export type ManagerTransferFormat = "ndjson" | "tar";
+
+export type DuplicateToolActions = {
+	thumbnailUrl: (
+		item: DuplicateGroup["media"][number],
+	) => string | Promise<string>;
+	releaseThumbnailUrl?: (url: string) => void;
+	openMedia?: (mediaSourceId: string, mediaId: string) => void;
+};
 
 export type ManagerTransferActions = {
 	exportSource: (input: {

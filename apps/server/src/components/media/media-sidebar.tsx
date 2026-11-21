@@ -1,5 +1,7 @@
 import type { MediaDetails } from "@solid-imager/core/media";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
+import { activateTagSearch } from "@solid-imager/ui/search/state";
+import { useRouter } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
 import {
 	addCharacterToMedia,
@@ -28,10 +30,13 @@ import {
 export type MediaSidebarProps = {
 	media: MediaDetails;
 	isUpdating?: Accessor<boolean>;
+	onSearchTag?: (tagName: string) => void;
 	onUpdate?: () => void;
 };
 
 export function MediaSidebar(props: MediaSidebarProps) {
+	const router = useRouter();
+
 	return (
 		<MediaSidebarContent
 			activityApi={orpc.media}
@@ -48,6 +53,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			createProject={createProject}
 			isUpdating={props.isUpdating}
 			media={props.media}
+			onSearchTag={
+				props.onSearchTag ??
+				((tagName) => {
+					activateTagSearch(tagName);
+					void router.navigate({ to: "/search" });
+				})
+			}
 			onUpdate={props.onUpdate}
 			projectsForMediaQueryOptions={projectsForMediaQueryOptions}
 			removeCharacterFromMedia={removeCharacterFromMedia}

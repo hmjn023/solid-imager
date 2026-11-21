@@ -6,6 +6,7 @@ import {
 	createSignal,
 	createUniqueId,
 	For,
+	on,
 	Show,
 	untrack,
 } from "solid-js";
@@ -210,20 +211,26 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	const [activeAction, setActiveAction] = createSignal<
 		"import" | "delete" | null
 	>(null);
+	const [openGeneration, setOpenGeneration] = createSignal<number>();
+	let openCount = 0;
 
 	const [pendingJobs, { refetch: refetchJobs }] = createResource(
-		() => props.isOpen || undefined,
+		openGeneration,
 		props.listPending,
 	);
-	const [sources] = createResource(props.listSources);
+	const [sources] = createResource(openGeneration, props.listSources);
 
-	createEffect(() => {
-		if (props.isOpen) {
-			setIsDirty(false);
-			setIsDiscardDialogOpen(false);
-			void refetchJobs();
-		}
-	});
+	createEffect(
+		on(
+			() => props.isOpen,
+			(isOpen) => {
+				if (!isOpen) return;
+				setIsDirty(false);
+				setIsDiscardDialogOpen(false);
+				setOpenGeneration(++openCount);
+			},
+		),
+	);
 
 	createEffect(() => {
 		const jobs = pendingJobs();
@@ -342,6 +349,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			await refetchJobs();
 			setSelectedJobIds(createEmptySelection());
 			setIsDirty(false);
+			setIsDeleteDialogOpen(false);
 			toast.success(t("importReviewModal.requestsDeleted"));
 		} catch (error) {
 			toast.error(
@@ -351,7 +359,6 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			);
 		} finally {
 			setActiveAction(null);
-			setIsDeleteDialogOpen(false);
 		}
 	};
 
@@ -365,7 +372,10 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 				}}
 				open={props.isOpen}
 			>
-				<DialogContent class="workspace-theme flex max-h-dialog-fit max-w-5xl flex-col gap-0 overflow-hidden p-0 [&>button]:top-2 [&>button]:right-2 [&>button]:z-20 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center">
+				<DialogContent
+					class="workspace-theme flex max-h-dialog-fit max-w-5xl flex-col gap-0 overflow-hidden p-0 [&>button]:top-2 [&>button]:right-2 [&>button]:z-20 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center"
+					closeDisabled={activeAction() !== null}
+				>
 					<DialogHeader class="border-b px-5 py-4 pr-14 text-left">
 						<DialogTitle>{t("navigation.importInbox")}</DialogTitle>
 						<DialogDescription>
@@ -584,7 +594,11 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 				</AlertDialogContent>
 			</AlertDialog>
 			<AlertDialog
-				onOpenChange={setIsDeleteDialogOpen}
+				onOpenChange={(open) => {
+					if (!open && activeAction() !== "delete") {
+						setIsDeleteDialogOpen(false);
+					}
+				}}
 				open={isDeleteDialogOpen()}
 			>
 				<AlertDialogContent>
@@ -599,11 +613,16 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+						<AlertDialogCancel disabled={activeAction() === "delete"}>
+							{t("actions.cancel")}
+						</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							disabled={activeAction() === "delete"}
-							onClick={() => void confirmDelete()}
+							onClick={(event) => {
+								event.preventDefault();
+								void confirmDelete();
+							}}
 						>
 							{activeAction() === "delete"
 								? t("status.deleting")

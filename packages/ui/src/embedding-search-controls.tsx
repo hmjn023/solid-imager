@@ -24,6 +24,7 @@ export function EmbeddingSearchControls(props: {
 	setState: SetStoreFunction<SearchState>;
 	onSearch: () => void;
 	id: string;
+	registerCommitDraft?: (commit: () => boolean) => void;
 }) {
 	const [draft, setDraft] = createSignal(props.state.semanticQuery);
 	const [textSearchOpen, setTextSearchOpen] = createSignal(
@@ -33,6 +34,19 @@ export function EmbeddingSearchControls(props: {
 		const query = props.state.semanticQuery;
 		setDraft(query);
 		if (query.trim()) setTextSearchOpen(true);
+	});
+	props.registerCommitDraft?.(() => {
+		if (!textSearchOpen()) return false;
+		const query = draft().trim();
+		if (!query || query === props.state.semanticQuery) return false;
+		props.setState({
+			semanticQuery: query,
+			similarityAnchorMediaId: null,
+			similarityModel: "embeddinggemma2",
+			offset: 0,
+			scrollY: 0,
+		});
+		return true;
 	});
 
 	return (

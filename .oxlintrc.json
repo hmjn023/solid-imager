@@ -143,6 +143,7 @@
 			],
 			"rules": { "jsx-a11y/no-noninteractive-element-interactions": "off" }
 		},
+		// Shared components and settings layout accept caller-provided classes that cannot be checked statically.
 		{
 			"files": [
 				"packages/ui/src/async-state.tsx",
@@ -151,6 +152,7 @@
 				"packages/ui/src/media-card-item.tsx",
 				"packages/ui/src/command.tsx",
 				"packages/ui/src/screens/jobs-screen.tsx",
+				"packages/ui/src/screens/config-state-screen.tsx",
 				"apps/tauri/src/components/media/thumbnail-image.tsx",
 				"apps/server/src/components/media/thumbnail-image.tsx",
 				"apps/server/src/components/media/preset-manager.tsx"
@@ -201,6 +203,7 @@
 				"apps/server/src/components/pages/manager-page.tsx",
 				"apps/server/src/routes/statistics.tsx",
 				"apps/server/src/components/media/media-actions.tsx",
+				"apps/server/src/components/media/media-sidebar.tsx",
 				"apps/server/src/router.tsx",
 				"apps/server/src/routes/__root.tsx",
 				"apps/server/src/routes/docs/swagger/index.tsx",

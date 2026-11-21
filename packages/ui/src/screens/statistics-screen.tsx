@@ -11,6 +11,7 @@ import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Button } from "../button";
 import { Card } from "../card";
 import { saveMediaContext } from "../media-context";
+import { CardGridSkeleton, LoadingRegion, Skeleton } from "../skeleton";
 import { ToggleGroup, ToggleGroupItem } from "../toggle-group";
 import { ManagementHeader } from "../workspace/management-layout";
 
@@ -167,6 +168,7 @@ export function StatisticsScreen(props: {
 											</span>
 										</Show>
 										<Button
+											class="min-h-11 sm:min-h-9"
 											variant="outline"
 											onClick={() => props.change({ period: period() })}
 										>
@@ -225,6 +227,7 @@ export function StatisticsScreen(props: {
 										<Show when={page() > 0 || data().hasMore}>
 											<div class="mt-2 flex gap-2">
 												<Button
+													class="min-h-11 sm:min-h-9"
 													variant="outline"
 													disabled={!page()}
 													onClick={() =>
@@ -237,6 +240,7 @@ export function StatisticsScreen(props: {
 													{t("actions.previous")}
 												</Button>
 												<Button
+													class="min-h-11 sm:min-h-9"
 													variant="outline"
 													disabled={!data().hasMore}
 													onClick={() =>
@@ -265,7 +269,19 @@ export function StatisticsScreen(props: {
 						/>
 					</Match>
 					<Match when={query.isPending}>
-						<output>{t("statisticsScreen.loadingStatistics")}</output>
+						<LoadingRegion
+							class="space-y-4"
+							label={t("statisticsScreen.loadingStatistics")}
+						>
+							<div class="grid items-stretch gap-4 @3xl:grid-cols-3">
+								<Skeleton class="h-72 w-full @3xl:col-span-2" />
+								<Skeleton class="h-72 w-full" />
+							</div>
+							<CardGridSkeleton
+								class="md:grid-cols-2 lg:grid-cols-2"
+								count={2}
+							/>
+						</LoadingRegion>
 					</Match>
 				</Switch>
 			</div>

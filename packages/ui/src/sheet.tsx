@@ -50,7 +50,7 @@ const SheetOverlay = <T extends ValidComponent = "div">(
 	return (
 		<SheetPrimitive.Overlay
 			class={cn(
-				"data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed inset-0 z-50 bg-background/80 data-[closed]:animate-out data-[expanded]:animate-in",
+				"fixed inset-0 z-50 bg-background/80 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0",
 				local.class,
 			)}
 			{...others}
@@ -59,16 +59,16 @@ const SheetOverlay = <T extends ValidComponent = "div">(
 };
 
 const sheetVariants = cva(
-	"fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[closed]:animate-out data-[expanded]:animate-in data-[closed]:duration-300 data-[expanded]:duration-500 motion-reduce:animate-none",
+	"fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:duration-300 motion-safe:data-[expanded]:duration-500",
 	{
 		variants: {
 			position: {
-				top: "data-[closed]:slide-out-to-top data-[expanded]:slide-in-from-top inset-x-0 top-0 border-b",
+				top: "inset-x-0 top-0 rounded-b-lg border-b motion-safe:data-[closed]:slide-out-to-top motion-safe:data-[expanded]:slide-in-from-top",
 				bottom:
-					"data-[closed]:slide-out-to-bottom data-[expanded]:slide-in-from-bottom inset-x-0 bottom-0 border-t",
-				left: "data-[closed]:slide-out-to-left data-[expanded]:slide-in-from-left inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm",
+					"inset-x-0 bottom-0 rounded-t-lg border-t motion-safe:data-[closed]:slide-out-to-bottom motion-safe:data-[expanded]:slide-in-from-bottom",
+				left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm motion-safe:data-[closed]:slide-out-to-left motion-safe:data-[expanded]:slide-in-from-left",
 				right:
-					"data-[closed]:slide-out-to-right data-[expanded]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
+					"inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm motion-safe:data-[closed]:slide-out-to-right motion-safe:data-[expanded]:slide-in-from-right",
 			},
 		},
 		defaultVariants: {
@@ -106,7 +106,7 @@ const SheetContent = <T extends ValidComponent = "div">(
 				{local.children}
 				<SheetPrimitive.CloseButton
 					aria-label={t("actions.close")}
-					class="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
+					class="absolute top-2.5 right-2.5 z-20 grid size-11 place-items-center rounded-sm text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:text-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none sm:size-8"
 				>
 					<svg
 						aria-hidden="true"
@@ -134,7 +134,7 @@ const SheetHeader: Component<ComponentProps<"div">> = (props) => {
 	return (
 		<div
 			class={cn(
-				"flex flex-col space-y-2 text-center sm:text-left",
+				"flex flex-col space-y-2 pr-12 text-center sm:text-left",
 				local.class,
 			)}
 			{...others}

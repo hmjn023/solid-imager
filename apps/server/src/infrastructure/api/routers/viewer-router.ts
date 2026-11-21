@@ -86,10 +86,8 @@ export const viewerRouter = os.router({
 	setPixivBookmark: os.setPixivBookmark.handler(({ input, context }) =>
 		readViewer(() => {
 			const account = bookmarkAccount(context);
-			return account.service.setBookmark(
-				account.userId,
-				input,
-				account.getWriteToken,
+			return account.service.setBookmark(account.userId, input, () =>
+				account.getWriteToken(),
 			);
 		}),
 	),

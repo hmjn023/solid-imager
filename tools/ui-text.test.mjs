@@ -32,6 +32,10 @@ const valid = [
 	'const data = new FormData(); data.append("file", file);',
 	'const params = new URLSearchParams(); params.append("sort", "desc");',
 	'button.insertAdjacentText("beforeend", t("actions.save"));',
+	'<ManagementHeader eyebrow={t("managementLayout.workspace")} />;',
+	'<MediaFileInformation rows={[[t("mediaSidebar.originalDate"), value], ["—", value]]} />;',
+	'setNotice(t("pixivAccount.thePixivConnectionExpired"));',
+	'toast.success(t("media.saved"), { description: t("media.details") });',
 ].map((code) => ({ filename, code }));
 const invalid = [
 	'button.append("Save");',
@@ -77,6 +81,10 @@ const invalid = [
 	'function statusLabel(status) { return { pending: "Waiting" }[status]; }',
 	'requireField("name", "Name is required");',
 	'const schema = z.string().min(1, "Name is required");',
+	'<ManagementHeader eyebrow="Settings" />;',
+	'<MediaFileInformation rows={[["Original date", value]]} />;',
+	'setNotice("Session expired");',
+	'toast.success(t("media.saved"), { description: "Saved locally" });',
 ].map((code) => ({
 	filename,
 	code,

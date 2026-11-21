@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import { getSearchExecutionKind } from "./search-execution";
-import { Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Label } from "./label";
@@ -30,6 +30,27 @@ type SortControlsProps = {
 };
 
 export function SortControls(props: SortControlsProps) {
+	const [topKDraft, setTopKDraft] = createSignal(
+		props.similarityTopK !== undefined ? String(props.similarityTopK) : "",
+	);
+	let topKTimer: ReturnType<typeof setTimeout> | undefined;
+	createEffect(() => {
+		if (props.similarityTopK !== undefined) {
+			setTopKDraft(String(props.similarityTopK));
+		}
+	});
+	onCleanup(() => {
+		if (topKTimer) clearTimeout(topKTimer);
+	});
+	const commitTopK = (raw: string) => {
+		const value = Number(raw);
+		if (Number.isSafeInteger(value) && value >= 1) {
+			props.onSimilarityTopKChange?.(value);
+			return true;
+		}
+		return false;
+	};
+
 	return (
 		<div class={props.className}>
 			<div class="space-y-2">
@@ -57,7 +78,10 @@ export function SortControls(props: SortControlsProps) {
 						placeholder={t("sortControls.field")}
 						value={props.sortBy}
 					>
-						<SelectTrigger class="min-w-0 flex-1 gap-2 whitespace-nowrap text-left">
+						<SelectTrigger
+							aria-label={t("sortControls.field")}
+							class="min-w-0 flex-1 gap-2 whitespace-nowrap text-left"
+						>
 							<SelectValue<string>>
 								{(state) =>
 									getSortLabel(
@@ -86,7 +110,10 @@ export function SortControls(props: SortControlsProps) {
 						placeholder={t("sortControls.order")}
 						value={props.sortOrder}
 					>
-						<SelectTrigger class="w-20 shrink-0 gap-2 whitespace-nowrap text-left">
+						<SelectTrigger
+							aria-label={t("sortControls.order")}
+							class="w-auto min-w-28 shrink-0 gap-2 whitespace-nowrap text-left"
+						>
 							<SelectValue<string>>
 								{(state) =>
 									state.selectedOption() === "asc"
@@ -136,20 +163,44 @@ export function SortControls(props: SortControlsProps) {
 					<div class="flex items-center gap-2">
 						<Input
 							aria-describedby={`${props.similarityLimitId ?? "similarity-limit"}-help`}
-							class="min-h-9"
+							class="min-h-11 sm:min-h-9"
 							id={props.similarityLimitId ?? "similarity-limit"}
 							inputmode="numeric"
 							min={1}
 							name={props.similarityLimitId ?? "similarity-limit"}
+							onBlur={() => {
+								if (topKTimer) {
+									clearTimeout(topKTimer);
+									topKTimer = undefined;
+								}
+								if (
+									!commitTopK(topKDraft()) &&
+									props.similarityTopK !== undefined
+								) {
+									setTopKDraft(String(props.similarityTopK));
+								}
+							}}
 							onInput={(event) => {
-								const value = Number(event.currentTarget.value);
-								if (Number.isSafeInteger(value) && value >= 1) {
-									props.onSimilarityTopKChange?.(value);
+								const raw = event.currentTarget.value;
+								setTopKDraft(raw);
+								if (topKTimer) clearTimeout(topKTimer);
+								topKTimer = setTimeout(() => {
+									topKTimer = undefined;
+									commitTopK(raw);
+								}, 300);
+							}}
+							onKeyDown={(event) => {
+								if (event.key === "Enter") {
+									if (topKTimer) {
+										clearTimeout(topKTimer);
+										topKTimer = undefined;
+									}
+									commitTopK(event.currentTarget.value);
 								}
 							}}
 							step={1}
 							type="number"
-							value={props.similarityTopK}
+							value={topKDraft()}
 						/>
 						<span class="text-muted-foreground text-xs">
 							{t("charts.items")}

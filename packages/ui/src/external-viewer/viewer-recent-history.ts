@@ -75,7 +75,7 @@ export function createViewerRecentHistory<Entry>(
 
 	return {
 		entries,
-		record(input: Entry) {
+		record: (input: Entry) => {
 			const parsed = schema.safeParse(input);
 			if (!parsed.success) return;
 			const entry = parsed.data;

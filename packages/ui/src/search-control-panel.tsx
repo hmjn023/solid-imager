@@ -58,6 +58,7 @@ export type SearchControlPanelProps = {
 	showSortControls?: boolean;
 	class?: string;
 	usePopover?: boolean;
+	registerSemanticCommit?: (commit: () => boolean) => void;
 };
 
 export function SearchControlPanel(props: SearchControlPanelProps) {
@@ -132,9 +133,25 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 							"searchControlPanel.ordinarySearchConditionsAreSavedSimilarityAndTextSearches",
 						)}
 					</p>
-					<Button size="sm" variant="outline" onClick={clearSimilarityAnchor}>
+					<Button
+						class="min-h-11 sm:min-h-9"
+						size="sm"
+						variant="outline"
+						onClick={clearSimilarityAnchor}
+					>
 						{t("searchControlPanel.returnToOrdinarySearch")}
 					</Button>
+				</div>
+			</Show>
+
+			<Show when={isOrdinarySearch()}>
+				<div class="mt-4">
+					<PresetManager
+						class="w-full flex-col items-stretch"
+						presetClient={props.presetClient}
+						setState={props.setState}
+						state={props.state}
+					/>
 				</div>
 			</Show>
 
@@ -162,12 +179,6 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 
 			<Show when={currentState().mode === "pro" && isOrdinarySearch()}>
 				<div class="mt-4 space-y-4">
-					<PresetManager
-						class="w-full flex-col items-stretch"
-						presetClient={props.presetClient}
-						setState={props.setState}
-						state={props.state}
-					/>
 					<ProSearchDialog
 						authors={props.filterData.authors}
 						characters={props.filterData.characters}
@@ -224,6 +235,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					setState={updateState}
 					onSearch={props.onSearch}
 					id={props.setState ? "mobile-embedding-search" : "embedding-search"}
+					registerCommitDraft={props.registerSemanticCommit}
 				/>
 				<Show when={props.showSortControls !== false}>
 					<SortControls

@@ -65,7 +65,7 @@ function MediaDetailRoute() {
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
 	const sourceName = () =>
 		mediaSources.data?.find((source) => source.id === mediaSourceId())?.name ??
-		"Media source";
+		t("mediaDetail.defaultSourceName");
 	const routeKey = () => `${mediaSourceId()}:${mediaId()}`;
 
 	return (

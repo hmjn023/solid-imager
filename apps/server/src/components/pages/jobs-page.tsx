@@ -132,7 +132,7 @@ export function JobsPage() {
 						document.body.appendChild(anchor);
 						anchor.click();
 						anchor.remove();
-						setTimeout(() => URL.revokeObjectURL(url), 0);
+						setTimeout(() => URL.revokeObjectURL(url), 1000);
 						toast.success(
 							t("manager.downloadedValue", {
 								value0: String(artifact.fileName),

@@ -147,13 +147,13 @@ export function ImportTrend(props: {
 					value={props.cumulative ? "cumulative" : "count"}
 				>
 					<ToggleGroupItem
-						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
+						class="h-11 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
 						value="count"
 					>
 						{t("charts.count")}
 					</ToggleGroupItem>
 					<ToggleGroupItem
-						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
+						class="h-11 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
 						value="cumulative"
 					>
 						{t("charts.cumulative")}
@@ -208,7 +208,7 @@ export function ImportTrend(props: {
 			<Collapsible class="mt-auto border-t border-border pt-3 text-xs">
 				<CollapsibleTrigger
 					as="button"
-					class="w-fit cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="min-h-11 w-fit cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
 					type="button"
 				>
 					{t("charts.viewCountsAsAList")}
@@ -222,7 +222,7 @@ export function ImportTrend(props: {
 							{(item) => (
 								<li>
 									<Toggle
-										class="w-full justify-between gap-1 px-2 text-xs tabular-nums hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent"
+										class="min-h-11 w-full justify-between gap-1 px-2 text-xs tabular-nums hover:bg-muted hover:text-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent sm:min-h-9"
 										onChange={() => props.select(item.bucket)}
 										pressed={props.selected === item.bucket}
 									>
@@ -388,7 +388,7 @@ export function Ranking(props: {
 					{(item, index) => (
 						<li>
 							<Toggle
-								class="h-auto min-h-11 w-full items-start justify-start gap-3 px-2 py-2 text-left hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent [&_svg]:h-1.5 [&_svg]:w-full"
+								class="h-auto min-h-11 w-full items-start justify-start gap-3 px-2 py-2 text-left hover:bg-muted hover:text-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent [&_svg]:h-1.5 [&_svg]:w-full"
 								onChange={() => props.select(item.id)}
 								pressed={props.selected === item.id}
 							>

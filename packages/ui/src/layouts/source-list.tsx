@@ -14,6 +14,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "../dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../tooltip";
 import {
 	ChevronDown,
 	Database,
@@ -72,7 +73,7 @@ function SourceActions(props: {
 				aria-label={t("sourceList.actionsForValue", {
 					value0: String(props.sourceName),
 				})}
-				class="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-ring md:size-7"
+				class="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring md:size-7"
 			>
 				<Ellipsis aria-hidden="true" size={14} />
 			</DropdownMenuTrigger>
@@ -108,34 +109,47 @@ export function SourceList(props: SourceListProps) {
 	};
 
 	return (
-		<CollapsibleRoot.Root
-			class="mt-1 min-h-0"
-			onOpenChange={setSourcesOpen}
-			open={sourcesOpen()}
+		<Show
+			fallback={
+				<Tooltip placement="right">
+					<TooltipTrigger
+						aria-label={t("sourceList.sources")}
+						class="mt-1 flex h-11 w-full items-center justify-center rounded-md px-0 text-muted-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-10"
+						onClick={() => {
+							setSourcesOpen(true);
+							props.onExpandSidebar?.();
+						}}
+						type="button"
+					>
+						<Database aria-hidden="true" class="shrink-0" size={18} />
+					</TooltipTrigger>
+					<TooltipContent>{t("sourceList.sources")}</TooltipContent>
+				</Tooltip>
+			}
+			when={props.expanded}
 		>
-			<CollapsibleTrigger
-				aria-label={t("sourceList.sources")}
-				class="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left font-medium text-sm text-muted-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-10"
-				onClick={() => {
-					if (!props.expanded) props.onExpandSidebar?.();
-				}}
+			<CollapsibleRoot.Root
+				class="mt-1 min-h-0"
+				onOpenChange={setSourcesOpen}
+				open={sourcesOpen()}
 			>
-				<Database aria-hidden="true" class="shrink-0" size={18} />
-				<Show when={props.expanded}>
+				<CollapsibleTrigger
+					aria-label={t("sourceList.sources")}
+					class="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left font-medium text-muted-foreground text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-10"
+				>
+					<Database aria-hidden="true" class="shrink-0" size={18} />
 					<span class="min-w-0 flex-1 truncate">{t("sourceList.sources")}</span>
 					<ChevronDown
 						aria-hidden="true"
 						class={`shrink-0 transition-transform motion-reduce:transition-none ${sourcesOpen() ? "rotate-180" : ""}`}
 						size={14}
 					/>
-				</Show>
-			</CollapsibleTrigger>
-			<Show when={props.expanded}>
+				</CollapsibleTrigger>
 				<CollapsibleContent>
 					<div class="ml-4 max-h-menu-source overflow-y-auto overscroll-contain border-border border-l py-1 pl-2 scrollbar-stable">
 						<Show
 							fallback={
-								<p class="px-2 py-3 text-xs text-muted-foreground">
+								<p class="px-2 py-3 text-muted-foreground text-xs">
 									{t("sourceList.noSourcesYet")}
 								</p>
 							}
@@ -159,7 +173,7 @@ export function SourceList(props: SourceListProps) {
 											params={{ mediaSourceId: source.id ?? "" }}
 											to="/sources/$mediaSourceId"
 										>
-											<span class="block truncate font-medium text-xs text-foreground">
+											<span class="block truncate font-medium text-foreground text-xs">
 												{source.name}
 											</span>
 											<span class="mt-0.5 block text-label-xs text-muted-foreground">
@@ -199,7 +213,7 @@ export function SourceList(props: SourceListProps) {
 						{t("actions.addSource")}
 					</Button>
 				</CollapsibleContent>
-			</Show>
-		</CollapsibleRoot.Root>
+			</CollapsibleRoot.Root>
+		</Show>
 	);
 }

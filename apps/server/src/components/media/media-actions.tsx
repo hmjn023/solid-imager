@@ -72,7 +72,6 @@ export function MediaActions(props: MediaActionsProps) {
 					mediaId={props.media.id}
 					mediaSourceId={props.media.mediaSourceId}
 					onClose={modalProps.onClose}
-					onSuccess={props.onUpdate}
 				/>
 			)}
 			startCcipExtraction={(force) =>

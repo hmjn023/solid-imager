@@ -60,6 +60,7 @@ type ManagementHeaderProps = {
 	description: string;
 	eyebrow?: string;
 	title: string;
+	titleId?: string;
 };
 
 export function ManagementHeader(props: ManagementHeaderProps) {
@@ -70,7 +71,10 @@ export function ManagementHeader(props: ManagementHeaderProps) {
 					<p class="font-medium text-xs text-primary">
 						{props.eyebrow ?? t("managementLayout.workspace")}
 					</p>
-					<h1 class="mt-0.5 font-semibold text-xl text-foreground">
+					<h1
+						class="mt-0.5 font-semibold text-xl text-foreground"
+						id={props.titleId}
+					>
 						{props.title}
 					</h1>
 					<p class="mt-0.5 text-xs text-muted-foreground">
@@ -86,7 +90,7 @@ export function ManagementHeader(props: ManagementHeaderProps) {
 }
 
 export const CATEGORY_TABS_CLASS =
-	"min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start";
+	"min-h-11 shrink-0 gap-2.5 whitespace-nowrap rounded-md px-2.5 text-muted-foreground shadow-none hover:bg-muted data-[selected]:bg-accent data-[selected]:text-primary data-[selected]:hover:bg-accent lg:min-h-10 lg:w-full lg:justify-start lg:whitespace-normal";
 
 export function CompactCategorySelect<
 	Category extends { label: string; value: string },

@@ -51,11 +51,15 @@ export function createCollectionInspector(options: {
 		setIsOpen(true);
 	};
 	const previewSelection = createMemo(() =>
-		canPreview() ? selectMedia : undefined,
+		canPreview() && isOpen() ? selectMedia : undefined,
 	);
 
 	return {
 		isVisible,
+		canToggle: canPreview,
+		isOpen,
+		open: () => setIsOpen(true),
+		toggle: () => setIsOpen((open) => !open),
 		previewId: () => (isVisible() ? previewId() : null),
 		media: () => options.media().find((item) => item.id === previewId()),
 		previewSelection,
@@ -103,16 +107,16 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 	return (
 		<aside
 			aria-label={t("labels.selectedMedia")}
-			class="sticky top-0 flex max-h-dialog-screen-compact min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border bg-card"
+			class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border bg-card"
 		>
-			<header class="z-10 flex h-12 shrink-0 items-center border-border border-b bg-card/95 px-4 backdrop-blur-sm">
+			<header class="z-10 flex h-12 shrink-0 items-center border-border border-b bg-card px-4">
 				<h2 class="min-w-0 flex-1 truncate font-semibold text-foreground text-sm">
 					{t("labels.selectedMedia")}
 				</h2>
 				<Show when={props.onClose}>
 					<Button
 						aria-label={t("collectionInspector.closeInspector")}
-						class="size-8 shrink-0 p-0 text-muted-foreground"
+						class="size-11 shrink-0 p-0 text-muted-foreground sm:size-8"
 						onClick={() => props.onClose?.()}
 						size="icon"
 						variant="ghost"
@@ -153,12 +157,14 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 									{media.description?.trim() || t("labels.noDescription")}
 								</p>
 							</section>
-							<dl class="grid grid-cols-label-field gap-x-3 gap-y-2.5 border-border border-b py-4 text-xs">
+							<dl class="grid grid-cols-label-field gap-x-3 gap-y-2.5 py-4 text-xs">
 								<dt class="text-muted-foreground">
 									{t("collectionInspector.resolution")}
 								</dt>
 								<dd class="text-right text-foreground">
-									{media.width} × {media.height}
+									{media.width && media.height
+										? `${media.width} × ${media.height}`
+										: "—"}
 								</dd>
 								<dt class="text-muted-foreground">
 									{t("collectionInspector.size")}
@@ -186,20 +192,25 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 									{formatDate(media.modifiedAt)}
 								</dd>
 							</dl>
-							<Show when={props.onOpenDetail}>
-								<Button
-									class="mt-4 min-h-11 w-full sm:min-h-9"
-									onClick={() => props.onOpenDetail?.(media)}
-									size="sm"
-								>
-									<ExternalLink aria-hidden="true" size={14} />
-									{t("collectionInspector.openDetails")}
-								</Button>
-							</Show>
 						</div>
 					)}
 				</Show>
 			</div>
+
+			<Show when={props.media && props.onOpenDetail ? props.media : undefined}>
+				{(media) => (
+					<footer class="shrink-0 border-border border-t bg-card p-3">
+						<Button
+							class="min-h-11 w-full sm:min-h-9"
+							onClick={() => props.onOpenDetail?.(media())}
+							size="sm"
+						>
+							<ExternalLink aria-hidden="true" size={14} />
+							{t("collectionInspector.openDetails")}
+						</Button>
+					</footer>
+				)}
+			</Show>
 		</aside>
 	);
 }

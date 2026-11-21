@@ -131,7 +131,7 @@ export function PixivArtworkDetail(
 										>
 											<Toggle
 												variant="outline"
-												class="h-11 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground"
+												class="min-h-11 md:h-9 md:min-h-9 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground"
 												pressed={showOriginal()}
 												onChange={setShowOriginal}
 											>

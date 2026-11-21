@@ -5,7 +5,15 @@ import type { Ip } from "@solid-imager/core/ips";
 import type { SearchCriterion, SearchGroup } from "@solid-imager/core/search";
 import type { Project } from "@solid-imager/core/projects";
 import type { TagResponse } from "@solid-imager/core/tags";
-import { createMemo, Index, Match, Show, Switch } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	Index,
+	Match,
+	Show,
+	Switch,
+} from "solid-js";
 import { Button } from "./button";
 import { Card, CardContent } from "./card";
 import {
@@ -73,6 +81,89 @@ const STRING_OPERATORS = [
 const NUMERIC_OPERATORS = ["equals", "gt", "gte", "lt", "lte"];
 const RELATIONAL_OPERATORS = ["equals", "contains", "in", "notIn"];
 const BOOLEAN_OPERATORS = ["equals"];
+const NUMERIC_TARGETS = new Set([
+	"rating",
+	"viewCount",
+	"fileSize",
+	"width",
+	"height",
+]);
+const BOOLEAN_TARGETS = new Set(["aiGenerated", "favorite", "isArchived"]);
+
+function isListOperator(operator: string): boolean {
+	return operator === "in" || operator === "notIn";
+}
+
+function isEmptyOperator(operator: string): boolean {
+	return operator === "isEmpty" || operator === "isNotEmpty";
+}
+
+function parseCommaList(raw: string): string[] {
+	return raw
+		.split(",")
+		.map((item) => item.trim())
+		.filter((item) => item.length > 0);
+}
+
+function areListValuesEqual(
+	a: readonly string[],
+	b: SearchCriterion["value"],
+): boolean {
+	if (!Array.isArray(b)) {
+		return a.length === 0 && (b === null || b === "");
+	}
+	return (
+		a.length === b.length &&
+		a.every((value, index) => value === String(b[index]))
+	);
+}
+
+function formatListDraft(value: SearchCriterion["value"]): string {
+	return Array.isArray(value) ? value.map(String).join(", ") : "";
+}
+
+function formatDateInputValue(value: SearchCriterion["value"]): string {
+	if (typeof value !== "string") return "";
+	if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+		return value.slice(0, 10);
+	}
+	return value;
+}
+
+function normalizeValueForOperator(
+	target: string,
+	nextOperator: SearchCriterion["operator"],
+	currentValue: SearchCriterion["value"],
+): SearchCriterion["value"] {
+	if (BOOLEAN_TARGETS.has(target)) {
+		return Boolean(currentValue);
+	}
+	if (isEmptyOperator(nextOperator)) {
+		return null;
+	}
+	if (isListOperator(nextOperator)) {
+		if (Array.isArray(currentValue)) {
+			return currentValue;
+		}
+		if (currentValue === null || currentValue === "") {
+			return [];
+		}
+		return [String(currentValue)];
+	}
+	if (Array.isArray(currentValue)) {
+		if (NUMERIC_TARGETS.has(target)) {
+			const first = Number(currentValue[0]);
+			return Number.isFinite(first) ? first : null;
+		}
+		return currentValue[0] !== undefined ? String(currentValue[0]) : "";
+	}
+	if (NUMERIC_TARGETS.has(target)) {
+		return typeof currentValue === "number" && Number.isFinite(currentValue)
+			? currentValue
+			: null;
+	}
+	return currentValue === null ? "" : currentValue;
+}
 
 type Props = {
 	value: SearchGroup | null;
@@ -232,7 +323,10 @@ function GroupBuilder(props: {
 							options={["and", "or"]}
 							value={props.group.operator}
 						>
-							<SelectTrigger class="w-20 sm:w-24">
+							<SelectTrigger
+								aria-label={t("proSearchBuilder.groupOperator")}
+								class="w-20 sm:w-24"
+							>
 								<SelectValue<string>>
 									{(state) => state.selectedOption().toUpperCase()}
 								</SelectValue>
@@ -361,18 +455,41 @@ function CriterionBuilder(props: {
 	});
 
 	const isNumericTarget = createMemo(() =>
-		[
-			"rating",
-			"viewCount",
-			"fileSize",
-			"createdAt",
-			"width",
-			"height",
-		].includes(props.criterion.target),
+		NUMERIC_TARGETS.has(props.criterion.target),
 	);
+	const isDateTarget = createMemo(() => props.criterion.target === "createdAt");
 	const isBooleanTarget = createMemo(() =>
-		["aiGenerated", "favorite", "isArchived"].includes(props.criterion.target),
+		BOOLEAN_TARGETS.has(props.criterion.target),
 	);
+	const targetLabel = () =>
+		TARGET_LABELS[props.criterion.target] ?? t("proSearchBuilder.value");
+	const [listDraft, setListDraft] = createSignal(
+		formatListDraft(props.criterion.value),
+	);
+	createEffect(() => {
+		const value = props.criterion.value;
+		if (!isListOperator(props.criterion.operator)) {
+			setListDraft("");
+			return;
+		}
+		if (!areListValuesEqual(parseCommaList(listDraft()), value)) {
+			setListDraft(formatListDraft(value));
+		}
+	});
+	const ALL_OPERATORS = [
+		"equals",
+		"contains",
+		"startsWith",
+		"endsWith",
+		"gt",
+		"gte",
+		"lt",
+		"lte",
+		"in",
+		"notIn",
+		"isEmpty",
+		"isNotEmpty",
+	] as const satisfies readonly SearchCriterion["operator"][];
 
 	return (
 		<div class="flex flex-col gap-2 rounded-md bg-muted/20 p-2">
@@ -387,42 +504,36 @@ function CriterionBuilder(props: {
 						return;
 					}
 					const operators = getValidOperators(value);
+					const nextTarget = parseSelectValue(
+						value,
+						Object.keys(TARGET_LABELS) as readonly SearchCriterion["target"][],
+						"fileName",
+					);
+					const nextOperator = parseSelectValue(
+						operators[0] || "equals",
+						ALL_OPERATORS,
+						"equals",
+					);
 					props.onChange({
 						...props.criterion,
-						target: parseSelectValue(
-							value,
-							Object.keys(
-								TARGET_LABELS,
-							) as readonly SearchCriterion["target"][],
-							"fileName",
-						),
-						operator: parseSelectValue(
-							operators[0] || "equals",
-							[
-								"equals",
-								"contains",
-								"startsWith",
-								"endsWith",
-								"gt",
-								"gte",
-								"lt",
-								"lte",
-								"in",
-								"notIn",
-								"isEmpty",
-								"isNotEmpty",
-							] as readonly SearchCriterion["operator"][],
-							"equals",
-						),
-						value: ["aiGenerated", "favorite", "isArchived"].includes(value)
+						target: nextTarget,
+						operator: nextOperator,
+						value: BOOLEAN_TARGETS.has(nextTarget)
 							? true
-							: "",
+							: isEmptyOperator(nextOperator) || NUMERIC_TARGETS.has(nextTarget)
+								? null
+								: isListOperator(nextOperator)
+									? []
+									: "",
 					});
 				}}
 				options={Object.keys(TARGET_LABELS)}
 				value={props.criterion.target}
 			>
-				<SelectTrigger class="w-full">
+				<SelectTrigger
+					aria-label={t("proSearchBuilder.targetField")}
+					class="w-full"
+				>
 					<SelectValue<string>>
 						{(state) => TARGET_LABELS[state.selectedOption()]}
 					</SelectValue>
@@ -438,25 +549,18 @@ function CriterionBuilder(props: {
 				)}
 				onChange={(value) => {
 					if (value) {
+						const nextOperator = parseSelectValue(
+							value,
+							ALL_OPERATORS,
+							"equals",
+						);
 						props.onChange({
 							...props.criterion,
-							operator: parseSelectValue(
-								value,
-								[
-									"equals",
-									"contains",
-									"startsWith",
-									"endsWith",
-									"gt",
-									"gte",
-									"lt",
-									"lte",
-									"in",
-									"notIn",
-									"isEmpty",
-									"isNotEmpty",
-								] as readonly SearchCriterion["operator"][],
-								"equals",
+							operator: nextOperator,
+							value: normalizeValueForOperator(
+								props.criterion.target,
+								nextOperator,
+								props.criterion.value,
 							),
 						});
 					}
@@ -464,7 +568,10 @@ function CriterionBuilder(props: {
 				options={getValidOperators(props.criterion.target)}
 				value={props.criterion.operator}
 			>
-				<SelectTrigger class="w-full">
+				<SelectTrigger
+					aria-label={t("proSearchBuilder.operator")}
+					class="w-full"
+				>
 					<SelectValue<string>>
 						{(state) => OPERATOR_LABELS[state.selectedOption()]}
 					</SelectValue>
@@ -517,7 +624,7 @@ function CriterionBuilder(props: {
 						)}
 					>
 						<ComboboxControl>
-							<ComboboxInput />
+							<ComboboxInput aria-label={targetLabel()} />
 						</ComboboxControl>
 						<VirtualComboboxContent class="max-h-72" />
 					</Combobox>
@@ -541,34 +648,37 @@ function CriterionBuilder(props: {
 						options={["true", "false"]}
 						value={String(Boolean(props.criterion.value))}
 					>
-						<SelectTrigger class="w-full">
+						<SelectTrigger aria-label={targetLabel()} class="w-full">
 							<SelectValue<string>>
-								{(state) => state.selectedOption()}
+								{(state) =>
+									state.selectedOption() === "true"
+										? t("proSearchBuilder.true")
+										: t("proSearchBuilder.false")
+								}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent />
 					</Select>
 				</Match>
 
-				<Match when={["in", "notIn"].includes(props.criterion.operator)}>
+				<Match when={isListOperator(props.criterion.operator)}>
 					<div class="space-y-1">
 						<Input
+							aria-label={targetLabel()}
 							class="w-full"
-							onInput={(event) =>
+							onBlur={() =>
+								setListDraft(formatListDraft(props.criterion.value))
+							}
+							onInput={(event) => {
+								const raw = event.currentTarget.value;
+								setListDraft(raw);
 								props.onChange({
 									...props.criterion,
-									value: event.currentTarget.value
-										.split(",")
-										.map((value) => value.trim())
-										.filter((value) => value.length > 0),
-								})
-							}
+									value: parseCommaList(raw),
+								});
+							}}
 							placeholder={t("proSearchBuilder.enterCommaSeparatedValues")}
-							value={
-								Array.isArray(props.criterion.value)
-									? props.criterion.value.join(", ")
-									: ""
-							}
+							value={listDraft()}
 						/>
 						<p class="text-muted-foreground text-xs">
 							{t("proSearchBuilder.enterMultipleValuesSeparatedByCommas")}
@@ -576,9 +686,7 @@ function CriterionBuilder(props: {
 					</div>
 				</Match>
 
-				<Match
-					when={["isEmpty", "isNotEmpty"].includes(props.criterion.operator)}
-				>
+				<Match when={isEmptyOperator(props.criterion.operator)}>
 					<div class="rounded-md border border-dashed p-2 text-center text-muted-foreground text-xs italic">
 						{t("proSearchBuilder.thisConditionNeedsNoValue")}
 					</div>
@@ -586,25 +694,43 @@ function CriterionBuilder(props: {
 
 				<Match when={true}>
 					<Input
+						aria-label={targetLabel()}
 						class="w-full"
-						onInput={(event) =>
-							props.onChange({
-								...props.criterion,
-								value: isNumericTarget()
-									? Number(event.currentTarget.value)
-									: event.currentTarget.value,
-							})
-						}
+						onInput={(event) => {
+							const raw = event.currentTarget.value;
+							if (isNumericTarget()) {
+								if (raw.trim() === "") {
+									props.onChange({ ...props.criterion, value: null });
+									return;
+								}
+								const parsed = Number(raw);
+								if (Number.isFinite(parsed)) {
+									props.onChange({ ...props.criterion, value: parsed });
+								}
+								return;
+							}
+							props.onChange({ ...props.criterion, value: raw });
+						}}
 						placeholder={t("proSearchBuilder.value")}
-						type={isNumericTarget() ? "number" : "text"}
+						type={
+							isNumericTarget() ? "number" : isDateTarget() ? "date" : "text"
+						}
 						value={
-							Array.isArray(props.criterion.value)
-								? props.criterion.value.join(", ")
-								: String(props.criterion.value ?? "")
+							isDateTarget()
+								? formatDateInputValue(props.criterion.value)
+								: Array.isArray(props.criterion.value)
+									? props.criterion.value.join(", ")
+									: String(props.criterion.value ?? "")
 						}
 					/>
 				</Match>
 			</Switch>
+
+			<Show when={isDateTarget() && !isEmptyOperator(props.criterion.operator)}>
+				<p class="text-xs text-muted-foreground">
+					{t("proSearchBuilder.utcDateHint")}
+				</p>
+			</Show>
 
 			<Button
 				class="w-full text-destructive"

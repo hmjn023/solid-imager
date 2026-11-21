@@ -25,10 +25,7 @@ export function Skeleton(props: SkeletonProps) {
 	return (
 		<div
 			aria-hidden="true"
-			class={cn(
-				"animate-pulse rounded-md bg-muted motion-reduce:animate-none",
-				local.class,
-			)}
+			class={cn("motion-safe:animate-pulse rounded-md bg-muted", local.class)}
 			{...others}
 		/>
 	);

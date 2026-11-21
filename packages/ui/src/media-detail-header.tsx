@@ -1,7 +1,7 @@
 import type { MediaDetails } from "@solid-imager/core/media";
 import { useNavigate, useRouter } from "@tanstack/solid-router";
 import type { RouterHistory } from "@tanstack/solid-router";
-import type { JSX } from "solid-js";
+import { type JSX, onCleanup, onMount } from "solid-js";
 import { MediaDetailToolbar } from "./media-detail-layout";
 import {
 	clearMediaReturnPath,
@@ -88,6 +88,42 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 			params: { mediaSourceId: props.media.mediaSourceId },
 		});
 	};
+
+	/** Navigates to adjacent media via Left/Right arrow keys when no dialog, lightbox, or input is active. */
+	onMount(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (
+				event.defaultPrevented ||
+				event.isComposing ||
+				event.altKey ||
+				event.ctrlKey ||
+				event.metaKey ||
+				event.shiftKey
+			) {
+				return;
+			}
+			if (document.querySelector('[role="dialog"], [role="alertdialog"]')) {
+				return;
+			}
+			if (
+				event.target instanceof Element &&
+				event.target.closest(
+					"input, textarea, select, [contenteditable], video, audio, media-controller, [role='textbox'], [role='slider'], [role='spinbutton']",
+				)
+			) {
+				return;
+			}
+			if (event.key === "ArrowLeft" && neighbors().previous) {
+				event.preventDefault();
+				navigateToNeighbor("previous");
+			} else if (event.key === "ArrowRight" && neighbors().next) {
+				event.preventDefault();
+				navigateToNeighbor("next");
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
+	});
 
 	return (
 		<MediaDetailToolbar

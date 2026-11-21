@@ -4,8 +4,19 @@ import {
 	type SearchState,
 	searchStateSchema,
 } from "@solid-imager/core/search";
-import { createEffect, For, Show } from "solid-js";
+import { deepEqual } from "@solid-imager/core/utils";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import { createStore } from "solid-js/store";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "./alert-dialog";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -191,17 +202,34 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 			...searchState,
 			selectedSource: props.selectedSource ?? searchState.selectedSource,
 		});
+	const [baseline, setBaseline] =
+		createSignal<SearchState>(currentSearchState());
 	const [draft, setDraft] = createStore<SearchState>(currentSearchState());
+	const [confirmDiscard, setConfirmDiscard] = createSignal(false);
+	let commitSemanticDraft: (() => boolean) | undefined;
 	let wasOpen = false;
 
 	createEffect(() => {
 		if (props.open && !wasOpen) {
-			setDraft(currentSearchState());
+			const snapshot = currentSearchState();
+			setBaseline(snapshot);
+			setDraft(snapshot);
+			setConfirmDiscard(false);
 		}
 		wasOpen = props.open;
 	});
 
+	const isDirty = () => !deepEqual(copySearchState(draft), baseline());
+	const requestClose = () => {
+		if (isDirty()) {
+			setConfirmDiscard(true);
+			return;
+		}
+		props.onOpenChange(false);
+	};
+
 	const handleApply = () => {
+		commitSemanticDraft?.();
 		const nextState = copySearchState(draft);
 		setSearchState(nextState);
 		props.onSelectSource?.(nextState.selectedSource);
@@ -212,44 +240,102 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 		setDraft(createClearedSearchState(draft));
 	};
 	return (
-		<Dialog onOpenChange={props.onOpenChange} open={props.open}>
-			<DialogContent class="max-w-lg gap-4 p-4 sm:p-6">
-				<DialogHeader>
-					<DialogTitle>{t("searchToolbar.searchFilters")}</DialogTitle>
-					<DialogDescription>
-						{t(
-							"mobileSearchFilterDialog.reviewOrEditConditionsBeforeApplyingThemToThe",
-						)}
-					</DialogDescription>
-				</DialogHeader>
-				<CurrentSearchConditions
-					context={props.context}
-					sources={props.sources}
-					state={draft}
-				/>
-				<div class="min-w-0 space-y-4">
-					<SearchControlPanel
+		<>
+			<Dialog
+				onOpenChange={(next) =>
+					next ? props.onOpenChange(true) : requestClose()
+				}
+				open={props.open}
+			>
+				<DialogContent class="max-w-lg gap-4 p-4 sm:p-6">
+					<DialogHeader>
+						<DialogTitle>{t("searchToolbar.searchFilters")}</DialogTitle>
+						<DialogDescription>
+							{t(
+								"mobileSearchFilterDialog.reviewOrEditConditionsBeforeApplyingThemToThe",
+							)}
+						</DialogDescription>
+					</DialogHeader>
+					<CurrentSearchConditions
 						context={props.context}
-						filterData={props.filterData}
-						onSearch={handleApply}
-						presetClient={props.presetClient}
-						selectedSource={draft.selectedSource}
-						setState={setDraft}
-						showSearchButton={false}
 						sources={props.sources}
 						state={draft}
-						usePopover={props.usePopover}
 					/>
-				</div>
-				<DialogFooter class="border-t pt-4">
-					<Button onClick={handleClear} type="button" variant="outline">
-						{t("mobileSearchFilterDialog.clearConditions")}
-					</Button>
-					<Button onClick={handleApply} type="button">
-						{t("actions.apply")}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+					<div class="min-w-0 space-y-4">
+						<SearchControlPanel
+							context={props.context}
+							filterData={props.filterData}
+							onSearch={handleApply}
+							presetClient={props.presetClient}
+							registerSemanticCommit={(commit) => {
+								commitSemanticDraft = commit;
+							}}
+							selectedSource={draft.selectedSource}
+							setState={setDraft}
+							showSearchButton={false}
+							sources={props.sources}
+							state={draft}
+							usePopover={props.usePopover}
+						/>
+					</div>
+					<DialogFooter class="border-t pt-4">
+						<Button
+							class="min-h-11 sm:min-h-9"
+							onClick={handleClear}
+							type="button"
+							variant="outline"
+						>
+							{t("mobileSearchFilterDialog.clearConditions")}
+						</Button>
+						<Button
+							class="min-h-11 sm:min-h-9"
+							onClick={requestClose}
+							type="button"
+							variant="outline"
+						>
+							{t("actions.cancel")}
+						</Button>
+						<Button
+							class="min-h-11 sm:min-h-9"
+							onClick={handleApply}
+							type="button"
+						>
+							{t("actions.apply")}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<AlertDialog
+				onOpenChange={setConfirmDiscard}
+				open={props.open && confirmDiscard()}
+			>
+				<AlertDialogContent class="workspace-theme rounded-lg sm:max-w-dialog-xs">
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t("mobileSearchFilterDialog.discardChangesTitle")}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{t("mobileSearchFilterDialog.discardChangesDescription")}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel class="min-h-11 sm:min-h-9">
+							{t("configScreen.keepEditing")}
+						</AlertDialogCancel>
+						<AlertDialogAction
+							class="min-h-11 sm:min-h-9"
+							onClick={() => {
+								setConfirmDiscard(false);
+								props.onOpenChange(false);
+							}}
+							variant="destructive"
+						>
+							{t("actions.discard")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }

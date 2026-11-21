@@ -4,7 +4,7 @@ import { createSignal, onMount, Show } from "solid-js";
 import { EmptyState, FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import { MediaDeleteDialog } from "../media-delete-dialog";
-import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
+import { ListSkeleton, LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
 	type SourceMediaViewMode,
@@ -130,6 +130,11 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				}
 				context="source"
 				filterData={page().filterData()}
+				inspectorToggle={
+					inspector.canToggle()
+						? { isOpen: inspector.isOpen(), onToggle: inspector.toggle }
+						: undefined
+				}
 				itemCount={page().totalCount()}
 				isUpdating={page().contentState().fetchState === "background-fetching"}
 				onSearch={page().handleSearch}
@@ -156,117 +161,120 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							onRetry={props.onRetryFilters}
 						/>
 					</Show>
-					<QueryStatus
-						fetchState={page().contentState().fetchState}
-						hasData={page().contentState().data !== undefined}
-						hideWhenIdle
-						offlineLabel={t("sourceMediaScreen.offlineShowingSavedData")}
-						updatingLabel={t("sourceMediaScreen.updatingMediaList")}
-					/>
+					<Show when={hasOfflineStatus()}>
+						<QueryStatus
+							fetchState={page().contentState().fetchState}
+							hasData={page().contentState().data !== undefined}
+							hideWhenIdle
+							offlineLabel={t("sourceMediaScreen.offlineShowingSavedData")}
+							updatingLabel={t("sourceMediaScreen.updatingMediaList")}
+						/>
+					</Show>
 				</div>
 			</Show>
 
-			<div
-				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 scrollbar-stable"
-				data-media-scroll={page().mediaSourceId() ?? "source-media"}
-			>
+			<div class="flex min-h-0 flex-1 overflow-hidden">
 				<div
-					classList={{
-						"grid grid-cols-workspace-sidebar items-start gap-4":
-							inspector.isVisible(),
-					}}
+					class="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 scrollbar-stable"
+					data-media-scroll={page().mediaSourceId() ?? "source-media"}
 				>
-					<div class="min-w-0">
-						<Show
-							fallback={
-								<LoadingRegion label={t("sourceMediaScreen.loadingMediaList")}>
-									<MediaGridSkeleton aspectRatio="4/3" />
-								</LoadingRegion>
+					<Show
+						fallback={
+							<LoadingRegion label={t("sourceMediaScreen.loadingMediaList")}>
+								<Show
+									fallback={<MediaGridSkeleton aspectRatio="4/3" />}
+									when={viewMode() === "list"}
+								>
+									<ListSkeleton />
+								</Show>
+							</LoadingRegion>
+						}
+						when={shouldRenderGrid()}
+					>
+						<SourceMediaGrid
+							contextMenuMediaId={page().contextMenuMediaId}
+							detailBasePath={props.detailBasePath}
+							emptyState={
+								showEmptySource() ? (
+									<EmptyState
+										description={t("sourceMediaScreen.addOrDropMedia")}
+										icon={<Image size={20} />}
+										title={t("sourceMediaScreen.noMediaYet")}
+									>
+										<Button onClick={page().handleAddButtonClick}>
+											<Upload aria-hidden="true" size={16} />
+											{t("actions.add")}
+										</Button>
+									</EmptyState>
+								) : undefined
 							}
-							when={shouldRenderGrid()}
-						>
-							<SourceMediaGrid
-								contextMenuMediaId={page().contextMenuMediaId}
-								detailBasePath={props.detailBasePath}
-								emptyState={
-									showEmptySource() ? (
-										<EmptyState
-											description={t("sourceMediaScreen.addOrDropMedia")}
-											icon={<Image size={20} />}
-											title={t("sourceMediaScreen.noMediaYet")}
-										>
-											<Button onClick={page().handleAddButtonClick}>
-												<Upload aria-hidden="true" size={16} />
-												{t("actions.add")}
-											</Button>
-										</EmptyState>
-									) : undefined
-								}
-								enableVirtualization={props.enableVirtualization}
-								hasNextPage={page().mediaQuery.hasNextPage}
-								isBulkSelectMode={props.isBulkSelectMode}
-								isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
-								isFetchNextPageError={page().mediaQuery.isFetchNextPageError}
-								itemAspectRatio={4 / 3}
-								isSelected={props.isSelected}
-								mediaResults={page().mediaResults}
-								mediaSourceId={page().mediaSourceId}
-								onOpenMediaDetail={
-									props.onOpenMediaDetail ? openMediaDetail : undefined
-								}
-								onPrepareMediaDetail={prepareMediaDetail}
-								onBulkAction={props.onBulkAction}
-								onClearSelection={props.onClearSelection}
-								onClearSearch={
-									!page().mediaQuery.isPlaceholderData && hasSearchConditions()
-										? clearSearch
-										: undefined
-								}
-								onCopyMove={page().handleCopyMove}
-								onDelete={page().handleDelete}
-								onFindSimilar={props.onFindSimilar}
-								onLoadMore={() => {
-									void page().fetchNextPage();
-								}}
-								onPreviewSelect={inspector.previewSelection()}
-								onRetry={async () => {
-									await page().mediaQuery.refetch();
-								}}
-								onSelectMedia={props.onSelectMedia}
-								onSyncSingleMedia={(mediaId) => {
-									void page().handleSyncSingleMedia(mediaId);
-								}}
-								onToggleSelect={props.onToggleSelect}
-								renderItem={props.renderItem}
-								previewSelectedMediaId={inspector.previewId}
-								selectedCount={props.selectedCount}
-								setContextMenuMediaId={page().setContextMenuMediaId}
-								setLoadMoreRef={page().setLoadMoreRef}
-								showOpenInNewTab={props.showOpenInNewTab}
-								showResultCount={false}
-								scrollMode="element"
-								state={page().contentState}
-								totalCount={page().totalCount()}
-								viewMode={viewMode}
-							/>
-						</Show>
-					</div>
-					<Show when={props.renderMediaPreview}>
-						{(renderPreview) => (
-							<Show when={inspector.isVisible()}>
+							enableVirtualization={props.enableVirtualization}
+							hasNextPage={page().mediaQuery.hasNextPage}
+							isBulkSelectMode={props.isBulkSelectMode}
+							isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
+							isFetchNextPageError={page().mediaQuery.isFetchNextPageError}
+							itemAspectRatio={4 / 3}
+							isSelected={props.isSelected}
+							mediaResults={page().mediaResults}
+							mediaSourceId={page().mediaSourceId}
+							onOpenMediaDetail={
+								props.onOpenMediaDetail ? openMediaDetail : undefined
+							}
+							onPrepareMediaDetail={prepareMediaDetail}
+							onBulkAction={props.onBulkAction}
+							onClearSelection={props.onClearSelection}
+							onClearSearch={
+								!page().mediaQuery.isPlaceholderData && hasSearchConditions()
+									? clearSearch
+									: undefined
+							}
+							onCopyMove={page().handleCopyMove}
+							onDelete={page().handleDelete}
+							onFindSimilar={props.onFindSimilar}
+							onLoadMore={() => {
+								void page().fetchNextPage();
+							}}
+							onPreviewSelect={inspector.previewSelection()}
+							onRetry={async () => {
+								await page().mediaQuery.refetch();
+							}}
+							onSelectMedia={props.onSelectMedia}
+							onSyncSingleMedia={(mediaId) => {
+								void page().handleSyncSingleMedia(mediaId);
+							}}
+							onToggleSelect={props.onToggleSelect}
+							renderItem={props.renderItem}
+							previewSelectedMediaId={inspector.previewId}
+							selectedCount={props.selectedCount}
+							setContextMenuMediaId={page().setContextMenuMediaId}
+							setLoadMoreRef={page().setLoadMoreRef}
+							showOpenInNewTab={props.showOpenInNewTab}
+							showResultCount={false}
+							scrollMode="element"
+							state={page().contentState}
+							totalCount={page().totalCount()}
+							viewMode={viewMode}
+						/>
+					</Show>
+				</div>
+				<Show when={props.renderMediaPreview && inspector.isVisible()}>
+					{(() => {
+						const renderPreview = props.renderMediaPreview;
+						return renderPreview ? (
+							<div class="hidden h-full min-h-0 w-96 shrink-0 py-3 pr-4 2xl:block">
 								<CollectionInspector
 									media={inspector.media()}
 									onClose={inspector.close}
 									onOpenDetail={
 										props.onOpenMediaDetail ? openMediaDetail : undefined
 									}
-									renderPreview={renderPreview()}
+									renderPreview={renderPreview}
 									sourceName={props.mediaSourceName?.()}
 								/>
-							</Show>
-						)}
-					</Show>
-				</div>
+							</div>
+						) : null;
+					})()}
+				</Show>
 			</div>
 			<Show when={props.isBulkSelectMode?.()}>
 				<CollectionBulkActions
@@ -280,8 +288,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			</Show>
 
 			<input
-				accept="image/*,.json"
+				accept="image/*,video/*,audio/*,.json"
 				class="hidden"
+				multiple
 				onChange={(event) => {
 					void page().handleFileSelect(event);
 				}}
@@ -295,11 +304,12 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					<UploadModal
 						sourceId={page().mediaSourceId()}
 						initialFile={page().fileToUpload()}
+						initialFiles={page().filesToUpload()}
 						isOpen={page().showUploadModal()}
 						onClose={() => {
 							page().setShowUploadModal(false);
 							page().setPastedUrl(null);
-							page().setFileToUpload(null);
+							page().setFilesToUpload([]);
 						}}
 						onUpload={page().handleUpload}
 						pastedUrl={page().pastedUrl()}

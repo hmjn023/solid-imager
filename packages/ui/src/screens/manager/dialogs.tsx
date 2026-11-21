@@ -351,8 +351,14 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						</For>
 					</div>
 					<AlertDialogFooter>
-						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+						<AlertDialogCancel
+							class="min-h-11 sm:min-h-9"
+							disabled={props.manager.isDeletingDuplicates()}
+						>
+							{t("actions.cancel")}
+						</AlertDialogCancel>
 						<Button
+							class="min-h-11 sm:min-h-9"
 							variant="destructive"
 							disabled={
 								props.manager.isDeletingDuplicates() ||

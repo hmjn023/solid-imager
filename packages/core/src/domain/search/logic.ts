@@ -2,6 +2,31 @@ import type { Preset } from "../presets/schemas";
 import type { SearchCriterion, SearchGroup } from "./criteria";
 import type { SearchState } from "./schema";
 
+/** Ignore unfinished numeric inputs; explicit empty checks still search for NULL. */
+function omitEmptyNumericCriteria(group: SearchGroup): SearchGroup | undefined {
+	const children: SearchGroup["children"] = [];
+	for (const child of group.children) {
+		if (child.type === "group") {
+			const nested = omitEmptyNumericCriteria(child);
+			if (nested) children.push(nested);
+		} else {
+			const numeric = [
+				"rating",
+				"viewCount",
+				"fileSize",
+				"width",
+				"height",
+			].includes(child.target);
+			const needsValue =
+				child.operator !== "isEmpty" && child.operator !== "isNotEmpty";
+			if (numeric && needsValue && (child.value === null || child.value === ""))
+				continue;
+			children.push(child);
+		}
+	}
+	return children.length ? { ...group, children } : undefined;
+}
+
 /**
  * Transitions between search modes while attempting to preserve conditions.
  * If a pro condition cannot be represented in simple mode, simple filters are reset.
@@ -132,7 +157,9 @@ export const getSearchConditionFromState = (
 	state: SearchState,
 ): SearchGroup | undefined => {
 	if (state.mode === "pro") {
-		return state.advancedCondition || undefined;
+		return state.advancedCondition
+			? omitEmptyNumericCriteria(state.advancedCondition)
+			: undefined;
 	}
 
 	// Simple Mode Construction

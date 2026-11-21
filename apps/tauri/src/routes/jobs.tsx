@@ -34,7 +34,7 @@ async function downloadJobArtifact(job: JobDto): Promise<void> {
 		document.body.appendChild(anchor);
 		anchor.click();
 		anchor.remove();
-		URL.revokeObjectURL(url);
+		setTimeout(() => URL.revokeObjectURL(url), 1000);
 		toast.success(
 			t("manager.downloadedValue", { value0: String(job.artifact.fileName) }),
 		);

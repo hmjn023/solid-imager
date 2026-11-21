@@ -73,13 +73,13 @@ export function ApiActivityIndicator() {
 			<div
 				aria-atomic="true"
 				aria-live="polite"
-				class="fixed top-3 left-1/2 z-api-indicator -translate-x-1/2 rounded-md border border-border bg-background px-3 py-2 text-sm shadow-lg"
+				class="pointer-events-none fixed top-16 left-1/2 z-api-indicator max-w-viewport-gutter -translate-x-1/2 rounded-md border border-border bg-popover px-3 py-2 text-popover-foreground text-sm shadow-lg md:top-3"
 			>
 				<div class="flex items-center gap-2">
 					<Show when={isOnline()}>
 						<span
 							aria-hidden="true"
-							class="inline-block size-2 animate-pulse rounded-full bg-warning-foreground motion-reduce:animate-none"
+							class="inline-block size-2 rounded-full bg-warning-foreground motion-safe:animate-pulse"
 						/>
 					</Show>
 					<Show when={!isOnline()}>

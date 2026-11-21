@@ -520,7 +520,7 @@ test("keeps the mobile settings category selector reachable after scrolling", as
 	await page.goto("/config");
 	await waitForAppHydration(page);
 	await selectSettingsCategory(page, "AI");
-	const selector = settingsCategorySelect(page);
+	const selector = page.getByRole("tablist", { name: "設定カテゴリ" });
 	const scrollArea = page.locator("[data-management-scroll]");
 	await expect(selector).toBeInViewport();
 	await scrollArea.evaluate((element) => {

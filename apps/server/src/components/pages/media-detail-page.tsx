@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
 import type { MediaDetails } from "@solid-imager/core/media";
 import {
@@ -45,7 +46,7 @@ function MediaContent(props: {
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
 	const sourceName = () =>
 		mediaSources.data?.find((source) => source.id === props.mediaSourceId())
-			?.name ?? "Media source";
+			?.name ?? t("mediaDetail.defaultSourceName");
 
 	return (
 		<MediaDetailScreen

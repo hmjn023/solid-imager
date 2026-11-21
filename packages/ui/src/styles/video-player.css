@@ -4,7 +4,7 @@
 	--media-primary-color: hsl(var(--foreground));
 	--media-secondary-color: transparent;
 	--media-control-background: transparent;
-	--media-control-hover-background: hsl(var(--accent));
+	--media-control-hover-background: hsl(var(--muted));
 	--media-control-height: 20px;
 	--media-control-padding: 8px;
 	--media-font-family: var(--font-sans, system-ui, sans-serif);
@@ -98,7 +98,7 @@
 
 .video-player .video-player-loop[aria-pressed="true"] {
 	background: hsl(var(--accent));
-	color: hsl(var(--primary));
+	color: hsl(var(--accent-foreground));
 }
 
 .video-player .video-player-loop[aria-pressed="true"]::after {

@@ -17,7 +17,7 @@ const noRawText = {
 		// The design lab is a static design reference rather than a localized product surface.
 		if (file.endsWith("/screens/design-concept-screen.tsx")) return {};
 		const displayName =
-			/^(?:aria-label|aria-description|alt|title|label|description|placeholder|fallback|message|messages|error|heading|caption|text|(?:.*)(?:Label|Placeholder|Message|Title|Description|Text|Error|Errors|Msg))$/;
+			/^(?:aria-label|aria-description|alt|title|label|description|placeholder|fallback|message|messages|error|heading|caption|eyebrow|text|(?:.*)(?:Label|Placeholder|Message|Title|Description|Text|Error|Errors|Msg))$/;
 		const reported = new Set();
 		/** @typedef {NonNullable<ReturnType<typeof context.sourceCode.getNodeByRangeIndex>>} Node */
 		/** @param {Node} node */
@@ -198,6 +198,20 @@ const noRawText = {
 						);
 					return;
 				}
+				if (nameOf(node.name) === "rows") {
+					const expression =
+						node.value?.type === "JSXExpressionContainer"
+							? node.value.expression
+							: node.value;
+					if (expression?.type === "ArrayExpression") {
+						for (const row of expression.elements) {
+							if (row?.type === "ArrayExpression") {
+								check(row.elements[0]);
+							}
+						}
+					}
+					return;
+				}
 				if (
 					/^option(?:Label|Description|Value|TextValue)$/.test(
 						nameOf(node.name),
@@ -326,7 +340,9 @@ const noRawText = {
 					check(node.arguments[1]);
 				if (shortName === "setCcipStatus" || shortName === "setJobStatus")
 					return; // Domain status codes are localized where displayed.
-				if (/^set\w*(?:Error|Errors|Message|Msg|Status)$/.test(shortName)) {
+				if (
+					/^set\w*(?:Error|Errors|Message|Msg|Status|Notice)$/.test(shortName)
+				) {
 					const argument = /^(?:setReadError|setRequestMessage)$/.test(
 						shortName,
 					)
@@ -338,8 +354,10 @@ const noRawText = {
 					/^(?:toast(?:\.(?:success|error|warning|info|message|loading))?|alert|confirm)$/.test(
 						name,
 					)
-				)
+				) {
 					check(node.arguments[0]);
+					if (name.startsWith("toast")) check(node.arguments[1]);
+				}
 			},
 			AssignmentExpression(node) {
 				if (

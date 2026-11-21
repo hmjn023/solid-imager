@@ -42,6 +42,7 @@ export function SourceDeleteModal(props: SourceDeleteModalProps) {
 						{t("actions.cancel")}
 					</AlertDialogCancel>
 					<AlertDialogAction
+						aria-busy={props.isDeleting}
 						variant="destructive"
 						disabled={props.isDeleting}
 						onClick={(event) => {
@@ -51,7 +52,7 @@ export function SourceDeleteModal(props: SourceDeleteModalProps) {
 							}
 						}}
 					>
-						{t("actions.delete")}
+						{props.isDeleting ? t("status.deleting") : t("actions.delete")}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
