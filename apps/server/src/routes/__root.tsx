@@ -65,6 +65,7 @@ function isStandalonePath(pathname: string): boolean {
 
 function RootDocument(props: ParentProps) {
 	const [isHydrated, setIsHydrated] = createSignal(false);
+	const [locale, setLocale] = createSignal(getLocale());
 	const location = useLocation();
 	onMount(() => {
 		if (migrateBrowserLocale()) {
@@ -72,6 +73,7 @@ function RootDocument(props: ParentProps) {
 			return;
 		}
 		configureClientValidationLocale(getLocale());
+		setLocale(getLocale());
 		setIsHydrated(true);
 	});
 
@@ -79,7 +81,7 @@ function RootDocument(props: ParentProps) {
 		<html
 			data-hydrated={isHydrated() ? "true" : "false"}
 			data-server-rendered=""
-			lang={getLocale()}
+			lang={locale()}
 		>
 			<head>
 				<HydrationScript />
@@ -90,10 +92,13 @@ function RootDocument(props: ParentProps) {
 					"workspace-theme": !isStandalonePath(location().pathname),
 				}}
 			>
-				<ShortcutPreferencesProvider>
-					<Toaster />
-					{props.children}
-				</ShortcutPreferencesProvider>
+				{/* A storage-only locale change rebuilds labels after hydration. */}
+				<Show when={locale()} keyed>
+					<ShortcutPreferencesProvider>
+						<Toaster />
+						{props.children}
+					</ShortcutPreferencesProvider>
+				</Show>
 				<Scripts />
 			</body>
 		</html>

@@ -203,12 +203,15 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 test("shows another client's batch on Manager and after reload", async ({
 	page,
 	request,
+	browserHealth,
 }) => {
 	const id = randomUUID();
 	let visible = false;
+	const activeBatches = "/api/rpc/jobs/activeBatches";
+	const events = "/api/rpc/jobs/events";
 	// Hold the remote batch snapshot steady across the reload. The event which
 	// discovers it comes from a real start request in an independent API client.
-	await page.route("**/api/rpc/jobs/activeBatches", (route) =>
+	await page.route(`**${activeBatches}`, (route) =>
 		route.fulfill({
 			json: {
 				json: visible
@@ -225,7 +228,13 @@ test("shows another client's batch on Manager and after reload", async ({
 			},
 		}),
 	);
-	await page.goto("/manager");
+	await Promise.all([
+		page.waitForResponse(
+			(response) =>
+				response.ok() && new URL(response.url()).pathname === activeBatches,
+		),
+		page.goto("/manager"),
+	]);
 	await waitForAppHydration(page);
 	const bar = page.getByRole("progressbar", {
 		name: "CCIP抽出の進捗",
@@ -238,6 +247,36 @@ test("shows another client's batch on Manager and after reload", async ({
 	expect(started.ok(), await started.text()).toBe(true);
 	await expect(bar).toHaveAttribute("aria-valuenow", "50");
 	await expect(page.getByText("25 / 50 (50%)")).toBeVisible();
-	await page.reload();
+	// With no events replayed, the initial connection must reconcile the SSR list.
+	const stream = Promise.withResolvers<void>();
+	await page.route(
+		`**${events}`,
+		async (route) => {
+			await stream.promise;
+			await route.fulfill({
+				contentType: "text/event-stream",
+				body: "event: close\n\n",
+			});
+		},
+		{ times: 1 },
+	);
+	const reloadCheckpoint = browserHealth.requestCheckpoint();
+	try {
+		await page.reload();
+		await waitForAppHydration(page);
+		expect(
+			browserHealth.apiRequestCountPathSince(reloadCheckpoint, activeBatches),
+		).toBe(0);
+	} finally {
+		stream.resolve();
+	}
+	await expect
+		.poll(() =>
+			browserHealth.apiRequestCountPathSince(reloadCheckpoint, activeBatches),
+		)
+		.toBe(1);
 	await expect(bar).toHaveAttribute("aria-valuenow", "50");
+	expect(browserHealth.apiRequestCountPathSince(reloadCheckpoint, events)).toBe(
+		1,
+	);
 });

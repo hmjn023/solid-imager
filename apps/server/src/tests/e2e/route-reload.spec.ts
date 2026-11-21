@@ -122,7 +122,6 @@ const routeCases: readonly RouteCase[] = [
 			"/api/rpc/projects/list",
 			"/api/rpc/ips/list",
 			"/api/rpc/characters/list",
-			"/api/rpc/jobs/activeBatches",
 		],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,

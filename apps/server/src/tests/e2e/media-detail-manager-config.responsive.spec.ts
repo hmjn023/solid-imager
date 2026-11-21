@@ -1,4 +1,8 @@
 import type { Page } from "@playwright/test";
+import {
+	captureSearchSnapshotResponseSchema,
+	defaultState,
+} from "@solid-imager/core/search";
 import { z } from "zod";
 import {
 	E2E_PRIMARY_FILE_NAME,
@@ -275,10 +279,21 @@ test(
 	{
 		tag: "@desktop-only",
 	},
-	async ({ page }) => {
+	async ({ page, request }) => {
+		const captured = await request.post("/api/rpc/searchSnapshots/capture", {
+			data: {
+				json: {
+					state: { ...defaultState, searchQuery: E2E_PRIMARY_FILE_NAME },
+				},
+			},
+		});
+		await expect(captured).toBeOK();
+		const { id } = captureSearchSnapshotResponseSchema.parse(
+			(await captured.json()).json,
+		);
 		await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
 		await waitForAppHydration(page);
-		const savedReturnPath = "/search#results";
+		const savedReturnPath = `/search?search=${id}#results`;
 		await page.evaluate((returnPath) => {
 			sessionStorage.setItem("solid-imager:media-return", returnPath);
 		}, savedReturnPath);
@@ -290,6 +305,12 @@ test(
 				return `${url.pathname}${url.search}${url.hash}`;
 			})
 			.toBe(savedReturnPath);
+		await expect(
+			page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+		).toBeVisible();
+		await expect(
+			page.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`),
+		).toHaveCount(0);
 	},
 );
 

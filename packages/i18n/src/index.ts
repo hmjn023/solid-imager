@@ -39,7 +39,7 @@ function readBrowserLocale(): Locale {
 	return typeof document === "undefined" ? "ja" : (readStoredLocale() ?? "ja");
 }
 
-const browserLocale = readBrowserLocale();
+let browserLocale = readBrowserLocale();
 let readRequestLocale: (() => Locale | undefined) | undefined;
 
 export function configureRequestLocale(reader: () => Locale | undefined): void {
@@ -50,19 +50,24 @@ export function getLocale(): Locale {
 	return readRequestLocale?.() ?? browserLocale;
 }
 
-function writeLocaleCookie(locale: Locale): void {
-	const secure = location.protocol === "https:" ? "; Secure" : "";
-	document.cookie = `${LOCALE_STORAGE_KEY}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+function synchronizeLocaleCookie(locale: Locale): boolean {
+	try {
+		if (readLocaleCookie(document.cookie) === locale) return true;
+		const secure = location.protocol === "https:" ? "; Secure" : "";
+		document.cookie = `${LOCALE_STORAGE_KEY}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+		return readLocaleCookie(document.cookie) === locale;
+	} catch {
+		return false;
+	}
 }
 
 /** Preserve the language selected before the web app started using a cookie. */
 export function migrateBrowserLocale(): boolean {
 	const locale = readStoredLocale();
-	if (!locale || readLocaleCookie(document.cookie)) return false;
-	writeLocaleCookie(locale);
-	return (
-		locale !== browserLocale && readLocaleCookie(document.cookie) === locale
-	);
+	if (!locale) return false;
+	if (synchronizeLocaleCookie(locale)) return locale !== browserLocale;
+	browserLocale = locale;
+	return false;
 }
 
 /** Synchronize document language after hydration, or before rendering a standalone SPA. */
@@ -75,7 +80,7 @@ export function initializeBrowserLocale(): Locale {
 /** Reload so module-level options, active dialogs and third-party controls use one locale together. */
 export function changeLocale(locale: Locale): void {
 	localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-	if (isServerRenderedDocument()) writeLocaleCookie(locale);
+	if (isServerRenderedDocument()) synchronizeLocaleCookie(locale);
 	location.reload();
 }
 

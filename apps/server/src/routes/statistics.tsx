@@ -21,10 +21,10 @@ const load = (request: StatisticsRequest, signal: AbortSignal) =>
 	orpc.media.statistics(request, { signal });
 
 const readTimeZone = createServerOnlyFn(() => {
-	const result = statisticsRequestSchema.shape.timeZone.safeParse(
-		getCookie(STATISTICS_TIME_ZONE_COOKIE),
-	);
-	return result.success ? result.data : "UTC";
+	const cookie = getCookie(STATISTICS_TIME_ZONE_COOKIE);
+	if (!cookie) return;
+	const result = statisticsRequestSchema.shape.timeZone.safeParse(cookie);
+	return result.success ? result.data : undefined;
 });
 
 export const Route = createFileRoute("/statistics")({
@@ -36,6 +36,8 @@ export const Route = createFileRoute("/statistics")({
 	}: RouteLoaderContext & { deps: StatisticsSelection }) => {
 		if (!isServer) return;
 		const timeZone = readTimeZone();
+		// On the first visit the browser supplies the time zone after hydration.
+		if (!timeZone) return;
 		const options = statisticsQueryOptions(deps, timeZone, load);
 		await context.queryClient.query(options).catch(() => {
 			context.queryClient.removeQueries({

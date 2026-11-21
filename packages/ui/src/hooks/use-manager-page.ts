@@ -782,7 +782,8 @@ export function useManagerPage(
 				refreshActiveBatches();
 		},
 		onConnected: () => {
-			if (connected || (!hadActiveBatches && activeBatches.isError))
+			// A cached snapshot can predate the stream's bounded replay window.
+			if (connected || hadActiveBatches || activeBatches.isError)
 				refreshActiveBatches();
 			connected = true;
 			if (trackedRun()) void trackedJob.refetch();

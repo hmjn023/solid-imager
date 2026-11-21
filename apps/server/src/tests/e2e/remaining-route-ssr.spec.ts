@@ -170,15 +170,21 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 		value: encodeURIComponent(zone),
 		url: baseURL ?? page.url(),
 	};
-	await context.addCookies([cookie]);
 	const documentContext = await browser.newContext({
 		baseURL,
 		javaScriptEnabled: false,
 	});
 	try {
-		await documentContext.addCookies([cookie]);
 		const document = await documentContext.newPage();
 		expect((await document.goto("/statistics?period=all"))?.ok()).toBe(true);
+		await expect(
+			document.getByRole("heading", { name: "ライブラリ統計", exact: true }),
+		).toBeVisible();
+		await expect(
+			document.getByRole("heading", { name: "メディアの内訳", exact: true }),
+		).toHaveCount(0);
+		await documentContext.addCookies([cookie]);
+		expect((await document.reload())?.ok()).toBe(true);
 		await expect(
 			document.getByRole("heading", { name: "メディアの内訳", exact: true }),
 		).toBeVisible();
@@ -190,6 +196,26 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 	} finally {
 		await documentContext.close();
 	}
+	const endpoint = "/api/rpc/media/statistics";
+	const firstVisit = browserHealth.requestCheckpoint();
+	const [firstQuery] = await Promise.all([
+		page.waitForRequest(
+			(request) => new URL(request.url()).pathname === endpoint,
+		),
+		page.goto("/statistics?period=all"),
+	]);
+	expect(firstQuery.postDataJSON()).toMatchObject({ json: { timeZone: zone } });
+	await waitForAppHydration(page);
+	await expect(
+		page.getByRole("heading", { name: "メディアの内訳", exact: true }),
+	).toBeVisible();
+	expect(browserHealth.apiRequestCountPathSince(firstVisit, endpoint)).toBe(1);
+	expect(await context.cookies()).toContainEqual(
+		expect.objectContaining({
+			name: cookie.name,
+			value: cookie.value,
+		}),
+	);
 	for (const navigate of [
 		() => page.goto("/statistics?period=all"),
 		() => page.reload(),
@@ -200,11 +226,8 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 		await expect(
 			page.getByRole("heading", { name: "メディアの内訳", exact: true }),
 		).toBeVisible();
-		expect(
-			browserHealth.apiRequestCountPathSince(
-				checkpoint,
-				"/api/rpc/media/statistics",
-			),
-		).toBe(0);
+		expect(browserHealth.apiRequestCountPathSince(checkpoint, endpoint)).toBe(
+			0,
+		);
 	}
 });

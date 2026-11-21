@@ -130,6 +130,12 @@ import { t } from "@solid-imager/i18n";
 WebのSSRでは `solid-imager.locale` Cookieをリクエスト単位で読み取り、本文と
 `<html lang>` の言語を揃えます。ブラウザーは初回HTMLの言語でhydrationを行います。
 `localStorage` だけに保存された既存設定は初回表示後にCookieへ移行します。
+Cookieを保存できない場合はhydrationの完了後に`localStorage`の言語を適用します。
 サーバー処理で言語を明示する場合は `createTranslator(locale)` を使います。
 フォームの標準検証メッセージと動画コントロールも表示言語に合わせます。
 外部UIの翻訳は、部品の初期化前にブラウザー内で登録します。
+
+## 統計画面のタイムゾーン
+
+統計画面の初回アクセスでは、ブラウザーでタイムゾーンを取得してから集計します。
+次回以降は保存したタイムゾーンを使ってサーバーで集計し、初回HTMLに反映します。
