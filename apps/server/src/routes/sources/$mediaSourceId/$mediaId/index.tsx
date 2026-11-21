@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { isServer } from "solid-js/web";
 import { MediaDetailPage } from "~/components/pages/media-detail-page";
+import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 
 interface MediaRouteParams {
 	mediaId: string;
@@ -7,12 +10,17 @@ interface MediaRouteParams {
 }
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
-	ssr: false,
+	loader: async ({ context, params }: RouteLoaderContext<MediaRouteParams>) => {
+		if (isServer) {
+			await context.queryClient
+				.query(mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId))
+				.catch(() => undefined);
+		}
+	},
 	remountDeps: ({ params }: { params: MediaRouteParams }) => [
 		params.mediaSourceId,
 		params.mediaId,
 	],
-	pendingComponent: () => null,
 	component: MediaRoute,
 });
 

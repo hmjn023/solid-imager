@@ -22,6 +22,12 @@ const mediaUtilities = plugin(({ addUtilities }) => {
 		".media-viewer-aspect": {
 			aspectRatio: "var(--media-aspect)",
 		},
+		".bg-checkerboard": {
+			backgroundColor: "hsl(var(--card))",
+			backgroundImage:
+				"repeating-conic-gradient(hsl(var(--muted)) 0% 25%, transparent 0% 50%)",
+			backgroundSize: "16px 16px",
+		},
 		".media-viewer-stage": {
 			touchAction: "var(--media-touch-action)",
 		},
@@ -54,6 +60,9 @@ const mediaUtilities = plugin(({ addUtilities }) => {
 		".origin-kb-popover": {
 			transformOrigin: "var(--kb-popover-content-transform-origin)",
 		},
+		".origin-kb-tooltip": {
+			transformOrigin: "var(--kb-tooltip-content-transform-origin)",
+		},
 	});
 });
 
@@ -84,6 +93,7 @@ const solidUiPreset = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          hover: "hsl(var(--primary-hover))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -92,6 +102,7 @@ const solidUiPreset = {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+          hover: "hsl(var(--destructive-hover))",
         },
         info: {
           DEFAULT: "hsl(var(--info))",
@@ -140,6 +151,7 @@ const solidUiPreset = {
 			"settings-sidebar": "12rem minmax(0, 1fr)",
 			"workspace-sidebar": "minmax(0, 1fr) clamp(20rem, 26vw, 26rem)",
 			"detail-sidebar": "minmax(0, 1fr) 22rem",
+			"jobs-inspector": "22rem minmax(0, 1fr)",
 			"manager-sidebar": "minmax(0, 1fr) 20rem",
 			"compact-sidebar": "minmax(0, 1fr) 15rem",
 			"media-table": "2fr 1fr 1fr 5rem",

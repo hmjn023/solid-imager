@@ -98,7 +98,7 @@ export function MediaActivityControls(props: {
 			</h2>
 			<div class="flex flex-wrap items-center gap-2">
 				<Toggle
-					class="min-h-11 gap-2 hover:bg-accent hover:text-accent-foreground data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary/90 data-[pressed]:hover:text-primary-foreground"
+					class="min-h-11 gap-2 hover:bg-muted hover:text-foreground data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary-hover data-[pressed]:hover:text-primary-foreground sm:min-h-9"
 					disabled={save.isPending}
 					onChange={(favorite) =>
 						save.mutate({
@@ -132,7 +132,7 @@ export function MediaActivityControls(props: {
 				>
 					<SelectTrigger
 						aria-label={t("sortOptions.rating")}
-						class="min-h-11 w-auto gap-2"
+						class="min-h-11 w-auto gap-2 sm:min-h-9"
 					>
 						<SelectValue<string>>
 							{(state) => state.selectedOption()}

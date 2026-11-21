@@ -1,3 +1,4 @@
+import { useRenderedSearchState } from "./search-initial-state";
 import { t } from "@solid-imager/i18n";
 import { getSearchExecutionKind } from "./search-execution";
 import type { Author } from "@solid-imager/core/authors";
@@ -10,7 +11,7 @@ import {
 } from "@solid-imager/core/search";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { TagResponse } from "@solid-imager/core/tags";
-import { Show } from "solid-js";
+import { Show, Suspense } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Button } from "./button";
 import { EmbeddingSearchControls } from "./embedding-search-controls";
@@ -58,10 +59,12 @@ export type SearchControlPanelProps = {
 	showSortControls?: boolean;
 	class?: string;
 	usePopover?: boolean;
+	registerSemanticCommit?: (commit: () => boolean) => void;
 };
 
 export function SearchControlPanel(props: SearchControlPanelProps) {
-	const currentState = () => props.state ?? searchState;
+	const renderedState = useRenderedSearchState();
+	const currentState = () => props.state ?? renderedState();
 	const updateState = props.setState ?? setSearchState;
 	const isOrdinarySearch = () =>
 		getSearchExecutionKind(currentState()) === "ordinary";
@@ -132,9 +135,27 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 							"searchControlPanel.ordinarySearchConditionsAreSavedSimilarityAndTextSearches",
 						)}
 					</p>
-					<Button size="sm" variant="outline" onClick={clearSimilarityAnchor}>
+					<Button
+						class="min-h-11 sm:min-h-9"
+						size="sm"
+						variant="outline"
+						onClick={clearSimilarityAnchor}
+					>
 						{t("searchControlPanel.returnToOrdinarySearch")}
 					</Button>
+				</div>
+			</Show>
+
+			<Show when={isOrdinarySearch()}>
+				<div class="mt-4">
+					<Suspense fallback={<p>{t("status.loading")}</p>}>
+						<PresetManager
+							class="w-full flex-col items-stretch"
+							presetClient={props.presetClient}
+							setState={props.setState}
+							state={props.state}
+						/>
+					</Suspense>
 				</div>
 			</Show>
 
@@ -162,12 +183,6 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 
 			<Show when={currentState().mode === "pro" && isOrdinarySearch()}>
 				<div class="mt-4 space-y-4">
-					<PresetManager
-						class="w-full flex-col items-stretch"
-						presetClient={props.presetClient}
-						setState={props.setState}
-						state={props.state}
-					/>
 					<ProSearchDialog
 						authors={props.filterData.authors}
 						characters={props.filterData.characters}
@@ -224,6 +239,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					setState={updateState}
 					onSearch={props.onSearch}
 					id={props.setState ? "mobile-embedding-search" : "embedding-search"}
+					registerCommitDraft={props.registerSemanticCommit}
 				/>
 				<Show when={props.showSortControls !== false}>
 					<SortControls

@@ -6,6 +6,7 @@ import {
 	createMemo,
 	createSignal,
 	For,
+	onCleanup,
 	Show,
 } from "solid-js";
 import {
@@ -181,10 +182,23 @@ export function CommandCenter(props: CommandCenterProps) {
 		Actions: actions().filter((action) => action.group === "Actions"),
 		Navigate: actions().filter((action) => action.group === "Navigate"),
 	}));
+	let pendingActionFrame: number | undefined;
+	onCleanup(() => {
+		if (pendingActionFrame !== undefined) {
+			cancelAnimationFrame(pendingActionFrame);
+		}
+	});
 	const runAction = (action: PaletteAction) => {
 		props.onPaletteOpenChange(false);
 		setQuery("");
-		action.run();
+		if (pendingActionFrame !== undefined) {
+			cancelAnimationFrame(pendingActionFrame);
+		}
+		// Let the palette close before running actions that open a secondary modal.
+		pendingActionFrame = requestAnimationFrame(() => {
+			pendingActionFrame = undefined;
+			action.run();
+		});
 	};
 	const setPaletteOpen = (open: boolean) => {
 		if (!open) setQuery("");

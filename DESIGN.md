@@ -23,11 +23,6 @@ colors:
   warning-surface: "#FFF8E8"
   info: "#426D86"
   info-surface: "#EEF6FA"
-  chart-blue: "#356BCC"
-  chart-violet: "#7852B6"
-  chart-coral: "#BB5736"
-  chart-amber: "#AC731A"
-  chart-rose: "#B34577"
 typography:
   page-title:
     fontFamily: "system-ui"

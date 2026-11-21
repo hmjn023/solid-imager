@@ -95,33 +95,53 @@ import { formatDate } from "./manager/utils";
 
 const JOB_FILTERS = [
 	{
-		description: t("jobsScreen.allJobs"),
+		get description() {
+			return t("jobsScreen.allJobs");
+		},
 		icon: Clock3,
-		label: t("jobsScreen.all"),
+		get label() {
+			return t("jobsScreen.all");
+		},
 		value: "all",
 	},
 	{
-		description: t("jobsScreen.runningAndQueued"),
+		get description() {
+			return t("jobsScreen.runningAndQueued");
+		},
 		icon: RefreshCw,
-		label: t("jobsScreen.active"),
+		get label() {
+			return t("jobsScreen.active");
+		},
 		value: "active",
 	},
 	{
-		description: t("jobsScreen.jobsRequiringAttention"),
+		get description() {
+			return t("jobsScreen.jobsRequiringAttention");
+		},
 		icon: CircleAlert,
-		label: t("status.failed"),
+		get label() {
+			return t("status.failed");
+		},
 		value: "failed",
 	},
 	{
-		description: t("jobsScreen.finishedJobs"),
+		get description() {
+			return t("jobsScreen.finishedJobs");
+		},
 		icon: CircleCheck,
-		label: t("status.completed"),
+		get label() {
+			return t("status.completed");
+		},
 		value: "completed",
 	},
 	{
-		description: t("jobsScreen.cancelledJobs"),
+		get description() {
+			return t("jobsScreen.cancelledJobs");
+		},
 		icon: Ban,
-		label: t("status.cancelled"),
+		get label() {
+			return t("status.cancelled");
+		},
 		value: "cancelled",
 	},
 ] as const;
@@ -655,12 +675,14 @@ function BatchTargetList(props: {
 													buildUrl={props.buildThumbnailUrl}
 												/>
 											</TableCell>
-											<TableCell class="break-words [overflow-wrap:anywhere]">
+											<TableCell class="wrap-anywhere">
 												<span class="block">{item.label}</span>
 												<Show when={item.stage}>
-													<div class="mt-1 text-xs text-muted-foreground @xl:hidden">
-														{jobTypeLabel(item.stage!)}
-													</div>
+													{(stage) => (
+														<div class="mt-1 text-xs text-muted-foreground @xl:hidden">
+															{jobTypeLabel(stage())}
+														</div>
+													)}
 												</Show>
 												<Show when={props.upload && item.uploadReservationId}>
 													{(reservation) => (
@@ -800,7 +822,7 @@ function JobsInspector(props: {
 							<Button
 								variant="ghost"
 								size="sm"
-								class="mb-2 -ml-2"
+								class="mb-2 -ml-2 min-h-11 sm:min-h-8"
 								onClick={props.onBack}
 							>
 								<ArrowLeft aria-hidden="true" size={16} />
@@ -884,7 +906,7 @@ function JobsInspector(props: {
 									>
 										<Button
 											aria-busy={isCancelling()}
-											class="w-full sm:w-auto"
+											class="min-h-11 w-full sm:min-h-9 sm:w-auto"
 											disabled={isCancelling() || !!job().cancelRequestedAt}
 											onClick={() => void cancel()}
 											variant="outline"
@@ -900,7 +922,7 @@ function JobsInspector(props: {
 									<Show when={canRetryJob(job())}>
 										<Button
 											aria-busy={isRetrying()}
-											class="w-full sm:w-auto"
+											class="min-h-11 w-full sm:min-h-9 sm:w-auto"
 											disabled={isRetrying()}
 											onClick={() => void retry()}
 											variant="outline"
@@ -1120,6 +1142,7 @@ function JobsLoadMore(props: {
 			</Show>
 			<Show when={props.screen.hasMore()}>
 				<Button
+					class="min-h-11 sm:min-h-9"
 					variant="outline"
 					onClick={props.screen.onLoadMore}
 					disabled={props.screen.isLoadingMore()}
@@ -1222,6 +1245,7 @@ export function JobsScreen(props: JobsScreenProps) {
 							</Show>
 							<Button
 								aria-busy={props.isRefreshing()}
+								class="min-h-11 sm:min-h-8"
 								disabled={props.isRefreshing()}
 								onClick={() => void refresh()}
 								size="sm"
@@ -1244,7 +1268,7 @@ export function JobsScreen(props: JobsScreenProps) {
 			<div
 				class={
 					detailOpen() && selectedJob()
-						? "grid min-h-0 min-w-0 flex-1 lg:grid-cols-[22rem_minmax(0,1fr)]"
+						? "grid min-h-0 min-w-0 flex-1 lg:grid-cols-jobs-inspector"
 						: "grid min-h-0 min-w-0 flex-1"
 				}
 			>
@@ -1286,14 +1310,15 @@ export function JobsScreen(props: JobsScreenProps) {
 						>
 							<SelectTrigger
 								aria-label={t("jobsScreen.jobTypeFilter")}
-								class="gap-2 bg-card text-start"
+								class="min-h-11 gap-2 bg-card text-start sm:min-h-9"
 							>
 								<SelectValue<string>>
-									{(state) =>
-										state.selectedOption()
-											? jobTypeLabel(state.selectedOption()!)
-											: t("jobsScreen.allTypes")
-									}
+									{(state) => {
+										const selected = state.selectedOption();
+										return selected
+											? jobTypeLabel(selected)
+											: t("jobsScreen.allTypes");
+									}}
 								</SelectValue>
 							</SelectTrigger>
 							<SelectContent />
@@ -1318,7 +1343,7 @@ export function JobsScreen(props: JobsScreenProps) {
 						>
 							<SelectTrigger
 								aria-label={t("jobsScreen.jobStatusFilter")}
-								class="gap-2 bg-card text-start"
+								class="min-h-11 gap-2 bg-card text-start sm:min-h-9"
 							>
 								<SelectValue<(typeof JOB_FILTERS)[number]>>
 									{(state) =>
@@ -1331,7 +1356,11 @@ export function JobsScreen(props: JobsScreenProps) {
 							<SelectContent />
 						</Select>
 						<Show when={props.jobTypes().error}>
-							<Button variant="outline" onClick={props.onRetryTypes}>
+							<Button
+								class="min-h-11 sm:min-h-9"
+								onClick={props.onRetryTypes}
+								variant="outline"
+							>
 								{t("jobsScreen.retryTypes")}
 							</Button>
 						</Show>

@@ -1,5 +1,14 @@
 import { t } from "@solid-imager/i18n";
-import { For, type JSX, type ParentProps, Show } from "solid-js";
+import {
+	children,
+	createSignal,
+	For,
+	type JSX,
+	onCleanup,
+	onMount,
+	type ParentProps,
+	Show,
+} from "solid-js";
 import { Button } from "./button";
 import {
 	ArrowLeft,
@@ -16,18 +25,32 @@ export function MediaDetailLayout(props: {
 	related?: JSX.Element;
 	sidebar: JSX.Element;
 }) {
+	const related = children(() => props.related);
+	const [isDesktop, setIsDesktop] = createSignal(true);
+	onMount(() => {
+		const media = window.matchMedia("(min-width: 1024px)");
+		const update = () => setIsDesktop(media.matches);
+		update();
+		media.addEventListener("change", update);
+		onCleanup(() => media.removeEventListener("change", update));
+	});
+
 	return (
 		<div class="flex min-h-0 flex-1 flex-col">
 			{props.header}
-			<div class="min-h-0 flex-1 snap-y snap-proximity overflow-y-auto overscroll-contain @container-size lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden lg:snap-none scrollbar-stable">
-				<div class="min-w-0 lg:min-h-0 lg:snap-y lg:snap-mandatory lg:overflow-y-auto lg:overscroll-contain lg:@container-size scrollbar-stable">
+			<div
+				class="min-h-0 flex-1 snap-y snap-proximity overflow-y-auto overscroll-contain @container-size lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden lg:snap-none scrollbar-stable"
+				data-media-scroll={isDesktop() ? undefined : "detail"}
+			>
+				<div
+					class="min-w-0 lg:min-h-0 lg:snap-y lg:snap-mandatory lg:overflow-y-auto lg:overscroll-contain lg:@container-size scrollbar-stable"
+					data-media-scroll={isDesktop() ? "detail" : undefined}
+				>
 					<div class="snap-start lg:h-full lg:snap-always">{props.viewer}</div>
-					<Show when={props.related}>
-						{(related) => (
-							<div class="snap-start lg:min-h-scrollport lg:snap-always">
-								{related()}
-							</div>
-						)}
+					<Show when={related()}>
+						<div class="empty:hidden snap-start lg:min-h-scrollport lg:snap-always">
+							{related()}
+						</div>
 					</Show>
 				</div>
 				<section

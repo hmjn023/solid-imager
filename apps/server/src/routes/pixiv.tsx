@@ -1,10 +1,8 @@
-import { createFileRoute, lazyRouteComponent } from "@tanstack/solid-router";
+import { createFileRoute } from "@tanstack/solid-router";
+import { PixivPage } from "~/components/pages/pixiv-page";
+import { loadInitialViewer } from "~/infrastructure/api-clients/load-initial-viewer";
 
 export const Route = createFileRoute("/pixiv")({
-	ssr: false,
-	pendingComponent: () => null,
-	component: lazyRouteComponent(
-		() => import("~/components/pages/pixiv-page"),
-		"PixivPage",
-	),
+	component: PixivPage,
+	loader: loadInitialViewer("pixiv"),
 });

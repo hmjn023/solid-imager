@@ -35,6 +35,7 @@ test("statistics switches period and keeps the monthly drill-down across reload"
 	expect(href).toContain("/sources/" + E2E_SOURCE_ID + "/");
 	await page.reload();
 	await expect(firstMedia).toHaveAttribute("href", href ?? "");
+	await waitForAppHydration(page);
 	await expect(
 		page.getByRole("button", { name: "全期間", exact: true }),
 	).toHaveAttribute("aria-pressed", "true");
@@ -133,8 +134,16 @@ test("chart views show composition, cumulative counts and selectable ranking bar
 			},
 		});
 	});
-	await page.goto("/statistics?period=recent");
+	// Intercept the browser query on a client navigation.
+	await page.goto("/about");
 	await waitForAppHydration(page);
+	const menu = page.getByRole("button", {
+		name: "メニューを開く",
+		exact: true,
+	});
+	if (await menu.isVisible()) await menu.click();
+	await page.getByRole("link", { name: "統計", exact: true }).click();
+	await page.getByRole("button", { name: "直近30日", exact: true }).click();
 	await expect(
 		page.getByRole("img", { name: "画像・動画・音声の構成比" }),
 	).toBeVisible();

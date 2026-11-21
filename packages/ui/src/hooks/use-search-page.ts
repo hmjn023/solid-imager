@@ -30,6 +30,7 @@ import {
 } from "solid-js";
 import { isServer } from "solid-js/web";
 import { buildSearchResultsQueryOptions } from "../query-options";
+import { useInitialSearch } from "../search-initial-state";
 import { type QueryUiState, toQueryUiState } from "../query-state";
 import { observePageBoundary } from "./observe-page-boundary";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
@@ -157,6 +158,7 @@ export function useSearchPage(
 		enableVirtualization = false,
 	} = options;
 	const queryClient = useQueryClient();
+	const initialSearch = useInitialSearch()?.initial();
 	const tagsQueryKey = queries.tags().queryKey;
 	const sourcesQueryKey = queries.sources().queryKey;
 	const projectsQueryKey = queries.projects().queryKey;
@@ -191,7 +193,11 @@ export function useSearchPage(
 	const [tagsData, setTagsData] = createSignal<TagResponse[] | undefined>();
 	const [sourcesData, setSourcesData] = createSignal<
 		SafeMediaSource[] | undefined
-	>();
+	>(
+		initialSearch
+			? queryClient.getQueryData<SafeMediaSource[]>(sourcesQueryKey)
+			: undefined,
+	);
 	const [projectsData, setProjectsData] = createSignal<Project[] | undefined>();
 	const [ipsData, setIpsData] = createSignal<Ip[] | undefined>();
 	const [charactersData, setCharactersData] = createSignal<
@@ -259,8 +265,16 @@ export function useSearchPage(
 			: Promise.resolve();
 	const [searchResultData, setSearchResultData] = createSignal<
 		InfiniteData<MediaSearchResponse> | undefined
-	>();
-	const [renderedQueryKey, setRenderedQueryKey] = createSignal<string>();
+	>(
+		initialSearch
+			? queryClient.getQueryData(searchResultQueryOptions().queryKey)
+			: undefined,
+	);
+	const [renderedQueryKey, setRenderedQueryKey] = createSignal(
+		searchResultData()
+			? JSON.stringify(searchResultQueryOptions().queryKey)
+			: undefined,
+	);
 
 	createEffect(() => {
 		// Solid Query exposes `data` as a resource-backed accessor. During an

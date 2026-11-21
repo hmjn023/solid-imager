@@ -20,10 +20,12 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogHeader,
 	DialogTitle,
 } from "../dialog";
 import { Input } from "../input";
 import { Label } from "../label";
+import { pixivQueryScope } from "./query-options";
 
 const SESSION_CHECK_INTERVAL_MS = 60_000;
 
@@ -147,11 +149,7 @@ export function createPixivAccount(
 		setNotice,
 		transport,
 		base,
-		scope: () => [
-			base,
-			session()?.userId ?? "guest",
-			session()?.expiresAt ?? 0,
-		],
+		scope: () => pixivQueryScope(base, session()?.userId, session()?.expiresAt),
 		async login(value: string, useCookie: boolean) {
 			if (!canTransferPixivSession(new URL(base)))
 				throw new Error(t("pixivAccount.useAnHTTPSOrLocalhostServerToConnect"));
@@ -193,6 +191,7 @@ export function PixivAccountDialog(props: {
 	const [busy, setBusy] = createSignal(false);
 	const [useCookie, setUseCookie] = createSignal(false);
 	const close = (value: boolean) => {
+		if (!value && busy()) return;
 		props.onOpenChange(value);
 		if (!value) {
 			setCode("");
@@ -209,29 +208,33 @@ export function PixivAccountDialog(props: {
 				if (useCookie()) setCode("");
 				await account.login(value, useCookie());
 			}
-			close(false);
 		} catch (error) {
 			account.setNotice(
 				error instanceof Error
 					? error.message
 					: t("pixivAccount.couldNotChangeTheConnection"),
 			);
+			return;
 		} finally {
 			setBusy(false);
 		}
+		close(false);
 	}
 	return (
 		<Dialog open={props.open} onOpenChange={close}>
 			<DialogContent
 				class="workspace-theme"
+				closeDisabled={busy()}
 				onCloseAutoFocus={props.onCloseAutoFocus}
 			>
-				<DialogTitle>{t("pixivAccount.pixivAccount")}</DialogTitle>
-				<DialogDescription>
-					{account.session()
-						? t("pixivAccount.theAccountUsedByThisTabSViewer")
-						: t("pixivAccount.connectTheAccountSignedInOnTheOfficialPixiv")}
-				</DialogDescription>
+				<DialogHeader>
+					<DialogTitle>{t("pixivAccount.pixivAccount")}</DialogTitle>
+					<DialogDescription>
+						{account.session()
+							? t("pixivAccount.theAccountUsedByThisTabSViewer")
+							: t("pixivAccount.connectTheAccountSignedInOnTheOfficialPixiv")}
+					</DialogDescription>
+				</DialogHeader>
 				<Show when={!account.session()}>
 					<p class="text-sm text-muted-foreground">
 						{t("pixivScreen.followLogin")}

@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { JSX } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import { children, Show, splitProps } from "solid-js";
 import {
 	Select,
 	SelectContent,
@@ -60,9 +60,11 @@ type ManagementHeaderProps = {
 	description: string;
 	eyebrow?: string;
 	title: string;
+	titleId?: string;
 };
 
 export function ManagementHeader(props: ManagementHeaderProps) {
+	const actions = children(() => props.actions);
 	return (
 		<header class="shrink-0 border-border border-b bg-card px-4 py-3 sm:px-6">
 			<div class="flex flex-wrap items-start justify-between gap-3">
@@ -70,15 +72,18 @@ export function ManagementHeader(props: ManagementHeaderProps) {
 					<p class="font-medium text-xs text-primary">
 						{props.eyebrow ?? t("managementLayout.workspace")}
 					</p>
-					<h1 class="mt-0.5 font-semibold text-xl text-foreground">
+					<h1
+						class="mt-0.5 font-semibold text-xl text-foreground"
+						id={props.titleId}
+					>
 						{props.title}
 					</h1>
 					<p class="mt-0.5 text-xs text-muted-foreground">
 						{props.description}
 					</p>
 				</div>
-				<Show when={props.actions}>
-					<div class="shrink-0">{props.actions}</div>
+				<Show when={actions()}>
+					<div class="shrink-0">{actions()}</div>
 				</Show>
 			</div>
 		</header>
@@ -86,7 +91,7 @@ export function ManagementHeader(props: ManagementHeaderProps) {
 }
 
 export const CATEGORY_TABS_CLASS =
-	"min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start";
+	"min-h-11 shrink-0 gap-2.5 whitespace-nowrap rounded-md px-2.5 text-muted-foreground shadow-none hover:bg-muted data-[selected]:bg-accent data-[selected]:text-primary data-[selected]:hover:bg-accent lg:min-h-10 lg:w-full lg:justify-start lg:whitespace-normal";
 
 export function CompactCategorySelect<
 	Category extends { label: string; value: string },

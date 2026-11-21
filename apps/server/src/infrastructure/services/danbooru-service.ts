@@ -152,11 +152,17 @@ export function createDanbooruService(
 				);
 			}
 			validate?.(value);
-			if (cache.size >= 128) {
-				const oldest = cache.keys().next().value;
-				if (oldest) cache.delete(oldest);
+			const directives = result.headers
+				.get("Cache-Control")
+				?.toLowerCase()
+				.split(",");
+			if (!directives?.some((directive) => directive.trim() === "no-store")) {
+				if (cache.size >= 128) {
+					const oldest = cache.keys().next().value;
+					if (oldest) cache.delete(oldest);
+				}
+				cache.set(key, { expires: Date.now() + ttl, value });
 			}
-			cache.set(key, { expires: Date.now() + ttl, value });
 			return value;
 		})();
 		pending.set(key, response);

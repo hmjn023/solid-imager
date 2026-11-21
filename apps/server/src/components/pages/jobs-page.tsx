@@ -16,7 +16,7 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 const BULK_RETRY_CONCURRENCY = 8;
 
-export function JobsPage() {
+export function JobsPage(props: { replaySince?: number }) {
 	const jobsList = useJobsList(orpc.jobs);
 	const jobsQuery = jobsList.query;
 	const workspace = useWorkspaceNavigation();
@@ -33,7 +33,12 @@ export function JobsPage() {
 	}));
 	const queryClient = useQueryClient();
 
-	useJobsQueryEvents((signal) => orpc.jobs.events(undefined, { signal }));
+	const replaySince = props.replaySince;
+	useJobsQueryEvents((signal) =>
+		orpc.jobs.events(replaySince === undefined ? undefined : { replaySince }, {
+			signal,
+		}),
+	);
 
 	return (
 		<JobsScreen
@@ -132,7 +137,7 @@ export function JobsPage() {
 						document.body.appendChild(anchor);
 						anchor.click();
 						anchor.remove();
-						setTimeout(() => URL.revokeObjectURL(url), 0);
+						setTimeout(() => URL.revokeObjectURL(url), 1000);
 						toast.success(
 							t("manager.downloadedValue", {
 								value0: String(artifact.fileName),

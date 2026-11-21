@@ -89,12 +89,12 @@ const SelectContent = <T extends ValidComponent = "div">(
 		<SelectPrimitivePortal mount={local.portalMount}>
 			<SelectPrimitiveContent
 				class={cn(
-					"fade-in-80 relative z-50 max-h-popover-fit min-w-32 max-w-viewport-gutter animate-in overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
+					"motion-safe:fade-in-80 relative z-50 flex max-h-popover-fit-available min-w-32 max-w-viewport-gutter flex-col overflow-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0",
 					local.class,
 				)}
 				{...others}
 			>
-				<SelectPrimitiveListbox class="m-0 p-1" />
+				<SelectPrimitiveListbox class="m-0 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1" />
 			</SelectPrimitiveContent>
 		</SelectPrimitivePortal>
 	);
@@ -116,7 +116,7 @@ const SelectItem = <T extends ValidComponent = "li">(
 	return (
 		<SelectPrimitiveItem
 			class={cn(
-				"relative mt-0 flex min-h-11 w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				"relative mt-0 flex min-h-11 w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[selected]:font-medium data-[highlighted]:text-foreground data-[disabled]:opacity-50",
 				local.class,
 			)}
 			{...others}

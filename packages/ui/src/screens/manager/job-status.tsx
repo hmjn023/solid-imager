@@ -111,11 +111,21 @@ function BatchCounts(props: {
 }
 
 const batchLabels: Record<string, string> = {
-	batch_ccip_parent: t("jobTypes.extract_ccip_vector"),
-	bulk_tagging_parent: t("jobTypes.bulk_tagging_parent"),
-	batch_embedding_parent: t("jobTypes.extract_embedding_vector"),
-	extract_embedding_batch: t("jobTypes.extract_embedding_vector"),
-	thumbnail_generation_parent: t("jobTypes.thumbnail_generation_parent"),
+	get batch_ccip_parent() {
+		return t("jobTypes.extract_ccip_vector");
+	},
+	get bulk_tagging_parent() {
+		return t("jobTypes.bulk_tagging_parent");
+	},
+	get batch_embedding_parent() {
+		return t("jobTypes.extract_embedding_vector");
+	},
+	get extract_embedding_batch() {
+		return t("jobTypes.extract_embedding_vector");
+	},
+	get thumbnail_generation_parent() {
+		return t("jobTypes.thumbnail_generation_parent");
+	},
 };
 
 /** Displays the source, status and item counts of active batches returned by the server. */
@@ -160,6 +170,7 @@ export function ServerBatchStatus(props: {
 						)}
 					</Show>
 					<Button
+						class="min-h-11 sm:min-h-8"
 						size="sm"
 						variant="outline"
 						onClick={() => props.manager.trackBatchJob(job)}

@@ -1,5 +1,5 @@
 import { t } from "@solid-imager/i18n";
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import type {
 	toast as SonnerToast,
@@ -25,75 +25,205 @@ interface ToastOptions {
 	description?: string;
 }
 
-const noop = () => "";
-const mockToast = {
-	error: noop,
-	success: noop,
-	info: noop,
-	warning: noop,
-	loading: noop,
-	dismiss: noop,
-	promise: <T,>(p: Promise<T>) => p,
-	custom: noop,
-	message: noop,
-} as unknown as typeof SonnerToast;
+const MAX_QUEUED_TOASTS = 20;
+const DURATION_BY_SEVERITY = {
+	error: 8000,
+	info: 4000,
+	message: 4000,
+	success: 4000,
+	warning: 6000,
+} as const;
 
-let toastImpl: typeof SonnerToast = mockToast;
+let sonnerToastModule: typeof SonnerToast | null = null;
+let toasterMounted = false;
+const pendingToastCalls: Array<(impl: typeof SonnerToast) => void> = [];
+
+function flushPendingToasts() {
+	if (!toasterMounted || !sonnerToastModule) return;
+	for (const call of pendingToastCalls.splice(0)) {
+		call(sonnerToastModule);
+	}
+}
+
+function activeToast(): typeof SonnerToast | null {
+	return toasterMounted && sonnerToastModule ? sonnerToastModule : null;
+}
+
+function dispatchToast(
+	call: (impl: typeof SonnerToast) => void,
+): string | number {
+	const impl = activeToast();
+	if (impl) {
+		call(impl);
+		return "";
+	}
+	if (pendingToastCalls.length < MAX_QUEUED_TOASTS) {
+		pendingToastCalls.push(call);
+	}
+	return "";
+}
+
+function withDefaultDuration(
+	opts: ToastOptions | undefined,
+	defaultDuration: number,
+): ToastOptions {
+	return opts?.duration !== undefined
+		? opts
+		: { ...opts, duration: defaultDuration };
+}
 
 if (!isServer) {
 	void import("solid-sonner").then((m) => {
-		toastImpl = m.toast;
+		sonnerToastModule = m.toast;
+		flushPendingToasts();
 	});
 }
 
 export const toast = {
-	error: (msg: string, opts?: ToastOptions) =>
-		toastImpl.error(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.error>[1],
-		),
-	success: (msg: string, opts?: ToastOptions) =>
-		toastImpl.success(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.success>[1],
-		),
-	info: (msg: string, opts?: ToastOptions) =>
-		toastImpl.info(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.info>[1],
-		),
-	warning: (msg: string, opts?: ToastOptions) =>
-		toastImpl.warning(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.warning>[1],
-		),
-	loading: (msg: string, opts?: ToastOptions) =>
-		toastImpl.loading(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.loading>[1],
-		),
-	dismiss: (id?: string | number) => toastImpl.dismiss(id),
+	error: (msg: string, opts?: ToastOptions) => {
+		const options = withDefaultDuration(opts, DURATION_BY_SEVERITY.error);
+		const impl = activeToast();
+		return impl
+			? impl.error(
+					msg,
+					options as unknown as Parameters<typeof SonnerToast.error>[1],
+				)
+			: dispatchToast((readyImpl) =>
+					readyImpl.error(
+						msg,
+						options as unknown as Parameters<typeof SonnerToast.error>[1],
+					),
+				);
+	},
+	success: (msg: string, opts?: ToastOptions) => {
+		const options = withDefaultDuration(opts, DURATION_BY_SEVERITY.success);
+		const impl = activeToast();
+		return impl
+			? impl.success(
+					msg,
+					options as unknown as Parameters<typeof SonnerToast.success>[1],
+				)
+			: dispatchToast((readyImpl) =>
+					readyImpl.success(
+						msg,
+						options as unknown as Parameters<typeof SonnerToast.success>[1],
+					),
+				);
+	},
+	info: (msg: string, opts?: ToastOptions) => {
+		const options = withDefaultDuration(opts, DURATION_BY_SEVERITY.info);
+		const impl = activeToast();
+		return impl
+			? impl.info(
+					msg,
+					options as unknown as Parameters<typeof SonnerToast.info>[1],
+				)
+			: dispatchToast((readyImpl) =>
+					readyImpl.info(
+						msg,
+						options as unknown as Parameters<typeof SonnerToast.info>[1],
+					),
+				);
+	},
+	warning: (msg: string, opts?: ToastOptions) => {
+		const options = withDefaultDuration(opts, DURATION_BY_SEVERITY.warning);
+		const impl = activeToast();
+		return impl
+			? impl.warning(
+					msg,
+					options as unknown as Parameters<typeof SonnerToast.warning>[1],
+				)
+			: dispatchToast((readyImpl) =>
+					readyImpl.warning(
+						msg,
+						options as unknown as Parameters<typeof SonnerToast.warning>[1],
+					),
+				);
+	},
+	loading: (msg: string, opts?: ToastOptions) => {
+		const impl = activeToast();
+		return impl
+			? impl.loading(
+					msg,
+					opts as unknown as Parameters<typeof SonnerToast.loading>[1],
+				)
+			: dispatchToast((readyImpl) =>
+					readyImpl.loading(
+						msg,
+						opts as unknown as Parameters<typeof SonnerToast.loading>[1],
+					),
+				);
+	},
+	dismiss: (id?: string | number) => {
+		const impl = activeToast();
+		if (impl) {
+			return impl.dismiss(id);
+		}
+		return dispatchToast((readyImpl) => readyImpl.dismiss(id));
+	},
 	promise: <T,>(
 		p: Promise<T>,
 		opts?: Parameters<typeof SonnerToast.promise>[1],
-	) => toastImpl.promise(p, opts),
-	custom: (jsx: unknown, opts?: ToastOptions) =>
-		toastImpl.custom(
-			jsx as Parameters<typeof SonnerToast.custom>[0],
-			opts as unknown as Parameters<typeof SonnerToast.custom>[1],
-		),
-	message: (msg: string, opts?: ToastOptions) =>
-		toastImpl.message(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.message>[1],
-		),
+	) => {
+		const impl = activeToast();
+		if (impl) {
+			return impl.promise(p, opts);
+		}
+		dispatchToast((readyImpl) => {
+			void readyImpl.promise(p, opts);
+		});
+		return p;
+	},
+	custom: (jsx: unknown, opts?: ToastOptions) => {
+		const impl = activeToast();
+		return impl
+			? impl.custom(
+					jsx as Parameters<typeof SonnerToast.custom>[0],
+					opts as unknown as Parameters<typeof SonnerToast.custom>[1],
+				)
+			: dispatchToast((readyImpl) =>
+					readyImpl.custom(
+						jsx as Parameters<typeof SonnerToast.custom>[0],
+						opts as unknown as Parameters<typeof SonnerToast.custom>[1],
+					),
+				);
+	},
+	message: (msg: string, opts?: ToastOptions) => {
+		const options = withDefaultDuration(opts, DURATION_BY_SEVERITY.message);
+		const impl = activeToast();
+		return impl
+			? impl.message(
+					msg,
+					options as unknown as Parameters<typeof SonnerToast.message>[1],
+				)
+			: dispatchToast((readyImpl) =>
+					readyImpl.message(
+						msg,
+						options as unknown as Parameters<typeof SonnerToast.message>[1],
+					),
+				);
+	},
 };
+
+function ToasterReadyNotifier() {
+	onMount(() => {
+		queueMicrotask(() => {
+			toasterMounted = true;
+			flushPendingToasts();
+		});
+	});
+	onCleanup(() => {
+		toasterMounted = false;
+	});
+	return null;
+}
 
 export const Toaster = () => {
 	const [Comp, setComp] = createSignal<typeof SonnerToaster | null>(null);
 
 	onMount(() => {
 		void import("solid-sonner").then((m) => {
+			sonnerToastModule = m.toast;
 			setComp(() => m.Toaster);
 		});
 	});
@@ -103,32 +233,34 @@ export const Toaster = () => {
 			{(ToasterComp) => {
 				const C = ToasterComp();
 				return (
-					<C
-						class="group"
-						data-toast-container=""
-						closeButton
-						containerAriaLabel={t("toast.notifications")}
-						duration={5000}
-						gap={10}
-						mobileOffset={{ left: 12, right: 12, top: 12 }}
-						offset={20}
-						position="top-right"
-						visibleToasts={4}
-						toastOptions={{
-							closeButtonAriaLabel: t("toast.closeNotification"),
-							classes: {
-								actionButton:
-									"group-[.toast]:bg-primary group-[.toast]:font-medium group-[.toast]:text-primary-foreground hover:group-[.toast]:bg-primary/90",
-								cancelButton:
-									"group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-								closeButton:
-									"group-[.toast]:border-border group-[.toast]:bg-background group-[.toast]:text-muted-foreground",
-								description: "group-[.toast]:text-muted-foreground",
-								toast:
-									"group toast group-data-[toast-container]:border-border group-data-[toast-container]:bg-background group-data-[toast-container]:text-foreground group-data-[toast-container]:shadow-lg motion-reduce:transition-none",
-							},
-						}}
-					/>
+					<>
+						<C
+							class="workspace-theme group"
+							closeButton
+							containerAriaLabel={t("toast.notifications")}
+							duration={DURATION_BY_SEVERITY.info}
+							gap={10}
+							mobileOffset={{ left: 12, right: 12, top: 12 }}
+							offset={20}
+							position="top-right"
+							visibleToasts={4}
+							toastOptions={{
+								closeButtonAriaLabel: t("toast.closeNotification"),
+								classes: {
+									actionButton:
+										"group-[.toast]:bg-primary group-[.toast]:font-medium group-[.toast]:text-primary-foreground hover:group-[.toast]:bg-primary-hover",
+									cancelButton:
+										"group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+									closeButton:
+										"group-[.toast]:border-border group-[.toast]:bg-background group-[.toast]:text-muted-foreground",
+									description: "group-[.toast]:text-muted-foreground",
+									toast:
+										"group toast border-border bg-popover text-popover-foreground shadow-lg",
+								},
+							}}
+						/>
+						<ToasterReadyNotifier />
+					</>
 				);
 			}}
 		</Show>

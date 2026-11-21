@@ -4,6 +4,14 @@ import { mediaPath } from "./support/fixture";
 test("unsaved server settings block language changes until discarded", async ({
 	page,
 }) => {
+	await page.addInitScript(() => {
+		Object.defineProperty(document, "cookie", {
+			get: () => "",
+			set() {
+				// Simulate a browser silently rejecting cookie writes.
+			},
+		});
+	});
 	await page.goto("/config");
 	await waitForAppHydration(page);
 	const concurrency = page.getByLabel("同時実行数", { exact: true });
@@ -24,6 +32,19 @@ test("unsaved server settings block language changes until discarded", async ({
 	await page.getByRole("option", { name: "English", exact: true }).click();
 	await waitForAppHydration(page);
 	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+	await expect(
+		page.getByRole("link", { name: "Settings", exact: true }),
+	).toBeVisible();
+	await page.getByRole("link", { name: "Library", exact: true }).click();
+	await expect(
+		page.getByRole("combobox", { name: "Search media", exact: true }),
+	).toBeVisible();
+	await page.reload();
+	await waitForAppHydration(page);
+	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+	await expect(
+		page.getByRole("combobox", { name: "Search media", exact: true }),
+	).toBeVisible();
 });
 
 test("display language changes the whole workspace and survives direct navigation and reload", async ({
@@ -53,8 +74,10 @@ test("display language changes the whole workspace and survives direct navigatio
 	);
 	await page.setViewportSize({ width: 375, height: 812 });
 	await expect(
-		page.getByRole("button", { name: /^Settings categories/ }),
-	).toHaveText("Interface");
+		page
+			.getByRole("tablist", { name: "Settings categories" })
+			.getByRole("tab", { name: "Interface", selected: true }),
+	).toBeVisible();
 	await expect(
 		page
 			.getByRole("tabpanel", { name: /^Interface/ })

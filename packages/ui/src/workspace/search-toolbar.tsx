@@ -1,3 +1,4 @@
+import { useRenderedSearchState } from "../search-initial-state";
 import { t } from "@solid-imager/i18n";
 import {
 	getSearchConditionCount,
@@ -44,6 +45,7 @@ import {
 	setSearchState,
 } from "../stores/search-store";
 import { CollectionHeader } from "./collection-header";
+import { PanelRightClose, PanelRightOpen } from "./icons";
 import {
 	getSearchComposerTokens,
 	parseSimilarityAnchor,
@@ -72,6 +74,10 @@ export type SearchToolbarProps = {
 	};
 	itemCount?: number;
 	isUpdating?: boolean;
+	inspectorToggle?: {
+		isOpen: boolean;
+		onToggle: () => void;
+	};
 	onSearch: () => void;
 	onSelectSource?: (id: string) => void;
 	presetClient: PresetManagerClient;
@@ -141,13 +147,11 @@ function submitComposerDraft(rawDraft: string): boolean {
 		});
 		return true;
 	}
-	if (searchState.semanticQuery && rawDraft.trim()) {
-		setSearchState("semanticQuery", rawDraft.trim().slice(0, 2000));
-		return true;
-	}
 	const parts = rawDraft.match(/(?:[^\s"]+|"[^"]*")+/g) ?? [];
 	const freeText: string[] = [];
 	let changed = false;
+	let matchedOrdinaryCondition = false;
+	let sawSimilarityAnchor = false;
 
 	for (const part of parts) {
 		const separatorIndex = part.indexOf(":");
@@ -169,38 +173,50 @@ function submitComposerDraft(rawDraft: string): boolean {
 					freeText.push(part);
 					break;
 				}
+				sawSimilarityAnchor = true;
 				if (searchState.similarityAnchorMediaId !== anchorMediaId) {
 					setSearchState("similarityAnchorMediaId", anchorMediaId);
+					changed = true;
+				}
+				if (searchState.semanticQuery) {
+					setSearchState("semanticQuery", "");
 					changed = true;
 				}
 				break;
 			}
 			case "name":
 				setSearchState("searchQuery", value);
+				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "tag":
 				appendValues("selectedTags", value);
+				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "-tag":
 				appendValues("excludeTags", value);
+				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "character":
 				appendValues("selectedCharacters", value);
+				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "ip":
 				appendValues("selectedIps", value);
+				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "author":
 				appendValues("selectedAuthors", value);
+				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "project":
 				appendValues("selectedProjects", value);
+				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "limit": {
@@ -222,7 +238,23 @@ function submitComposerDraft(rawDraft: string): boolean {
 
 	if (freeText.length > 0) {
 		setSearchState("searchQuery", freeText.join(" "));
+		matchedOrdinaryCondition = true;
 		changed = true;
+	}
+
+	if (matchedOrdinaryCondition) {
+		if (searchState.mode === "pro") {
+			setSearchState("mode", "simple");
+			changed = true;
+		}
+		if (searchState.semanticQuery) {
+			setSearchState("semanticQuery", "");
+			changed = true;
+		}
+		if (!sawSimilarityAnchor && searchState.similarityAnchorMediaId) {
+			setSearchState("similarityAnchorMediaId", null);
+			changed = true;
+		}
 	}
 	return changed;
 }
@@ -249,6 +281,7 @@ function sortLabel(state: SearchState): string {
 }
 
 export function SearchToolbar(props: SearchToolbarProps) {
+	const state = useRenderedSearchState();
 	const [draft, setDraft] = createSignal("");
 	const [pendingSuggestions, setPendingSuggestions] = createSignal<
 		SearchSuggestion[]
@@ -256,17 +289,14 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	const [pendingRemovals, setPendingRemovals] = createSignal<SearchToken[]>([]);
 	const [filterOpen, setFilterOpen] = createSignal(false);
 	const [sortOpen, setSortOpen] = createSignal(false);
+	let commitSemanticDraft: (() => boolean) | undefined;
 	const tokens = createMemo(() => {
 		const removalIds = new Set(pendingRemovals().map(tokenId));
 		return [
-			...getSearchComposerTokens(searchState).filter(
+			...getSearchComposerTokens(state()).filter(
 				(token) => !removalIds.has(tokenId(token)),
 			),
-			...(getSearchExecutionKind(searchState) === "ordinary" &&
-			searchState.mode === "simple"
-				? pendingSuggestions()
-				: []
-			).map((suggestion) => ({
+			...pendingSuggestions().map((suggestion) => ({
 				key: suggestion.key,
 				prefix: suggestion.prefix,
 				value: suggestion.value,
@@ -274,12 +304,29 @@ export function SearchToolbar(props: SearchToolbarProps) {
 		];
 	});
 	const appliedFilterCount = createMemo(() =>
-		getSearchExecutionKind(searchState) === "ordinary"
-			? getSearchConditionCount(searchState)
+		getSearchExecutionKind(state()) === "ordinary"
+			? getSearchConditionCount(state())
 			: 0,
 	);
 	let composerInput: HTMLInputElement | undefined;
 	let searchApplyTimer: ReturnType<typeof setTimeout> | undefined;
+	const applySuggestionAdditions = (additions: SearchSuggestion[]) => {
+		if (additions.length === 0) return;
+		if (state().mode === "pro") {
+			setSearchState("mode", "simple");
+		}
+		if (state().semanticQuery) {
+			setSearchState("semanticQuery", "");
+		}
+		if (state().similarityAnchorMediaId) {
+			setSearchState("similarityAnchorMediaId", null);
+		}
+		for (const suggestion of additions) {
+			setSearchState(suggestion.key, [
+				...new Set([...state()[suggestion.key], suggestion.value]),
+			]);
+		}
+	};
 	const applyPendingChanges = () => {
 		searchApplyTimer = undefined;
 		const additions = pendingSuggestions();
@@ -288,11 +335,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 
 		batch(() => {
 			for (const token of removals) removeToken(token);
-			for (const suggestion of additions) {
-				setSearchState(suggestion.key, [
-					...new Set([...searchState[suggestion.key], suggestion.value]),
-				]);
-			}
+			applySuggestionAdditions(additions);
 		});
 		setPendingSuggestions([]);
 		setPendingRemovals([]);
@@ -347,11 +390,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 		let changed = additions.length > 0 || removals.length > 0;
 		batch(() => {
 			for (const token of removals) removeToken(token);
-			for (const suggestion of additions) {
-				setSearchState(suggestion.key, [
-					...new Set([...searchState[suggestion.key], suggestion.value]),
-				]);
-			}
+			applySuggestionAdditions(additions);
 			if (submitComposerDraft(draft())) changed = true;
 		});
 		if (!changed) return;
@@ -402,7 +441,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						>
 							<span
 								aria-hidden="true"
-								class="size-2 shrink-0 animate-pulse rounded-full bg-current motion-reduce:animate-none"
+								class="size-2 shrink-0 rounded-full bg-current motion-safe:animate-pulse"
 							/>
 							<span class="truncate">
 								{props.updatingLabel ?? t("searchToolbar.updating")}
@@ -419,16 +458,16 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				</>
 			}
 		>
-			<Show when={getSearchExecutionKind(searchState) !== "ordinary"}>
+			<Show when={getSearchExecutionKind(state()) !== "ordinary"}>
 				<output class="mb-2 block text-xs text-muted-foreground">
 					{t("searchToolbar.filtersAndSortingForOrdinarySearchAreSavedThey")}
 				</output>
 			</Show>
 			<Show
 				when={
-					getSearchExecutionKind(searchState) === "ordinary" &&
-					searchState.mode === "pro" &&
-					searchState.advancedCondition
+					getSearchExecutionKind(state()) === "ordinary" &&
+					state().mode === "pro" &&
+					state().advancedCondition
 				}
 			>
 				<p class="mb-2 text-xs text-muted-foreground">
@@ -519,9 +558,15 @@ export function SearchToolbar(props: SearchToolbarProps) {
 							<SearchControlPanel
 								context={props.context}
 								filterData={props.filterData}
-								onSearch={props.onSearch}
+								onSearch={() => {
+									setFilterOpen(false);
+									props.onSearch();
+								}}
 								onSelectSource={props.onSelectSource}
 								presetClient={props.presetClient}
+								registerSemanticCommit={(commit) => {
+									commitSemanticDraft = commit;
+								}}
 								selectedSource={props.selectedSource}
 								showSearchButton={false}
 								showSortControls={false}
@@ -531,6 +576,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						</div>
 						<div class="flex shrink-0 justify-end gap-2 border-border border-t bg-card p-3">
 							<Button
+								class="min-h-11 sm:min-h-9"
 								onClick={() => setFilterOpen(false)}
 								size="sm"
 								variant="outline"
@@ -538,7 +584,9 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								{t("actions.close")}
 							</Button>
 							<Button
+								class="min-h-11 sm:min-h-9"
 								onClick={() => {
+									commitSemanticDraft?.();
 									props.onSearch();
 									setFilterOpen(false);
 								}}
@@ -557,7 +605,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				>
 					<PopoverTrigger
 						aria-label={t("searchToolbar.sortCurrentlyValue", {
-							value0: String(sortLabel(searchState)),
+							value0: String(sortLabel(state())),
 						})}
 						as={Button}
 						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9 sm:w-56 sm:justify-between"
@@ -566,7 +614,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					>
 						<ArrowDownUp aria-hidden="true" size={15} />
 						<span class="hidden min-w-0 flex-1 truncate text-left sm:inline">
-							{sortLabel(searchState)}
+							{sortLabel(state())}
 						</span>
 						<ChevronDown aria-hidden="true" size={13} />
 					</PopoverTrigger>
@@ -578,12 +626,12 @@ export function SearchToolbar(props: SearchToolbarProps) {
 							onSimilarityTopKChange={(value) =>
 								setSearchState("similarityTopK", value)
 							}
-							similarityAnchorMediaId={searchState.similarityAnchorMediaId}
+							similarityAnchorMediaId={state().similarityAnchorMediaId}
 							similarityLimitId="sort-similarity-limit"
-							similarityTopK={searchState.similarityTopK}
-							semanticQuery={searchState.semanticQuery}
-							sortBy={searchState.sortBy}
-							sortOrder={searchState.sortOrder}
+							similarityTopK={state().similarityTopK}
+							semanticQuery={state().semanticQuery}
+							sortBy={state().sortBy}
+							sortOrder={state().sortOrder}
 						/>
 					</PopoverContent>
 				</Popover>
@@ -625,6 +673,31 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						>
 							<SquareCheck aria-hidden="true" size={15} />
 							{t("sourceMediaScreen.selectMultiple")}
+						</Button>
+					)}
+				</Show>
+				<Show when={props.inspectorToggle}>
+					{(toggle) => (
+						<Button
+							aria-label={
+								toggle().isOpen
+									? t("collectionInspector.hideInspector")
+									: t("collectionInspector.showInspector")
+							}
+							aria-pressed={toggle().isOpen}
+							class="hidden min-h-9 2xl:inline-flex"
+							onClick={() => toggle().onToggle()}
+							size="sm"
+							type="button"
+							variant={toggle().isOpen ? "secondary" : "outline"}
+						>
+							<Show
+								fallback={<PanelRightOpen aria-hidden="true" size={15} />}
+								when={toggle().isOpen}
+							>
+								<PanelRightClose aria-hidden="true" size={15} />
+							</Show>
+							{t("collectionInspector.inspector")}
 						</Button>
 					)}
 				</Show>

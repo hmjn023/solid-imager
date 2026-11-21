@@ -60,7 +60,7 @@ export function PixivViewingHistoryContent(
 				ref={(element: HTMLHeadingElement) => {
 					title = element;
 				}}
-				class="shrink-0 pr-8"
+				class="shrink-0 pr-12"
 			>
 				{t("pixivViewingHistory.title")}
 			</DialogTitle>

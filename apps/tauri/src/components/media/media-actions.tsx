@@ -36,7 +36,7 @@ async function downloadMedia(media: MediaDetails): Promise<void> {
 	document.body.appendChild(anchor);
 	anchor.click();
 	anchor.remove();
-	URL.revokeObjectURL(url);
+	setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function MediaActions(props: MediaActionsProps) {
@@ -93,7 +93,6 @@ export function MediaActions(props: MediaActionsProps) {
 					}
 					isOpen={modalProps.isOpen}
 					onClose={modalProps.onClose}
-					onSuccess={props.onUpdate}
 				/>
 			)}
 			startCcipExtraction={(force) =>

@@ -148,7 +148,7 @@ export function createManagerDuplicatesState(actions: {
 				})),
 		);
 		if (!items.length) {
-			actions.error("No duplicates selected for deletion");
+			actions.error(t("managerDuplicatesState.noneSelectedForDeletion"));
 			return;
 		}
 		setConfirmation({
@@ -208,9 +208,17 @@ export function createManagerDuplicatesState(actions: {
 			}
 			if (failed)
 				actions.error(
-					`Deleted ${deletedIds.size}, failed ${failed}. Remaining duplicates are still shown.`,
+					t("managerDuplicatesState.partialDeleteResult", {
+						deleted: String(deletedIds.size),
+						failed: String(failed),
+					}),
 				);
-			else actions.success(`Deleted ${deletedIds.size} duplicate(s)`);
+			else
+				actions.success(
+					t("managerDuplicatesState.deletedCount", {
+						count: String(deletedIds.size),
+					}),
+				);
 		} finally {
 			setDeleting(false);
 		}
@@ -239,6 +247,24 @@ export function createManagerDuplicatesState(actions: {
 			for (const item of group.media) keep.delete(item.id);
 			keep.add(mediaId);
 			changeKeep(keep);
+		},
+		keepAllForGroup: (groupId: string) => {
+			const current = result();
+			const group = current?.groups.find(
+				(candidate) => candidate.id === groupId,
+			);
+			if (!current || !group || group.media.length === 0) return;
+			const keep = new Set(current.keepIds);
+			for (const item of group.media) keep.add(item.id);
+			changeKeep(keep);
+		},
+		isGroupSkipped: (groupId: string) => {
+			const current = result();
+			const group = current?.groups.find(
+				(candidate) => candidate.id === groupId,
+			);
+			if (!current || !group || group.media.length === 0) return false;
+			return group.media.every((item) => current.keepIds.has(item.id));
 		},
 		selectKeepOldest: () =>
 			chooseBy(

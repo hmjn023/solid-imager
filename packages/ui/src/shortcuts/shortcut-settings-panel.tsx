@@ -235,7 +235,7 @@ export function ShortcutSettingsPanel(
 
 	const displayBinding = (binding: ShortcutBinding): string =>
 		binding === null
-			? "Disabled"
+			? t("shortcutKbd.disabled")
 			: formatForDisplay(binding, { platform: platform() });
 
 	const isDefaultBinding = (definition: ShortcutDefinition): boolean =>
@@ -367,7 +367,7 @@ export function ShortcutSettingsPanel(
 														readOnly
 														value={
 															isActive()
-																? "Press shortcut…"
+																? t("shortcutSettingsPanel.pressShortcut")
 																: displayBinding(currentBinding())
 														}
 													/>

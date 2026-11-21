@@ -36,8 +36,8 @@ export function PendingDownloadsIndicator(
 							),
 						})}
 						class={cn(
-							"relative flex h-10 w-full items-center justify-start gap-2 rounded-md px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-auto disabled:opacity-60",
-							props.compact && "size-10 justify-center px-0",
+							"relative flex h-11 w-full items-center justify-start gap-2 rounded-md px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-auto disabled:opacity-60 md:h-10",
+							props.compact && "mx-auto size-11 justify-center px-0 md:size-10",
 						)}
 						disabled={!hasPendingImports()}
 						onClick={onOpen}
@@ -53,7 +53,7 @@ export function PendingDownloadsIndicator(
 							<span
 								class={cn(
 									"ml-auto rounded-full bg-accent px-1.5 py-0.5 text-label-xs text-primary",
-									props.compact && "absolute -mt-5 ml-5",
+									props.compact && "absolute top-0.5 right-0.5 m-0",
 								)}
 							>
 								{pendingCount()}
@@ -64,11 +64,20 @@ export function PendingDownloadsIndicator(
 			}}
 			renderFallback={() => (
 				<button
-					class="h-10 w-full cursor-default rounded bg-transparent font-bold text-muted-foreground text-xs"
+					aria-label={t("navigation.importInbox")}
+					class={cn(
+						"flex h-11 w-full cursor-default items-center justify-start gap-2 rounded-md bg-transparent px-3 font-medium text-muted-foreground text-xs opacity-60 md:h-10",
+						props.compact && "mx-auto size-11 justify-center px-0 md:size-10",
+					)}
 					disabled
 					type="button"
 				>
-					{t("navigation.importInbox")}
+					<span aria-hidden="true" class="text-base leading-none">
+						↓
+					</span>
+					<span class={props.compact ? "sr-only" : undefined}>
+						{t("navigation.importInbox")}
+					</span>
 				</button>
 			)}
 			renderModal={(modalProps) => (

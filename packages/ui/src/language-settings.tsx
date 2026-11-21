@@ -45,7 +45,7 @@ export function LanguageSettings(props: { disabled?: boolean }) {
 					id="display-language"
 					aria-labelledby="display-language-label"
 					aria-describedby="display-language-hint"
-					class="max-w-72"
+					class="min-h-11 max-w-72 sm:min-h-9"
 				>
 					<SelectValue<Locale>>
 						{(state) => (

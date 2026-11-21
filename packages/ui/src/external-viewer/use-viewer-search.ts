@@ -26,6 +26,11 @@ import { toQueryUiState } from "../query-state";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
 import type { ViewerGridHandle } from "./results-grid";
 import type { ViewerSearchHistoryEntry } from "./viewer-search-history";
+import {
+	type PixivCollection,
+	viewerPagination,
+	viewerSearchKey,
+} from "./query-options";
 
 const authorSchema = z.object({
 	id: z
@@ -35,7 +40,6 @@ const authorSchema = z.object({
 	name: z.string(),
 });
 const pixivCollectionSchema = pixivFeedSchema.or(z.literal("bookmarks"));
-export type PixivCollection = z.infer<typeof pixivCollectionSchema>;
 const defaultBookmarkFilter: PixivBookmarkFilter = {
 	visibility: "public",
 	tag: "",
@@ -75,6 +79,7 @@ export function createViewerSearch<T extends ViewerPage>(
 	onCommitSearch?: (entry: ViewerSearchHistoryEntry) => void,
 ) {
 	const client = useQueryClient();
+	const initialScope = JSON.stringify(identity?.scope() ?? []);
 	const [author, setAuthor] = createSignal<z.infer<typeof authorSchema>>();
 	const [literalPixivTag, setLiteralPixivTag] = createSignal(false);
 	const [pixivFeed, setPixivFeed] = createSignal<PixivCollection>("daily");
@@ -222,18 +227,19 @@ export function createViewerSearch<T extends ViewerPage>(
 		userId: string | null = author()?.id ?? null,
 		feed = pixivFeed(),
 		bookmark = bookmarkFilter(),
+		page = firstPage(),
 	) =>
-		[
-			"external-viewer",
+		viewerSearchKey(
 			provider,
+			scope() ?? initialScope,
+			page,
 			word,
 			mappings,
 			literal,
 			userId,
 			feed,
-			feed === "bookmarks" && !word && userId === null ? bookmark : null,
-			scope(),
-		] as const;
+			bookmark,
+		);
 	const results = createInfiniteQuery<
 		T,
 		Error,
@@ -263,11 +269,7 @@ export function createViewerSearch<T extends ViewerPage>(
 					userId,
 					bookmark,
 				),
-			initialPageParam: firstPage(),
-			getNextPageParam: (page, _pages, number) =>
-				page.hasNextPage && number < 1000 ? number + 1 : undefined,
-			getPreviousPageParam: (_page, _pages, number) =>
-				number > 1 ? number - 1 : undefined,
+			...viewerPagination(firstPage()),
 			enabled: scope() !== undefined,
 			gcTime: identity ? 0 : undefined,
 			staleTime: 30_000,
@@ -354,17 +356,8 @@ export function createViewerSearch<T extends ViewerPage>(
 		if (saved && pageIndex < 0 && firstPage() !== saved.page) {
 			// Reloading a detail can start on a different page than its collection
 			// viewport. Jump directly to the viewport's page when returning.
-			const currentRevision = revision;
 			restoreAfterPage = saved.page;
 			setFirstPage(saved.page);
-			queueMicrotask(() => {
-				if (revision === currentRevision && area === scrollArea()) {
-					void client.resetQueries({
-						queryKey: queryKey(tags(), choices()),
-						exact: true,
-					});
-				}
-			});
 			return;
 		}
 		const post = saved && loaded.pages.pages[pageIndex]?.posts[saved.index];
@@ -394,12 +387,23 @@ export function createViewerSearch<T extends ViewerPage>(
 	}
 
 	async function loadMore() {
-		if (!restoring() && results.hasNextPage && !results.isFetching) {
+		if (
+			scope() !== undefined &&
+			!restoring() &&
+			results.hasNextPage &&
+			!results.isFetching
+		) {
 			await results.fetchNextPage({ cancelRefetch: false });
 		}
 	}
 	async function loadPrevious() {
-		if (restoring() || !results.hasPreviousPage || results.isFetching) return;
+		if (
+			scope() === undefined ||
+			restoring() ||
+			!results.hasPreviousPage ||
+			results.isFetching
+		)
+			return;
 		const area = scrollArea();
 		const previousRevision = revision;
 		const previousFirst = collection()?.pages.pageParams[0];
@@ -445,6 +449,7 @@ export function createViewerSearch<T extends ViewerPage>(
 			nextAuthor?.id ?? null,
 			feed,
 			bookmark,
+			1,
 		);
 		const cached = client.getQueryState(nextKey);
 		batch(() => {
@@ -512,9 +517,13 @@ export function createViewerSearch<T extends ViewerPage>(
 		hasNextPage: () => results.hasNextPage,
 		hasPreviousPage: () => results.hasPreviousPage,
 		canAutoLoadNext: () =>
-			results.hasNextPage && collection()?.lastPageGrew === true,
+			scope() !== undefined &&
+			results.hasNextPage &&
+			collection()?.lastPageGrew === true,
 		canAutoLoadPrevious: () =>
-			results.hasPreviousPage && collection()?.firstPageGrew === true,
+			scope() !== undefined &&
+			results.hasPreviousPage &&
+			collection()?.firstPageGrew === true,
 		loadMore,
 		loadPrevious,
 		submit,

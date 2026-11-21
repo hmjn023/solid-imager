@@ -1,6 +1,7 @@
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { t } from "@solid-imager/i18n";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { Alert, AlertDescription } from "./alert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -25,7 +26,6 @@ import {
 import { Input } from "./input";
 import { SelectedRelationItems } from "./selected-relation-items";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
-import { toast } from "./toast";
 import { Plus, Search } from "./workspace/icons";
 
 const RELATION_GROUPS = ["projects", "ips", "characters"] as const;
@@ -53,6 +53,7 @@ function groupDraft(group: Group): Draft {
 
 function RelationGroupPanel(props: {
 	group: Group;
+	createdItems: Item[];
 	draft: Draft;
 	characters: boolean;
 	saving: boolean;
@@ -64,10 +65,11 @@ function RelationGroupPanel(props: {
 }) {
 	const items = createMemo(() => [
 		...new Map(
-			[...props.group.items, ...props.group.available].map((item) => [
-				item.id,
-				item,
-			]),
+			[
+				...props.group.items,
+				...props.group.available,
+				...props.createdItems,
+			].map((item) => [item.id, item]),
 		).values(),
 	]);
 	const selected = () =>
@@ -131,6 +133,12 @@ function RelationGroupPanel(props: {
 						value={props.draft.query}
 						disabled={props.saving}
 						onInput={(event) => props.onQuery(event.currentTarget.value)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" && canStageName() && !props.saving) {
+								event.preventDefault();
+								props.onStageName(searchName());
+							}
+						}}
 					/>
 				</div>
 				<Show when={canStageName()}>
@@ -199,6 +207,7 @@ export function RelationsEditor(props: Props) {
 	const [open, setOpen] = createSignal(false);
 	const [confirm, setConfirm] = createSignal(false);
 	const [saving, setSaving] = createSignal(false);
+	const [saveError, setSaveError] = createSignal<string | null>(null);
 	const [active, setActive] = createSignal<RelationGroup>("ips");
 	const readDraft = () => ({
 		projects: groupDraft(props.groups.projects),
@@ -207,6 +216,13 @@ export function RelationsEditor(props: Props) {
 	});
 	const [baseline, setBaseline] = createSignal(readDraft());
 	const [drafts, setDrafts] = createSignal(baseline());
+	const [createdItems, setCreatedItems] = createSignal<
+		Record<RelationGroup, Item[]>
+	>({
+		projects: [],
+		ips: [],
+		characters: [],
+	});
 	let initialSearch: HTMLInputElement | undefined;
 	const updateDraft = (key: RelationGroup, update: (draft: Draft) => Draft) =>
 		setDrafts((previous) => ({ ...previous, [key]: update(previous[key]) }));
@@ -225,6 +241,8 @@ export function RelationsEditor(props: Props) {
 		const initial = readDraft();
 		setBaseline(initial);
 		setDrafts(initial);
+		setCreatedItems({ projects: [], ips: [], characters: [] });
+		setSaveError(null);
 		setActive("ips");
 		setOpen(true);
 	};
@@ -255,30 +273,63 @@ export function RelationsEditor(props: Props) {
 	};
 	const save = async () => {
 		if (saving() || !dirty()) return;
-		const changes = drafts();
-		const original = baseline();
+		setSaveError(null);
 		setSaving(true);
+		let anySucceeded = false;
+		const commitBaselineId = (
+			key: RelationGroup,
+			update: (ids: string[]) => string[],
+		) => {
+			setBaseline((previous) => ({
+				...previous,
+				[key]: { ...previous[key], ids: update(previous[key].ids) },
+			}));
+		};
 		try {
 			for (const key of RELATION_GROUPS) {
 				const group = props.groups[key];
-				const old = original[key].ids;
-				const { ids, names } = changes[key];
-				for (const id of old.filter((id) => !ids.includes(id)))
+				const baselineIds = baseline()[key].ids;
+				const draft = drafts()[key];
+				const toRemove = baselineIds.filter((id) => !draft.ids.includes(id));
+				const toAdd = draft.ids.filter((id) => !baselineIds.includes(id));
+				const namesToCreate = [...draft.names];
+				for (const id of toRemove) {
 					await group.remove(id);
-				for (const id of ids.filter((id) => !old.includes(id)))
+					anySucceeded = true;
+					commitBaselineId(key, (ids) => ids.filter((value) => value !== id));
+				}
+				for (const id of toAdd) {
 					await group.add(id);
-				for (const name of names) {
+					anySucceeded = true;
+					commitBaselineId(key, (ids) => [...new Set([...ids, id])]);
+				}
+				for (const name of namesToCreate) {
 					const item = await group.create(name);
+					anySucceeded = true;
+					setCreatedItems((previous) => ({
+						...previous,
+						[key]: [...previous[key], { id: item.id, name }],
+					}));
+					setDrafts((previous) => ({
+						...previous,
+						[key]: {
+							...previous[key],
+							ids: [...new Set([...previous[key].ids, item.id])],
+							names: previous[key].names.filter((value) => value !== name),
+						},
+					}));
 					await group.add(item.id);
+					commitBaselineId(key, (ids) => [...new Set([...ids, item.id])]);
 				}
 			}
 			props.onUpdate?.();
 			setOpen(false);
 		} catch (error) {
-			props.onUpdate?.();
-			setOpen(false);
-			toast.error(
-				t("relationsEditor.failedToSaveRelationsSomeChangesMayHaveBeen", {
+			if (anySucceeded) {
+				props.onUpdate?.();
+			}
+			setSaveError(
+				t("relationsEditor.partialSaveRetryHint", {
 					value0: String(getErrorMessage(error)),
 				}),
 			);
@@ -302,6 +353,7 @@ export function RelationsEditor(props: Props) {
 				</DialogTrigger>
 				<DialogContent
 					class="workspace-theme flex h-dialog-screen max-w-3xl flex-col gap-0 overflow-hidden rounded-lg bg-card p-0 sm:h-120 [&>button]:top-2 [&>button]:right-2 [&>button]:z-20 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center"
+					closeDisabled={saving()}
 					onOpenAutoFocus={(event) => {
 						if (
 							initialSearch?.isConnected &&
@@ -351,6 +403,7 @@ export function RelationsEditor(props: Props) {
 								>
 									<RelationGroupPanel
 										group={props.groups[key]}
+										createdItems={createdItems()[key]}
 										draft={drafts()[key]}
 										characters={key === "characters"}
 										saving={saving()}
@@ -379,8 +432,18 @@ export function RelationsEditor(props: Props) {
 							)}
 						</For>
 					</Tabs>
+					<Show when={saveError()}>
+						{(message) => (
+							<div class="shrink-0 border-t border-border bg-card px-3 py-2 sm:px-5">
+								<Alert class="bg-destructive/10 p-3" variant="destructive">
+									<AlertDescription>{message()}</AlertDescription>
+								</Alert>
+							</div>
+						)}
+					</Show>
 					<DialogFooter class="flex-row justify-end border-t border-border bg-card px-3 py-3 sm:px-5 [&>button]:w-auto">
 						<Button
+							class="min-h-11 sm:min-h-9"
 							type="button"
 							variant="outline"
 							disabled={saving()}
@@ -389,6 +452,8 @@ export function RelationsEditor(props: Props) {
 							{t("actions.cancel")}
 						</Button>
 						<Button
+							aria-busy={saving()}
+							class="min-h-11 sm:min-h-9"
 							type="button"
 							disabled={saving() || !dirty()}
 							onClick={() => void save()}

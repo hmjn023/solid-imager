@@ -7,6 +7,10 @@
 	</head>
 	<body>
 		<div id="app"></div>
+		<noscript><!--OPENAPI_OUTLINE--></noscript>
+		<script id="openapi-spec" type="application/json">
+			<!--OPENAPI_JSON-->
+		</script>
 		<script>
 			// Resolve from the public /docs/scalar URL, even when the proxy strips its mount path.
 			const base = new URL(
@@ -20,12 +24,12 @@
 					"Could not load the Solid Imager API reference.";
 			};
 			script.onerror = showLoadError;
-			script.onload = async () => {
+			script.onload = () => {
 				try {
 					const specURL = new URL("openapi.json", base);
-					const response = await fetch(specURL);
-					if (!response.ok) throw new Error("OpenAPI document unavailable");
-					const spec = await response.json();
+					const spec = JSON.parse(
+						document.getElementById("openapi-spec").textContent,
+					);
 					// Scalar's request client otherwise resolves relative servers against the origin.
 					const servers = spec.servers.map((server) => ({
 						...server,

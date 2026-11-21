@@ -19158,6 +19158,23 @@
         "tags": [
           "Jobs"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "replaySince": {
+                    "description": "再送するイベントの最古の時刻（Unix epoch ミリ秒、指定時刻を含む）",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",

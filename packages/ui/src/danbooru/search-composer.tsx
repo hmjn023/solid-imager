@@ -60,7 +60,12 @@ export function DanbooruSearchComposer(props: {
 	const token = createMemo(() => getDanbooruCompletion(props.draft, caret()));
 	createEffect(() => setQuery(token().query));
 	const suggestions = createQuery(() => ({
-		queryKey: ["danbooru", "tags", query()],
+		queryKey: [
+			"external-viewer",
+			props.provider ?? "Danbooru",
+			"tags",
+			query(),
+		],
 		queryFn: () => props.suggestTags(query()),
 		enabled: query().length > 0,
 		staleTime: 300_000,

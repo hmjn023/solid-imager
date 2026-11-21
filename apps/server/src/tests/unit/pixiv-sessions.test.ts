@@ -259,9 +259,15 @@ describe("pixiv account connection", () => {
 					});
 				expect(init?.method).toBe("POST");
 				expect(headers.get("x-csrf-token")).toBe(csrfToken);
+				if (
+					typeof init?.body !== "string" &&
+					!(init?.body instanceof URLSearchParams)
+				)
+					throw new Error("Expected a string or URLSearchParams request body");
+				const body = init.body.toString();
 				writes.push(target.pathname);
 				if (target.pathname.endsWith("/add")) {
-					expect(JSON.parse(String(init?.body))).toEqual({
+					expect(JSON.parse(body)).toEqual({
 						illust_id: 456,
 						restrict: 1,
 						comment: "",
@@ -269,7 +275,7 @@ describe("pixiv account connection", () => {
 					});
 					bookmarked = { id: bookmarkId, private: true };
 				} else {
-					expect(String(init?.body)).toBe("bookmark_id=" + bookmarkId);
+					expect(body).toBe("bookmark_id=" + bookmarkId);
 					bookmarked = null;
 				}
 				return Response.json({ error: false, body: {} });

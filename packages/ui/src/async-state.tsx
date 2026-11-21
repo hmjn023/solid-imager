@@ -1,7 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { JSX, ParentProps } from "solid-js";
-import { createSignal, Match, Show, Switch } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import { children, createSignal, Match, Show, Switch } from "solid-js";
 import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";
 import type { QueryUiFetchState } from "./query-state";
@@ -59,6 +58,7 @@ type StatePanelProps = ParentProps<{
 }>;
 
 function StatePanel(props: StatePanelProps) {
+	const actions = children(() => props.children);
 	return (
 		<section
 			class={cn(
@@ -90,21 +90,27 @@ function StatePanel(props: StatePanelProps) {
 						class="min-w-0 flex-1 break-words"
 						role={props.role}
 					>
-						<Dynamic
-							class="font-semibold text-base text-foreground"
-							component={props.headingLevel === 1 ? "h1" : "h2"}
+						<Show
+							when={props.headingLevel === 1}
+							fallback={
+								<h2 class="font-semibold text-base text-foreground">
+									{props.title}
+								</h2>
+							}
 						>
-							{props.title}
-						</Dynamic>
+							<h1 class="font-semibold text-base text-foreground">
+								{props.title}
+							</h1>
+						</Show>
 						<Show when={props.description}>
 							<p class="mt-1 text-muted-foreground text-sm">
 								{props.description}
 							</p>
 						</Show>
 					</div>
-					<Show when={props.children}>
+					<Show when={actions()}>
 						<div class="flex flex-wrap items-center gap-2 [&_button]:min-h-11 @xl:[&_button]:min-h-9">
-							{props.children}
+							{actions()}
 						</div>
 					</Show>
 				</div>

@@ -1,13 +1,8 @@
 import { getLocale, t } from "@solid-imager/i18n";
 import type { MediaType } from "@solid-imager/core/media";
 import type { LibraryStatistics } from "@solid-imager/core/statistics";
-import { areaY, barY, defineChart, lineY } from "@tanstack/charts";
-import { pie, polar, radialArc } from "@tanstack/charts/polar";
-import { scaleBand } from "@tanstack/charts/scales/band";
-import { scaleLinear } from "@tanstack/charts/scales/linear";
-import { Chart } from "@tanstack/charts/solid";
-import { tooltip } from "@tanstack/charts/tooltip";
-import { createMemo, For, Show } from "solid-js";
+import { ClientOnly } from "@tanstack/solid-router";
+import { createMemo, For, lazy, Show, Suspense } from "solid-js";
 import { Card } from "../../card";
 import {
 	Collapsible,
@@ -17,24 +12,25 @@ import {
 import { Toggle } from "../../toggle";
 import { ToggleGroup, ToggleGroupItem } from "../../toggle-group";
 
+const TrendGraph = lazy(async () => ({
+	default: (await import("./chart-graphics")).TrendGraph,
+}));
+const CompositionGraph = lazy(async () => ({
+	default: (await import("./chart-graphics")).CompositionGraph,
+}));
 const chartPrimary = "hsl(var(--primary))";
-const chartTheme = {
-	foreground: "hsl(var(--foreground))",
-	muted: "hsl(var(--muted-foreground))",
-	grid: "hsl(var(--border))",
-	background: "hsl(var(--card))",
-};
-const typeStyle = {
-	image: { label: t("charts.images"), fill: chartPrimary },
-	video: {
-		label: t("labels.media.video"),
-		fill: "hsl(var(--muted-foreground))",
-	},
-	audio: {
-		label: t("labels.media.audio"),
-		fill: "color-mix(in srgb, hsl(var(--muted-foreground)) 75%, hsl(var(--card)))",
-	},
-} satisfies Record<MediaType, { label: string; fill: string }>;
+const typeStyle = () =>
+	({
+		image: { label: t("charts.images"), fill: chartPrimary },
+		video: {
+			label: t("labels.media.video"),
+			fill: "hsl(var(--muted-foreground))",
+		},
+		audio: {
+			label: t("labels.media.audio"),
+			fill: "color-mix(in srgb, hsl(var(--muted-foreground)) 75%, hsl(var(--card)))",
+		},
+	}) satisfies Record<MediaType, { label: string; fill: string }>;
 const mediaTypes: readonly MediaType[] = ["image", "video", "audio"];
 
 function PanelTitle(props: { index: string; title: string }) {
@@ -72,66 +68,6 @@ export function ImportTrend(props: {
 	);
 	const label = (bucket: string) =>
 		props.monthly ? bucket.slice(0, 7) : bucket;
-	const chart = createMemo(() =>
-		defineChart({
-			marks: props.cumulative
-				? [
-						areaY(props.trend, {
-							id: t("charts.libraryTotal"),
-							x: "bucket",
-							y: "cumulative",
-							y1: 0,
-							fill: chartPrimary,
-							fillOpacity: 0.1,
-						}),
-						lineY(props.trend, {
-							id: t("charts.cumulative"),
-							x: "bucket",
-							y: "cumulative",
-							stroke: chartPrimary,
-							points: props.trend.length < 2,
-						}),
-					]
-				: [
-						barY(props.trend, {
-							id: t("charts.imports"),
-							x: "bucket",
-							y: "count",
-							maxThickness: 46,
-							radius: [3, 3, 0, 0],
-							fill: (item) =>
-								props.selected && props.selected !== item.bucket
-									? "color-mix(in srgb, hsl(var(--primary)) 30%, hsl(var(--card)))"
-									: chartPrimary,
-						}),
-					],
-			scales: {
-				x: {
-					scale: () => scaleBand<string>().padding(0.22),
-					axis: {
-						ticks: {
-							format: (value) =>
-								props.monthly ? value.slice(0, 7) : value.slice(5),
-						},
-						tickLabels: { thin: true },
-					},
-				},
-				y: {
-					scale: scaleLinear,
-					nice: true,
-					grid: true,
-					axis: {
-						ticks: {
-							count: 4,
-							format: (n) => (Number.isInteger(n) ? n.toLocaleString() : ""),
-						},
-					},
-				},
-			},
-			theme: chartTheme,
-			tooltip,
-		}),
-	);
 	return (
 		<Card class="flex min-w-0 flex-col gap-4 p-4 shadow-none sm:p-5">
 			<div class="flex flex-wrap items-center justify-between gap-2">
@@ -147,13 +83,13 @@ export function ImportTrend(props: {
 					value={props.cumulative ? "cumulative" : "count"}
 				>
 					<ToggleGroupItem
-						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
+						class="h-11 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
 						value="count"
 					>
 						{t("charts.count")}
 					</ToggleGroupItem>
 					<ToggleGroupItem
-						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
+						class="h-11 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
 						value="cumulative"
 					>
 						{t("charts.cumulative")}
@@ -193,22 +129,17 @@ export function ImportTrend(props: {
 					</Show>
 				</div>
 			</div>
-			<Chart
-				ariaLabel={
-					props.cumulative
-						? t("charts.cumulativeMediaInLibrary")
-						: t("charts.mediaImported")
-				}
-				definition={chart()}
-				height={186}
-				onSelect={(point) => {
-					if (point) props.select(point.datum.bucket);
-				}}
-			/>
+			<div class="min-h-48">
+				<ClientOnly>
+					<Suspense>
+						<TrendGraph {...props} />
+					</Suspense>
+				</ClientOnly>
+			</div>
 			<Collapsible class="mt-auto border-t border-border pt-3 text-xs">
 				<CollapsibleTrigger
 					as="button"
-					class="w-fit cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="min-h-11 w-fit cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
 					type="button"
 				>
 					{t("charts.viewCountsAsAList")}
@@ -222,7 +153,7 @@ export function ImportTrend(props: {
 							{(item) => (
 								<li>
 									<Toggle
-										class="w-full justify-between gap-1 px-2 text-xs tabular-nums hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent"
+										class="min-h-11 w-full justify-between gap-1 px-2 text-xs tabular-nums hover:bg-muted hover:text-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent sm:min-h-9"
 										onChange={() => props.select(item.bucket)}
 										pressed={props.selected === item.bucket}
 									>
@@ -255,37 +186,12 @@ export function MediaComposition(props: {
 	const counts = createMemo(() =>
 		mediaTypes.map((type) => ({
 			type,
-			...typeStyle[type],
+			...typeStyle()[type],
 			count: props.items.find((item) => item.type === type)?.count ?? 0,
 		})),
 	);
 	const total = () => counts().reduce((sum, item) => sum + item.count, 0);
-	const chart = createMemo(() => {
-		const nonzero = counts().filter((item) => item.count > 0);
-		const slices = pie(nonzero, {
-			value: "count",
-			gapAngle: nonzero.length > 1 ? 0.035 : 0,
-		});
-		return defineChart({
-			margin: 2,
-			marks: [
-				polar({
-					scales: { angle: null, radius: null },
-					marks: [
-						radialArc(slices, {
-							key: "type",
-							z: "label",
-							innerRadius: ({ radius }) => radius * 0.75,
-							fill: (slice) => slice.fill,
-							cornerRadius: 2,
-						}),
-					],
-				}),
-			],
-			scales: { x: null, y: null },
-			theme: chartTheme,
-		});
-	});
+
 	return (
 		<Card class="flex min-w-0 flex-col gap-3 p-4 shadow-none sm:p-5">
 			<PanelTitle index="02" title={t("charts.mediaBreakdown")} />
@@ -308,11 +214,13 @@ export function MediaComposition(props: {
 						/>
 					}
 				>
-					<Chart
-						ariaLabel={t("charts.imageVideoAndAudioDistribution")}
-						definition={chart()}
-						height={144}
-					/>
+					<div class="min-h-36">
+						<ClientOnly>
+							<Suspense>
+								<CompositionGraph counts={counts()} />
+							</Suspense>
+						</ClientOnly>
+					</div>
 				</Show>
 				<div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
 					<span class="text-xs text-muted-foreground">{t("charts.total")}</span>
@@ -388,7 +296,7 @@ export function Ranking(props: {
 					{(item, index) => (
 						<li>
 							<Toggle
-								class="h-auto min-h-11 w-full items-start justify-start gap-3 px-2 py-2 text-left hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent [&_svg]:h-1.5 [&_svg]:w-full"
+								class="h-auto min-h-11 w-full items-start justify-start gap-3 px-2 py-2 text-left hover:bg-muted hover:text-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent [&_svg]:h-1.5 [&_svg]:w-full"
 								onChange={() => props.select(item.id)}
 								pressed={props.selected === item.id}
 							>

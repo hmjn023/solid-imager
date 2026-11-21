@@ -103,12 +103,34 @@ export const clearSimilaritySearch = () => {
 	}
 };
 
+/** Opens simple tag search filtered to a single tag and resets the viewport. */
+export const activateTagSearch = (tagName: string) => {
+	const nextState: SearchState = {
+		...defaultState,
+		mode: "simple",
+		selectedTags: [tagName],
+		sortBy: searchState.sortBy,
+		sortOrder: searchState.sortOrder,
+		limit: searchState.limit,
+		tagMode: searchState.tagMode,
+	};
+	batch(() => {
+		setSearchFiltersRevision((revision) => revision + 1);
+		setSearchState(nextState);
+	});
+	try {
+		persistSearchState(nextState);
+	} catch {
+		// Persistence errors must not disrupt opening tag search.
+	}
+};
+
 export const getSearchCondition = () =>
 	getSearchConditionFromState(searchState);
 
-export const hasSearchConditions = () =>
+export const hasSearchConditions = (state = searchState) =>
 	Boolean(
-		getSearchCondition()?.children.length ||
-		searchState.similarityAnchorMediaId ||
-		searchState.semanticQuery.trim(),
+		getSearchConditionFromState(state)?.children.length ||
+		state.similarityAnchorMediaId ||
+		state.semanticQuery.trim(),
 	);

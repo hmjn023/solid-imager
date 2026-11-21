@@ -253,6 +253,8 @@ export type UseManagerPageResult = {
 	handleDeleteDuplicates: () => Promise<void>;
 	handleConfirmDeleteDuplicates: () => Promise<void>;
 	setKeepForGroup: (groupId: string, mediaId: string) => void;
+	keepAllForGroup: (groupId: string) => void;
+	isGroupSkipped: (groupId: string) => boolean;
 	selectKeepOldest: () => void;
 	selectKeepLargest: () => void;
 	deleteCount: Accessor<number>;
@@ -295,10 +297,7 @@ export function useManagerPage(
 		useBatchJobEvents,
 		onBatchTaggingStart,
 	} = options;
-	const projects = createQuery<Project[]>(() => ({
-		...queryOptions.projects(),
-		enabled: !isServer,
-	}));
+	const projects = createQuery<Project[]>(queryOptions.projects);
 	const ipsQuery = createQuery<Ip[]>(() => ({
 		...queryOptions.ips(),
 		enabled: !isServer,
@@ -383,8 +382,11 @@ export function useManagerPage(
 	};
 	const taggingStatus = () => batchDisplay()?.message ?? null;
 
+	const activeBatchesKey = jobsQueryKeys.activeBatches();
+	const hadActiveBatches =
+		queryClient.getQueryData(activeBatchesKey) !== undefined;
 	const activeBatches = createQuery(() => ({
-		queryKey: ["jobs", "activeBatches"],
+		queryKey: activeBatchesKey,
 		queryFn: async () => {
 			const versions = batches.readVersions();
 			const jobs = await actions.getActiveBatches();
@@ -395,7 +397,9 @@ export function useManagerPage(
 			return jobs;
 		},
 		enabled: !isServer,
+		staleTime: 30_000,
 	}));
+	let connected = false;
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 	let disposed = false;
 	let reading = false;
@@ -778,7 +782,10 @@ export function useManagerPage(
 				refreshActiveBatches();
 		},
 		onConnected: () => {
-			refreshActiveBatches();
+			// A cached snapshot can predate the stream's bounded replay window.
+			if (connected || hadActiveBatches || activeBatches.isError)
+				refreshActiveBatches();
+			connected = true;
 			if (trackedRun()) void trackedJob.refetch();
 		},
 	});
@@ -871,6 +878,8 @@ export function useManagerPage(
 		handleScanDuplicates: duplicates.scan,
 		handleDeleteDuplicates: async () => duplicates.prepareDelete(),
 		setKeepForGroup: duplicates.setKeepForGroup,
+		keepAllForGroup: duplicates.keepAllForGroup,
+		isGroupSkipped: duplicates.isGroupSkipped,
 		selectKeepOldest: duplicates.selectKeepOldest,
 		selectKeepLargest: duplicates.selectKeepLargest,
 		handleConfirmDeleteDuplicates: duplicates.confirmDelete,

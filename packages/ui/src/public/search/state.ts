@@ -1,5 +1,6 @@
 export {
 	activateSimilaritySearch,
+	activateTagSearch,
 	getSearchCondition,
 	searchState,
 	setSearchMode,

@@ -143,11 +143,6 @@ export function SearchComposerField<T extends ComposerOption>(props: {
 					<Label class="sr-only" for={props.id}>
 						{props.label}
 					</Label>
-					<Search
-						aria-hidden="true"
-						class="pointer-events-none absolute top-3 left-3 z-10 text-muted-foreground"
-						size={16}
-					/>
 					<Combobox<T>
 						allowDuplicateSelectionEvents
 						closeOnSelection
@@ -181,26 +176,37 @@ export function SearchComposerField<T extends ComposerOption>(props: {
 					>
 						<ComboboxControl<T>
 							aria-label={props.label}
-							class="flex h-auto min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-input bg-card py-1 pr-8 pl-9 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 sm:min-h-9"
+							class="flex h-auto min-h-11 items-center gap-2 rounded-md border border-input bg-card px-3 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 sm:min-h-9"
 						>
-							{props.children}
-							<ComposerInput
-								draft={props.draft}
-								id={props.id}
-								label={props.label}
-								describedBy={props.hint ? props.id + "-hint" : undefined}
-								inputRef={(el) => {
-									input = el;
-									props.inputRef?.(el);
-								}}
-								onCaretChange={props.onCaretChange}
-								onDraftChange={(value) => {
-									props.onDraftChange(value);
-									setOpen(true);
-								}}
-								onFocus={() => setOpen(true)}
-								onKeyDown={handleKeyDown}
-								placeholder={props.placeholder}
+							<Search
+								aria-hidden="true"
+								class="shrink-0 text-muted-foreground"
+								size={16}
+							/>
+							<div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+								{props.children}
+								<ComposerInput
+									draft={props.draft}
+									id={props.id}
+									label={props.label}
+									describedBy={props.hint ? props.id + "-hint" : undefined}
+									inputRef={(el) => {
+										input = el;
+										props.inputRef?.(el);
+									}}
+									onCaretChange={props.onCaretChange}
+									onDraftChange={(value) => {
+										props.onDraftChange(value);
+										setOpen(true);
+									}}
+									onFocus={() => setOpen(true)}
+									onKeyDown={handleKeyDown}
+									placeholder={props.placeholder}
+								/>
+							</div>
+							<ShortcutKbd
+								class="pointer-events-none hidden shrink-0 select-none border-border px-1.5 py-0.5 text-label-xs leading-none text-muted-foreground shadow-none sm:inline-flex"
+								shortcutId="focusSearch"
 							/>
 						</ComboboxControl>
 						<Show
@@ -212,10 +218,6 @@ export function SearchComposerField<T extends ComposerOption>(props: {
 							<VirtualComboboxContent class="workspace-theme w-popover-large p-1 shadow-xl" />
 						</Show>
 					</Combobox>
-					<ShortcutKbd
-						class="pointer-events-none absolute top-2 right-2 min-h-5 border-border px-1.5 py-0.5 text-label-xs leading-none text-muted-foreground shadow-none"
-						shortcutId="focusSearch"
-					/>
 				</div>
 				<Show when={props.submitLabel}>
 					{(label) => <Button type="submit">{label()}</Button>}

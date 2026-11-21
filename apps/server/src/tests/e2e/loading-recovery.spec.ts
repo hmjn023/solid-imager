@@ -1,11 +1,15 @@
+import { mkdtemp } from "node:fs/promises";
+import { join } from "node:path";
+import { mediaSourceInfoSchema } from "@solid-imager/core/sources";
 import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SOURCE_ID,
+	getE2eRuntimeDir,
 	mediaPath,
 	sourcePath,
 } from "./support/fixture";
-import { expect, test } from "./support/test";
+import { expect, test, waitForAppHydration } from "./support/test";
 
 const searchEndpoint = /\/api\/rpc\/media\/search(?:\?|$)/;
 const mediaDetailsEndpoint = /\/api\/rpc\/media\/getDetails(?:\?|$)/;
@@ -55,6 +59,12 @@ async function getVisibleSkeletonItemCount(root: Locator): Promise<number> {
 		);
 }
 
+async function openLibraryFromAbout(page: Page) {
+	await page.goto("/about");
+	await waitForAppHydration(page);
+	await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
+}
+
 test.describe("loading and recovery", () => {
 	test("keeps the app shell visible while the initial search response is delayed", async ({
 		page,
@@ -69,7 +79,7 @@ test.describe("loading and recovery", () => {
 			await route.continue();
 		});
 
-		const navigation = page.goto("/search", { waitUntil: "commit" });
+		await openLibraryFromAbout(page);
 		await expect(
 			page.getByRole("link", { name: "ライブラリ", exact: true }),
 		).toBeVisible();
@@ -103,7 +113,6 @@ test.describe("loading and recovery", () => {
 		).toBeVisible();
 
 		releaseRequest();
-		await navigation;
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();
@@ -134,6 +143,7 @@ test.describe("loading and recovery", () => {
 		});
 
 		await page.goto("/search");
+		await waitForAppHydration(page);
 		const primaryLink = page.getByRole("link", {
 			name: new RegExp(E2E_PRIMARY_FILE_NAME),
 		});
@@ -186,6 +196,7 @@ test.describe("loading and recovery", () => {
 		});
 
 		await page.goto(sourcePath());
+		await waitForAppHydration(page);
 		const mediaLink = page.getByRole("link", {
 			name: new RegExp(E2E_PRIMARY_FILE_NAME),
 		});
@@ -222,6 +233,7 @@ test.describe("loading and recovery", () => {
 		);
 
 		await page.goto(sourcePath());
+		await waitForAppHydration(page);
 		await page
 			.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) })
 			.dblclick();
@@ -254,7 +266,7 @@ test.describe("loading and recovery", () => {
 				route.abort(failure.errorCode),
 			);
 
-			await page.goto("/search");
+			await openLibraryFromAbout(page);
 			await expect(
 				page.getByText("検索結果を取得できませんでした", { exact: true }),
 			).toBeVisible();
@@ -283,7 +295,7 @@ test.describe("loading and recovery", () => {
 			}),
 		);
 
-		await page.goto("/search");
+		await openLibraryFromAbout(page);
 		await expect(
 			page.getByText("検索結果を取得できませんでした", { exact: true }),
 		).toBeVisible();
@@ -300,6 +312,7 @@ test.describe("loading and recovery", () => {
 	}) => {
 		await page.setViewportSize({ width: 1600, height: 900 });
 		await page.goto("/search");
+		await waitForAppHydration(page);
 		const searchInput = page.getByRole("combobox", {
 			name: "メディアを検索",
 			exact: true,
@@ -329,7 +342,11 @@ test.describe("loading and recovery", () => {
 		await page.route(searchEndpoint, (route) =>
 			route.fulfill({ json: { json: { media: [], total: 0 } } }),
 		);
-		await page.goto("/search");
+		// The standalone route does not prime the server's source query. Navigate
+		// within the browser so the mock supplies the first source response.
+		await page.goto("/design-lab");
+		await waitForAppHydration(page);
+		await page.evaluate(() => history.pushState(history.state, "", "/search"));
 		const emptyState = page.locator('#main-content [data-state-ui="empty"]');
 		await expect(
 			emptyState.getByRole("heading", { name: "ソースはまだありません" }),
@@ -344,28 +361,47 @@ test.describe("loading and recovery", () => {
 		page,
 	}) => {
 		await page.setViewportSize({ width: 1600, height: 900 });
-		await page.route(searchEndpoint, (route) =>
-			route.fulfill({ json: { json: { media: [], total: 0 } } }),
-		);
-		await page.goto(sourcePath());
-		const emptyState = page.locator('#main-content [data-state-ui="empty"]');
-		const addMedia = emptyState.getByRole("button", {
-			name: "追加",
-			exact: true,
+		const directory = await mkdtemp(join(getE2eRuntimeDir(), "empty-source-"));
+		const created = await page.request.post("/api/rpc/sources/create", {
+			data: {
+				json: {
+					name: "Empty source",
+					description: null,
+					type: "local",
+					connectionInfo: { path: directory },
+				},
+			},
 		});
-		await expect(addMedia).toBeVisible();
-		await page.reload();
-		await expect(
-			emptyState.getByRole("heading", {
-				name: "このソースにはまだメディアがありません",
-			}),
-		).toBeVisible();
-		await expect(
-			page.getByRole("complementary", { name: "選択中のメディア" }),
-		).toHaveCount(0);
-		const fileChooser = page.waitForEvent("filechooser");
-		await addMedia.click();
-		await fileChooser;
+		await expect(created).toBeOK();
+		const { id } = mediaSourceInfoSchema.parse((await created.json()).json);
+		if (!id) throw new Error("Source ID missing");
+		try {
+			await page.goto(`/sources/${id}`);
+			const emptyState = page.locator('#main-content [data-state-ui="empty"]');
+			const addMedia = emptyState.getByRole("button", {
+				name: "追加",
+				exact: true,
+			});
+			await expect(addMedia).toBeVisible();
+			await page.reload();
+			await expect(
+				emptyState.getByRole("heading", {
+					name: "このソースにはまだメディアがありません",
+				}),
+			).toBeVisible();
+			await expect(
+				page.getByRole("complementary", { name: "選択中のメディア" }),
+			).toHaveCount(0);
+			await waitForAppHydration(page);
+			const fileChooser = page.waitForEvent("filechooser");
+			await addMedia.click();
+			await fileChooser;
+		} finally {
+			const deleted = await page.request.post("/api/rpc/sources/delete", {
+				data: { json: { id } },
+			});
+			await expect(deleted).toBeOK();
+		}
 	});
 
 	test("preserves existing content offline and completes the queued search after reconnecting", async ({
@@ -374,6 +410,7 @@ test.describe("loading and recovery", () => {
 		browserHealth,
 	}) => {
 		await page.goto("/search");
+		await waitForAppHydration(page);
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();

@@ -59,6 +59,7 @@ export function McpPublicationSettings(props: Props) {
 				<p role="alert">
 					{t("mcpPublicationSettings.couldNotLoadAvailableTools")}{" "}
 					<Button
+						class="min-h-11 sm:min-h-9"
 						type="button"
 						variant="outline"
 						onClick={() => void catalog.refetch()}
@@ -85,7 +86,7 @@ export function McpPublicationSettings(props: Props) {
 							>
 								{(surface) => (
 									<Checkbox
-										class="flex items-center gap-2"
+										class="flex min-h-11 items-center gap-2 sm:min-h-9"
 										checked={props.value[surface].includes(tool.name)}
 										onChange={(enabled) =>
 											setPublished(surface, tool.name, enabled)

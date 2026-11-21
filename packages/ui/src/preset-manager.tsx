@@ -1,3 +1,4 @@
+import { useRenderedSearchState } from "./search-initial-state";
 import { t } from "@solid-imager/i18n";
 import {
 	type MediaSort,
@@ -33,6 +34,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "./dialog";
+import { FormError } from "./form-message";
 import { Input } from "./input";
 import { Label } from "./label";
 import {
@@ -42,7 +44,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./select";
-import { searchState, setSearchState } from "./stores/search-store";
+import { setSearchState } from "./stores/search-store";
 import { toast } from "./toast";
 import { cn } from "./utils/cn";
 
@@ -89,7 +91,8 @@ function createClearedSearchState(state: SearchState): SearchState {
 
 export function PresetManager(props: PresetManagerProps) {
 	const [data, { refetch }] = createResource(() => props.presetClient.list());
-	const currentState = () => props.state ?? searchState;
+	const renderedState = useRenderedSearchState();
+	const currentState = () => props.state ?? renderedState();
 	const updateState = props.setState ?? setSearchState;
 
 	const presets = () =>
@@ -116,6 +119,10 @@ export function PresetManager(props: PresetManagerProps) {
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [presetToDelete, setPresetToDelete] = createSignal<number | null>(null);
 	const [newPresetName, setNewPresetName] = createSignal("");
+	const [isSaving, setIsSaving] = createSignal(false);
+	const [saveError, setSaveError] = createSignal<string | null>(null);
+	const [isDeleting, setIsDeleting] = createSignal(false);
+	const [deleteError, setDeleteError] = createSignal<string | null>(null);
 	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
 		null,
 	);
@@ -131,20 +138,23 @@ export function PresetManager(props: PresetManagerProps) {
 
 	const handleSave = async (event: Event) => {
 		event.preventDefault();
-		if (!newPresetName()) {
+		const trimmedName = newPresetName().trim();
+		if (isSaving() || !trimmedName) {
 			return;
 		}
 
 		const state = currentState();
 		const condition = getSearchConditionFromState(state);
 		if (!condition) {
-			toast.error(t("presetManager.noSearchConditions"));
+			setSaveError(t("presetManager.noSearchConditions"));
 			return;
 		}
 
+		setSaveError(null);
+		setIsSaving(true);
 		try {
 			await props.presetClient.create({
-				name: newPresetName(),
+				name: trimmedName,
 				value: condition,
 				sort: state.sortBy,
 				order: state.sortOrder,
@@ -156,32 +166,40 @@ export function PresetManager(props: PresetManagerProps) {
 			toast.success(t("presetManager.presetSaved"));
 			props.onAction?.();
 		} catch {
+			setSaveError(t("presetManager.couldNotSavePreset"));
 			toast.error(t("presetManager.couldNotSavePreset"));
+		} finally {
+			setIsSaving(false);
 		}
 	};
 
 	const confirmDelete = (id: number) => {
 		setPresetToDelete(id);
+		setDeleteError(null);
 		setIsDeleteDialogOpen(true);
 	};
 
 	const executeDelete = async () => {
 		const id = presetToDelete();
-		if (!id) {
+		if (!id || isDeleting()) {
 			return;
 		}
 
+		setDeleteError(null);
+		setIsDeleting(true);
 		try {
 			await props.presetClient.delete(id);
 			if (selectedPresetId() === String(id)) {
 				setSelectedPresetId(null);
 			}
 			void refetch();
-		} catch {
-			toast.error(t("presetManager.couldNotDeletePreset"));
-		} finally {
 			setIsDeleteDialogOpen(false);
 			setPresetToDelete(null);
+		} catch {
+			setDeleteError(t("presetManager.couldNotDeletePreset"));
+			toast.error(t("presetManager.couldNotDeletePreset"));
+		} finally {
+			setIsDeleting(false);
 		}
 	};
 
@@ -206,7 +224,15 @@ export function PresetManager(props: PresetManagerProps) {
 	return (
 		<div class={cn("flex w-full flex-col gap-2", props.class)}>
 			<AlertDialog
-				onOpenChange={setIsDeleteDialogOpen}
+				onOpenChange={(open) => {
+					if (!isDeleting()) {
+						setIsDeleteDialogOpen(open);
+						if (!open) {
+							setPresetToDelete(null);
+							setDeleteError(null);
+						}
+					}
+				}}
 				open={isDeleteDialogOpen()}
 			>
 				<AlertDialogContent>
@@ -216,15 +242,25 @@ export function PresetManager(props: PresetManagerProps) {
 							{t("presetManager.deleteThisPresetThisActionCannotBeUndone")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
+					<FormError message={deleteError()} />
 					<AlertDialogFooter>
-						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+						<AlertDialogCancel
+							class="min-h-11 sm:min-h-9"
+							disabled={isDeleting()}
+						>
+							{t("actions.cancel")}
+						</AlertDialogCancel>
 						<AlertDialogAction
-							class="bg-error0 hover:bg-destructive"
-							onClick={() => {
+							aria-busy={isDeleting()}
+							class="min-h-11 sm:min-h-9"
+							disabled={isDeleting()}
+							onClick={(event) => {
+								event.preventDefault();
 								void executeDelete();
 							}}
+							variant="destructive"
 						>
-							{t("actions.delete")}
+							{isDeleting() ? t("status.deleting") : t("actions.delete")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -253,7 +289,10 @@ export function PresetManager(props: PresetManagerProps) {
 						placeholder={t("presetManager.selectAPreset")}
 						value={selectedPresetId()}
 					>
-						<SelectTrigger class="w-full">
+						<SelectTrigger
+							aria-label={t("presetManager.selectAPreset")}
+							class="w-full"
+						>
 							<SelectValue<string>>
 								{(state) => {
 									const preset = presets()?.find(
@@ -274,7 +313,8 @@ export function PresetManager(props: PresetManagerProps) {
 
 				<Show when={selectedPresetId()}>
 					<Button
-						class="h-10 w-10 shrink-0"
+						aria-label={t("actions.clearSelection")}
+						class="size-11 shrink-0 sm:size-9"
 						onClick={handleClearSelection}
 						size="icon"
 						title={t("actions.clearSelection")}
@@ -302,7 +342,7 @@ export function PresetManager(props: PresetManagerProps) {
 
 			<div class="flex w-full items-center gap-2">
 				<Button
-					class="flex-1"
+					class="min-h-11 flex-1 sm:min-h-9"
 					disabled={!selectedPresetId()}
 					onClick={handleLoad}
 					variant="outline"
@@ -310,11 +350,23 @@ export function PresetManager(props: PresetManagerProps) {
 					{t("presetManager.load")}
 				</Button>
 
-				<Dialog onOpenChange={setIsSaveDialogOpen} open={isSaveDialogOpen()}>
-					<DialogTrigger as={Button} class="flex-1" variant="secondary">
+				<Dialog
+					onOpenChange={(open) => {
+						if (!isSaving()) {
+							setIsSaveDialogOpen(open);
+							if (!open) setSaveError(null);
+						}
+					}}
+					open={isSaveDialogOpen()}
+				>
+					<DialogTrigger
+						as={Button}
+						class="min-h-11 flex-1 sm:min-h-9"
+						variant="secondary"
+					>
 						{t("actions.save")}
 					</DialogTrigger>
-					<DialogContent>
+					<DialogContent closeDisabled={isSaving()}>
 						<DialogHeader>
 							<DialogTitle>
 								{t("presetManager.saveCurrentSearchConditions")}
@@ -323,39 +375,62 @@ export function PresetManager(props: PresetManagerProps) {
 								{t("presetManager.nameAndSaveTheCurrentSearchConditions")}
 							</DialogDescription>
 						</DialogHeader>
-						<div class="grid gap-4 py-4">
-							<div class="grid grid-cols-4 items-center gap-4">
-								<Label class="text-right">{t("labels.name")}</Label>
+						<form
+							class="grid gap-4"
+							onSubmit={(event) => {
+								void handleSave(event);
+							}}
+						>
+							<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+								<Label class="sm:text-right" for="preset-save-name">
+									{t("labels.name")}
+								</Label>
 								<Input
-									class="col-span-3"
-									onInput={(event) =>
-										setNewPresetName(event.currentTarget.value)
-									}
+									class="sm:col-span-3"
+									disabled={isSaving()}
+									id="preset-save-name"
+									onInput={(event) => {
+										setNewPresetName(event.currentTarget.value);
+										if (saveError()) setSaveError(null);
+									}}
 									value={newPresetName()}
 								/>
 							</div>
-						</div>
-						<DialogFooter>
-							<Button
-								onClick={(event) => {
-									void handleSave(event);
-								}}
-							>
-								{t("actions.save")}
-							</Button>
-						</DialogFooter>
+							<FormError message={saveError()} />
+							<DialogFooter>
+								<Button
+									class="min-h-11 sm:min-h-9"
+									disabled={isSaving()}
+									onClick={() => setIsSaveDialogOpen(false)}
+									type="button"
+									variant="outline"
+								>
+									{t("actions.cancel")}
+								</Button>
+								<Button
+									aria-busy={isSaving()}
+									class="min-h-11 sm:min-h-9"
+									disabled={isSaving() || !newPresetName().trim()}
+									type="submit"
+								>
+									{isSaving() ? t("status.saving") : t("actions.save")}
+								</Button>
+							</DialogFooter>
+						</form>
 					</DialogContent>
 				</Dialog>
 
 				<Show when={selectedPresetId()}>
 					<Button
-						class="hover:border-error hover:bg-error"
+						aria-label={t("actions.deletePreset")}
+						class="size-11 shrink-0 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground sm:size-9"
+						disabled={isDeleting()}
 						onClick={() => confirmDelete(Number(selectedPresetId()))}
 						size="icon"
 						title={t("actions.deletePreset")}
 						variant="outline"
 					>
-						<Trash2 class="size-4 text-destructive" />
+						<Trash2 aria-hidden="true" class="size-4" />
 					</Button>
 				</Show>
 			</div>

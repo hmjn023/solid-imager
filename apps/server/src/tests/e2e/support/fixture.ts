@@ -24,6 +24,10 @@ export function getFixtureMediaPath(fileName: string): string {
 	return path.join(getE2eMediaDir(), fileName);
 }
 
+export function externalViewerFixturePath(): string {
+	return path.join(getE2eRuntimeDir(), "external-viewer-responses.json");
+}
+
 export function sourcePath(): string {
 	return `/sources/${E2E_SOURCE_ID}`;
 }

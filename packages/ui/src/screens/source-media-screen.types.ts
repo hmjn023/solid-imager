@@ -57,6 +57,7 @@ export type SourceMediaScreenProps = {
 	uploadModalComponent: Component<{
 		sourceId?: string;
 		initialFile: File | null;
+		initialFiles?: File[];
 		isOpen: boolean;
 		onClose: () => void;
 		onUpload: (options: UploadOptions) => Promise<void>;

@@ -8,6 +8,7 @@ type ClipboardCopyProps = {
 	label?: string;
 	class?: string;
 	iconSize?: number;
+	compact?: boolean;
 };
 
 const DEFAULT_ICON_SIZE = 14;
@@ -61,6 +62,7 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 		"label",
 		"class",
 		"iconSize",
+		"compact",
 	]);
 
 	let timeoutId: number | undefined;
@@ -104,30 +106,36 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 	};
 
 	return (
-		<button
-			aria-label={local.label || t("clipboardCopy.copyToClipboard")}
-			class={cn(
-				"inline-flex items-center justify-center rounded-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-				local.class,
-			)}
-			onClick={(event) => {
-				void handleCopy(event);
-			}}
-			title={local.label || t("clipboardCopy.copyToClipboard")}
-			type="button"
-			{...others}
-		>
-			{copied() ? (
-				<CheckIcon
-					class="text-success-foreground"
-					size={local.iconSize || DEFAULT_ICON_SIZE}
-				/>
-			) : (
-				<CopyIcon
-					class="text-muted-foreground hover:text-foreground"
-					size={local.iconSize || DEFAULT_ICON_SIZE}
-				/>
-			)}
-		</button>
+		<>
+			<button
+				aria-label={local.label || t("clipboardCopy.copyToClipboard")}
+				class={cn(
+					"inline-flex items-center justify-center rounded-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+					local.compact ? "p-1" : "min-h-11 min-w-11 sm:min-h-8 sm:min-w-8",
+					local.class,
+				)}
+				onClick={(event) => {
+					void handleCopy(event);
+				}}
+				title={local.label || t("clipboardCopy.copyToClipboard")}
+				type="button"
+				{...others}
+			>
+				{copied() ? (
+					<CheckIcon
+						class="text-success-foreground"
+						size={local.iconSize || DEFAULT_ICON_SIZE}
+					/>
+				) : (
+					<CopyIcon
+						class="text-muted-foreground hover:text-foreground"
+						size={local.iconSize || DEFAULT_ICON_SIZE}
+					/>
+				)}
+			</button>
+			<span aria-live="polite" class="sr-only">
+				{copied() ? t("clipboardCopy.copiedToClipboard") : ""}
+			</span>
+		</>
 	);
 }

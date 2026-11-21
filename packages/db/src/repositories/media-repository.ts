@@ -233,6 +233,143 @@ function getColumnForTarget(target: string): AnyColumn | undefined {
 	}
 }
 
+type ParsedTimestampInput =
+	| { kind: "day"; start: Date; nextDay: Date }
+	| { kind: "instant"; date: Date };
+
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseTimestampInput(value: unknown): ParsedTimestampInput | undefined {
+	if (value instanceof Date) {
+		return Number.isNaN(value.getTime())
+			? undefined
+			: { kind: "instant", date: value };
+	}
+	if (typeof value === "number") {
+		if (!Number.isFinite(value)) return undefined;
+		const parsed = new Date(value);
+		return Number.isNaN(parsed.getTime())
+			? undefined
+			: { kind: "instant", date: parsed };
+	}
+	if (typeof value !== "string") {
+		return undefined;
+	}
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return undefined;
+	}
+	const dayMatch = DATE_ONLY_PATTERN.exec(trimmed);
+	if (dayMatch) {
+		const year = Number(dayMatch[1]);
+		const month = Number(dayMatch[2]);
+		const day = Number(dayMatch[3]);
+		const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+		if (
+			start.getUTCFullYear() !== year ||
+			start.getUTCMonth() !== month - 1 ||
+			start.getUTCDate() !== day
+		) {
+			return undefined;
+		}
+		const nextDay = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
+		return { kind: "day", start, nextDay };
+	}
+	const parsed = new Date(trimmed);
+	return Number.isNaN(parsed.getTime())
+		? undefined
+		: { kind: "instant", date: parsed };
+}
+
+function buildTimestampExactMatch(
+	column: SQLWrapper,
+	parsed: ParsedTimestampInput,
+): SQL | undefined {
+	if (parsed.kind === "day") {
+		return and(gte(column, parsed.start), lt(column, parsed.nextDay));
+	}
+	return eq(column, parsed.date);
+}
+
+/**
+ * Builds a Drizzle SQL predicate for timestamp columns such as `medias.createdAt`
+ * without passing raw strings or numbers into Drizzle's `Date.toISOString()` serializer.
+ * Calendar dates (YYYY-MM-DD) denote UTC days, independent of the server timezone.
+ */
+export function buildTimestampCondition(
+	column: SQLWrapper,
+	operator: string,
+	value: CriterionValue | Date,
+): SQL | undefined {
+	if (operator === "isEmpty") {
+		return isNull(column);
+	}
+	if (operator === "isNotEmpty") {
+		return isNotNull(column);
+	}
+	if (value === null) {
+		return operator === "equals" ? isNull(column) : undefined;
+	}
+	if (typeof value === "boolean") {
+		return undefined;
+	}
+
+	if (operator === "in" || operator === "notIn") {
+		if (!Array.isArray(value)) return undefined;
+		const itemConditions = value
+			.map(parseTimestampInput)
+			.filter((parsed): parsed is ParsedTimestampInput => parsed !== undefined)
+			.map((parsed) => buildTimestampExactMatch(column, parsed))
+			.filter((condition): condition is SQL => condition !== undefined);
+		if (itemConditions.length === 0) return undefined;
+		const combined =
+			itemConditions.length === 1 ? itemConditions[0] : or(...itemConditions);
+		if (!combined) return undefined;
+		return operator === "notIn" ? not(combined) : combined;
+	}
+
+	if (Array.isArray(value)) {
+		return undefined;
+	}
+
+	const parsed = parseTimestampInput(value);
+	if (!parsed) {
+		return undefined;
+	}
+
+	if (parsed.kind === "day") {
+		switch (operator) {
+			case "equals":
+				return buildTimestampExactMatch(column, parsed);
+			case "gt":
+				return gte(column, parsed.nextDay);
+			case "gte":
+				return gte(column, parsed.start);
+			case "lt":
+				return lt(column, parsed.start);
+			case "lte":
+				return lt(column, parsed.nextDay);
+			default:
+				return undefined;
+		}
+	}
+
+	switch (operator) {
+		case "equals":
+			return eq(column, parsed.date);
+		case "gt":
+			return gt(column, parsed.date);
+		case "gte":
+			return gte(column, parsed.date);
+		case "lt":
+			return lt(column, parsed.date);
+		case "lte":
+			return lte(column, parsed.date);
+		default:
+			return undefined;
+	}
+}
+
 function buildValueCondition(
 	column: SQLWrapper,
 	operator: string,
@@ -536,7 +673,10 @@ function buildStandardQuery(
 		return;
 	}
 
-	const condition = buildValueCondition(column, operator, value);
+	const condition =
+		target === "createdAt"
+			? buildTimestampCondition(column, operator, value)
+			: buildValueCondition(column, operator, value);
 	if (!condition) {
 		return;
 	}

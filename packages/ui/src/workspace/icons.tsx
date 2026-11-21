@@ -122,6 +122,15 @@ export const Maximize2 = icon(() => (
 	</>
 ));
 export const Minus = icon(() => <path d="M5 12h14" />);
+export const Palette = icon(() => (
+	<>
+		<circle cx="13.5" cy="6.5" fill="currentColor" r=".5" />
+		<circle cx="17.5" cy="10.5" fill="currentColor" r=".5" />
+		<circle cx="8.5" cy="7.5" fill="currentColor" r=".5" />
+		<circle cx="6.5" cy="12.5" fill="currentColor" r=".5" />
+		<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+	</>
+));
 export const PanelLeftClose = icon(() => (
 	<>
 		<rect height="18" rx="2" width="18" x="3" y="3" />
@@ -132,6 +141,18 @@ export const PanelLeftOpen = icon(() => (
 	<>
 		<rect height="18" rx="2" width="18" x="3" y="3" />
 		<path d="M9 3v18m5-12 3 3-3 3" />
+	</>
+));
+export const PanelRightClose = icon(() => (
+	<>
+		<rect height="18" rx="2" width="18" x="3" y="3" />
+		<path d="M15 3v18m-7-12 3 3-3 3" />
+	</>
+));
+export const PanelRightOpen = icon(() => (
+	<>
+		<rect height="18" rx="2" width="18" x="3" y="3" />
+		<path d="M15 3v18m-4-6-3-3 3-3" />
 	</>
 ));
 export const Plus = icon(() => <path d="M5 12h14M12 5v14" />);
@@ -176,6 +197,12 @@ export const Settings = icon(() => (
 export const Sparkles = icon(() => (
 	<>
 		<path d="m12 3-1.5 4.5L6 9l4.5 1.5L12 15l1.5-4.5L18 9l-4.5-1.5zM5 17l-.75 2.25L2 20l2.25.75L5 23l.75-2.25L8 20l-2.25-.75zM19 15l-.75 2.25L16 18l2.25.75L19 21l.75-2.25L22 18l-2.25-.75z" />
+	</>
+));
+export const Tag = icon(() => (
+	<>
+		<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+		<circle cx="7.5" cy="7.5" fill="currentColor" r=".5" />
 	</>
 ));
 export const Trash2 = icon(() => (

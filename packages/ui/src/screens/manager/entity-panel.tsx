@@ -33,7 +33,7 @@ export function ManagerTableSkeleton() {
 	return (
 		<LoadingRegion label={t("entityPanel.loadingManagementData")}>
 			<div class="overflow-hidden rounded-md border border-border bg-card">
-				<div class="h-9 animate-pulse bg-muted motion-reduce:animate-none" />
+				<div class="h-9 motion-safe:animate-pulse bg-muted" />
 				<For each={[1, 2, 3, 4, 5]}>
 					{() => (
 						<div class="grid h-14 grid-cols-entity-summary gap-4 border-border border-t px-4 py-3">
@@ -311,7 +311,7 @@ export function EntityTablePanel(props: {
 																aria-label={t("entityPanel.editValue", {
 																	value0: String(item.name),
 																})}
-																class="size-8 p-0"
+																class="size-11 p-0 sm:size-8"
 																onClick={() =>
 																	props.manager.openEditDialog(item)
 																}
@@ -324,7 +324,7 @@ export function EntityTablePanel(props: {
 																aria-label={t("entityPanel.deleteValue", {
 																	value0: String(item.name),
 																})}
-																class="size-8 p-0 text-destructive"
+																class="size-11 p-0 text-destructive sm:size-8"
 																onClick={() => {
 																	props.manager.setItemToDelete(item);
 																	props.manager.setIsDeleteDialogOpen(true);

@@ -287,7 +287,7 @@ test(
 		await similarMedia.click();
 		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 		await expect(similarMedia).toHaveAttribute("aria-current", "true");
-		await expect(similarMedia).toHaveAttribute("aria-pressed", "false");
+		await expect(similarMedia).not.toHaveAttribute("aria-pressed");
 		const inspector = page.getByRole("complementary", {
 			name: "選択中のメディア",
 		});
@@ -367,10 +367,12 @@ test("Workspace detail closes More actions before opening a modal", async ({
 	await expect(
 		page.getByRole("menuitem", { name: "原本をダウンロード", exact: true }),
 	).toBeHidden();
-	const deleteDialog = page.getByRole("alertdialog");
+	const deleteDialog = page.getByRole("alertdialog", {
+		name: "メディアを削除",
+	});
 	await expect(deleteDialog).toBeVisible();
 	await expect(
-		deleteDialog.getByRole("heading", { name: "このメディアを削除しますか？" }),
+		deleteDialog.getByText(/e2e-primary\.pngを削除しますか？/),
 	).toBeVisible();
 	await expect
 		.poll(() =>

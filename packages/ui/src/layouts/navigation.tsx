@@ -1,4 +1,3 @@
-import { t } from "@solid-imager/i18n";
 import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
@@ -14,31 +13,31 @@ import {
 export const NAVIGATION_ITEMS = [
 	{
 		icon: Library,
-		label: t("navigation.library"),
+		labelKey: "navigation.library",
 		shortcutId: "goLibrary",
 		to: "/search",
 	},
 	{
 		icon: BriefcaseBusiness,
-		label: t("navigation.manager"),
+		labelKey: "navigation.manager",
 		shortcutId: "goManager",
 		to: "/manager",
 	},
 	{
 		icon: ChartColumn,
-		label: t("navigation.statistics"),
+		labelKey: "navigation.statistics",
 		shortcutId: undefined,
 		to: "/statistics",
 	},
 	{
 		icon: Clock3,
-		label: t("navigation.jobs"),
+		labelKey: "navigation.jobs",
 		shortcutId: "goJobs",
 		to: "/jobs",
 	},
 	{
 		icon: Settings,
-		label: t("navigation.settings"),
+		labelKey: "navigation.settings",
 		shortcutId: "goSettings",
 		to: "/config",
 	},
@@ -64,10 +63,14 @@ export function NavigationItem(props: {
 				aria-current={active() ? "page" : undefined}
 				aria-label={props.label}
 				as={Link}
-				class="h-11 px-3 font-medium text-muted-foreground md:h-10"
+				class={
+					props.expanded
+						? "h-11 px-3 font-medium text-muted-foreground md:h-10"
+						: "h-11 justify-center px-0 font-medium text-muted-foreground md:h-10"
+				}
 				isActive={active()}
 				onClick={props.onClick}
-				title={props.expanded ? undefined : props.label}
+				tooltip={props.expanded ? undefined : props.label}
 				to={props.to}
 			>
 				<Icon aria-hidden="true" class="shrink-0" size={18} />

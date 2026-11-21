@@ -240,6 +240,16 @@ export function ManagerPage(): JSX.Element {
 					`/api/sources/${sourceId}/thumbnail/${mediaId}`,
 			}}
 			manager={manager}
+			duplicateActions={{
+				openMedia: (mediaSourceId, mediaId) => {
+					void navigate({
+						to: "/sources/$mediaSourceId/$mediaId",
+						params: { mediaSourceId, mediaId },
+					});
+				},
+				thumbnailUrl: (item) =>
+					`/api/sources/${item.mediaSourceId}/thumbnail/${item.id}?t=${new Date(item.modifiedAt).getTime()}`,
+			}}
 			transferActions={createTransferActions(queryClient)}
 		/>
 	);

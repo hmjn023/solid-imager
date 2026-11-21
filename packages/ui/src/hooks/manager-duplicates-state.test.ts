@@ -129,4 +129,21 @@ describe("Manager duplicate scan and confirmation", () => {
 		expect(state.sourceId()).toBe("new");
 		expect(state.status()).toBeNull();
 	});
+	it("allows keeping all items in a group to skip deletion safely", async () => {
+		const { state } = setup();
+		await state.scan();
+		expect(state.isGroupSkipped("group")).toBe(false);
+		expect(state.deleteCount()).toBe(1);
+
+		state.keepAllForGroup("group");
+		expect(state.isGroupSkipped("group")).toBe(true);
+		expect(state.deleteCount()).toBe(0);
+
+		state.prepareDelete();
+		expect(state.dialogOpen()).toBe(false);
+
+		state.setKeepForGroup("group", "source-a-2");
+		expect(state.isGroupSkipped("group")).toBe(false);
+		expect(state.deleteCount()).toBe(1);
+	});
 });

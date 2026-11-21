@@ -21,7 +21,14 @@ import Keyboard from "lucide-solid/icons/keyboard";
 import Languages from "lucide-solid/icons/languages";
 import Logs from "lucide-solid/icons/logs";
 import Wrench from "lucide-solid/icons/wrench";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import {
+	createEffect,
+	createSignal,
+	For,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
 import type { z } from "zod";
 import {
 	AlertDialog,
@@ -63,13 +70,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
-import {
-	CategoryLabel,
-	CompactCategorySelect,
-	MANAGEMENT_CATEGORY_GRID,
-	MANAGEMENT_CATEGORY_LIST,
-	ManagementMobileCategory,
-} from "../workspace/management-layout";
+import { CategoryLabel } from "../workspace/management-layout";
 
 import { McpPublicationSettings } from "./mcp-publication-settings";
 
@@ -81,6 +82,54 @@ type LogLevelOption = {
 	value: LogLevel;
 	label: string;
 };
+
+function parseCommaSeparatedList(raw: string): string[] {
+	return raw
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean);
+}
+
+function areStringArraysEqual(
+	a: readonly string[],
+	b: readonly string[],
+): boolean {
+	return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
+function CommaSeparatedTextarea(props: {
+	id: string;
+	value: string[] | undefined;
+	placeholder?: string;
+	onChange: (value: string[]) => void;
+	onBlur: () => void;
+}) {
+	const [draft, setDraft] = createSignal((props.value ?? []).join(", "));
+
+	createEffect(() => {
+		const external = props.value ?? [];
+		if (!areStringArraysEqual(parseCommaSeparatedList(draft()), external)) {
+			setDraft(external.join(", "));
+		}
+	});
+
+	return (
+		<Textarea
+			id={props.id}
+			onBlur={() => {
+				setDraft((props.value ?? []).join(", "));
+				props.onBlur();
+			}}
+			onInput={(e) => {
+				const raw = e.currentTarget.value;
+				setDraft(raw);
+				props.onChange(parseCommaSeparatedList(raw));
+			}}
+			placeholder={props.placeholder}
+			value={draft()}
+		/>
+	);
+}
 
 function getLogLevelOptions(): LogLevelOption[] {
 	return [
@@ -95,57 +144,93 @@ function getLogLevelOptions(): LogLevelOption[] {
 
 const SETTINGS_CATEGORIES = [
 	{
-		description: t("locale.description"),
+		get description() {
+			return t("locale.description");
+		},
 		icon: Languages,
-		label: t("locale.category"),
+		get label() {
+			return t("locale.category");
+		},
 		value: "interface",
 	},
 	{
-		description: t("configScreen.concurrencyAndAutomation"),
+		get description() {
+			return t("configScreen.concurrencyAndAutomation");
+		},
 		icon: BriefcaseBusiness,
-		label: t("navigation.jobs"),
+		get label() {
+			return t("navigation.jobs");
+		},
 		value: "jobs",
 	},
 	{
-		description: t("configScreen.inferenceServiceConnection"),
+		get description() {
+			return t("configScreen.inferenceServiceConnection");
+		},
 		icon: Bot,
-		label: t("configScreen.aI"),
+		get label() {
+			return t("configScreen.aI");
+		},
 		value: "ai",
 	},
 	{
-		description: t("configScreen.downloadSpeedAndLimits"),
+		get description() {
+			return t("configScreen.downloadSpeedAndLimits");
+		},
 		icon: DownloadCloud,
-		label: t("configScreen.downloads"),
+		get label() {
+			return t("configScreen.downloads");
+		},
 		value: "downloads",
 	},
 	{
-		description: t("configScreen.thumbnailsAndStorageLocations"),
+		get description() {
+			return t("configScreen.thumbnailsAndStorageLocations");
+		},
 		icon: HardDrive,
-		label: t("configScreen.storage"),
+		get label() {
+			return t("configScreen.storage");
+		},
 		value: "storage",
 	},
 	{
-		description: t("configScreen.formatsAndMetadata"),
+		get description() {
+			return t("configScreen.formatsAndMetadata");
+		},
 		icon: Image,
-		label: t("configScreen.media"),
+		get label() {
+			return t("configScreen.media");
+		},
 		value: "media",
 	},
 	{
-		description: t("configScreen.keyboardControlsForThisDevice"),
+		get description() {
+			return t("configScreen.keyboardControlsForThisDevice");
+		},
 		icon: Keyboard,
-		label: t("configScreen.shortcuts"),
+		get label() {
+			return t("configScreen.shortcuts");
+		},
 		value: "shortcuts",
 	},
 	{
-		description: t("configScreen.toolAvailability"),
+		get description() {
+			return t("configScreen.toolAvailability");
+		},
 		icon: Wrench,
-		label: t("configScreen.mCP"),
+		get label() {
+			return t("configScreen.mCP");
+		},
 		value: "mcp",
 	},
 	{
-		description: t("configScreen.logOutputLevel"),
+		get description() {
+			return t("configScreen.logOutputLevel");
+		},
 		icon: Logs,
-		label: t("configScreen.logging"),
+		get label() {
+			return t("configScreen.logging");
+		},
 		value: "logging",
 	},
 ] as const;
@@ -179,7 +264,16 @@ export type ConfigScreenProps = {
 
 export function ConfigScreen(props: ConfigScreenProps) {
 	const queryClient = useQueryClient();
+	const [isDesktop, setIsDesktop] = createSignal(true);
 	const [activeTab, setActiveTab] = createSignal("jobs");
+
+	onMount(() => {
+		const media = window.matchMedia("(min-width: 1024px)");
+		const update = () => setIsDesktop(media.matches);
+		update();
+		media.addEventListener("change", update);
+		onCleanup(() => media.removeEventListener("change", update));
+	});
 	const [aiHealth, setAiHealth] = createSignal<AiHealthResponse | null>(null);
 	const [aiHealthError, setAiHealthError] = createSignal<string | null>(null);
 	const [isCheckingAiHealth, setIsCheckingAiHealth] = createSignal(false);
@@ -261,33 +355,21 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				}}
 			>
 				<Tabs
-					class={MANAGEMENT_CATEGORY_GRID}
+					class="grid w-full min-w-0 gap-6 lg:grid-cols-settings-sidebar xl:gap-8"
 					onChange={setActiveTab}
-					orientation="vertical"
+					orientation={isDesktop() ? "vertical" : "horizontal"}
 					value={activeTab()}
 				>
-					<ManagementMobileCategory>
-						<CompactCategorySelect
-							active={activeTab()}
-							label={t("configScreen.settingsCategories")}
-							onChange={setActiveTab}
-							options={SETTINGS_CATEGORIES}
-							renderIcon={(category) => {
-								const Icon = category.icon;
-								return <Icon aria-hidden="true" size={16} />;
-							}}
-						/>
-					</ManagementMobileCategory>
 					<TabsList
 						aria-label={t("configScreen.settingsCategories")}
-						class={`${MANAGEMENT_CATEGORY_LIST} h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0 lg:flex lg:flex-col`}
+						class="sticky top-0 z-10 flex h-auto w-full min-w-0 flex-nowrap items-center justify-start gap-1 overflow-x-auto rounded-none border-border border-b bg-background py-1.5 lg:top-5 lg:flex-col lg:items-stretch lg:self-start lg:overflow-visible lg:border-b-0 lg:bg-transparent lg:py-0"
 					>
 						<For each={SETTINGS_CATEGORIES}>
 							{(category) => {
 								const Icon = category.icon;
 								return (
 									<TabsTrigger
-										class="min-h-10 w-full justify-start gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary"
+										class="min-h-11 shrink-0 gap-2.5 whitespace-nowrap rounded-md px-2.5 text-muted-foreground shadow-none hover:bg-muted data-[selected]:bg-accent data-[selected]:text-primary data-[selected]:hover:bg-accent lg:min-h-10 lg:w-full lg:justify-start lg:whitespace-normal"
 										type="button"
 										value={category.value}
 									>
@@ -513,6 +595,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									</div>
 									<Button
 										aria-busy={isCheckingAiHealth()}
+										class="min-h-11 sm:min-h-9"
 										disabled={isCheckingAiHealth()}
 										onClick={() => void checkAiHealth()}
 										size="sm"
@@ -771,19 +854,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												<Label for={field().name}>
 													{t("configScreen.imageExtensions")}
 												</Label>
-												<Textarea
+												<CommaSeparatedTextarea
 													id={field().name}
 													onBlur={field().handleBlur}
-													onInput={(e) => {
-														const val = e.target.value;
-														const list = val
-															.split(",")
-															.map((s) => s.trim())
-															.filter(Boolean);
-														field().handleChange(list);
-													}}
+													onChange={field().handleChange}
 													placeholder={t("configScreen.jpgPng")}
-													value={field().state.value?.join(", ") ?? ""}
+													value={field().state.value}
 												/>
 												<div class="text-muted-foreground text-xs">
 													{t("configScreen.commaSeparated")}
@@ -797,19 +873,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												<Label for={field().name}>
 													{t("configScreen.videoExtensions")}
 												</Label>
-												<Textarea
+												<CommaSeparatedTextarea
 													id={field().name}
 													onBlur={field().handleBlur}
-													onInput={(e) => {
-														const val = e.target.value;
-														const list = val
-															.split(",")
-															.map((s) => s.trim())
-															.filter(Boolean);
-														field().handleChange(list);
-													}}
+													onChange={field().handleChange}
 													placeholder={t("configScreen.mp4Webm")}
-													value={field().state.value?.join(", ") ?? ""}
+													value={field().state.value}
 												/>
 											</div>
 										)}
@@ -820,19 +889,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												<Label for={field().name}>
 													{t("configScreen.audioExtensions")}
 												</Label>
-												<Textarea
+												<CommaSeparatedTextarea
 													id={field().name}
 													onBlur={field().handleBlur}
-													onInput={(e) => {
-														const val = e.target.value;
-														const list = val
-															.split(",")
-															.map((s) => s.trim())
-															.filter(Boolean);
-														field().handleChange(list);
-													}}
+													onChange={field().handleChange}
 													placeholder={t("configScreen.mp3Wav")}
-													value={field().state.value?.join(", ") ?? ""}
+													value={field().state.value}
 												/>
 											</div>
 										)}
@@ -848,18 +910,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											<Label for={field().name}>
 												{t("configScreen.positiveNodeTypes")}
 											</Label>
-											<Textarea
+											<CommaSeparatedTextarea
 												id={field().name}
 												onBlur={field().handleBlur}
-												onInput={(e) => {
-													const val = e.target.value;
-													const list = val
-														.split(",")
-														.map((s) => s.trim())
-														.filter(Boolean);
-													field().handleChange(list);
-												}}
-												value={field().state.value?.join(", ") ?? ""}
+												onChange={field().handleChange}
+												value={field().state.value}
 											/>
 										</div>
 									)}
@@ -871,18 +926,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											<Label for={field().name}>
 												{t("configScreen.negativeKeywords")}
 											</Label>
-											<Textarea
+											<CommaSeparatedTextarea
 												id={field().name}
 												onBlur={field().handleBlur}
-												onInput={(e) => {
-													const val = e.target.value;
-													const list = val
-														.split(",")
-														.map((s) => s.trim())
-														.filter(Boolean);
-													field().handleChange(list);
-												}}
-												value={field().state.value?.join(", ") ?? ""}
+												onChange={field().handleChange}
+												value={field().state.value}
 											/>
 										</div>
 									)}
@@ -894,18 +942,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											<Label for={field().name}>
 												{t("configScreen.negativeTags")}
 											</Label>
-											<Textarea
+											<CommaSeparatedTextarea
 												id={field().name}
 												onBlur={field().handleBlur}
-												onInput={(e) => {
-													const val = e.target.value;
-													const list = val
-														.split(",")
-														.map((s) => s.trim())
-														.filter(Boolean);
-													field().handleChange(list);
-												}}
-												value={field().state.value?.join(", ") ?? ""}
+												onChange={field().handleChange}
+												value={field().state.value}
 											/>
 										</div>
 									)}
@@ -991,11 +1032,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				>
 					{(state) => (
 						<Show when={state().isDirty}>
-							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-border bg-card p-2 shadow-lg backdrop-blur">
+							<div class="sticky bottom-3 z-20 ml-auto flex w-fit max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border bg-card p-2 shadow-lg backdrop-blur">
 								<span class="px-2 text-muted-foreground text-sm">
 									{t("configScreen.unsavedChanges")}
 								</span>
 								<Button
+									class="min-h-11 sm:min-h-9"
 									disabled={state().isSubmitting}
 									onClick={() => {
 										setSubmitError(null);
@@ -1008,6 +1050,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									{t("actions.discard")}
 								</Button>
 								<Button
+									class="min-h-11 sm:min-h-9"
 									disabled={!state().canSubmit || state().isSubmitting}
 									type="submit"
 								>

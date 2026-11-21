@@ -140,8 +140,8 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	return (
 		<Show
 			fallback={
-				<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
-					{props.fallback ?? props.alt}
+				<div class="flex h-full w-full items-center justify-center overflow-hidden bg-muted p-2 text-center text-muted-foreground text-xs break-words">
+					<span class="line-clamp-3">{props.fallback ?? props.alt}</span>
 				</div>
 			}
 			when={!error() ? url() : undefined}

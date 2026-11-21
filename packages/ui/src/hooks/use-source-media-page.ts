@@ -10,7 +10,10 @@ import {
 	type UploadResponse,
 } from "@solid-imager/core/media";
 import type { Project } from "@solid-imager/core/projects";
-import type { SemanticSearchRequest } from "@solid-imager/core/search";
+import {
+	getSearchConditionFromState,
+	type SemanticSearchRequest,
+} from "@solid-imager/core/search";
 import type { JobProgressEvent } from "@solid-imager/core/events";
 import type { TagResponse } from "@solid-imager/core/tags";
 import { getErrorMessage } from "@solid-imager/core/utils";
@@ -32,13 +35,15 @@ import {
 	removeMediaFromInfiniteQueryData,
 	sourceMediaQueryKeys,
 } from "../query-options";
+import { SEARCH_COLLECTION_PAGE_SIZE } from "../query-options/search-query";
 import { type QueryUiState, toQueryUiState } from "../query-state";
+import {
+	useInitialSearch,
+	useRenderedSearchState,
+} from "../search-initial-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
-import {
-	getGlobalSimilarityActivation,
-	searchState,
-} from "../stores/search-store";
+import { getGlobalSimilarityActivation } from "../stores/search-store";
 import {
 	getScrollPosition,
 	setScrollPosition,
@@ -49,7 +54,7 @@ import { useMediaItemActions } from "./use-media-collection-actions";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
-export const SOURCE_MEDIA_ITEMS_PER_PAGE = 200;
+export const SOURCE_MEDIA_ITEMS_PER_PAGE = SEARCH_COLLECTION_PAGE_SIZE;
 const DEBOUNCE_DELAY_MS = 1000;
 const MEDIA_REFRESH_DEBOUNCE_MS = 300;
 
@@ -150,6 +155,8 @@ export type UseSourceMediaPageResult = {
 	setLoadMoreRef: (el: HTMLDivElement) => void;
 	showUploadModal: () => boolean;
 	setShowUploadModal: Setter<boolean>;
+	filesToUpload: Accessor<File[]>;
+	setFilesToUpload: Setter<File[]>;
 	fileToUpload: () => File | null;
 	setFileToUpload: Setter<File | null>;
 	pastedUrl: () => string | null;
@@ -210,6 +217,8 @@ export function useSourceMediaPage(
 	} = options;
 
 	const id = mediaSourceId;
+	const initialSearch = useInitialSearch()?.initial;
+	const state = useRenderedSearchState();
 	// Global Find Similar sets shared search state before navigation can unmount
 	// this view. Its successor owns that request; do not launch a transient
 	// source-scoped query that will immediately be cancelled by navigation.
@@ -224,23 +233,23 @@ export function useSourceMediaPage(
 	});
 
 	// --- Infinite query ---
-	const searchConditionKey = createMemo(() =>
-		JSON.stringify(getSearchCondition() ?? null),
-	);
-
-	const mediaQueryOptions = createMemo(() =>
-		buildSourceMediaResultsQueryOptions({
-			similarityAnchorMediaId: searchState.similarityAnchorMediaId,
-			similarityModel: searchState.similarityModel,
+	const mediaQueryOptions = createMemo(() => {
+		const initial = initialSearch?.()?.state;
+		const condition = initial
+			? getSearchConditionFromState(initial)
+			: getSearchCondition();
+		return buildSourceMediaResultsQueryOptions({
+			similarityAnchorMediaId: state().similarityAnchorMediaId,
+			similarityModel: state().similarityModel,
 			searchSimilar: actions.searchSimilar,
-			semanticQuery: searchState.semanticQuery,
-			similarityTopK: searchState.similarityTopK,
+			semanticQuery: state().semanticQuery,
+			similarityTopK: state().similarityTopK,
 			searchSemantic: actions.searchSemantic,
 			sourceId: id(),
-			condition: getSearchCondition(),
-			conditionKey: searchConditionKey(),
-			sort: sortBy(),
-			order: sortOrder(),
+			condition,
+			conditionKey: JSON.stringify(condition ?? null),
+			sort: initial?.sortBy ?? sortBy(),
+			order: initial?.sortOrder ?? sortOrder(),
 			limit: itemsPerPage,
 			searchMedia: actions.searchMedia,
 			enabled:
@@ -248,12 +257,16 @@ export function useSourceMediaPage(
 				isSearchStateRestored() &&
 				!!id() &&
 				getGlobalSimilarityActivation() === sourceActivation,
-		}),
-	);
+		});
+	});
 	const mediaQuery = createInfiniteQuery(mediaQueryOptions);
 	const [mediaQueryData, setMediaQueryData] = createSignal<
 		InfiniteData<MediaSearchResponse> | undefined
-	>();
+	>(
+		initialSearch?.()
+			? queryClient.getQueryData(mediaQueryOptions().queryKey)
+			: undefined,
+	);
 
 	createEffect(() => {
 		// Keep paginated results outside Solid Query's resource-backed `data`
@@ -295,6 +308,7 @@ export function useSourceMediaPage(
 	let nextPageFetchInFlight = false;
 	const fetchNextPage = async (): Promise<unknown> => {
 		if (
+			!isSearchStateRestored() ||
 			nextPageFetchInFlight ||
 			!mediaQuery.hasNextPage ||
 			mediaQuery.isFetchingNextPage
@@ -343,17 +357,20 @@ export function useSourceMediaPage(
 		}
 		createEffect(() => {
 			const el = loadMoreRef();
-			if (!el) {
+			if (
+				!el ||
+				!mediaQuery.hasNextPage ||
+				mediaQuery.isFetchingNextPage ||
+				mediaQuery.isFetchNextPageError
+			) {
 				return;
 			}
-
-			const hasNext = mediaQuery.hasNextPage;
-			void hasNext;
+			void mediaResults().length;
 
 			const observer = new IntersectionObserver(
 				(entries) => {
 					if (
-						entries[0].isIntersecting &&
+						entries[0]?.isIntersecting &&
 						mediaQuery.hasNextPage &&
 						!mediaQuery.isFetchingNextPage &&
 						!mediaQuery.isFetchNextPageError
@@ -371,7 +388,14 @@ export function useSourceMediaPage(
 
 	// --- UI state ---
 	const [showUploadModal, setShowUploadModal] = createSignal(false);
-	const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
+	const [filesToUpload, setFilesToUpload] = createSignal<File[]>([]);
+	const fileToUpload = () => filesToUpload()[0] ?? null;
+	const setFileToUpload: Setter<File | null> = (value) =>
+		setFilesToUpload((previous) => {
+			const resolved =
+				typeof value === "function" ? value(previous[0] ?? null) : value;
+			return resolved ? [resolved] : [];
+		});
 	const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
 	const [contextMenuMediaId, setContextMenuMediaId] = createSignal<
 		string | null
@@ -567,12 +591,25 @@ export function useSourceMediaPage(
 	const handleFileSelect = async (e: Event) => {
 		const target = e.target as HTMLInputElement;
 		if (target.files && target.files.length > 0) {
-			const file = target.files[0];
+			const selected = Array.from(target.files);
+			const jsonFiles: File[] = [];
+			const mediaFiles: File[] = [];
+			for (const file of selected) {
+				if (
+					file.type === "application/json" ||
+					file.name.toLowerCase().endsWith(".json")
+				) {
+					jsonFiles.push(file);
+				} else {
+					mediaFiles.push(file);
+				}
+			}
 
-			if (file.type === "application/json" || file.name.endsWith(".json")) {
-				await handleJsonFileUpload(file);
-			} else {
-				setFileToUpload(file);
+			for (const jsonFile of jsonFiles) {
+				await handleJsonFileUpload(jsonFile);
+			}
+			if (mediaFiles.length > 0) {
+				setFilesToUpload(mediaFiles);
 				setShowUploadModal(true);
 			}
 
@@ -588,8 +625,7 @@ export function useSourceMediaPage(
 		e.preventDefault();
 		e.stopPropagation();
 		if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-			const file = e.dataTransfer.files[0];
-			setFileToUpload(file);
+			setFilesToUpload(Array.from(e.dataTransfer.files));
 			setShowUploadModal(true);
 		}
 	};
@@ -776,6 +812,8 @@ export function useSourceMediaPage(
 		setLoadMoreRef,
 		showUploadModal,
 		setShowUploadModal,
+		filesToUpload,
+		setFilesToUpload,
 		fileToUpload,
 		setFileToUpload,
 		pastedUrl,

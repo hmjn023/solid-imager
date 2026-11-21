@@ -34,7 +34,7 @@ export function ViewerSearchHistoryContent(props: {
 				ref={(element: HTMLHeadingElement) => {
 					title = element;
 				}}
-				class="shrink-0 pr-8"
+				class="shrink-0 pr-12"
 			>
 				{t("viewerSearchHistory.title")}
 			</DialogTitle>

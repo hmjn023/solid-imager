@@ -12,6 +12,7 @@ export type UploadMediaModalContentProps = {
 		autoIncrement: boolean;
 	}) => Promise<void>;
 	initialFile: File | null;
+	initialFiles?: File[];
 	pastedUrl: string | null;
 	onFetchUrl: (url: string) => Promise<File>;
 };

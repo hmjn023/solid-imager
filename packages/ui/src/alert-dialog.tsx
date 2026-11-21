@@ -38,7 +38,7 @@ const AlertDialogOverlay: Component<
 	return (
 		<AlertDialogPrimitiveOverlay
 			class={cn(
-				"data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed inset-0 z-50 bg-background/80 data-[closed]:animate-out data-[expanded]:animate-in",
+				"fixed inset-0 z-50 bg-background/80 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0",
 				props.class,
 			)}
 			{...rest}
@@ -55,7 +55,7 @@ const AlertDialogContent: Component<
 			<AlertDialogOverlay />
 			<AlertDialogPrimitiveContent
 				class={cn(
-					"fixed top-1/2 left-1/2 z-50 grid max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 overflow-y-auto overscroll-contain border bg-background p-6 shadow-lg duration-200 data-[closed]:animate-out data-[expanded]:animate-in data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 motion-reduce:animate-none sm:max-h-dialog-screen-sm sm:rounded-lg",
+					"fixed top-1/2 left-1/2 z-50 grid max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 overflow-y-auto overscroll-contain rounded-lg border bg-background p-6 shadow-lg duration-200 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[expanded]:zoom-in-95 sm:max-h-dialog-safe",
 					props.class,
 				)}
 				{...rest}

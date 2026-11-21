@@ -2,7 +2,15 @@ import { t } from "@solid-imager/i18n";
 import { ServerBatchStatus } from "./manager/job-status";
 import { AuthorManagementPanel } from "./manager/authors";
 import type { AuthorManagementActions } from "./manager/authors.types";
-import { createEffect, createSignal, Match, on, Show, Switch } from "solid-js";
+import {
+	createEffect,
+	createSignal,
+	Match,
+	on,
+	onMount,
+	Show,
+	Switch,
+} from "solid-js";
 import {
 	EmptyState,
 	ErrorState,
@@ -36,6 +44,7 @@ import {
 	type CharacterClusteringReviewActions,
 } from "./manager/character-clustering";
 import type {
+	DuplicateToolActions,
 	ManagerCategoryValue,
 	ManagerTransferActions,
 } from "./manager/types";
@@ -53,31 +62,28 @@ export function ManagerScreen(props: {
 	authorActions?: AuthorManagementActions;
 	clusteringActions?: CharacterClusteringReviewActions;
 	tagDictionaryActions?: TagDictionaryActions;
+	duplicateActions?: DuplicateToolActions;
 }) {
 	const [query, setQuery] = createSignal("");
 	const [selectedId, setSelectedId] = createSignal<string | null>(null);
 	const [activeCategory, setActiveCategory] =
-		createSignal<ManagerCategoryValue>(
-			(() => {
-				try {
-					if (
-						typeof sessionStorage !== "undefined" &&
-						sessionStorage.getItem(
-							"solid-imager:manager:tag-dictionary-open",
-						) === "1"
-					) {
-						return "tagDictionary";
-					}
-					return typeof sessionStorage !== "undefined" &&
-						sessionStorage.getItem("solid-imager:manager:clustering-open") ===
-							"1"
-						? "clustering"
-						: "projects";
-				} catch {
-					return "projects";
-				}
-			})(),
-		);
+		createSignal<ManagerCategoryValue>("projects");
+	onMount(() => {
+		try {
+			if (
+				sessionStorage.getItem("solid-imager:manager:tag-dictionary-open") ===
+				"1"
+			) {
+				setActiveCategory("tagDictionary");
+			} else if (
+				sessionStorage.getItem("solid-imager:manager:clustering-open") === "1"
+			) {
+				setActiveCategory("clustering");
+			}
+		} catch {
+			// Storage can be disabled.
+		}
+	});
 	createEffect(
 		on(
 			() => props.manager.activeTab(),
@@ -343,7 +349,10 @@ export function ManagerScreen(props: {
 										<ThumbnailWarmupPanel manager={props.manager} />
 									</Match>
 									<Match when={activeCategory() === "duplicates"}>
-										<DuplicateToolPanel manager={props.manager} />
+										<DuplicateToolPanel
+											actions={props.duplicateActions}
+											manager={props.manager}
+										/>
 									</Match>
 									<Match when={activeCategory() === "transfer"}>
 										<Show

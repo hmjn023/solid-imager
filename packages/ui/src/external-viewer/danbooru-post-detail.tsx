@@ -30,10 +30,10 @@ import {
 import { danbooruRatingLabel } from "./post-media";
 
 const tagGroups = [
-	["copyright", t("detail.work")],
-	["character", t("labels.characters")],
-	["general", t("pixivArtworkDetail.tags")],
-	["meta", t("danbooruPostDetail.metadata")],
+	["copyright", "detail.work"],
+	["character", "labels.characters"],
+	["general", "pixivArtworkDetail.tags"],
+	["meta", "danbooruPostDetail.metadata"],
 ] as const;
 
 export function DanbooruPostDetail(
@@ -116,7 +116,7 @@ export function DanbooruPostDetail(
 								<For each={tagGroups}>
 									{([key, label]) => (
 										<Show when={post.tags[key].length}>
-											<MediaMetadataSection title={label}>
+											<MediaMetadataSection title={t(label)}>
 												<div class="flex flex-wrap gap-2">
 													<For each={post.tags[key]}>
 														{(tag) => (

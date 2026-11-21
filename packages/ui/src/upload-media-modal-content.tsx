@@ -52,6 +52,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	return (
 		<SharedUploadMediaModalContent
 			initialFile={props.initialFile}
+			initialFiles={props.initialFiles}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
 			onFetchUrl={props.onFetchUrl}

@@ -107,19 +107,16 @@ test("reports partial results and retries only eligible items at the original de
 	});
 
 	const alert = dialog.getByRole("alert");
-	const reconciliationMessage = t(
-		"bulkActionDialog.doNotResubmitItemsWithUnknownOutcomesCloseThe",
-	);
 	const retry = dialog.getByRole("button", {
 		name: t("bulkActionDialog.retryFailedOrUnprocessedItems"),
 		exact: true,
 	});
 	await expect.element(alert).toHaveTextContent(
-		t("bulkActionDialog.valueSucceededValueCanBeRetriedValueHaveUnknown", {
+		t("bulkActionDialog.partialOutcomeWithUnknown", {
 			value0: "1",
 			value1: "2",
 			value2: "1",
-		}) + reconciliationMessage,
+		}),
 	);
 	await expect.element(destination).toBeDisabled();
 	await expect.element(destination).toHaveTextContent("Archive");
@@ -127,11 +124,11 @@ test("reports partial results and retries only eligible items at the original de
 
 	await retry.click();
 	await expect.element(alert).toHaveTextContent(
-		t("bulkActionDialog.valueSucceededValueCanBeRetriedValueHaveUnknown", {
+		t("bulkActionDialog.partialOutcomeWithUnknown", {
 			value0: "2",
 			value1: "0",
 			value2: "1",
-		}) + reconciliationMessage,
+		}),
 	);
 	await expect.element(retry).toBeDisabled();
 	expect(bulkCopyToSource).toHaveBeenCalledTimes(2);

@@ -16,8 +16,47 @@ type UploadMediaModalProps = {
 		autoIncrement: boolean;
 	}) => Promise<void>;
 	initialFile: File | null;
+	initialFiles?: File[];
 	pastedUrl: string | null;
 };
+
+function getFetchedFilename(url: string, type: string) {
+	let filename: string | undefined;
+	try {
+		const parsedUrl = new URL(url, "http://localhost");
+		filename = parsedUrl.pathname.split("/").pop();
+		if (filename) {
+			try {
+				filename = decodeURIComponent(filename);
+			} catch {
+				// Keep the encoded name if it is not valid percent encoding.
+			}
+		}
+		const normalizedType = type.split(";")[0]?.toLowerCase();
+		const [typeGroup, rawSubtype] = normalizedType?.split("/") ?? [];
+		const subtype = rawSubtype?.split("+")[0];
+		const extensionFromType =
+			normalizedType === "image/jpeg"
+				? "jpg"
+				: typeGroup === "image" ||
+					  typeGroup === "video" ||
+					  typeGroup === "audio"
+					? subtype?.replace(/[^a-z0-9]/gi, "")
+					: undefined;
+		const extensionFromUrl = parsedUrl.searchParams
+			.get("format")
+			?.replace(/[^a-z0-9]/gi, "");
+		const extension = extensionFromType || extensionFromUrl;
+		if (!filename) {
+			return extension ? `download.${extension}` : "download";
+		}
+		return /\.[^./\\]+$/.test(filename) || !extension
+			? filename
+			: `${filename}.${extension}`;
+	} catch {
+		return url.substring(url.lastIndexOf("/") + 1) || "fetched-image";
+	}
+}
 
 async function fetchFileFromUrl(url: string) {
 	const response = await fetch(url);
@@ -29,13 +68,9 @@ async function fetchFileFromUrl(url: string) {
 		);
 	}
 	const blob = await response.blob();
-	return new File(
-		[blob],
-		url.substring(url.lastIndexOf("/") + 1) || "fetched-image",
-		{
-			type: blob.type,
-		},
-	);
+	return new File([blob], getFetchedFilename(url, blob.type), {
+		type: blob.type,
+	});
 }
 
 export function UploadMediaModalContent(props: UploadMediaModalProps) {
@@ -53,6 +88,7 @@ export function UploadMediaModalContent(props: UploadMediaModalProps) {
 	return (
 		<SharedUploadMediaModalContent
 			initialFile={props.initialFile}
+			initialFiles={props.initialFiles}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
 			onFetchUrl={fetchFileFromUrl}

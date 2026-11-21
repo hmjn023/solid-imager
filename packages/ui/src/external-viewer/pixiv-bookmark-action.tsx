@@ -75,15 +75,16 @@ export function PixivBookmarkAction(props: {
 		<Dialog
 			open={open()}
 			onOpenChange={(next) => {
+				if (!next && change.isPending) return;
 				if (next && !change.isPending) change.reset();
 				setOpen(next);
 			}}
 		>
-			<DialogTrigger as={Button} variant="outline">
+			<DialogTrigger as={Button} class="min-h-11 md:min-h-9" variant="outline">
 				{title()}
 			</DialogTrigger>
-			<DialogContent>
-				<DialogTitle class="pr-8">{title()}</DialogTitle>
+			<DialogContent closeDisabled={change.isPending}>
+				<DialogTitle class="pr-12">{title()}</DialogTitle>
 				<DialogDescription class="break-words">{props.title}</DialogDescription>
 				<Show when={change.isError}>
 					<p class="text-destructive text-sm" role="alert">
@@ -106,7 +107,11 @@ export function PixivBookmarkAction(props: {
 					</Match>
 					<Match when={state.data?.visibility}>
 						<DialogFooter>
-							<Button variant="outline" onClick={() => setOpen(false)}>
+							<Button
+								disabled={change.isPending}
+								variant="outline"
+								onClick={() => setOpen(false)}
+							>
 								{t("actions.cancel")}
 							</Button>
 							<Button
@@ -143,7 +148,11 @@ export function PixivBookmarkAction(props: {
 							</RadioGroupItem>
 						</RadioGroup>
 						<DialogFooter>
-							<Button variant="outline" onClick={() => setOpen(false)}>
+							<Button
+								disabled={change.isPending}
+								variant="outline"
+								onClick={() => setOpen(false)}
+							>
 								{t("actions.cancel")}
 							</Button>
 							<Button

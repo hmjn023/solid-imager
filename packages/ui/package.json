@@ -26,6 +26,7 @@
     "./dialog": "./src/dialog.tsx",
     "./dropdown-menu": "./src/dropdown-menu.tsx",
     "./event-stream": "./src/public/event-stream.ts",
+    "./form-message": "./src/form-message.tsx",
     "./icons": "./src/public/icons.ts",
     "./import-review-modal": "./src/import-review-modal.tsx",
     "./input": "./src/input.tsx",

@@ -686,7 +686,7 @@ export function CharacterClusteringReviewPanel(props: {
 								</ToggleGroupItem>
 							</ToggleGroup>
 							<Toggle
-								class="min-h-11 px-4 hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground sm:min-h-9"
+								class="min-h-11 px-4 hover:bg-muted hover:text-foreground data-[pressed]:bg-accent data-[pressed]:text-primary sm:min-h-9"
 								onChange={setLarge}
 								pressed={large()}
 							>
@@ -1079,7 +1079,7 @@ export function CharacterClusteringReviewPanel(props: {
 							</ToggleGroupItem>
 						</ToggleGroup>
 						<Toggle
-							class="min-h-11 px-4 hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground sm:min-h-9"
+							class="min-h-11 px-4 hover:bg-muted hover:text-foreground data-[pressed]:bg-accent data-[pressed]:text-primary sm:min-h-9"
 							onChange={setLarge}
 							pressed={large()}
 						>

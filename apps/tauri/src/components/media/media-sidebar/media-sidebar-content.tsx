@@ -1,5 +1,7 @@
 import type { MediaDetails } from "@solid-imager/core/media";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
+import { activateTagSearch } from "@solid-imager/ui/search/state";
+import { useNavigate } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
 import {
 	addCharacterToMedia,
@@ -28,10 +30,13 @@ import {
 export type MediaSidebarProps = {
 	media: MediaDetails;
 	isUpdating?: Accessor<boolean>;
+	onSearchTag?: (tagName: string) => void;
 	onUpdate?: () => void;
 };
 
 export function MediaSidebar(props: MediaSidebarProps) {
+	const navigate = useNavigate();
+
 	return (
 		<MediaSidebarContent
 			activityApi={client.media}
@@ -48,6 +53,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			createProject={createProject}
 			isUpdating={props.isUpdating}
 			media={props.media}
+			onSearchTag={
+				props.onSearchTag ??
+				((tagName) => {
+					activateTagSearch(tagName);
+					void navigate({ to: "/search" });
+				})
+			}
 			onUpdate={props.onUpdate}
 			projectsForMediaQueryOptions={projectsForMediaQueryOptions}
 			removeCharacterFromMedia={removeCharacterFromMedia}
