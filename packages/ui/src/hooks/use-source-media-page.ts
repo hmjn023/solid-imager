@@ -150,6 +150,8 @@ export type UseSourceMediaPageResult = {
 	setLoadMoreRef: (el: HTMLDivElement) => void;
 	showUploadModal: () => boolean;
 	setShowUploadModal: Setter<boolean>;
+	filesToUpload: Accessor<File[]>;
+	setFilesToUpload: Setter<File[]>;
 	fileToUpload: () => File | null;
 	setFileToUpload: Setter<File | null>;
 	pastedUrl: () => string | null;
@@ -343,17 +345,20 @@ export function useSourceMediaPage(
 		}
 		createEffect(() => {
 			const el = loadMoreRef();
-			if (!el) {
+			if (
+				!el ||
+				!mediaQuery.hasNextPage ||
+				mediaQuery.isFetchingNextPage ||
+				mediaQuery.isFetchNextPageError
+			) {
 				return;
 			}
-
-			const hasNext = mediaQuery.hasNextPage;
-			void hasNext;
+			void mediaResults().length;
 
 			const observer = new IntersectionObserver(
 				(entries) => {
 					if (
-						entries[0].isIntersecting &&
+						entries[0]?.isIntersecting &&
 						mediaQuery.hasNextPage &&
 						!mediaQuery.isFetchingNextPage &&
 						!mediaQuery.isFetchNextPageError
@@ -371,7 +376,14 @@ export function useSourceMediaPage(
 
 	// --- UI state ---
 	const [showUploadModal, setShowUploadModal] = createSignal(false);
-	const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
+	const [filesToUpload, setFilesToUpload] = createSignal<File[]>([]);
+	const fileToUpload = () => filesToUpload()[0] ?? null;
+	const setFileToUpload: Setter<File | null> = (value) =>
+		setFilesToUpload((previous) => {
+			const resolved =
+				typeof value === "function" ? value(previous[0] ?? null) : value;
+			return resolved ? [resolved] : [];
+		});
 	const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
 	const [contextMenuMediaId, setContextMenuMediaId] = createSignal<
 		string | null
@@ -567,12 +579,25 @@ export function useSourceMediaPage(
 	const handleFileSelect = async (e: Event) => {
 		const target = e.target as HTMLInputElement;
 		if (target.files && target.files.length > 0) {
-			const file = target.files[0];
+			const selected = Array.from(target.files);
+			const jsonFiles: File[] = [];
+			const mediaFiles: File[] = [];
+			for (const file of selected) {
+				if (
+					file.type === "application/json" ||
+					file.name.toLowerCase().endsWith(".json")
+				) {
+					jsonFiles.push(file);
+				} else {
+					mediaFiles.push(file);
+				}
+			}
 
-			if (file.type === "application/json" || file.name.endsWith(".json")) {
-				await handleJsonFileUpload(file);
-			} else {
-				setFileToUpload(file);
+			for (const jsonFile of jsonFiles) {
+				await handleJsonFileUpload(jsonFile);
+			}
+			if (mediaFiles.length > 0) {
+				setFilesToUpload(mediaFiles);
 				setShowUploadModal(true);
 			}
 
@@ -588,8 +613,7 @@ export function useSourceMediaPage(
 		e.preventDefault();
 		e.stopPropagation();
 		if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-			const file = e.dataTransfer.files[0];
-			setFileToUpload(file);
+			setFilesToUpload(Array.from(e.dataTransfer.files));
 			setShowUploadModal(true);
 		}
 	};
@@ -776,6 +800,8 @@ export function useSourceMediaPage(
 		setLoadMoreRef,
 		showUploadModal,
 		setShowUploadModal,
+		filesToUpload,
+		setFilesToUpload,
 		fileToUpload,
 		setFileToUpload,
 		pastedUrl,

@@ -60,13 +60,17 @@ export function ViewerActions(props: {
 		<div class="flex flex-wrap items-center gap-2">
 			<a
 				href={props.sourceHref}
-				class={buttonVariants({ variant: "outline" })}
+				class={buttonVariants({
+					class: "min-h-11 md:min-h-9",
+					variant: "outline",
+				})}
 				target="_blank"
 				rel="noopener noreferrer"
 			>
 				{props.sourceLabel} ↗
 			</a>
 			<Button
+				class="min-h-11 md:min-h-9"
 				disabled={!props.item?.targetUrl || status() !== undefined}
 				aria-busy={status() === "pending"}
 				onClick={() => props.item && void props.imports.add([props.item])}
@@ -111,26 +115,48 @@ export function ViewerDetail<Post extends { id: number }>(
 	let region!: HTMLElement;
 	onMount(() => {
 		region.focus({ preventScroll: true });
-		const escape = (event: KeyboardEvent) => {
+		const handleKeyDown = (event: KeyboardEvent) => {
 			if (
-				event.key !== "Escape" ||
 				event.repeat ||
 				event.defaultPrevented ||
-				document.fullscreenElement
-			)
+				event.isComposing ||
+				document.fullscreenElement ||
+				document.querySelector('[role="dialog"], [role="alertdialog"]')
+			) {
 				return;
+			}
+			if (event.key === "Escape") {
+				if (
+					!(event.target instanceof Node) ||
+					(!region.contains(event.target) && event.target !== document.body)
+				) {
+					return;
+				}
+				event.preventDefault();
+				props.onBack();
+				return;
+			}
+			if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+				return;
+			}
 			if (
-				!(event.target instanceof Node) ||
-				(!region.contains(event.target) && event.target !== document.body)
-			)
+				event.target instanceof Element &&
+				event.target.closest(
+					"input, textarea, select, [contenteditable], video, audio, media-controller, [role='textbox'], [role='slider'], [role='spinbutton']",
+				)
+			) {
 				return;
-			if (document.querySelector('[role="dialog"], [role="alertdialog"]'))
-				return;
-			event.preventDefault();
-			props.onBack();
+			}
+			if (event.key === "ArrowLeft" && props.previousId !== undefined) {
+				event.preventDefault();
+				props.onNavigate(props.previousId);
+			} else if (event.key === "ArrowRight" && props.nextId !== undefined) {
+				event.preventDefault();
+				props.onNavigate(props.nextId);
+			}
 		};
-		window.addEventListener("keydown", escape);
-		onCleanup(() => window.removeEventListener("keydown", escape));
+		window.addEventListener("keydown", handleKeyDown);
+		onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
 	});
 	return (
 		<section

@@ -22,7 +22,7 @@ const PopoverContent = <T extends ValidComponent = "div">(
 		<PopoverPrimitive.Portal>
 			<PopoverPrimitive.Content
 				class={cn(
-					"data-[closed]:fade-out-0 data-[expanded]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[expanded]:zoom-in-95 z-50 max-h-dialog-screen w-popover-small overflow-auto overscroll-contain origin-kb-popover rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[closed]:animate-out data-[expanded]:animate-in",
+					"z-50 max-h-popover-fit-available w-popover-small origin-kb-popover overflow-auto overscroll-contain rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[expanded]:zoom-in-95",
 					local.class,
 				)}
 				{...others}

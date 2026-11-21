@@ -72,14 +72,15 @@ function FilterSection<T>(props: {
 									(props.getSelectedItemValue?.(i) ?? props.getItemKey(i)) ===
 									id,
 							) as T;
+							const labelText = () => (item ? props.getItemLabel(item) : id);
 							return (
-								<Badge
-									class="cursor-pointer"
-									variant={props.badgeVariant || "default"}
-								>
-									{item ? props.getItemLabel(item) : id}
+								<Badge variant={props.badgeVariant || "default"}>
+									<span>{labelText()}</span>
 									<button
-										class="ml-1 hover:text-destructive"
+										aria-label={t("searchFilters.removeFilterValue", {
+											value0: labelText(),
+										})}
+										class="ml-1 inline-flex size-5 items-center justify-center rounded-full opacity-80 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										onClick={() => props.onRemove(id)}
 										type="button"
 									>

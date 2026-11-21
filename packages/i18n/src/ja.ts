@@ -42,7 +42,11 @@ export const ja = defineLocale({
 	"aiTaggingModal.iPsSeries": "IP（作品）",
 	"aiTaggingModal.noCharactersDetected": "キャラクターを検出できませんでした。",
 	"aiTaggingModal.noIPsDetected": "IPを検出できませんでした。",
+	"aiTaggingModal.noTagsDetected":
+		"このメディアからタグを検出できませんでした。",
 	"aiTaggingModal.noTaggingResultReturned": "タグ付け結果が返されませんでした",
+	"aiTaggingModal.overwritesExistingAiTagsNotice":
+		"AIタグ付けを実行すると、この項目の既存AIタグが即座に上書きされます。",
 	"aiTaggingModal.tagsExtractedFromTheImageUsingTheAIService":
 		"AIサービスで画像から抽出したタグです。",
 	"aiTaggingModal.tagsExtractedFromTheVideoSRepresentativeThumbnailUsing":
@@ -186,18 +190,19 @@ export const ja = defineLocale({
 	"bulkActionDialog.confirm": "確定",
 	"bulkActionDialog.copyToAnotherSource": "コピー (別ソースへ)",
 	"bulkActionDialog.destinationFolderPath": "移動先フォルダパス",
-	"bulkActionDialog.doNotResubmitItemsWithUnknownOutcomesCloseThe":
-		"結果不明の項目は再送せず、ダイアログを閉じて一覧と保存先を確認してください。",
+	"bulkActionDialog.discardRetryDescription":
+		"一部の項目が失敗または未処理のままです。このまま閉じると再試行リストが破棄されます。",
+	"bulkActionDialog.discardRetryTitle": "未完了の再試行を破棄しますか？",
 	"bulkActionDialog.eGSubfolderNewDir": "例: subfolder/new-dir",
 	"bulkActionDialog.moveFolderWithinThisSource": "フォルダ移動 (同一ソース内)",
 	"bulkActionDialog.moveToAnotherSource": "移動 (別ソースへ)",
-	"bulkActionDialog.onlyFailedOrUnprocessedItemsCanBeRetriedTo":
-		"失敗・未処理の項目だけを同じ宛先へ再試行できます。",
+	"bulkActionDialog.partialOutcomeRetryable":
+		"成功 {value0}件、再試行可能 {value1}件、結果不明 {value2}件。失敗・未処理の項目だけを同じ宛先へ再試行できます。",
+	"bulkActionDialog.partialOutcomeWithUnknown":
+		"成功 {value0}件、再試行可能 {value1}件、結果不明 {value2}件。結果不明の項目は再送せず、ダイアログを閉じて一覧と保存先を確認してください。",
 	"bulkActionDialog.retryFailedOrUnprocessedItems": "失敗・未処理だけ再試行",
 	"bulkActionDialog.runABulkActionOnValueValueSelectedMedia":
 		"選択された {value0}件のメディアに対して一括操作を実行します。",
-	"bulkActionDialog.valueSucceededValueCanBeRetriedValueHaveUnknown":
-		"成功 {value0}件、再試行可能 {value1}件、結果不明 {value2}件。",
 	"bulkActionDialog.warningThisActionCannotBeUndoneTheActualFiles":
 		"警告: この操作は元に戻せません。実ファイルも削除されます。",
 	"ccipStatus.missing": "未抽出",
@@ -312,6 +317,7 @@ export const ja = defineLocale({
 	"characterCropModal.detectionError": "検出エラー",
 	"characterCropModal.detectPersonsInTheImageUsingDghsImgutilsRs":
 		"dghs-imgutils-rsで人物を検出し、切り抜き領域をプレビューします。サーバーには保存しません。",
+	"characterCropModal.downloadCrop": "切り抜きをダウンロード",
 	"characterCropModal.noPersonsDetectedInThisImage":
 		"この画像から人物を検出できませんでした。",
 	"characterCropModal.runningPersonDetectionAndCropping":
@@ -370,12 +376,15 @@ export const ja = defineLocale({
 	"clipboardCopy.failedToCopy": "コピーに失敗しました",
 	"collectionInspector.closeInspector": "インスペクターを閉じる",
 	"collectionInspector.created": "作成日",
+	"collectionInspector.hideInspector": "インスペクターを非表示",
+	"collectionInspector.inspector": "インスペクター",
 	"collectionInspector.openDetails": "詳細を開く",
 	"collectionInspector.resolution": "解像度",
 	"collectionInspector.selectMediaFromTheList":
 		"一覧からメディアを選択してください",
 	"collectionInspector.selectMediaToShowAPreview":
 		"メディアを選択するとプレビューを表示します",
+	"collectionInspector.showInspector": "インスペクターを表示",
 	"collectionInspector.size": "サイズ",
 	"collectionInspector.updated": "更新日",
 	"combobox.toggle": "切り替え",
@@ -505,6 +514,10 @@ export const ja = defineLocale({
 	"dataTransfer.chooseDumpFile": "ダンプファイルを選択",
 	"dataTransfer.chooseTheDumpTypeBeforeSelectingItsFile":
 		"ファイルを選ぶ前にダンプの形式を選択してください。",
+	"dataTransfer.confirmRestoreAction": "復元を実行",
+	"dataTransfer.confirmRestoreDescription":
+		"「{source}」に「{file}」（{format}）を復元しますか？",
+	"dataTransfer.confirmRestoreTitle": "ソースへの復元を実行しますか？",
 	"dataTransfer.dumpFileToRestore": "復元するダンプファイル",
 	"dataTransfer.export": "エクスポート",
 	"dataTransfer.exportAPortableSourceDumpOrRestoreOneInto":
@@ -523,6 +536,8 @@ export const ja = defineLocale({
 	"dataTransfer.restoreFormat": "復元形式",
 	"dataTransfer.restoreWritesIntoTheSelectedSourceExistingSourceConfiguration":
 		"選択したソースへデータを復元します。既存ソースの接続設定は置き換えません。",
+	"dataTransfer.selectSourceHint":
+		"エクスポートと復元を有効にするには、まず対象ソースを選択してください。",
 	"dataTransfer.tARArchive": "TARアーカイブ",
 	"definitions.commandPalette": "コマンドパレット",
 	"definitions.expandOrCollapseTheApplicationSidebar":
@@ -586,13 +601,20 @@ export const ja = defineLocale({
 		"一致するメディアを探し、各グループで残す項目を選びます。",
 	"duplicates.groupValueValueItems": "グループ{value0} · {value1}件",
 	"duplicates.keep": "残す",
+	"duplicates.keepAll": "すべて残す",
 	"duplicates.keepLargest": "最も大きい項目を残す",
 	"duplicates.keepOldest": "最も古い項目を残す",
+	"duplicates.keepOnlyThis": "これだけ残す",
 	"duplicates.keepThis": "この項目を残す",
 	"duplicates.keepValue": "{value0}を保持",
+	"duplicates.openDetail": "詳細を開く",
+	"duplicates.openDetailValue": "詳細を開く: {value0}",
 	"duplicates.preview": "プレビュー",
+	"duplicates.previewTitle": "メディアプレビュー",
+	"duplicates.previewValue": "{value0}をプレビュー",
 	"duplicates.scanForDuplicates": "重複を検出",
 	"duplicates.scanning": "確認中...",
+	"duplicates.skippedBadge": "スキップ (全残し)",
 	"duplicates.thumbnailForValue": "{value0}のサムネイル",
 	"duplicates.valueDuplicateGroups": "{value0}件の重複グループ",
 	"embeddingSearchControls.buildIndexesForImagesAndRepresentativeVideoThumbnailsIn":
@@ -974,6 +996,7 @@ export const ja = defineLocale({
 	"manager.createTitle": "{item}を作成",
 	"manager.downloadedValue": "{value0}をダウンロードしました",
 	"manager.editTitle": "{item}を編集",
+	"manager.entitiesGroup": "エンティティ",
 	"manager.exportFailed": "エクスポートに失敗しました",
 	"manager.exportStartedValueDownloadingWhenReady":
 		"エクスポートを開始しました（{value0}）。準備ができ次第ダウンロードします。",
@@ -984,6 +1007,7 @@ export const ja = defineLocale({
 		"復元を登録しました（{value0}）。ジョブ画面で確認できます。",
 	"manager.scanError": "対象の確認に失敗しました: {error}",
 	"manager.scanResult": "{count}件見つかりました。",
+	"manager.toolsGroup": "ツール",
 	"managerBatchState.batchOperationCancelled": "一括操作をキャンセルしました。",
 	"managerBatchState.batchOperationCompletedSuccessfully":
 		"一括操作が完了しました。",
@@ -991,6 +1015,12 @@ export const ja = defineLocale({
 	"managerBatchState.preparingBatchTargets": "一括処理の対象を準備中...",
 	"managerBatchState.theTrackedBatchNoLongerExists":
 		"追跡中の一括処理は存在しません。",
+	"managerDuplicatesState.deletedCount":
+		"{count}件の重複メディアを削除しました。",
+	"managerDuplicatesState.noneSelectedForDeletion":
+		"削除対象の重複メディアがありません。",
+	"managerDuplicatesState.partialDeleteResult":
+		"{deleted}件を削除し、{failed}件の削除に失敗しました。残りの重複候補は引き続き表示されています。",
 	"managerDuplicatesState.valueGroupsFoundValueDuplicates":
 		"{value0}グループ（重複{value1}件）が見つかりました。",
 	"managerScreen.authorManagementIsUnavailable": "作者管理を利用できません",
@@ -1151,6 +1181,7 @@ export const ja = defineLocale({
 		"動画の読み込み前のため、再生時間は不明です。",
 	"mediaChrome.videoPlayer": "動画プレーヤー",
 	"mediaChrome.volume": "音量",
+	"mediaDetail.defaultSourceName": "メディアソース",
 	"mediaDetailLayout.backToList": "一覧に戻る",
 	"mediaDetailLayout.editMetadata": "編集欄へ",
 	"mediaDetailLayout.metadata": "メディア情報",
@@ -1178,6 +1209,9 @@ export const ja = defineLocale({
 	"mediaSidebar.negativePrompt": "除外プロンプト:",
 	"mediaSidebar.noPositiveTags": "タグはありません",
 	"mediaSidebar.noValueAssociated": "関連する{value0}はありません",
+	"mediaSidebar.originalDate": "撮影・作成日時",
+	"mediaSidebar.registered": "登録日時",
+	"mediaSidebar.searchTagValue": "タグ「{value0}」で検索",
 	"mediaTagEditor.title": "タグを割り当てる",
 	"mediaTagEditor.description":
 		"タグを選び、保存するとメディアに反映されます。",
@@ -1201,11 +1235,16 @@ export const ja = defineLocale({
 		"説明に未保存の変更があります。保存せずに移動しますか？",
 	"mediaTileGrid.mediaGrid": "メディアグリッド",
 	"mediaViewer.audioPreviewUnavailable": "音声プレビューを利用できません",
+	"mediaViewer.directionDown": "下",
+	"mediaViewer.directionLeft": "左",
+	"mediaViewer.directionRight": "右",
+	"mediaViewer.directionUp": "上",
 	"mediaViewer.enterFullscreen": "全画面表示",
 	"mediaViewer.exitFullscreen": "全画面表示を終了",
 	"mediaViewer.failedToFetchMediaValue":
 		"メディアを取得できませんでした: {value0}",
 	"mediaViewer.imageControls": "画像の操作",
+	"mediaViewer.imageMovedValue": "画像を{value0}へ移動しました",
 	"mediaViewer.imagePanControls": "画像の移動操作",
 	"mediaViewer.imageZoomControls": "画像のズーム操作",
 	"mediaViewer.openValueImageViewer": "{value0}の画像ビューアーを開く",
@@ -1227,6 +1266,10 @@ export const ja = defineLocale({
 	"mobileSearchFilterDialog.charactersValue": "キャラクター: {value0}件",
 	"mobileSearchFilterDialog.clearConditions": "条件をクリア",
 	"mobileSearchFilterDialog.currentConditions": "現在の条件",
+	"mobileSearchFilterDialog.discardChangesDescription":
+		"適用していないフィルターの変更は破棄されます。",
+	"mobileSearchFilterDialog.discardChangesTitle":
+		"フィルターの変更を破棄しますか？",
 	"mobileSearchFilterDialog.excludedTagsValue": "除外タグ: {value0}件",
 	"mobileSearchFilterDialog.filenameValue": "ファイル名: {value0}",
 	"mobileSearchFilterDialog.iPsValue": "IP: {value0}件",
@@ -1266,10 +1309,15 @@ export const ja = defineLocale({
 	"notFoundScreen.pageNotFound": "ページが見つかりません",
 	"oppaiOracleModal.analyzingImage": "画像を解析中...",
 	"oppaiOracleModal.analyzingVideoThumbnail": "動画のサムネイルを解析中...",
+	"oppaiOracleModal.copyTags": "タグをコピー",
 	"oppaiOracleModal.generalTags": "一般タグ",
 	"oppaiOracleModal.noOppaiOracleResultReturned":
 		"OppaiOracleの結果が返されませんでした",
+	"oppaiOracleModal.noTagsDetected":
+		"このメディアからOppaiOracleタグを検出できませんでした。",
 	"oppaiOracleModal.oppaiOracleTaggingResults": "OppaiOracleのタグ付け結果",
+	"oppaiOracleModal.previewOnlyNotice":
+		"プレビュー専用: この結果はデータベースに保存されません。",
 	"oppaiOracleModal.showingTopValueOfValueValueTags":
 		"全{value2}タグの上位{value0}件を表示 ",
 	"oppaiOracleModal.tagsExtractedFromTheImageUsingTheOppaiOracleModel":
@@ -1457,6 +1505,7 @@ export const ja = defineLocale({
 	"proSearchBuilder.folder": "フォルダ",
 	"proSearchBuilder.greaterThan": "より大きい (>)",
 	"proSearchBuilder.group": "+ グループ",
+	"proSearchBuilder.groupOperator": "グループの結合条件",
 	"proSearchBuilder.isAnyOf": "のいずれか",
 	"proSearchBuilder.isEmpty": "が空",
 	"proSearchBuilder.isNoneOf": "のいずれでもない",
@@ -1465,11 +1514,16 @@ export const ja = defineLocale({
 	"proSearchBuilder.lessThan": "より小さい (<)",
 	"proSearchBuilder.noConditionsUseConditionToAddOne":
 		"条件がありません。「+ 条件」ボタンで追加してください。",
+	"proSearchBuilder.operator": "比較条件",
 	"proSearchBuilder.search": "検索...",
 	"proSearchBuilder.startsWith": "で始まる",
+	"proSearchBuilder.targetField": "検索対象",
 	"proSearchBuilder.thisConditionNeedsNoValue": "この条件に値は不要です",
 	"proSearchBuilder.true": "はい",
 	"proSearchBuilder.value": "値...",
+	"proSearchDialog.discardChangesDescription":
+		"保存されていない詳細検索条件の変更は失われます。",
+	"proSearchDialog.discardChangesTitle": "検索条件の変更を破棄しますか？",
 	"proSearchDialog.done": "完了",
 	"proSearchDialog.editAdvancedConditions": "詳細条件を編集",
 	"proSearchDialog.editAdvancedSearchConditions": "詳細検索条件の編集",
@@ -1526,6 +1580,8 @@ export const ja = defineLocale({
 		"候補がありません。名前を入力すると、新規項目を追加できます。",
 	"relationsEditor.nameSearchHint": "名前で絞り込む",
 	"relationsEditor.noneSelected": "選択中の項目はありません",
+	"relationsEditor.partialSaveRetryHint":
+		"一部の変更の保存に失敗しました（{value0}）。成功済みの変更は反映されているため、もう一度保存すると未反映の項目のみ再試行します。",
 	"relationsEditor.removeSelection": "「{name}」を選択から外す",
 	"relationsEditor.selectedItems": "選択中",
 	"relationsEditor.searchValue": "{value0}を検索",
@@ -1555,6 +1611,8 @@ export const ja = defineLocale({
 	"searchComposer.danbooruHint":
 		"スペースで AND、-タグで除外、~タグで OR。rating:g や order:score も使えます。",
 	"searchComposer.enterTags": "タグを入力",
+	"searchComposer.inspectMoreFilters": "隠れたフィルター条件を確認・解除",
+	"searchComposer.moreActiveFilters": "その他の有効なフィルター",
 	"searchComposer.pixivHint":
 		"スペースで AND、-タグで除外、~タグで OR。Danbooru タグを pixiv のタグに変換します。",
 	"searchComposer.removeValueValue": "{value0}:{value1}を解除",
@@ -1577,6 +1635,7 @@ export const ja = defineLocale({
 	"searchFilters.excludedTags": "除外タグ",
 	"searchFilters.filenameSearch": "ファイル名検索",
 	"searchFilters.iP": "IP",
+	"searchFilters.removeFilterValue": "{value0}のフィルターを解除",
 	"searchFilters.searchAuthorsOrIDs": "作者・IDを検索...",
 	"searchFilters.searchCharacters": "キャラクターを検索...",
 	"searchFilters.searchExcludedTags": "除外タグを検索...",
@@ -1630,15 +1689,23 @@ export const ja = defineLocale({
 	"serverSettings.healthy": "接続済み（{latency}ミリ秒）",
 	"serverSettings.httpUrlRequired":
 		"http://またはhttps://のURLを指定してください。",
+	"serverSettings.invalidApiResponse":
+		"サーバーから無効なAPIレスポンスが返されました。",
 	"serverSettings.noEmbeddedCredentials": "URLに認証情報を含めないでください。",
 	"serverSettings.serverURLMustUseHttpOrHttpsWithoutEmbedded":
 		"サーバーURLは認証情報を含まないhttpまたはhttpsで指定してください。",
+	"serverSettingsScreen.activeBadge": "使用中",
 	"serverSettingsScreen.addServer": "サーバーを追加",
 	"serverSettingsScreen.checkConnection": "接続を確認",
+	"serverSettingsScreen.checkStatus": "疎通確認",
 	"serverSettingsScreen.chooseWhichSolidImagerServerTheTauriAppUses":
 		"Tauriアプリの接続先を選択します。接続情報はこの端末に保存され、サーバー側の設定とは独立しています。",
 	"serverSettingsScreen.connection": "接続",
+	"serverSettingsScreen.deleteServerDescription":
+		"この端末の保存済みサーバー一覧から「{name}」（{url}）を削除します。",
+	"serverSettingsScreen.deleteServerTitle": "保存済みサーバーを削除しますか？",
 	"serverSettingsScreen.editServer": "サーバーを編集",
+	"serverSettingsScreen.editingBadge": "編集中",
 	"serverSettingsScreen.enterANameForThisServer":
 		"サーバー名を入力してください。",
 	"serverSettingsScreen.failedToSaveServerSettings":
@@ -1670,6 +1737,7 @@ export const ja = defineLocale({
 		"この端末のキー操作を設定します。設定は端末内に保存されます。",
 	"shortcutSettingsPanel.invalidShortcutValue":
 		"無効なショートカット: {value0}",
+	"shortcutSettingsPanel.pressShortcut": "ショートカットを入力…",
 	"shortcutSettingsPanel.record": "記録",
 	"shortcutSettingsPanel.recordingForValueWasCancelled":
 		"{value0}の記録をキャンセルしました。",
@@ -1864,8 +1932,9 @@ export const ja = defineLocale({
 	"types.warmResponsiveImageCache": "画像キャッシュを事前生成",
 	"uploadMediaModal.addASequenceNumberWhenNamesMatch":
 		"同名ファイルがある場合は連番を付けて保存します。",
+	"uploadMediaModal.addFiles": "ファイルを追加",
 	"uploadMediaModal.aFileWithThisNameAlreadyExists": "同名ファイルがあります",
-	"uploadMediaModal.changeFiles": "ファイルを変更",
+	"uploadMediaModal.changeFiles": "ファイルを入れ替え",
 	"uploadMediaModal.chooseFiles": "ファイルを選択",
 	"uploadMediaModal.discardUploadChanges": "アップロード内容を破棄しますか？",
 	"uploadMediaModal.doNotUploadFilesWhenNamesMatch":
@@ -1875,11 +1944,14 @@ export const ja = defineLocale({
 		"アップロードするメディアの詳細を入力してください。",
 	"uploadMediaModal.fetchedPreview": "取得したプレビュー",
 	"uploadMediaModal.filename": "ファイル名",
+	"uploadMediaModal.firstFileScopeHint":
+		"複数ファイルをアップロードする場合は最初のファイルにのみ適用されます。",
 	"uploadMediaModal.onFilenameConflict": "競合時の処理",
 	"uploadMediaModal.orAddFilesUsingTheFilePicker":
 		"またはファイル選択ダイアログから追加します。",
 	"uploadMediaModal.overwrite": "上書き",
 	"uploadMediaModal.processing": "処理中",
+	"uploadMediaModal.removeFileValue": "{value0}を削除",
 	"uploadMediaModal.rename": "リネーム",
 	"uploadMediaModal.replaceTheExistingFileWhenNamesMatch":
 		"同名ファイルがある場合は既存ファイルを置き換えます。",

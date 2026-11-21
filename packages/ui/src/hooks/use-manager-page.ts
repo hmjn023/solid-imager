@@ -253,6 +253,8 @@ export type UseManagerPageResult = {
 	handleDeleteDuplicates: () => Promise<void>;
 	handleConfirmDeleteDuplicates: () => Promise<void>;
 	setKeepForGroup: (groupId: string, mediaId: string) => void;
+	keepAllForGroup: (groupId: string) => void;
+	isGroupSkipped: (groupId: string) => boolean;
 	selectKeepOldest: () => void;
 	selectKeepLargest: () => void;
 	deleteCount: Accessor<number>;
@@ -871,6 +873,8 @@ export function useManagerPage(
 		handleScanDuplicates: duplicates.scan,
 		handleDeleteDuplicates: async () => duplicates.prepareDelete(),
 		setKeepForGroup: duplicates.setKeepForGroup,
+		keepAllForGroup: duplicates.keepAllForGroup,
+		isGroupSkipped: duplicates.isGroupSkipped,
 		selectKeepOldest: duplicates.selectKeepOldest,
 		selectKeepLargest: duplicates.selectKeepLargest,
 		handleConfirmDeleteDuplicates: duplicates.confirmDelete,

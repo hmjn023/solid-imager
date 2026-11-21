@@ -1,13 +1,11 @@
 import type { MediaSafe } from "@solid-imager/core/media";
-import {
-	ThumbnailImage as SharedThumbnailImage,
-	type ThumbnailImageProps as SharedThumbnailImageProps,
-} from "@solid-imager/ui/thumbnail-image";
+import { ThumbnailImage as SharedThumbnailImage } from "@solid-imager/ui/thumbnail-image";
 import {
 	type BuildThumbnailUrlArgs,
 	createHttpThumbnailSource,
 	type ThumbnailRequestSize,
 } from "@solid-imager/ui/thumbnail-source";
+import { createMemo } from "solid-js";
 import { buildThumbnailUrl } from "~/infrastructure/media/thumbnail-runtime";
 
 type ThumbnailImageProps = {
@@ -32,27 +30,30 @@ function buildUrl(args: BuildThumbnailUrlArgs): string {
 }
 
 export function ThumbnailImage(props: ThumbnailImageProps) {
-	const source = createHttpThumbnailSource({
-		buildUrl,
-		defaultSize: props.requestedSize ?? (props.sizes ? 512 : undefined),
-		maxRetries: props.maxRetries,
-		mediaId: props.media.id,
-		mediaSourceId: props.media.mediaSourceId,
-		modifiedAt: props.media.modifiedAt,
-		responsiveSizes: props.sizes ? [256, 512] : undefined,
-		retryDelayMs: props.retryDelayMs,
-	});
-	const sharedProps: SharedThumbnailImageProps = {
-		alt: props.alt,
-		class: props.class,
-		enabled: props.enabled,
-		fallback: props.fallback,
-		fetchpriority: props.fetchpriority,
-		height: props.height,
-		loading: props.loading,
-		sizes: props.sizes,
-		source,
-		width: props.width,
-	};
-	return <SharedThumbnailImage {...sharedProps} />;
+	const source = createMemo(() =>
+		createHttpThumbnailSource({
+			buildUrl,
+			defaultSize: props.requestedSize ?? (props.sizes ? 512 : undefined),
+			maxRetries: props.maxRetries,
+			mediaId: props.media.id,
+			mediaSourceId: props.media.mediaSourceId,
+			modifiedAt: props.media.modifiedAt,
+			responsiveSizes: props.sizes ? [256, 512] : undefined,
+			retryDelayMs: props.retryDelayMs,
+		}),
+	);
+	return (
+		<SharedThumbnailImage
+			alt={props.alt}
+			class={props.class}
+			enabled={props.enabled}
+			fallback={props.fallback}
+			fetchpriority={props.fetchpriority}
+			height={props.height}
+			loading={props.loading}
+			sizes={props.sizes}
+			source={source()}
+			width={props.width}
+		/>
+	);
 }

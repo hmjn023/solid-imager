@@ -74,7 +74,10 @@ const CommandInput: Component<VoidProps<CommandPrimitive.CommandInputProps>> = (
 	const [local, others] = splitProps(props, ["class"]);
 
 	return (
-		<div class="flex items-center border-b px-3" cmdk-input-wrapper="">
+		<div
+			class="flex items-center border-b px-3 focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset"
+			cmdk-input-wrapper=""
+		>
 			<svg
 				class="mr-2 size-4 shrink-0 opacity-50"
 				fill="none"

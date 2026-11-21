@@ -1,4 +1,5 @@
 import { defaultState } from "@solid-imager/core/search";
+import { t } from "@solid-imager/i18n";
 import { describe, expect, it } from "vitest";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 import {
@@ -18,6 +19,9 @@ describe("parseSemanticSearchDraft", () => {
 		expect(parseSemanticSearchDraft(' TEXT: "blue hair, red dress" ')).toBe(
 			"blue hair, red dress",
 		);
+		expect(
+			parseSemanticSearchDraft(`${t("searchComposerUtils.text")}: sunset sky`),
+		).toBe("sunset sky");
 	});
 	it("distinguishes an empty prefix from ordinary searches", () => {
 		expect(parseSemanticSearchDraft("text:  ")).toBe("");

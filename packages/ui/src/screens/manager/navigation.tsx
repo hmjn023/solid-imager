@@ -1,11 +1,15 @@
 import { t } from "@solid-imager/i18n";
+import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
 import Bot from "lucide-solid/icons/bot";
 import CopyCheck from "lucide-solid/icons/copy-check";
 import Folder from "lucide-solid/icons/folder";
 import Image from "lucide-solid/icons/image";
-import Share2 from "lucide-solid/icons/share-2";
+import Library from "lucide-solid/icons/library";
+import ScanFace from "lucide-solid/icons/scan-face";
 import Tags from "lucide-solid/icons/tags";
+import UserRound from "lucide-solid/icons/user-round";
 import { For } from "solid-js";
+import { Binary, Sparkles } from "../../workspace/icons";
 import {
 	CategoryLabel,
 	MANAGEMENT_CATEGORY_LIST,
@@ -19,23 +23,25 @@ function ManagerCategoryIcon(props: { value: ManagerCategoryValue }) {
 		case "projects":
 			return <Folder aria-hidden="true" size={16} />;
 		case "ips":
-			return <CopyCheck aria-hidden="true" size={16} />;
+			return <Library aria-hidden="true" size={16} />;
 		case "authors":
+			return <UserRound aria-hidden="true" size={16} />;
 		case "characters":
-			return <Image aria-hidden="true" size={16} />;
+			return <ScanFace aria-hidden="true" size={16} />;
 		case "tagging":
 			return <Bot aria-hidden="true" size={16} />;
 		case "tagDictionary":
 			return <Tags aria-hidden="true" size={16} />;
 		case "vectors":
+			return <Binary aria-hidden="true" size={16} />;
 		case "clustering":
-			return <Share2 aria-hidden="true" size={16} />;
+			return <Sparkles aria-hidden="true" size={16} />;
 		case "thumbnails":
 			return <Image aria-hidden="true" size={16} />;
 		case "duplicates":
 			return <CopyCheck aria-hidden="true" size={16} />;
 		case "transfer":
-			return <Share2 aria-hidden="true" size={16} />;
+			return <ArrowDownUp aria-hidden="true" size={16} />;
 	}
 }
 
@@ -70,7 +76,9 @@ export function ManagerCategoryNavigation(props: {
 					{(group) => (
 						<div>
 							<p class="mb-1 px-2.5 font-medium text-label-xs uppercase tracking-wider text-muted-foreground">
-								{group}
+								{group === "Entities"
+									? t("manager.entitiesGroup")
+									: t("manager.toolsGroup")}
 							</p>
 							<div class="space-y-0.5">
 								<For

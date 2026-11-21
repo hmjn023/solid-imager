@@ -30,7 +30,7 @@ const DropdownMenuContent = <T extends ValidComponent = "div">(
 		<DropdownMenuPrimitive.Portal>
 			<DropdownMenuPrimitive.Content
 				class={cn(
-					"z-50 min-w-32 origin-kb-menu overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md motion-safe:data-[expanded]:animate-content-show",
+					"z-50 max-h-popover-fit-available min-w-32 origin-kb-menu overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-content-show motion-safe:data-[closed]:fade-out-0",
 					local.class,
 				)}
 				{...rest}
@@ -51,7 +51,7 @@ const DropdownMenuItem = <T extends ValidComponent = "div">(
 	return (
 		<DropdownMenuPrimitive.Item
 			class={cn(
-				"relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				"relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-50",
 				local.class,
 			)}
 			{...rest}
@@ -120,7 +120,7 @@ const DropdownMenuSubTrigger = <T extends ValidComponent = "div">(
 	return (
 		<DropdownMenuPrimitive.SubTrigger
 			class={cn(
-				"flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent",
+				"flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-muted focus:text-foreground data-[expanded]:bg-muted data-[highlighted]:bg-muted data-[expanded]:text-foreground data-[highlighted]:text-foreground",
 				local.class,
 			)}
 			{...rest}
@@ -157,7 +157,7 @@ const DropdownMenuSubContent = <T extends ValidComponent = "div">(
 	return (
 		<DropdownMenuPrimitive.SubContent
 			class={cn(
-				"z-50 min-w-32 origin-kb-menu animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+				"z-50 max-h-popover-fit-available min-w-32 origin-kb-menu overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95",
 				local.class,
 			)}
 			{...rest}
@@ -181,7 +181,7 @@ const DropdownMenuCheckboxItem = <T extends ValidComponent = "div">(
 	return (
 		<DropdownMenuPrimitive.CheckboxItem
 			class={cn(
-				"relative flex cursor-default select-none items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				"relative flex cursor-default select-none items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none transition-colors focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-50",
 				local.class,
 			)}
 			{...rest}
@@ -243,7 +243,7 @@ const DropdownMenuRadioItem = <T extends ValidComponent = "div">(
 	return (
 		<DropdownMenuPrimitive.RadioItem
 			class={cn(
-				"relative flex cursor-default select-none items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				"relative flex cursor-default select-none items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none transition-colors focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-50",
 				local.class,
 			)}
 			{...rest}

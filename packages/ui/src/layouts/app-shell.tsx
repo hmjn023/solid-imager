@@ -78,6 +78,15 @@ export function AppShell(props: AppShellProps) {
 			cancelAnimationFrame(focusRestoreFrame);
 		focusRestoreFrame = requestAnimationFrame(() => {
 			focusRestoreFrame = undefined;
+			if (
+				commandPaletteOpen() ||
+				shortcutHelpOpen() ||
+				props.sourcePage.showFormModal() ||
+				props.sourcePage.showDeleteModal() ||
+				document.querySelector('[role="dialog"], [role="alertdialog"]')
+			) {
+				return;
+			}
 			if (returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
 		});
 	};
@@ -88,7 +97,10 @@ export function AppShell(props: AppShellProps) {
 	createAppShortcut(
 		"commandPalette",
 		() => updateCommandPaletteOpen(!commandPaletteOpen()),
-		{ ignoreInputs: false },
+		() => ({
+			ignoreInputs: false,
+			allowWhenSuspended: commandPaletteOpen(),
+		}),
 	);
 	createAppShortcut("shortcutHelp", () => setShortcutHelpOpen(true));
 	createAppShortcut("toggleSidebar", toggleSidebar);
@@ -144,7 +156,7 @@ export function AppShell(props: AppShellProps) {
 				open={sidebarExpanded()}
 			>
 				<button
-					class="sr-only fixed top-2 left-2 z-app-overlay rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-ring"
+					class="sr-only rounded-md border border-border bg-popover text-popover-foreground shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-app-overlay focus:px-4 focus:py-2 focus:ring-2 focus:ring-ring"
 					onClick={(event) => {
 						event.preventDefault();
 						const mainContent = document.getElementById("main-content");

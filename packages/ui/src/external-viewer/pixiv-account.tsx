@@ -20,6 +20,7 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogHeader,
 	DialogTitle,
 } from "../dialog";
 import { Input } from "../input";
@@ -193,6 +194,7 @@ export function PixivAccountDialog(props: {
 	const [busy, setBusy] = createSignal(false);
 	const [useCookie, setUseCookie] = createSignal(false);
 	const close = (value: boolean) => {
+		if (!value && busy()) return;
 		props.onOpenChange(value);
 		if (!value) {
 			setCode("");
@@ -224,14 +226,17 @@ export function PixivAccountDialog(props: {
 		<Dialog open={props.open} onOpenChange={close}>
 			<DialogContent
 				class="workspace-theme"
+				closeDisabled={busy()}
 				onCloseAutoFocus={props.onCloseAutoFocus}
 			>
-				<DialogTitle>{t("pixivAccount.pixivAccount")}</DialogTitle>
-				<DialogDescription>
-					{account.session()
-						? t("pixivAccount.theAccountUsedByThisTabSViewer")
-						: t("pixivAccount.connectTheAccountSignedInOnTheOfficialPixiv")}
-				</DialogDescription>
+				<DialogHeader>
+					<DialogTitle>{t("pixivAccount.pixivAccount")}</DialogTitle>
+					<DialogDescription>
+						{account.session()
+							? t("pixivAccount.theAccountUsedByThisTabSViewer")
+							: t("pixivAccount.connectTheAccountSignedInOnTheOfficialPixiv")}
+					</DialogDescription>
+				</DialogHeader>
 				<Show when={!account.session()}>
 					<p class="text-sm text-muted-foreground">
 						{t("pixivScreen.followLogin")}

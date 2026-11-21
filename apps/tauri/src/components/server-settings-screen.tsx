@@ -1,5 +1,15 @@
 import { t } from "@solid-imager/i18n";
 import { Alert, AlertDescription } from "@solid-imager/ui/alert";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@solid-imager/ui/alert-dialog";
 import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
 import {
@@ -9,6 +19,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@solid-imager/ui/card";
+import { FormFieldMessage } from "@solid-imager/ui/form-message";
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
 import { createSignal, For, Show } from "solid-js";
@@ -96,12 +107,19 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 	const [editingId, setEditingId] = createSignal<string | null>(null);
 	const [name, setName] = createSignal("");
 	const [baseUrl, setBaseUrl] = createSignal("");
+	const [nameError, setNameError] = createSignal<string | undefined>();
+	const [urlError, setUrlError] = createSignal<string | undefined>();
 	const [error, setError] = createSignal<string | null>(null);
 	const [isSaving, setIsSaving] = createSignal(false);
-	const [isChecking, setIsChecking] = createSignal(false);
+	const [pendingDeleteServer, setPendingDeleteServer] =
+		createSignal<ServerConnection | null>(null);
 	const [healthChecks, setHealthChecks] = createSignal<
 		Record<string, HealthCheckState>
 	>({});
+	let nameInputRef: HTMLInputElement | undefined;
+	let urlInputRef: HTMLInputElement | undefined;
+	const isCheckingKey = (key: string) =>
+		healthChecks()[key]?.status === "checking";
 
 	const setHealthCheck = (key: string, state: HealthCheckState | undefined) => {
 		setHealthChecks((current) => {
@@ -116,15 +134,20 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 	};
 
 	const runHealthCheck = async (key: string, url: string) => {
-		const urlError = validateUrl(url);
-		if (urlError) {
-			setHealthCheck(key, { message: urlError, status: "error" });
+		const validationError = validateUrl(url);
+		if (validationError) {
+			if (key === "form") {
+				setUrlError(validationError);
+			}
+			setHealthCheck(key, { message: validationError, status: "error" });
 			return;
+		}
+		if (key === "form") {
+			setUrlError(undefined);
 		}
 
 		setError(null);
 		setHealthCheck(key, { status: "checking" });
-		setIsChecking(true);
 		try {
 			const result = await checkServerHealth(url);
 			setHealthCheck(key, {
@@ -139,8 +162,6 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 						: t("serverSettingsScreen.unableToReachTheServer"),
 				status: "error",
 			});
-		} finally {
-			setIsChecking(false);
 		}
 	};
 
@@ -148,6 +169,8 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 		setEditingId(null);
 		setName("");
 		setBaseUrl("");
+		setNameError(undefined);
+		setUrlError(undefined);
 		setError(null);
 		setHealthCheck("form", undefined);
 	};
@@ -160,26 +183,39 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 		setEditingId(server.id);
 		setName(server.name);
 		setBaseUrl(server.baseUrl);
+		setNameError(undefined);
+		setUrlError(undefined);
 		setError(null);
 		setHealthCheck("form", undefined);
+		queueMicrotask(() => {
+			nameInputRef?.focus();
+			nameInputRef?.select();
+		});
 	};
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault();
 		if (isSaving()) return;
 		setError(null);
+		setNameError(undefined);
+		setUrlError(undefined);
 		const trimmedName = name().trim();
 		if (!trimmedName) {
-			setError(t("serverSettingsScreen.enterANameForThisServer"));
+			setNameError(t("serverSettingsScreen.enterANameForThisServer"));
+			nameInputRef?.focus();
 			return;
 		}
 		if (trimmedName.length > 100) {
-			setError(t("serverSettingsScreen.serverNamesMustBe100CharactersOrFewer"));
+			setNameError(
+				t("serverSettingsScreen.serverNamesMustBe100CharactersOrFewer"),
+			);
+			nameInputRef?.focus();
 			return;
 		}
-		const urlError = validateUrl(baseUrl());
-		if (urlError) {
-			setError(urlError);
+		const validationError = validateUrl(baseUrl());
+		if (validationError) {
+			setUrlError(validationError);
+			urlInputRef?.focus();
 			return;
 		}
 
@@ -193,6 +229,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 					id: currentEditingId,
 					name: trimmedName,
 				});
+				refreshSettings();
 				if (wasActive) {
 					await props.onActivate?.(updatedServer);
 				}
@@ -201,13 +238,15 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 					baseUrl: baseUrl().trim(),
 					name: trimmedName,
 				});
+				refreshSettings();
+				setEditingId(server.id);
 				// A newly entered endpoint is the user's explicit selection. Activate
 				// it immediately so adding a server cannot leave the app pointed at
 				// the build-time default by accident.
 				await activateServer(server.id);
+				refreshSettings();
 				await props.onActivate?.(server);
 			}
-			refreshSettings();
 			resetForm();
 		} catch (submitError) {
 			setError(readError(submitError));
@@ -306,7 +345,13 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 							<div class="divide-y divide-border border-border border-t">
 								<For each={localSettings().servers}>
 									{(server) => (
-										<div class="grid gap-3 py-3 text-sm last:pb-0 @xl:grid-cols-content-action @xl:items-center">
+										<div
+											class="grid gap-3 py-3 text-sm transition-colors last:pb-0 @xl:grid-cols-content-action @xl:items-center"
+											classList={{
+												"rounded-md bg-accent/50 px-3":
+													editingId() === server.id,
+											}}
+										>
 											<div class="min-w-0">
 												<div class="flex flex-wrap items-center gap-2">
 													<span class="min-w-0 wrap-break-word font-medium">
@@ -315,7 +360,14 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 													<Show
 														when={localSettings().activeServerId === server.id}
 													>
-														<Badge>{t("jobsScreen.active")}</Badge>
+														<Badge>
+															{t("serverSettingsScreen.activeBadge")}
+														</Badge>
+													</Show>
+													<Show when={editingId() === server.id}>
+														<Badge variant="outline">
+															{t("serverSettingsScreen.editingBadge")}
+														</Badge>
 													</Show>
 												</div>
 												<p class="mt-1 break-all text-muted-foreground">
@@ -325,7 +377,8 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 											</div>
 											<div class="flex flex-wrap gap-2 @xl:justify-end">
 												<Button
-													disabled={isSaving() || isChecking()}
+													aria-busy={isCheckingKey(server.id)}
+													disabled={isSaving() || isCheckingKey(server.id)}
 													onClick={() =>
 														void runHealthCheck(server.id, server.baseUrl)
 													}
@@ -333,13 +386,13 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 													size="sm"
 													variant="outline"
 												>
-													{t("select.check")}
+													{t("serverSettingsScreen.checkStatus")}
 												</Button>
 												<Show
 													when={localSettings().activeServerId !== server.id}
 												>
 													<Button
-														disabled={isSaving() || isChecking()}
+														disabled={isSaving()}
 														onClick={() => void selectServer(server.id)}
 														class="h-11 sm:h-9"
 														size="sm"
@@ -348,7 +401,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 													</Button>
 												</Show>
 												<Button
-													disabled={isSaving() || isChecking()}
+													disabled={isSaving()}
 													onClick={() => beginEdit(server)}
 													variant="outline"
 													class="h-11 sm:h-9"
@@ -357,8 +410,8 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 													{t("actions.edit")}
 												</Button>
 												<Button
-													disabled={isSaving() || isChecking()}
-													onClick={() => void deleteServer(server.id)}
+													disabled={isSaving()}
+													onClick={() => setPendingDeleteServer(server)}
 													class="h-11 sm:h-9"
 													size="sm"
 													variant="destructive"
@@ -389,15 +442,27 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 							<div class="grid min-w-0 gap-2">
 								<Label for="server-name">{t("labels.name")}</Label>
 								<Input
+									aria-describedby={
+										nameError() ? "server-name-error" : undefined
+									}
+									aria-invalid={nameError() ? "true" : undefined}
 									autocomplete="off"
 									class="sm:min-h-9"
 									id="server-name"
 									onInput={(event) => {
 										setName(event.currentTarget.value);
+										setNameError(undefined);
 										setHealthCheck("form", undefined);
 									}}
 									placeholder={t("serverSettingsScreen.homeServer")}
+									ref={(el) => {
+										nameInputRef = el;
+									}}
 									value={name()}
+								/>
+								<FormFieldMessage
+									id="server-name-error"
+									message={nameError()}
 								/>
 							</div>
 							<div class="grid min-w-0 gap-2">
@@ -405,17 +470,27 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 									{t("serverSettingsScreen.serverURL")}
 								</Label>
 								<Input
-									aria-describedby="server-url-help"
+									aria-describedby={
+										urlError()
+											? "server-url-error server-url-help"
+											: "server-url-help"
+									}
+									aria-invalid={urlError() ? "true" : undefined}
 									autocomplete="url"
 									class="sm:min-h-9"
 									id="server-url"
 									onInput={(event) => {
 										setBaseUrl(event.currentTarget.value);
+										setUrlError(undefined);
 										setHealthCheck("form", undefined);
 									}}
 									placeholder={t("serverSettingsScreen.httpsImagerExampleCom")}
+									ref={(el) => {
+										urlInputRef = el;
+									}}
 									value={baseUrl()}
 								/>
+								<FormFieldMessage id="server-url-error" message={urlError()} />
 								<p class="text-muted-foreground text-xs" id="server-url-help">
 									{t(
 										"serverSettingsScreen.useTheServerOriginIncludingItsPortWhenOne",
@@ -424,8 +499,9 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 							</div>
 							<div class="col-span-full flex flex-wrap items-center gap-2 border-border border-t pt-4">
 								<Button
+									aria-busy={isCheckingKey("form")}
 									class="sm:h-9"
-									disabled={isSaving() || isChecking()}
+									disabled={isSaving() || isCheckingKey("form")}
 									onClick={() => void runHealthCheck("form", baseUrl())}
 									type="button"
 									variant="outline"
@@ -433,8 +509,9 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 									{t("serverSettingsScreen.checkConnection")}
 								</Button>
 								<Button
+									aria-busy={isSaving()}
 									class="sm:h-9"
-									disabled={isSaving() || isChecking()}
+									disabled={isSaving()}
 									type="submit"
 								>
 									{editingId()
@@ -444,6 +521,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 								<Show when={editingId()}>
 									<Button
 										class="sm:h-9"
+										disabled={isSaving()}
 										onClick={resetForm}
 										type="button"
 										variant="outline"
@@ -457,6 +535,51 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 					</CardContent>
 				</Card>
 			</div>
+
+			<AlertDialog
+				open={Boolean(pendingDeleteServer())}
+				onOpenChange={(open) => {
+					if (!open && !isSaving()) {
+						setPendingDeleteServer(null);
+					}
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t("serverSettingsScreen.deleteServerTitle")}
+						</AlertDialogTitle>
+						<AlertDialogDescription class="break-words">
+							<Show when={pendingDeleteServer()}>
+								{(target) =>
+									t("serverSettingsScreen.deleteServerDescription", {
+										name: target().name,
+										url: target().baseUrl,
+									})
+								}
+							</Show>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isSaving()}>
+							{t("actions.cancel")}
+						</AlertDialogCancel>
+						<AlertDialogAction
+							disabled={isSaving()}
+							onClick={() => {
+								const target = pendingDeleteServer();
+								setPendingDeleteServer(null);
+								if (target) {
+									void deleteServer(target.id);
+								}
+							}}
+							variant="destructive"
+						>
+							{t("actions.delete")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</section>
 	);
 }

@@ -7,6 +7,7 @@ import {
 import { useSourceRootPath } from "@solid-imager/ui/sources";
 import { saveMediaContext } from "@solid-imager/ui/media-context";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
+import { sourceMediaQueryKeys } from "@solid-imager/ui/query";
 import { createSearchHistoryClient } from "@solid-imager/ui/search/history";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import {
@@ -14,7 +15,7 @@ import {
 	getSearchCondition,
 	searchState,
 } from "@solid-imager/ui/search/state";
-import { createQuery } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
 	useLocation,
 	useNavigate,
@@ -65,6 +66,7 @@ export function SourceMediaPage() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const router = useRouter();
+	const queryClient = useQueryClient();
 	const mediaSourceId = () => params().mediaSourceId;
 	const mediaSources = createQuery(() => mediaSourcesQueryOptions());
 	const mediaSourceName = () =>
@@ -186,6 +188,7 @@ export function SourceMediaPage() {
 					/>
 				)}
 				uploadModalComponent={UploadMediaModal}
+				scrollContainerSelector={`[data-media-scroll="${mediaSourceId() ?? "source-media"}"]`}
 				showOpenInNewTab
 			/>
 			<BulkActionDialog
@@ -197,11 +200,16 @@ export function SourceMediaPage() {
 				mediaIds={selectedMediaIds()}
 				mediaSourceId={mediaSourceId()}
 				onOpenChange={setIsBulkActionOpen}
-				onSuccess={(_partial, succeededMediaIds) => {
+				onSuccess={(partial, succeededMediaIds) => {
 					for (const id of succeededMediaIds) {
 						if (selection.isSelected(id)) selection.select(id, "toggle");
 					}
-					if (selection.selectedIds().size === 0) setIsBulkSelectMode(false);
+					if (!partial && selection.selectedIds().size === 0) {
+						setIsBulkSelectMode(false);
+					}
+					void queryClient.invalidateQueries({
+						queryKey: sourceMediaQueryKeys.forSource(mediaSourceId()),
+					});
 				}}
 				open={isBulkActionOpen()}
 			/>

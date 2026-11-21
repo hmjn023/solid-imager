@@ -59,10 +59,34 @@ function AudioPreview(props: { src: string }) {
 }
 
 const PAN_DIRECTIONS = [
-	{ name: "left", symbol: "←", x: -40, y: 0 },
-	{ name: "up", symbol: "↑", x: 0, y: -40 },
-	{ name: "down", symbol: "↓", x: 0, y: 40 },
-	{ name: "right", symbol: "→", x: 40, y: 0 },
+	{
+		name: "left",
+		label: () => t("mediaViewer.directionLeft"),
+		symbol: "←",
+		x: -40,
+		y: 0,
+	},
+	{
+		name: "up",
+		label: () => t("mediaViewer.directionUp"),
+		symbol: "↑",
+		x: 0,
+		y: -40,
+	},
+	{
+		name: "down",
+		label: () => t("mediaViewer.directionDown"),
+		symbol: "↓",
+		x: 0,
+		y: 40,
+	},
+	{
+		name: "right",
+		label: () => t("mediaViewer.directionRight"),
+		symbol: "→",
+		x: 40,
+		y: 0,
+	},
 ] as const;
 
 export function MediaViewer(props: MediaViewerProps) {
@@ -113,18 +137,36 @@ export function MediaViewer(props: MediaViewerProps) {
 		});
 		if (next.x === current.x && next.y === current.y) return;
 		setPan(next);
-		setPanAnnouncement(`Image moved ${direction.name}`);
+		setPanAnnouncement(
+			t("mediaViewer.imageMovedValue", { value0: String(direction.label()) }),
+		);
 	};
-	const handlePanKeyDown = (event: KeyboardEvent) => {
+	const handleViewerKeyDown = (event: KeyboardEvent) => {
 		if (
-			event.target !== event.currentTarget ||
+			event.defaultPrevented ||
 			event.isComposing ||
 			event.altKey ||
 			event.ctrlKey ||
-			event.metaKey ||
-			zoom() <= 1
-		)
+			event.metaKey
+		) {
 			return;
+		}
+		if (event.key === "+" || event.key === "=") {
+			event.preventDefault();
+			setZoomAroundPoint(zoom() * 1.25);
+			return;
+		}
+		if (event.key === "-" || event.key === "_") {
+			event.preventDefault();
+			setZoomAroundPoint(zoom() / 1.25);
+			return;
+		}
+		if (event.key === "0") {
+			event.preventDefault();
+			resetView();
+			return;
+		}
+		if (zoom() <= 1 || event.shiftKey) return;
 		const direction = PAN_DIRECTIONS.find(
 			(item) => event.key.toLowerCase() === `arrow${item.name}`,
 		);
@@ -294,7 +336,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		<>
 			<section
 				class={`group/viewer media-viewer-aspect relative flex min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:aspect-auto lg:h-full ${
-					mediaSource().type === "image" ? "cursor-zoom-in" : ""
+					mediaSource().type === "image" && mediaUrl() ? "cursor-zoom-in" : ""
 				}`}
 				data-media-viewer
 				style={{
@@ -382,6 +424,7 @@ export function MediaViewer(props: MediaViewerProps) {
 						event.preventDefault();
 						openButton.focus({ preventScroll: true });
 					}}
+					onKeyDown={handleViewerKeyDown}
 				>
 					<DialogTitle class="sr-only">{props.fileName}</DialogTitle>
 					<DialogDescription class="sr-only">
@@ -435,7 +478,6 @@ export function MediaViewer(props: MediaViewerProps) {
 							)}
 							class="absolute inset-0 z-10 h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 							data-media-viewer-pan-handle
-							onKeyDown={handlePanKeyDown}
 							ref={(element) => {
 								panHandle = element;
 							}}
@@ -478,7 +520,7 @@ export function MediaViewer(props: MediaViewerProps) {
 									{(direction) => (
 										<Button
 											aria-label={t("mediaViewer.panImageValue", {
-												value0: String(direction.name),
+												value0: String(direction.label()),
 											})}
 											class="size-11 p-0 sm:size-8"
 											disabled={zoom() <= 1}
@@ -499,7 +541,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							>
 								<Button
 									aria-label={t("mediaViewer.zoomOut")}
-									class="size-8 p-0"
+									class="size-11 p-0 sm:size-8"
 									disabled={zoom() <= 1}
 									onClick={() => setZoomAroundPoint(zoom() / 1.25)}
 									size="icon"
@@ -509,7 +551,7 @@ export function MediaViewer(props: MediaViewerProps) {
 								</Button>
 								<button
 									aria-label={t("mediaViewer.resetZoomToFit")}
-									class="flex h-8 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-label-sm tabular-nums hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									class="flex min-h-11 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-label-sm tabular-nums hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
 									onClick={resetView}
 									type="button"
 								>
@@ -518,7 +560,7 @@ export function MediaViewer(props: MediaViewerProps) {
 								</button>
 								<Button
 									aria-label={t("mediaViewer.zoomIn")}
-									class="size-8 p-0"
+									class="size-11 p-0 sm:size-8"
 									disabled={zoom() >= 8}
 									onClick={() => setZoomAroundPoint(zoom() * 1.25)}
 									size="icon"
@@ -533,7 +575,7 @@ export function MediaViewer(props: MediaViewerProps) {
 											? t("mediaViewer.exitFullscreen")
 											: t("mediaViewer.enterFullscreen")
 									}
-									class="size-8 p-0"
+									class="size-11 p-0 sm:size-8"
 									onClick={() => void toggleFullscreen()}
 									size="icon"
 									variant="ghost"

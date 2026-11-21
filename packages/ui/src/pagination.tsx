@@ -40,7 +40,7 @@ const PaginationItem = <T extends ValidComponent = "button">(
 				buttonVariants({
 					variant: "ghost",
 				}),
-				"size-10 data-[current]:border",
+				"size-11 data-[current]:border data-[current]:border-primary data-[current]:bg-accent data-[current]:text-accent-foreground sm:size-10",
 				local.class,
 			)}
 			{...others}
@@ -103,7 +103,7 @@ const PaginationPrevious = <T extends ValidComponent = "button">(
 				buttonVariants({
 					variant: "ghost",
 				}),
-				"gap-1 pl-2.5",
+				"min-h-11 gap-1 pl-2.5 sm:min-h-9",
 				local.class,
 			)}
 			{...others}
@@ -154,7 +154,7 @@ const PaginationNext = <T extends ValidComponent = "button">(
 				buttonVariants({
 					variant: "ghost",
 				}),
-				"gap-1 pr-2.5",
+				"min-h-11 gap-1 pr-2.5 sm:min-h-9",
 				local.class,
 			)}
 			{...others}

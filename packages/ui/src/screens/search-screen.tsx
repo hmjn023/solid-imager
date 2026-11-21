@@ -11,7 +11,7 @@ import { EmptyState, FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import type { SearchWorkspaceController } from "../hooks/use-search-workspace";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
-import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
+import { ListSkeleton, LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
 	type SourceMediaViewMode,
@@ -197,6 +197,11 @@ export function SearchScreen(props: SearchScreenProps) {
 				}
 				context="global"
 				filterData={props.filterData}
+				inspectorToggle={
+					inspector.canToggle()
+						? { isOpen: inspector.isOpen(), onToggle: inspector.toggle }
+						: undefined
+				}
 				itemCount={page().totalCount()}
 				isUpdating={page().contentState().fetchState === "background-fetching"}
 				onSearch={page().handleSearch}
@@ -232,122 +237,123 @@ export function SearchScreen(props: SearchScreenProps) {
 				</div>
 			</Show>
 
-			<div
-				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 scrollbar-stable"
-				data-media-scroll="search"
-			>
+			<div class="flex min-h-0 flex-1 overflow-hidden">
 				<div
-					classList={{
-						"grid grid-cols-workspace-sidebar items-start gap-4":
-							inspector.isVisible(),
-					}}
+					class="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 scrollbar-stable"
+					data-media-scroll="search"
 				>
-					<div class="min-w-0">
-						<Show
-							fallback={
-								<LoadingRegion label={t("searchScreen.loadingSearchResults")}>
-									<MediaGridSkeleton aspectRatio="4/3" />
-								</LoadingRegion>
-							}
-							when={canRenderContent()}
-						>
-							<SourceMediaGrid
-								detailBasePath={props.detailBasePath}
-								emptyState={
-									isUnfiltered() ? (
-										<Show
-											when={noSources()}
-											fallback={
-												<EmptyState
-													description={t("searchScreen.openSourceToAddMedia")}
-													icon={<Library size={20} />}
-													title={t("searchScreen.libraryIsEmpty")}
-												/>
-											}
-										>
+					<Show
+						fallback={
+							<LoadingRegion label={t("searchScreen.loadingSearchResults")}>
+								<Show
+									fallback={<MediaGridSkeleton aspectRatio="4/3" />}
+									when={viewMode() === "list"}
+								>
+									<ListSkeleton />
+								</Show>
+							</LoadingRegion>
+						}
+						when={canRenderContent()}
+					>
+						<SourceMediaGrid
+							detailBasePath={props.detailBasePath}
+							emptyState={
+								isUnfiltered() ? (
+									<Show
+										when={noSources()}
+										fallback={
 											<EmptyState
-												description={t("searchScreen.addSourceToLibrary")}
-												icon={<Database size={20} />}
-												title={t("sourceList.noSourcesYet")}
-											>
-												<Show when={addSource}>
-													<Button onClick={addSource}>
-														<Plus size={16} />
-														{t("actions.addSource")}
-													</Button>
-												</Show>
-											</EmptyState>
-										</Show>
-									) : undefined
-								}
-								enableVirtualization={props.enableVirtualization}
-								errorTitle={t("searchScreen.couldNotLoadSearchResults")}
-								hasNextPage={page().searchResultQuery.hasNextPage}
-								isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
-								isFetchNextPageError={
-									page().searchResultQuery.isFetchNextPageError
-								}
-								itemAspectRatio={4 / 3}
-								isBulkSelectMode={props.isBulkSelectMode}
-								isSelected={props.isSelected}
-								mediaResults={page().searchResults}
-								mediaSourceId={() => undefined}
-								onBulkAction={props.onBulkAction}
-								onClearSelection={props.onClearSelection}
-								onClearSearch={
-									page().resultsCurrent() && hasSearchConditions()
-										? clearSearch
-										: undefined
-								}
-								onCopyMove={props.onCopyMove}
-								onDelete={props.onDelete}
-								onFindSimilar={props.onFindSimilar}
-								onOpenMediaDetail={
-									props.onOpenMediaDetail ? openMediaDetail : undefined
-								}
-								onPrepareMediaDetail={(media) =>
-									props.onPrepareMediaDetail?.(media, page().searchResults())
-								}
-								onLoadMore={() => {
-									void page().fetchNextPage();
-								}}
-								onRetry={async () => {
-									await page().searchResultQuery.refetch();
-								}}
-								onSelectMedia={props.onSelectMedia}
-								onToggleSelect={props.onToggleSelect}
-								selectedCount={props.selectedCount}
-								onPreviewSelect={inspector.previewSelection()}
-								previewSelectedMediaId={inspector.previewId}
-								renderItem={(media, options) =>
-									props.renderMediaItem(media, options)
-								}
-								setLoadMoreRef={page().setLoadMoreRef}
-								showEmptyState
-								showResultCount={false}
-								scrollMode="element"
-								state={page().contentState}
-								totalCount={page().totalCount()}
-								viewMode={viewMode}
-							/>
-						</Show>
-					</div>
-					<Show when={props.renderMediaPreview}>
-						{(renderPreview) => (
-							<Show when={inspector.isVisible()}>
+												description={t("searchScreen.openSourceToAddMedia")}
+												icon={<Library size={20} />}
+												title={t("searchScreen.libraryIsEmpty")}
+											/>
+										}
+									>
+										<EmptyState
+											description={t("searchScreen.addSourceToLibrary")}
+											icon={<Database size={20} />}
+											title={t("sourceList.noSourcesYet")}
+										>
+											<Show when={addSource}>
+												<Button onClick={addSource}>
+													<Plus size={16} />
+													{t("actions.addSource")}
+												</Button>
+											</Show>
+										</EmptyState>
+									</Show>
+								) : undefined
+							}
+							enableVirtualization={props.enableVirtualization}
+							errorTitle={t("searchScreen.couldNotLoadSearchResults")}
+							hasNextPage={page().searchResultQuery.hasNextPage}
+							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
+							isFetchNextPageError={
+								page().searchResultQuery.isFetchNextPageError
+							}
+							itemAspectRatio={4 / 3}
+							isBulkSelectMode={props.isBulkSelectMode}
+							isSelected={props.isSelected}
+							mediaResults={page().searchResults}
+							mediaSourceId={() => undefined}
+							onBulkAction={props.onBulkAction}
+							onClearSelection={props.onClearSelection}
+							onClearSearch={
+								page().resultsCurrent() && hasSearchConditions()
+									? clearSearch
+									: undefined
+							}
+							onCopyMove={props.onCopyMove}
+							onDelete={props.onDelete}
+							onFindSimilar={props.onFindSimilar}
+							onOpenMediaDetail={
+								props.onOpenMediaDetail ? openMediaDetail : undefined
+							}
+							onPrepareMediaDetail={(media) =>
+								props.onPrepareMediaDetail?.(media, page().searchResults())
+							}
+							onLoadMore={() => {
+								void page().fetchNextPage();
+							}}
+							onRetry={async () => {
+								await page().searchResultQuery.refetch();
+							}}
+							onSelectMedia={props.onSelectMedia}
+							onToggleSelect={props.onToggleSelect}
+							selectedCount={props.selectedCount}
+							onPreviewSelect={inspector.previewSelection()}
+							previewSelectedMediaId={inspector.previewId}
+							renderItem={(media, options) =>
+								props.renderMediaItem(media, options)
+							}
+							setLoadMoreRef={page().setLoadMoreRef}
+							showEmptyState
+							showResultCount={false}
+							scrollMode="element"
+							state={page().contentState}
+							totalCount={page().totalCount()}
+							viewMode={viewMode}
+						/>
+					</Show>
+				</div>
+				<Show when={props.renderMediaPreview && inspector.isVisible()}>
+					{(() => {
+						const renderPreview = props.renderMediaPreview;
+						return renderPreview ? (
+							<div class="hidden h-full min-h-0 w-96 shrink-0 py-3 pr-4 2xl:block">
 								<CollectionInspector
 									media={inspector.media()}
 									onClose={inspector.close}
 									onOpenDetail={
 										props.onOpenMediaDetail ? openMediaDetail : undefined
 									}
-									renderPreview={renderPreview()}
+									renderPreview={renderPreview}
 									sourceName={previewSourceName()}
 								/>
-							</Show>
-						)}
-					</Show>
-				</div>
+							</div>
+						) : null;
+					})()}
+				</Show>
 			</div>
 			<Show when={props.isBulkSelectMode?.()}>
 				<CollectionBulkActions

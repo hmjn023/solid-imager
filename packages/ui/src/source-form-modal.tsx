@@ -29,7 +29,6 @@ import {
 	FormError,
 	FormFieldMessage,
 	getFormErrorMessage,
-	getFormSubmitError,
 } from "./form-message";
 import { createSourceFormSchema, type SourceFormValues } from "./form-schemas";
 import { Input } from "./input";
@@ -38,6 +37,7 @@ import {
 	Select,
 	SelectContent,
 	SelectItem,
+	SelectLabel,
 	SelectTrigger,
 	SelectValue,
 } from "./select";
@@ -239,6 +239,7 @@ function SourceTextInput(props: SourceTextInputProps) {
 
 export function SourceFormModal(props: SourceFormModalProps) {
 	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
+	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const sourceTypes = () => props.sourceTypes ?? ["local"];
 	const defaultValues = () => {
 		const fallbackType = sourceTypes()[0] ?? "local";
@@ -256,16 +257,15 @@ export function SourceFormModal(props: SourceFormModalProps) {
 			onSubmit: createSourceFormSchema(props.editingSource?.type !== "s3"),
 		},
 		onSubmit: async ({ value }) => {
-			form.setErrorMap({ onSubmit: undefined });
+			setSubmitError(null);
 			try {
 				await props.onSubmit(toSourceFormSubmitData(value));
 			} catch (error) {
-				form.setErrorMap({
-					onSubmit: { form: getErrorMessage(error), fields: {} },
-				});
+				setSubmitError(getErrorMessage(error));
 			}
 		},
 	}));
+	const isSubmitting = form.useSelector((state) => state.isSubmitting);
 
 	let wasOpen = false;
 	let restoreFocusElement: HTMLElement | undefined;
@@ -276,6 +276,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 			restoreFocusElement =
 				activeElement instanceof HTMLElement ? activeElement : undefined;
 			form.reset(defaultValues());
+			setSubmitError(null);
 			setShowDiscardDialog(false);
 		}
 		wasOpen = isOpen;
@@ -287,6 +288,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 		);
 	const fieldError = (errors: unknown[]) => getFormErrorMessage(errors[0]);
 	const requestClose = () => {
+		if (isSubmitting()) return;
 		if (form.state.isDirty) {
 			setShowDiscardDialog(true);
 			return;
@@ -295,6 +297,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 	};
 	const discardAndClose = () => {
 		form.reset(defaultValues());
+		setSubmitError(null);
 		setShowDiscardDialog(false);
 		props.onClose();
 	};
@@ -302,11 +305,14 @@ export function SourceFormModal(props: SourceFormModalProps) {
 	return (
 		<>
 			<Dialog
-				onOpenChange={(open) => !open && requestClose()}
+				onOpenChange={(open) => {
+					if (!open && !isSubmitting()) requestClose();
+				}}
 				open={props.isOpen}
 			>
 				<DialogContent
 					class="sm:max-w-dialog-sm"
+					closeDisabled={isSubmitting()}
 					onCloseAutoFocus={(event) => {
 						if (restoreFocusElement?.isConnected) {
 							event.preventDefault();
@@ -387,37 +393,38 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						<Show when={sourceTypes().length > 1}>
 							<form.Field name="type">
 								{(field) => (
-									<div class="space-y-2">
-										<Label>{t("jobsScreen.type")}</Label>
-										<Select
-											itemComponent={(itemProps) => (
-												<SelectItem item={itemProps.item}>
-													{itemProps.item.rawValue.label}
-												</SelectItem>
-											)}
-											onChange={(value) =>
-												field().handleChange(
-													parseSelectValue(
-														value?.value,
-														SOURCE_TYPE_VALUES,
-														"local",
-													),
-												)
-											}
-											options={selectOptions()}
-											value={{
-												value: field().state.value,
-												label: getTypeLabel(field().state.value),
-											}}
-										>
-											<SelectTrigger>
-												<SelectValue<{ value: string; label: string }>>
-													{(state) => state.selectedOption().label}
-												</SelectValue>
-											</SelectTrigger>
-											<SelectContent />
-										</Select>
-									</div>
+									<Select
+										class="space-y-2"
+										itemComponent={(itemProps) => (
+											<SelectItem item={itemProps.item}>
+												{itemProps.item.rawValue.label}
+											</SelectItem>
+										)}
+										onChange={(value) =>
+											field().handleChange(
+												parseSelectValue(
+													value?.value,
+													SOURCE_TYPE_VALUES,
+													"local",
+												),
+											)
+										}
+										optionTextValue="label"
+										optionValue="value"
+										options={selectOptions()}
+										value={{
+											value: field().state.value,
+											label: getTypeLabel(field().state.value),
+										}}
+									>
+										<SelectLabel>{t("jobsScreen.type")}</SelectLabel>
+										<SelectTrigger>
+											<SelectValue<{ value: string; label: string }>>
+												{(state) => state.selectedOption().label}
+											</SelectValue>
+										</SelectTrigger>
+										<SelectContent />
+									</Select>
 								)}
 							</form.Field>
 						</Show>
@@ -603,12 +610,15 @@ export function SourceFormModal(props: SourceFormModalProps) {
 							)}
 						</form.Subscribe>
 
-						<form.Subscribe selector={(state) => state.errorMap.onSubmit}>
-							{(error) => <FormError message={getFormSubmitError(error())} />}
-						</form.Subscribe>
+						<FormError message={submitError()} />
 
 						<DialogFooter>
-							<Button onClick={requestClose} type="button" variant="outline">
+							<Button
+								disabled={isSubmitting()}
+								onClick={requestClose}
+								type="button"
+								variant="outline"
+							>
 								{t("actions.cancel")}
 							</Button>
 							<form.Subscribe
@@ -619,6 +629,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 							>
 								{(state) => (
 									<Button
+										aria-busy={state().isSubmitting}
 										disabled={!state().canSubmit || state().isSubmitting}
 										type="submit"
 									>

@@ -32,9 +32,19 @@ export type SearchSuggestion = {
 	value: string;
 };
 
-/** A text: prefix consumes the remainder as one natural-language query. */
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** A text: prefix (or its localized equivalent) consumes the remainder as one natural-language query. */
 export function parseSemanticSearchDraft(draft: string): string | undefined {
-	const match = draft.match(/^\s*text:(.*)$/is);
+	const localizedPrefix = t("searchComposerUtils.text").trim();
+	const prefixPattern = localizedPrefix
+		? `(?:text|${escapeRegExp(localizedPrefix)})`
+		: "text";
+	const match = draft.match(
+		new RegExp(`^\\s*${prefixPattern}[:：](.*)$`, "is"),
+	);
 	if (!match) return undefined;
 	const value = match[1].trim();
 	const unquoted =

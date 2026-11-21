@@ -62,7 +62,7 @@ export function RouteTransitionIndicator() {
 		<Show when={isVisible()}>
 			<Progress
 				aria-label={t("routerStatus.loadingPage")}
-				class="fixed inset-x-0 top-0 z-router-status h-1 rounded-none bg-primary/20 [&>div]:bg-transparent [&>div>div]:w-1/2 [&>div>div]:animate-pulse [&>div>div]:rounded-full [&>div>div]:motion-reduce:animate-none"
+				class="fixed inset-x-0 top-0 z-router-status h-1 rounded-none bg-primary/20 [&>div]:bg-transparent [&>div>div]:w-1/2 [&>div>div]:rounded-full [&>div>div]:motion-safe:animate-pulse"
 				indeterminate
 			/>
 		</Show>
@@ -112,7 +112,7 @@ export function RouteErrorScreen(props: ErrorComponentProps) {
 	};
 
 	return (
-		<div class="container mx-auto p-4">
+		<div class="flex min-h-full items-center justify-center p-4">
 			<ErrorState
 				class="mx-auto max-w-xl"
 				description={t("routerStatus.checkYourNetworkConnectionAndTryAgain")}
@@ -121,7 +121,7 @@ export function RouteErrorScreen(props: ErrorComponentProps) {
 				title={t("routerStatus.couldNotDisplayThisPage")}
 			>
 				<Link
-					class="rounded-md border border-border px-4 py-2 hover:bg-muted"
+					class="inline-flex min-h-11 items-center rounded-md border border-border px-4 py-2 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					to="/"
 				>
 					{t("routerStatus.backToHome")}

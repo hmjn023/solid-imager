@@ -13,15 +13,6 @@ import {
 	on,
 	onCleanup,
 } from "solid-js";
-import {
-	AlertDialog,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "./alert-dialog";
 import { Button } from "./button";
 import {
 	DropdownMenu,
@@ -31,6 +22,7 @@ import {
 	DropdownMenuTrigger,
 } from "./dropdown-menu";
 import type { ManagerJobHandlers } from "./hooks/batch-job-events.types";
+import { MediaDeleteDialog } from "./media-delete-dialog";
 import { toast } from "./toast";
 import {
 	Binary,
@@ -98,6 +90,7 @@ export function MediaActions(props: MediaActionsProps) {
 	const [isExtractingEmbedding, setIsExtractingEmbedding] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [isDeleting, setIsDeleting] = createSignal(false);
+	const [deleteError, setDeleteError] = createSignal<string | undefined>();
 	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
 	let ccipStatusRequestId = 0;
 	const supportsVisualAnalysis = () =>
@@ -296,14 +289,17 @@ export function MediaActions(props: MediaActionsProps) {
 	const handleDelete = async () => {
 		if (!props.onDelete || isDeleting()) return;
 		setIsDeleting(true);
+		setDeleteError(undefined);
 		try {
 			await props.onDelete();
 			setIsDeleteDialogOpen(false);
 			toast.success(t("mediaActions.mediaDeleted"));
 		} catch (error) {
+			const message = getErrorMessage(error);
+			setDeleteError(message);
 			toast.error(
 				t("mediaActions.failedToDeleteMediaValue", {
-					value0: String(getErrorMessage(error)),
+					value0: String(message),
 				}),
 			);
 		} finally {
@@ -329,7 +325,7 @@ export function MediaActions(props: MediaActionsProps) {
 			<div class="flex w-full flex-wrap items-center gap-2 md:w-auto md:flex-nowrap">
 				<ShowAction when={supportsVisualAnalysis() && props.aiTaggingModal}>
 					<Button
-						class="h-10 min-w-32 flex-1 md:h-9 md:flex-none"
+						class="min-h-11 min-w-32 flex-1 md:h-9 md:min-h-9 md:flex-none"
 						onClick={() => setIsAiTaggingModalOpen(true)}
 						size="sm"
 					>
@@ -339,7 +335,7 @@ export function MediaActions(props: MediaActionsProps) {
 				</ShowAction>
 				<ShowAction when={supportsVisualAnalysis() && props.onFindSimilar}>
 					<Button
-						class="h-10 min-w-32 flex-1 md:h-9 md:flex-none"
+						class="min-h-11 min-w-32 flex-1 md:h-9 md:min-h-9 md:flex-none"
 						disabled={
 							props.getCcipVectorStatus !== undefined &&
 							ccipStatus() !== "ready"
@@ -374,7 +370,7 @@ export function MediaActions(props: MediaActionsProps) {
 						open={moreActionsOpen()}
 						placement="bottom-end"
 					>
-						<DropdownMenuTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-card px-3 font-medium text-foreground text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:flex-none">
+						<DropdownMenuTrigger class="flex min-h-11 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-card px-3 font-medium text-foreground text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:min-h-9 md:flex-none">
 							{t("mediaActions.moreActions")}
 							<ChevronDown aria-hidden="true" size={14} />
 						</DropdownMenuTrigger>
@@ -467,9 +463,12 @@ export function MediaActions(props: MediaActionsProps) {
 							</ShowAction>
 							<ShowAction when={props.onDelete}>
 								<DropdownMenuItem
-									class="min-h-9 text-destructive focus:bg-destructive/10 focus:text-destructive"
+									class="min-h-11 text-destructive focus:bg-destructive/10 focus:text-destructive md:min-h-9"
 									onSelect={() =>
-										openModalFromMoreActions(() => setIsDeleteDialogOpen(true))
+										openModalFromMoreActions(() => {
+											setDeleteError(undefined);
+											setIsDeleteDialogOpen(true);
+										})
 									}
 								>
 									<Trash2 aria-hidden="true" size={14} />
@@ -514,36 +513,14 @@ export function MediaActions(props: MediaActionsProps) {
 				})}
 			</ShowAction>
 			<ShowAction when={props.onDelete}>
-				<AlertDialog
+				<MediaDeleteDialog
+					error={deleteError()}
+					fileName={props.media.fileName}
+					isSubmitting={isDeleting()}
+					onConfirm={handleDelete}
 					onOpenChange={setIsDeleteDialogOpen}
 					open={isDeleteDialogOpen()}
-				>
-					<AlertDialogContent>
-						<AlertDialogHeader>
-							<AlertDialogTitle>
-								{t("mediaActions.deleteThisMedia")}
-							</AlertDialogTitle>
-							<AlertDialogDescription>
-								{t(
-									"mediaActions.valueWillBePermanentlyRemovedFromItsSourceThis",
-									{ value0: String(props.media.fileName) },
-								)}
-							</AlertDialogDescription>
-						</AlertDialogHeader>
-						<AlertDialogFooter>
-							<AlertDialogCancel disabled={isDeleting()}>
-								{t("actions.cancel")}
-							</AlertDialogCancel>
-							<Button
-								disabled={isDeleting()}
-								onClick={() => void handleDelete()}
-								variant="destructive"
-							>
-								{isDeleting() ? t("status.deleting") : t("actions.delete")}
-							</Button>
-						</AlertDialogFooter>
-					</AlertDialogContent>
-				</AlertDialog>
+				/>
 			</ShowAction>
 		</>
 	);

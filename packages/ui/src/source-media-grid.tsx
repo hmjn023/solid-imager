@@ -34,6 +34,15 @@ import {
 	ContextMenuShortcut,
 	ContextMenuTrigger,
 } from "./context-menu";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuGroupLabel,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "./dropdown-menu";
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
 import { MediaTileGrid } from "./media-tile-grid";
@@ -44,7 +53,7 @@ import {
 	isPlainPrimaryClick,
 } from "./media-preview-selection";
 import type { QueryUiState } from "./query-state";
-import { LoadingRegion, MediaGridSkeleton } from "./skeleton";
+import { ListSkeleton, LoadingRegion, MediaGridSkeleton } from "./skeleton";
 import {
 	Table,
 	TableBody,
@@ -56,9 +65,17 @@ import {
 } from "./table";
 import {
 	findCollectionItemById,
+	getCollectionNavigationIndex,
+	isCollectionNavigationKey,
 	isCollectionScrollNearEnd,
 } from "./workspace/collection-navigation";
-import { FileText, RefreshCw, ScanSearch, Trash2 } from "./workspace/icons";
+import {
+	Ellipsis,
+	FileText,
+	RefreshCw,
+	ScanSearch,
+	Trash2,
+} from "./workspace/icons";
 
 export type SourceMediaViewMode = "grid" | "list";
 const LIST_LOAD_MORE_THRESHOLD_PX = 480;
@@ -153,7 +170,17 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		media: Media,
 		event: MouseEvent | KeyboardEvent,
 	) => {
-		props.onSelectMedia?.(media.id, selectionModeFromEvent(event));
+		const mode = selectionModeFromEvent(event);
+		const previewId = props.previewSelectedMediaId?.();
+		if (
+			(mode === "range" || mode === "additive-range") &&
+			!props.isBulkSelectMode?.() &&
+			previewId &&
+			previewId !== media.id
+		) {
+			props.onSelectMedia?.(previewId, "replace");
+		}
+		props.onSelectMedia?.(media.id, mode);
 		props.onPreviewSelect?.(media);
 	};
 	const toggleRowSelection = (media: Media) => {
@@ -179,6 +206,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		createSignal<Media>();
 	const [scrollElement, setScrollElement] = createSignal<HTMLElement>();
 	const [loadMoreTarget, setLoadMoreTarget] = createSignal<HTMLDivElement>();
+	let tableBodyRef: HTMLTableSectionElement | undefined;
 	let listLoadRequestPending = false;
 	let listLoadRequestCount = -1;
 	let listLoadWasFetching = false;
@@ -205,6 +233,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	createEffect(() => {
 		if (viewMode() !== "list") return;
+		void props.mediaResults().length;
+		void props.hasNextPage;
 		const target = props.scrollMode === "element" ? scrollElement() : window;
 		if (!target) return;
 
@@ -323,8 +353,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			onDelete={props.onDelete}
 			loadMoreTarget={loadMoreTarget}
 			onNearEnd={gridLoadMore()}
-			renderItem={(media, imageLoadPolicy, priority) =>
-				props.renderItem(media, {
+			renderItem={(media, imageLoadPolicy, priority) => {
+				const tile = props.renderItem(media, {
 					imageLoadPolicy,
 					priority,
 					onContextMenu: onContextMenuHandler(media),
@@ -353,8 +383,34 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					get isPreviewSelected() {
 						return props.previewSelectedMediaId?.() === media.id;
 					},
-				})
-			}
+				});
+
+				return (
+					<div class="group/tile relative min-w-0">
+						{tile}
+						<Show when={!disableContextMenu() && hasContextMenuActions(media)}>
+							<DropdownMenu placement="bottom-start">
+								<DropdownMenuTrigger
+									aria-label={t("sourceList.actionsForValue", {
+										value0: String(media.fileName),
+									})}
+									class="absolute top-1.5 left-1.5 z-20 flex size-10 items-center justify-center rounded-md border border-border bg-background/90 text-foreground opacity-90 shadow-sm outline-none transition-opacity hover:bg-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring sm:size-7 sm:opacity-0 sm:group-focus-within/tile:opacity-100 sm:group-hover/tile:opacity-100"
+									onClick={(event: MouseEvent) => event.stopPropagation()}
+									onPointerDown={(event: PointerEvent) =>
+										event.stopPropagation()
+									}
+									type="button"
+								>
+									<Ellipsis aria-hidden="true" size={14} />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent class="workspace-theme min-w-56 max-w-80">
+									{renderMenuActionItems(media, "dropdown")}
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</Show>
+					</div>
+				);
+			}}
 		/>
 	);
 	const formatFileSize = (bytes: number | null): string => {
@@ -399,11 +455,21 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 							{t("sourceMediaGrid.modified")}
 						</TableHead>
+						<Show when={!disableContextMenu()}>
+							<TableHead class="h-auto w-12 px-2 py-2 text-right" scope="col">
+								<span class="sr-only">{t("entityPanel.actions")}</span>
+							</TableHead>
+						</Show>
 					</TableRow>
 				</TableHeader>
-				<TableBody class="divide-y divide-border">
+				<TableBody
+					class="divide-y divide-border"
+					ref={(element: HTMLTableSectionElement) => {
+						tableBodyRef = element;
+					}}
+				>
 					<For each={props.mediaResults()}>
-						{(media) => (
+						{(media, index) => (
 							<TableRow
 								aria-label={t("sourceMediaGrid.valueValue", {
 									value0: String(media.fileName),
@@ -467,10 +533,47 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										event.target !== event.currentTarget ||
 										event.altKey ||
 										event.ctrlKey ||
-										event.metaKey ||
-										event.shiftKey
-									)
+										event.metaKey
+									) {
 										return;
+									}
+									if (
+										event.key === "Delete" &&
+										!event.shiftKey &&
+										props.onDelete
+									) {
+										event.preventDefault();
+										if (!event.repeat) props.onDelete(media.id);
+										return;
+									}
+									if (
+										isCollectionNavigationKey(event.key) &&
+										event.key !== "ArrowLeft" &&
+										event.key !== "ArrowRight" &&
+										!event.shiftKey
+									) {
+										const nextIndex = getCollectionNavigationIndex({
+											columnCount: 1,
+											currentIndex: index(),
+											itemCount: props.mediaResults().length,
+											key: event.key,
+											pageRowCount: 10,
+										});
+										if (nextIndex !== null) {
+											const nextMedia = props.mediaResults()[nextIndex];
+											if (nextMedia) {
+												event.preventDefault();
+												props.onPreviewSelect?.(nextMedia);
+												tableBodyRef
+													?.querySelector<HTMLElement>(
+														`tr[data-media-id="${CSS.escape(nextMedia.id)}"]`,
+													)
+													?.focus({ preventScroll: true });
+											}
+										}
+										return;
+									}
+									if (event.shiftKey) return;
 									if (
 										event.key === "Enter" &&
 										(props.isBulkSelectMode?.() || props.onOpenMediaDetail)
@@ -487,14 +590,17 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										event.target !== event.currentTarget ||
 										event.key !== " " ||
 										event.altKey ||
-										event.ctrlKey ||
-										event.metaKey ||
-										event.shiftKey
+										event.repeat
 									) {
 										return;
 									}
 									event.preventDefault();
-									if (props.onToggleSelect || props.onSelectMedia) {
+									if (
+										props.onSelectMedia &&
+										(event.shiftKey || event.ctrlKey || event.metaKey)
+									) {
+										selectFromGesture(media, event);
+									} else if (props.onToggleSelect || props.onSelectMedia) {
 										toggleRowSelection(media);
 									} else {
 										props.onPreviewSelect?.(media);
@@ -562,6 +668,30 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{media.modifiedAt.toLocaleDateString(getLocale())}
 								</TableCell>
+								<Show when={!disableContextMenu()}>
+									<TableCell class="px-2 py-2 text-right">
+										<Show when={hasContextMenuActions(media)}>
+											<DropdownMenu placement="bottom-end">
+												<DropdownMenuTrigger
+													aria-label={t("sourceList.actionsForValue", {
+														value0: String(media.fileName),
+													})}
+													class="flex size-11 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:size-8"
+													data-collection-row-control=""
+													onClick={(event: MouseEvent) =>
+														event.stopPropagation()
+													}
+													type="button"
+												>
+													<Ellipsis aria-hidden="true" size={14} />
+												</DropdownMenuTrigger>
+												<DropdownMenuContent class="workspace-theme min-w-56 max-w-80">
+													{renderMenuActionItems(media, "dropdown")}
+												</DropdownMenuContent>
+											</DropdownMenu>
+										</Show>
+									</TableCell>
+								</Show>
 							</TableRow>
 						)}
 					</For>
@@ -630,6 +760,175 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			"noopener,noreferrer",
 		);
 	};
+	const renderMenuActionItems = (
+		media: Media,
+		kind: "context" | "dropdown",
+	) => {
+		const Item = (itemProps: {
+			children: JSX.Element;
+			class?: string;
+			onSelect: () => void;
+		}) =>
+			kind === "context" ? (
+				<ContextMenuItem class={itemProps.class} onSelect={itemProps.onSelect}>
+					{itemProps.children}
+				</ContextMenuItem>
+			) : (
+				<DropdownMenuItem class={itemProps.class} onSelect={itemProps.onSelect}>
+					{itemProps.children}
+				</DropdownMenuItem>
+			);
+		const Separator = () =>
+			kind === "context" ? <ContextMenuSeparator /> : <DropdownMenuSeparator />;
+		const Group = (groupProps: { children: JSX.Element }) =>
+			kind === "context" ? (
+				<ContextMenuGroup>{groupProps.children}</ContextMenuGroup>
+			) : (
+				<DropdownMenuGroup>{groupProps.children}</DropdownMenuGroup>
+			);
+		const GroupLabel = (labelProps: {
+			children: JSX.Element;
+			class?: string;
+			title?: string;
+		}) =>
+			kind === "context" ? (
+				<ContextMenuGroupLabel
+					class={labelProps.class}
+					title={labelProps.title}
+				>
+					{labelProps.children}
+				</ContextMenuGroupLabel>
+			) : (
+				<DropdownMenuGroupLabel
+					class={labelProps.class}
+					title={labelProps.title}
+				>
+					{labelProps.children}
+				</DropdownMenuGroupLabel>
+			);
+
+		return (
+			<Group>
+				<GroupLabel
+					class="max-w-72 truncate text-muted-foreground"
+					title={media.fileName}
+				>
+					{media.fileName}
+				</GroupLabel>
+				<Separator />
+				<Show when={!hasContextMenuActions(media)}>
+					<Show
+						fallback={
+							<DropdownMenuItem disabled>
+								{t("sourceMediaGrid.noActionsAvailable")}
+							</DropdownMenuItem>
+						}
+						when={kind === "context"}
+					>
+						<ContextMenuItem disabled>
+							{t("sourceMediaGrid.noActionsAvailable")}
+						</ContextMenuItem>
+					</Show>
+				</Show>
+				<Show when={props.onOpenMediaDetail}>
+					<Item onSelect={() => prepareAndOpenMediaDetail(media)}>
+						<FileText aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("collectionInspector.openDetails")}
+						<Show when={kind === "context"}>
+							<ContextMenuShortcut>
+								{t("sourceMediaGrid.enter")}
+							</ContextMenuShortcut>
+						</Show>
+					</Item>
+				</Show>
+				<Show when={showOpenInNewTab() && props.onOpenMediaDetail}>
+					<Item onSelect={() => openMediaInNewTab(media)}>
+						<ExternalLink aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("sourceMediaGrid.openInANewTab")}
+					</Item>
+				</Show>
+				<Show when={canFindSimilar(media)}>
+					<Item onSelect={() => props.onFindSimilar?.(media, "ccip")}>
+						<ScanSearch aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("sourceMediaGrid.similaritySearch")}
+					</Item>
+					<Item
+						onSelect={() => props.onFindSimilar?.(media, "embeddinggemma2")}
+					>
+						<ScanSearch aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("sourceMediaGrid.similaritySearchEmbeddingGemma2")}
+					</Item>
+				</Show>
+				<Show when={props.onToggleSelect}>
+					<Item onSelect={() => props.onToggleSelect?.(media.id)}>
+						<SquareCheck aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{props.isBulkSelectMode?.() && props.isSelected?.(media.id)
+							? t("actions.clearSelection")
+							: t("jobsScreen.select")}
+						<Show when={kind === "context"}>
+							<ContextMenuShortcut>
+								{t("sourceMediaGrid.space")}
+							</ContextMenuShortcut>
+						</Show>
+					</Item>
+				</Show>
+				<Show
+					when={
+						props.isBulkSelectMode?.() &&
+						(props.selectedCount?.() ?? 0) > 0 &&
+						(props.onBulkAction || props.onClearSelection)
+					}
+				>
+					<Show when={props.onBulkAction}>
+						<Item onSelect={() => props.onBulkAction?.()}>
+							<ListChecks aria-hidden="true" class="mr-2 shrink-0" size={14} />
+							{t("sourceMediaGrid.runBulkAction")}
+							{props.selectedCount?.()}
+							{t("sourceMediaGrid.selected")}
+						</Item>
+					</Show>
+					<Show when={props.onClearSelection}>
+						<Item onSelect={() => props.onClearSelection?.()}>
+							<X aria-hidden="true" class="mr-2 shrink-0" size={14} />
+							{t("actions.clearSelection")}
+						</Item>
+					</Show>
+				</Show>
+				<Show when={props.onDelete}>
+					<Separator />
+					<Item
+						class="text-destructive focus:text-destructive"
+						onSelect={() => props.onDelete?.(media.id)}
+					>
+						<Trash2 aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("actions.delete")}
+						<Show when={kind === "context"}>
+							<ContextMenuShortcut>{t("keys.delete")}</ContextMenuShortcut>
+						</Show>
+					</Item>
+				</Show>
+				<Show when={props.onCopyMove}>
+					<Separator />
+					<Item onSelect={() => props.onCopyMove?.(media.id, "copy")}>
+						<Copy aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("sourceMediaGrid.copyToAnotherSource")}
+					</Item>
+					<Item onSelect={() => props.onCopyMove?.(media.id, "move")}>
+						<FolderInput aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("sourceMediaGrid.moveToAnotherSource")}
+					</Item>
+				</Show>
+				<Show when={props.onSyncSingleMedia}>
+					<Separator />
+					<Item onSelect={() => props.onSyncSingleMedia?.(media.id)}>
+						<RefreshCw aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("sourceMediaGrid.syncMetadataReprocess")}
+					</Item>
+				</Show>
+			</Group>
+		);
+	};
+
 	const collectionContent = (
 		<Show fallback={gridContent} when={viewMode() === "list"}>
 			{listContent}
@@ -641,15 +940,22 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			<Switch>
 				<Match when={props.state().phase === "pending"}>
 					<LoadingRegion label={t("sourceMediaScreen.loadingMediaList")}>
-						<MediaGridSkeleton
-							aspectRatio={
-								props.scrollMode === "element"
-									? props.itemAspectRatio === 4 / 3
-										? "4/3"
-										: "3/4"
-									: undefined
+						<Show
+							fallback={
+								<MediaGridSkeleton
+									aspectRatio={
+										props.scrollMode === "element"
+											? props.itemAspectRatio === 4 / 3
+												? "4/3"
+												: "3/4"
+											: undefined
+									}
+								/>
 							}
-						/>
+							when={viewMode() === "list"}
+						>
+							<ListSkeleton />
+						</Show>
 					</LoadingRegion>
 				</Match>
 				<Match when={props.state().phase === "error"}>
@@ -728,190 +1034,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									}
 									when={contextMenuMedia()}
 								>
-									{(media) => (
-										<>
-											<ContextMenuGroup>
-												<ContextMenuGroupLabel
-													class="max-w-72 truncate text-muted-foreground"
-													title={media.fileName}
-												>
-													{media.fileName}
-												</ContextMenuGroupLabel>
-												<ContextMenuSeparator />
-												<Show when={!hasContextMenuActions(media)}>
-													<ContextMenuItem disabled>
-														{t("sourceMediaGrid.noActionsAvailable")}
-													</ContextMenuItem>
-												</Show>
-												<Show when={props.onOpenMediaDetail}>
-													<ContextMenuItem
-														onSelect={() => prepareAndOpenMediaDetail(media)}
-													>
-														<FileText
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{t("collectionInspector.openDetails")}
-														<ContextMenuShortcut>
-															{t("sourceMediaGrid.enter")}
-														</ContextMenuShortcut>
-													</ContextMenuItem>
-												</Show>
-												<Show
-													when={showOpenInNewTab() && props.onOpenMediaDetail}
-												>
-													<ContextMenuItem
-														onSelect={() => openMediaInNewTab(media)}
-													>
-														<ExternalLink
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{t("sourceMediaGrid.openInANewTab")}
-													</ContextMenuItem>
-												</Show>
-												<Show when={canFindSimilar(media)}>
-													<ContextMenuItem
-														onSelect={() =>
-															props.onFindSimilar?.(media, "ccip")
-														}
-													>
-														<ScanSearch
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{t("sourceMediaGrid.similaritySearch")}
-													</ContextMenuItem>
-													<ContextMenuItem
-														onSelect={() =>
-															props.onFindSimilar?.(media, "embeddinggemma2")
-														}
-													>
-														<ScanSearch
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{t(
-															"sourceMediaGrid.similaritySearchEmbeddingGemma2",
-														)}
-													</ContextMenuItem>
-												</Show>
-												<Show when={props.onToggleSelect}>
-													<ContextMenuItem
-														onSelect={() => props.onToggleSelect?.(media.id)}
-													>
-														<SquareCheck
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{props.isBulkSelectMode?.() &&
-														props.isSelected?.(media.id)
-															? t("actions.clearSelection")
-															: t("jobsScreen.select")}
-														<ContextMenuShortcut>
-															{t("sourceMediaGrid.space")}
-														</ContextMenuShortcut>
-													</ContextMenuItem>
-												</Show>
-												<Show
-													when={
-														props.isBulkSelectMode?.() &&
-														(props.selectedCount?.() ?? 0) > 0 &&
-														(props.onBulkAction || props.onClearSelection)
-													}
-												>
-													<Show when={props.onBulkAction}>
-														<ContextMenuItem
-															onSelect={() => props.onBulkAction?.()}
-														>
-															<ListChecks
-																aria-hidden="true"
-																class="mr-2 shrink-0"
-																size={14}
-															/>
-															{t("sourceMediaGrid.runBulkAction")}
-															{props.selectedCount?.()}
-															{t("sourceMediaGrid.selected")}
-														</ContextMenuItem>
-													</Show>
-													<Show when={props.onClearSelection}>
-														<ContextMenuItem
-															onSelect={() => props.onClearSelection?.()}
-														>
-															<X
-																aria-hidden="true"
-																class="mr-2 shrink-0"
-																size={14}
-															/>
-															{t("actions.clearSelection")}
-														</ContextMenuItem>
-													</Show>
-												</Show>
-												<Show when={props.onDelete}>
-													<ContextMenuSeparator />
-													<ContextMenuItem
-														class="text-destructive focus:text-destructive"
-														onSelect={() => props.onDelete?.(media.id)}
-													>
-														<Trash2
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{t("actions.delete")}
-														<ContextMenuShortcut>
-															{t("keys.delete")}
-														</ContextMenuShortcut>
-													</ContextMenuItem>
-												</Show>
-												<Show when={props.onCopyMove}>
-													<ContextMenuSeparator />
-													<ContextMenuItem
-														onSelect={() =>
-															props.onCopyMove?.(media.id, "copy")
-														}
-													>
-														<Copy
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{t("sourceMediaGrid.copyToAnotherSource")}
-													</ContextMenuItem>
-													<ContextMenuItem
-														onSelect={() =>
-															props.onCopyMove?.(media.id, "move")
-														}
-													>
-														<FolderInput
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{t("sourceMediaGrid.moveToAnotherSource")}
-													</ContextMenuItem>
-												</Show>
-												<Show when={props.onSyncSingleMedia}>
-													<ContextMenuSeparator />
-													<ContextMenuItem
-														onSelect={() => props.onSyncSingleMedia?.(media.id)}
-													>
-														<RefreshCw
-															aria-hidden="true"
-															class="mr-2 shrink-0"
-															size={14}
-														/>
-														{t("sourceMediaGrid.syncMetadataReprocess")}
-													</ContextMenuItem>
-												</Show>
-											</ContextMenuGroup>
-										</>
-									)}
+									{(media) => renderMenuActionItems(media, "context")}
 								</Show>
 							</MediaContextMenuContent>
 						</ContextMenu>
@@ -952,12 +1075,29 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								<Show when={props.hasNextPage}>
 									<Show
 										when={props.isFetchNextPageError}
-										fallback={<p>{t("sourceMediaGrid.scrollToLoadMore")}</p>}
+										fallback={
+											<Show
+												fallback={
+													<p>{t("sourceMediaGrid.scrollToLoadMore")}</p>
+												}
+												when={props.onLoadMore}
+											>
+												<Button
+													class="min-h-11 sm:min-h-9"
+													onClick={props.onLoadMore}
+													size="sm"
+													variant="outline"
+												>
+													{t("actions.loadMore")}
+												</Button>
+											</Show>
+										}
 									>
 										<Button
-											variant="outline"
-											size="sm"
+											class="min-h-11 sm:min-h-9"
 											onClick={props.onLoadMore}
+											size="sm"
+											variant="outline"
 										>
 											{t("sourceMediaGrid.retryLoadingMore")}
 										</Button>

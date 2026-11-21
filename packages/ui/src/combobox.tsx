@@ -49,7 +49,7 @@ const ComboboxItem = <T extends ValidComponent = "li">(
 	return (
 		<ComboboxPrimitive.Item
 			class={cn(
-				"relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50",
+				"relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[selected]:font-medium data-[highlighted]:text-foreground data-[disabled]:opacity-50",
 				local.class,
 			)}
 			{...others}
@@ -128,7 +128,10 @@ const ComboboxControl = <T, U extends ValidComponent = "div">(
 	]);
 	return (
 		<ComboboxPrimitive.Control
-			class={cn("flex h-10 items-center rounded-md border px-3", local.class)}
+			class={cn(
+				"flex h-10 items-center rounded-md border border-input px-3 focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
+				local.class,
+			)}
 			{...others}
 		/>
 	);
@@ -237,13 +240,13 @@ const ComboboxContent = <T extends ValidComponent = "div">(
 		<ComboboxPrimitive.Portal mount={local.portalMount}>
 			<ComboboxPrimitive.Content
 				class={cn(
-					"fade-in-80 relative z-50 max-h-popover-fit min-w-32 max-w-viewport-gutter animate-in overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
+					"motion-safe:fade-in-80 relative z-50 flex max-h-popover-fit-available min-w-32 max-w-viewport-gutter flex-col overflow-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md motion-safe:animate-in",
 					local.class,
 				)}
 				{...others}
 			>
 				<ComboboxPrimitive.Listbox
-					class="m-0 p-1"
+					class="m-0 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1"
 					onMouseDown={preventInputBlur}
 				/>
 			</ComboboxPrimitive.Content>
@@ -274,13 +277,13 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 		<ComboboxPrimitive.Portal>
 			<ComboboxPrimitive.Content
 				class={cn(
-					"fade-in-80 relative z-50 max-h-popover-fit min-w-32 max-w-viewport-gutter animate-in overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
+					"motion-safe:fade-in-80 relative z-50 flex max-h-popover-fit-available min-w-32 max-w-viewport-gutter flex-col overflow-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md motion-safe:animate-in",
 					local.class,
 				)}
 				{...others}
 			>
 				<ComboboxPrimitive.Listbox
-					class="m-0 overflow-auto p-1"
+					class="m-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1"
 					onMouseDown={preventInputBlur}
 					ref={(el: Element) => {
 						setScrollEl(el as HTMLUListElement);
@@ -331,7 +334,7 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 											>
 												<ComboboxPrimitive.Item
 													item={item}
-													class="relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50"
+													class="relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[selected]:font-medium data-[highlighted]:text-foreground data-[disabled]:opacity-50"
 												>
 													<ComboboxPrimitive.ItemLabel>
 														{item.textValue}

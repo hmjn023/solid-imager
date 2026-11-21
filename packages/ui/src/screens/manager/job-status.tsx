@@ -160,6 +160,7 @@ export function ServerBatchStatus(props: {
 						)}
 					</Show>
 					<Button
+						class="min-h-11 sm:min-h-8"
 						size="sm"
 						variant="outline"
 						onClick={() => props.manager.trackBatchJob(job)}

@@ -73,7 +73,7 @@ export const SHORTCUT_DEFINITIONS = {
 		description: t("definitions.openTheMediaLibrary"),
 		group: "Navigation",
 		scope: "application",
-		defaultBinding: "Mod+1",
+		defaultBinding: "Alt+1",
 	},
 	goManager: {
 		id: "goManager",
@@ -81,7 +81,7 @@ export const SHORTCUT_DEFINITIONS = {
 		description: t("definitions.openMediaManagementTools"),
 		group: "Navigation",
 		scope: "application",
-		defaultBinding: "Mod+2",
+		defaultBinding: "Alt+2",
 	},
 	goJobs: {
 		id: "goJobs",
@@ -89,7 +89,7 @@ export const SHORTCUT_DEFINITIONS = {
 		description: t("definitions.openBackgroundJobActivity"),
 		group: "Navigation",
 		scope: "application",
-		defaultBinding: "Mod+3",
+		defaultBinding: "Alt+3",
 	},
 	goSettings: {
 		id: "goSettings",

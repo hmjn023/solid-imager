@@ -42,7 +42,10 @@ export const en = defineMessages({
 	"aiTaggingModal.iPsSeries": "IPs (Series)",
 	"aiTaggingModal.noCharactersDetected": "No characters detected.",
 	"aiTaggingModal.noIPsDetected": "No IPs detected.",
+	"aiTaggingModal.noTagsDetected": "No tags were detected for this media.",
 	"aiTaggingModal.noTaggingResultReturned": "No tagging result returned",
+	"aiTaggingModal.overwritesExistingAiTagsNotice":
+		"Running AI tagging replaces existing AI-generated tags on this item immediately.",
 	"aiTaggingModal.tagsExtractedFromTheImageUsingTheAIService":
 		"Tags extracted from the image using the AI service.",
 	"aiTaggingModal.tagsExtractedFromTheVideoSRepresentativeThumbnailUsing":
@@ -189,20 +192,21 @@ export const en = defineMessages({
 	"bulkActionDialog.confirm": "Confirm",
 	"bulkActionDialog.copyToAnotherSource": "Copy (to another source)",
 	"bulkActionDialog.destinationFolderPath": "Destination folder path",
-	"bulkActionDialog.doNotResubmitItemsWithUnknownOutcomesCloseThe":
-		"Do not resubmit items with unknown outcomes. Close the dialog and check the list and destination.",
+	"bulkActionDialog.discardRetryDescription":
+		"Some items failed or were not processed yet. Closing now discards the retry list.",
+	"bulkActionDialog.discardRetryTitle": "Discard pending retry?",
 	"bulkActionDialog.eGSubfolderNewDir": "e.g. subfolder/new-dir",
 	"bulkActionDialog.moveFolderWithinThisSource":
 		"Move folder (within this source)",
 	"bulkActionDialog.moveToAnotherSource": "Move (to another source)",
-	"bulkActionDialog.onlyFailedOrUnprocessedItemsCanBeRetriedTo":
-		"Only failed or unprocessed items can be retried to the same destination.",
+	"bulkActionDialog.partialOutcomeRetryable":
+		"{value0} succeeded, {value1} can be retried, {value2} have unknown outcomes. Only failed or unprocessed items can be retried to the same destination.",
+	"bulkActionDialog.partialOutcomeWithUnknown":
+		"{value0} succeeded, {value1} can be retried, {value2} have unknown outcomes. Do not resubmit items with unknown outcomes. Close the dialog and check the list and destination.",
 	"bulkActionDialog.retryFailedOrUnprocessedItems":
 		"Retry failed or unprocessed items",
 	"bulkActionDialog.runABulkActionOnValueValueSelectedMedia":
-		"Run a bulk action on {value0}  selected media items.",
-	"bulkActionDialog.valueSucceededValueCanBeRetriedValueHaveUnknown":
-		"{value0} succeeded, {value1} can be retried, {value2} have unknown outcomes.",
+		"Run a bulk action on {value0} selected media items.",
 	"bulkActionDialog.warningThisActionCannotBeUndoneTheActualFiles":
 		"Warning: this action cannot be undone. The actual files will also be deleted.",
 	"ccipStatus.missing": "Not extracted",
@@ -317,6 +321,7 @@ export const en = defineMessages({
 	"characterCropModal.detectionError": "Detection Error",
 	"characterCropModal.detectPersonsInTheImageUsingDghsImgutilsRs":
 		"Detect persons in the image using dghs-imgutils-rs and preview the cropped regions. No data is saved to the server.",
+	"characterCropModal.downloadCrop": "Download crop",
 	"characterCropModal.noPersonsDetectedInThisImage":
 		"No persons detected in this image.",
 	"characterCropModal.runningPersonDetectionAndCropping":
@@ -376,11 +381,14 @@ export const en = defineMessages({
 	"clipboardCopy.failedToCopy": "Failed to copy",
 	"collectionInspector.closeInspector": "Close inspector",
 	"collectionInspector.created": "Created",
+	"collectionInspector.hideInspector": "Hide inspector",
+	"collectionInspector.inspector": "Inspector",
 	"collectionInspector.openDetails": "Open details",
 	"collectionInspector.resolution": "Resolution",
 	"collectionInspector.selectMediaFromTheList": "Select media from the list",
 	"collectionInspector.selectMediaToShowAPreview":
 		"Select media to show a preview",
+	"collectionInspector.showInspector": "Show inspector",
 	"collectionInspector.size": "Size",
 	"collectionInspector.updated": "Updated",
 	"combobox.toggle": "Toggle",
@@ -513,6 +521,10 @@ export const en = defineMessages({
 	"dataTransfer.chooseDumpFile": "Choose dump file",
 	"dataTransfer.chooseTheDumpTypeBeforeSelectingItsFile":
 		"Choose the dump type before selecting its file.",
+	"dataTransfer.confirmRestoreAction": "Restore dump",
+	"dataTransfer.confirmRestoreDescription":
+		'Restore "{file}" ({format}) into "{source}"?',
+	"dataTransfer.confirmRestoreTitle": "Restore dump into source?",
 	"dataTransfer.dumpFileToRestore": "Dump file to restore",
 	"dataTransfer.export": "Export",
 	"dataTransfer.exportAPortableSourceDumpOrRestoreOneInto":
@@ -531,6 +543,8 @@ export const en = defineMessages({
 	"dataTransfer.restoreFormat": "Restore format",
 	"dataTransfer.restoreWritesIntoTheSelectedSourceExistingSourceConfiguration":
 		"Restore writes into the selected source. Existing source configuration is not replaced.",
+	"dataTransfer.selectSourceHint":
+		"Select a target source first to enable export and restore.",
 	"dataTransfer.tARArchive": "TAR archive",
 	"definitions.commandPalette": "Command palette",
 	"definitions.expandOrCollapseTheApplicationSidebar":
@@ -594,13 +608,20 @@ export const en = defineMessages({
 		"Find matching media and choose one item to keep in each group.",
 	"duplicates.groupValueValueItems": "Group {value0} · {value1} items",
 	"duplicates.keep": "Keep",
+	"duplicates.keepAll": "Keep all",
 	"duplicates.keepLargest": "Keep largest",
 	"duplicates.keepOldest": "Keep oldest",
+	"duplicates.keepOnlyThis": "Keep only this",
 	"duplicates.keepThis": "Keep this",
 	"duplicates.keepValue": "Keep {value0}",
+	"duplicates.openDetail": "Open detail",
+	"duplicates.openDetailValue": "Open detail: {value0}",
 	"duplicates.preview": "Preview",
+	"duplicates.previewTitle": "Media preview",
+	"duplicates.previewValue": "Preview {value0}",
 	"duplicates.scanForDuplicates": "Scan for duplicates",
 	"duplicates.scanning": "Scanning...",
+	"duplicates.skippedBadge": "All kept",
 	"duplicates.thumbnailForValue": "Thumbnail for {value0}",
 	"duplicates.valueDuplicateGroups": "{value0} duplicate groups",
 	"embeddingSearchControls.buildIndexesForImagesAndRepresentativeVideoThumbnailsIn":
@@ -982,6 +1003,7 @@ export const en = defineMessages({
 	"manager.createTitle": "Create {item}",
 	"manager.downloadedValue": "Downloaded {value0}",
 	"manager.editTitle": "Edit {item}",
+	"manager.entitiesGroup": "Entities",
 	"manager.exportFailed": "Export failed",
 	"manager.exportStartedValueDownloadingWhenReady":
 		"Export started ({value0}). Downloading when ready.",
@@ -992,6 +1014,7 @@ export const en = defineMessages({
 		"Restore queued ({value0}). Track it in Jobs.",
 	"manager.scanError": "Error during scan: {error}",
 	"manager.scanResult": "{count} items found.",
+	"manager.toolsGroup": "Tools",
 	"managerBatchState.batchOperationCancelled": "Batch operation cancelled.",
 	"managerBatchState.batchOperationCompletedSuccessfully":
 		"Batch operation completed successfully.",
@@ -999,6 +1022,11 @@ export const en = defineMessages({
 	"managerBatchState.preparingBatchTargets": "Preparing batch targets...",
 	"managerBatchState.theTrackedBatchNoLongerExists":
 		"The tracked batch no longer exists.",
+	"managerDuplicatesState.deletedCount": "Deleted {count} duplicate(s).",
+	"managerDuplicatesState.noneSelectedForDeletion":
+		"No duplicates selected for deletion.",
+	"managerDuplicatesState.partialDeleteResult":
+		"Deleted {deleted}, failed {failed}. Remaining duplicates are still shown.",
 	"managerDuplicatesState.valueGroupsFoundValueDuplicates":
 		"{value0} groups found ({value1} duplicates).",
 	"managerScreen.authorManagementIsUnavailable":
@@ -1155,6 +1183,7 @@ export const en = defineMessages({
 	"mediaChrome.videoNotLoadedUnknownTime": "video not loaded, unknown time.",
 	"mediaChrome.videoPlayer": "video player",
 	"mediaChrome.volume": "volume",
+	"mediaDetail.defaultSourceName": "Media source",
 	"mediaDetailLayout.backToList": "Back to list",
 	"mediaDetailLayout.editMetadata": "Edit details",
 	"mediaDetailLayout.metadata": "Media details",
@@ -1182,6 +1211,9 @@ export const en = defineMessages({
 	"mediaSidebar.negativePrompt": "Negative Prompt:",
 	"mediaSidebar.noPositiveTags": "No positive tags",
 	"mediaSidebar.noValueAssociated": "No {value0} associated",
+	"mediaSidebar.originalDate": "Original date",
+	"mediaSidebar.registered": "Registered",
+	"mediaSidebar.searchTagValue": "Search by tag {value0}",
 	"mediaTagEditor.title": "Assign tags",
 	"mediaTagEditor.description":
 		"Choose tags and save to apply them to this media item.",
@@ -1205,10 +1237,15 @@ export const en = defineMessages({
 		"You have unsaved changes to this description. Leave without saving?",
 	"mediaTileGrid.mediaGrid": "Media grid",
 	"mediaViewer.audioPreviewUnavailable": "Audio preview unavailable",
+	"mediaViewer.directionDown": "down",
+	"mediaViewer.directionLeft": "left",
+	"mediaViewer.directionRight": "right",
+	"mediaViewer.directionUp": "up",
 	"mediaViewer.enterFullscreen": "Enter fullscreen",
 	"mediaViewer.exitFullscreen": "Exit fullscreen",
 	"mediaViewer.failedToFetchMediaValue": "Failed to fetch media: {value0}",
 	"mediaViewer.imageControls": "Image controls",
+	"mediaViewer.imageMovedValue": "Image moved {value0}",
 	"mediaViewer.imagePanControls": "Image pan controls",
 	"mediaViewer.imageZoomControls": "Image zoom controls",
 	"mediaViewer.openValueImageViewer": "Open {value0} image viewer",
@@ -1231,6 +1268,9 @@ export const en = defineMessages({
 	"mobileSearchFilterDialog.charactersValue": "Characters: {value0}",
 	"mobileSearchFilterDialog.clearConditions": "Clear conditions",
 	"mobileSearchFilterDialog.currentConditions": "Current conditions",
+	"mobileSearchFilterDialog.discardChangesDescription":
+		"Your unapplied filter edits will be discarded.",
+	"mobileSearchFilterDialog.discardChangesTitle": "Discard filter changes?",
 	"mobileSearchFilterDialog.excludedTagsValue": "Excluded tags: {value0}",
 	"mobileSearchFilterDialog.filenameValue": "Filename: {value0}",
 	"mobileSearchFilterDialog.iPsValue": "IPs: {value0}",
@@ -1270,10 +1310,15 @@ export const en = defineMessages({
 	"notFoundScreen.pageNotFound": "Page not found",
 	"oppaiOracleModal.analyzingImage": "Analyzing image...",
 	"oppaiOracleModal.analyzingVideoThumbnail": "Analyzing video thumbnail...",
+	"oppaiOracleModal.copyTags": "Copy tags",
 	"oppaiOracleModal.generalTags": "General Tags",
 	"oppaiOracleModal.noOppaiOracleResultReturned":
 		"No OppaiOracle result returned",
+	"oppaiOracleModal.noTagsDetected":
+		"No OppaiOracle tags were detected for this media.",
 	"oppaiOracleModal.oppaiOracleTaggingResults": "OppaiOracle Tagging Results",
+	"oppaiOracleModal.previewOnlyNotice":
+		"Preview only: these results are not saved to the database.",
 	"oppaiOracleModal.showingTopValueOfValueValueTags":
 		"Showing top {value0} of {value2} tags",
 	"oppaiOracleModal.tagsExtractedFromTheImageUsingTheOppaiOracleModel":
@@ -1460,6 +1505,7 @@ export const en = defineMessages({
 	"proSearchBuilder.folder": "Folder",
 	"proSearchBuilder.greaterThan": "greater than (>)",
 	"proSearchBuilder.group": "+ Group",
+	"proSearchBuilder.groupOperator": "Group operator",
 	"proSearchBuilder.isAnyOf": "is any of",
 	"proSearchBuilder.isEmpty": "is empty",
 	"proSearchBuilder.isNoneOf": "is none of",
@@ -1468,11 +1514,16 @@ export const en = defineMessages({
 	"proSearchBuilder.lessThan": "less than (<)",
 	"proSearchBuilder.noConditionsUseConditionToAddOne":
 		"No conditions. Use “+ Condition” to add one.",
+	"proSearchBuilder.operator": "Operator",
 	"proSearchBuilder.search": "Search...",
 	"proSearchBuilder.startsWith": "starts with",
+	"proSearchBuilder.targetField": "Target field",
 	"proSearchBuilder.thisConditionNeedsNoValue": "This condition needs no value",
 	"proSearchBuilder.true": "true",
 	"proSearchBuilder.value": "Value...",
+	"proSearchDialog.discardChangesDescription":
+		"Your unsaved edits to advanced search conditions will be lost.",
+	"proSearchDialog.discardChangesTitle": "Discard search condition changes?",
 	"proSearchDialog.done": "Done",
 	"proSearchDialog.editAdvancedConditions": "Edit advanced conditions",
 	"proSearchDialog.editAdvancedSearchConditions":
@@ -1530,6 +1581,8 @@ export const en = defineMessages({
 		"No items yet. Enter a name to add a new item.",
 	"relationsEditor.nameSearchHint": "Filter by name",
 	"relationsEditor.noneSelected": "No items selected",
+	"relationsEditor.partialSaveRetryHint":
+		"Failed to save some changes ({value0}). Completed changes were kept; save again to retry only the remaining items.",
 	"relationsEditor.removeSelection": "Remove “{name}” from selection",
 	"relationsEditor.selectedItems": "Selected",
 	"relationsEditor.searchValue": "Search {value0}",
@@ -1560,6 +1613,8 @@ export const en = defineMessages({
 	"searchComposer.danbooruHint":
 		"Space for AND, -tag to exclude, ~tag for OR. You can also use rating:g and order:score.",
 	"searchComposer.enterTags": "Enter tags",
+	"searchComposer.inspectMoreFilters": "View or remove hidden filter tokens",
+	"searchComposer.moreActiveFilters": "Additional active filters",
 	"searchComposer.pixivHint":
 		"Space for AND, -tag to exclude, ~tag for OR. Converts Danbooru tags to pixiv tags.",
 	"searchComposer.removeValueValue": "Remove {value0}:{value1}",
@@ -1582,6 +1637,7 @@ export const en = defineMessages({
 	"searchFilters.excludedTags": "Excluded tags",
 	"searchFilters.filenameSearch": "Filename search",
 	"searchFilters.iP": "IP",
+	"searchFilters.removeFilterValue": "Remove {value0} filter",
 	"searchFilters.searchAuthorsOrIDs": "Search authors or IDs...",
 	"searchFilters.searchCharacters": "Search characters...",
 	"searchFilters.searchExcludedTags": "Search excluded tags...",
@@ -1636,16 +1692,24 @@ export const en = defineMessages({
 		"Enter a complete server URL, for example https://imager.example.com.",
 	"serverSettings.healthy": "Healthy ({latency} ms)",
 	"serverSettings.httpUrlRequired": "Use an http:// or https:// URL.",
+	"serverSettings.invalidApiResponse":
+		"The server returned an invalid API response.",
 	"serverSettings.noEmbeddedCredentials":
 		"Credentials must not be embedded in the URL.",
 	"serverSettings.serverURLMustUseHttpOrHttpsWithoutEmbedded":
 		"Server URL must use http or https without embedded credentials.",
+	"serverSettingsScreen.activeBadge": "Active",
 	"serverSettingsScreen.addServer": "Add server",
 	"serverSettingsScreen.checkConnection": "Check connection",
+	"serverSettingsScreen.checkStatus": "Health check",
 	"serverSettingsScreen.chooseWhichSolidImagerServerTheTauriAppUses":
 		"Choose which solid-imager server the Tauri app uses. These connections are stored locally on this device and are independent of server-side settings.",
 	"serverSettingsScreen.connection": "Connection",
+	"serverSettingsScreen.deleteServerDescription":
+		'This removes "{name}" ({url}) from saved servers on this device.',
+	"serverSettingsScreen.deleteServerTitle": "Remove saved server?",
 	"serverSettingsScreen.editServer": "Edit server",
+	"serverSettingsScreen.editingBadge": "Editing",
 	"serverSettingsScreen.enterANameForThisServer":
 		"Enter a name for this server.",
 	"serverSettingsScreen.failedToSaveServerSettings":
@@ -1675,6 +1739,7 @@ export const en = defineMessages({
 	"shortcutSettingsPanel.customizeKeyboardControlsForThisDeviceThesePreferencesAre":
 		"Customize keyboard controls for this device. These preferences are stored locally.",
 	"shortcutSettingsPanel.invalidShortcutValue": "Invalid shortcut: {value0}",
+	"shortcutSettingsPanel.pressShortcut": "Press shortcut…",
 	"shortcutSettingsPanel.record": "Record",
 	"shortcutSettingsPanel.recordingForValueWasCancelled":
 		"Recording for {value0} was cancelled.",
@@ -1871,9 +1936,10 @@ export const en = defineMessages({
 	"types.warmResponsiveImageCache": "Warm responsive image cache",
 	"uploadMediaModal.addASequenceNumberWhenNamesMatch":
 		"Add a sequence number when names match.",
+	"uploadMediaModal.addFiles": "Add files",
 	"uploadMediaModal.aFileWithThisNameAlreadyExists":
 		"A file with this name already exists",
-	"uploadMediaModal.changeFiles": "Change files",
+	"uploadMediaModal.changeFiles": "Replace files",
 	"uploadMediaModal.chooseFiles": "Choose files",
 	"uploadMediaModal.discardUploadChanges": "Discard upload changes?",
 	"uploadMediaModal.doNotUploadFilesWhenNamesMatch":
@@ -1883,11 +1949,14 @@ export const en = defineMessages({
 		"Enter details for the media you want to upload.",
 	"uploadMediaModal.fetchedPreview": "Fetched preview",
 	"uploadMediaModal.filename": "Filename",
+	"uploadMediaModal.firstFileScopeHint":
+		"Applies only to the first file when uploading multiple files.",
 	"uploadMediaModal.onFilenameConflict": "On filename conflict",
 	"uploadMediaModal.orAddFilesUsingTheFilePicker":
 		"Or add files using the file picker.",
 	"uploadMediaModal.overwrite": "Overwrite",
 	"uploadMediaModal.processing": "Processing",
+	"uploadMediaModal.removeFileValue": "Remove {value0}",
 	"uploadMediaModal.rename": "Rename",
 	"uploadMediaModal.replaceTheExistingFileWhenNamesMatch":
 		"Replace the existing file when names match.",

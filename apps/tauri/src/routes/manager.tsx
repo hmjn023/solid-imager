@@ -249,6 +249,19 @@ function ManagerPage() {
 				releaseThumbnailUrl: (url) => URL.revokeObjectURL(url),
 			}}
 			manager={manager}
+			duplicateActions={{
+				openMedia: (mediaSourceId, mediaId) => {
+					void navigate({
+						to: "/sources/$mediaSourceId/$mediaId",
+						params: { mediaSourceId, mediaId },
+					});
+				},
+				thumbnailUrl: (item) =>
+					fetchAsBlobUrl(
+						`/api/sources/${item.mediaSourceId}/thumbnail/${item.id}?t=${new Date(item.modifiedAt).getTime()}`,
+					),
+				releaseThumbnailUrl: (url) => URL.revokeObjectURL(url),
+			}}
 			transferActions={createTransferActions(queryClient)}
 		/>
 	);

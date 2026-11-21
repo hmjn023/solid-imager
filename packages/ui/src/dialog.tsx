@@ -42,7 +42,7 @@ const DialogOverlay = <T extends ValidComponent = "div">(
 	return (
 		<DialogPrimitiveOverlay
 			class={cn(
-				"data-[closed]:fade-out-0 data-[expanded]:fade-in-0 fixed inset-0 z-50 bg-background/80 data-[closed]:animate-out data-[expanded]:animate-in",
+				"fixed inset-0 z-50 bg-background/80 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0",
 				props.class,
 			)}
 			{...rest}
@@ -74,12 +74,12 @@ const DialogContent = <T extends ValidComponent = "div">(
 			<DialogOverlay />
 			<DialogPrimitiveContent
 				class={cn(
-					"fixed z-50 grid overflow-y-auto overscroll-contain border bg-background shadow-lg duration-200 data-[closed]:animate-out data-[expanded]:animate-in motion-reduce:animate-none",
+					"fixed z-50 grid overflow-y-auto overscroll-contain border bg-background shadow-lg duration-200 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in",
 					placement() === "center"
-						? "top-1/2 left-1/2 max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 p-6 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 sm:max-h-dialog-screen-sm sm:rounded-lg"
+						? "top-1/2 left-1/2 max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 rounded-lg p-6 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[expanded]:zoom-in-95 sm:max-h-dialog-safe"
 						: placement() === "left"
-							? "inset-y-0 left-0 h-dvh max-h-none w-popover-medium max-w-none translate-x-0 translate-y-0 origin-left gap-4 rounded-none border-y-0 border-l-0 p-4 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:slide-out-to-left data-[expanded]:slide-in-from-left sm:max-h-none"
-							: "inset-y-0 right-0 left-auto h-dvh max-h-none w-popover-narrow max-w-none translate-x-0 translate-y-0 origin-right gap-4 rounded-none border-y-0 border-r-0 p-6 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:slide-out-to-right data-[expanded]:slide-in-from-right sm:max-h-none",
+							? "inset-y-0 left-0 h-dvh max-h-none w-popover-medium max-w-none translate-x-0 translate-y-0 origin-left gap-4 rounded-none border-y-0 border-l-0 p-4 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:slide-out-to-left motion-safe:data-[expanded]:slide-in-from-left sm:max-h-none"
+							: "inset-y-0 right-0 left-auto h-dvh max-h-none w-popover-narrow max-w-none translate-x-0 translate-y-0 origin-right gap-4 rounded-none border-y-0 border-r-0 p-6 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:slide-out-to-right motion-safe:data-[expanded]:slide-in-from-right sm:max-h-none",
 					props.class,
 				)}
 				{...rest}
@@ -88,7 +88,7 @@ const DialogContent = <T extends ValidComponent = "div">(
 				<DialogPrimitiveCloseButton
 					aria-label={t("actions.close")}
 					disabled={props.closeDisabled}
-					class="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[expanded]:bg-accent data-[expanded]:text-muted-foreground"
+					class="absolute top-2.5 right-2.5 z-20 grid size-11 place-items-center rounded-sm text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:text-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none sm:size-8"
 				>
 					<svg
 						class="size-4"
@@ -116,7 +116,7 @@ const DialogHeader: Component<ComponentProps<"div">> = (props) => {
 	return (
 		<div
 			class={cn(
-				"sticky top-0 z-10 shrink-0 space-y-1.5 bg-background text-center sm:text-left",
+				"sticky top-0 z-10 shrink-0 space-y-1.5 bg-background pr-12 text-center sm:text-left",
 				props.class,
 			)}
 			{...rest}

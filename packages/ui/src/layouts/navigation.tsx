@@ -64,10 +64,14 @@ export function NavigationItem(props: {
 				aria-current={active() ? "page" : undefined}
 				aria-label={props.label}
 				as={Link}
-				class="h-11 px-3 font-medium text-muted-foreground md:h-10"
+				class={
+					props.expanded
+						? "h-11 px-3 font-medium text-muted-foreground md:h-10"
+						: "h-11 justify-center px-0 font-medium text-muted-foreground md:h-10"
+				}
 				isActive={active()}
 				onClick={props.onClick}
-				title={props.expanded ? undefined : props.label}
+				tooltip={props.expanded ? undefined : props.label}
 				to={props.to}
 			>
 				<Icon aria-hidden="true" class="shrink-0" size={18} />
