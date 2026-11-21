@@ -61,9 +61,6 @@ import {
 	type SQLWrapper,
 	sql,
 } from "drizzle-orm";
-import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import type { PgliteDatabase } from "drizzle-orm/pglite";
 import {
 	authors,
 	characters,
@@ -115,16 +112,6 @@ type MediaWithRelations = InferSelectModel<typeof medias> & {
 
 const DEFAULT_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
-
-function getRelationalClient(client: DrizzleExecutor) {
-	// DrizzleExecutor union type doesn't expose .query correctly in TS
-	return (
-		client as
-			| BunSQLDatabase<typeof import("../schema")>
-			| NodePgDatabase<typeof import("../schema")>
-			| PgliteDatabase<typeof import("../schema")>
-	).query;
-}
 
 // ============================================================================
 // Mapping Functions
@@ -1083,8 +1070,8 @@ export function createMediaRepository(
 		): Promise<MediaDetails | null> {
 			try {
 				const client = getExecutor(tx);
-				const result = await getRelationalClient(client).medias.findFirst({
-					where: eq(medias.id, mediaId),
+				const result = await client.query.medias.findFirst({
+					where: { id: mediaId },
 					with: {
 						tags: {
 							with: {
@@ -1657,15 +1644,29 @@ export function createMediaRepository(
 			}
 		},
 
-		async bulkDelete(mediaIds: string[], tx?: Transaction): Promise<void> {
-			if (mediaIds.length === 0) return;
+		async bulkDelete(mediaSourceId, mediaIds, tx) {
+			if (mediaIds.length === 0) return [];
 			try {
 				const client = getExecutor(tx);
 				const CHUNK_SIZE = 500;
+				const deleted: Pick<
+					InferSelectModel<typeof medias>,
+					"id" | "filePath"
+				>[] = [];
 				for (let i = 0; i < mediaIds.length; i += CHUNK_SIZE) {
 					const chunk = mediaIds.slice(i, i + CHUNK_SIZE);
-					await client.delete(medias).where(inArray(medias.id, chunk));
+					const rows = await client
+						.delete(medias)
+						.where(
+							and(
+								eq(medias.mediaSourceId, mediaSourceId),
+								inArray(medias.id, chunk),
+							),
+						)
+						.returning();
+					deleted.push(...rows.map(({ id, filePath }) => ({ id, filePath })));
 				}
+				return deleted;
 			} catch (error) {
 				throw new UnexpectedError("Failed to bulk delete media", error);
 			}

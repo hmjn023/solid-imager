@@ -78,8 +78,6 @@ test("search results remain traversable across detail navigation", async ({
 		name: new RegExp(E2E_SIMILAR_FILE_NAME),
 	});
 	await similarResult.click();
-	await expect(page).toHaveURL(secondSearchUrl);
-	await similarResult.dblclick();
 	await expect(page).toHaveURL(
 		new RegExp(`${mediaPath(E2E_SIMILAR_MEDIA_ID)}/?$`),
 	);
@@ -102,6 +100,13 @@ test("search results remain traversable across detail navigation", async ({
 	await waitForAppHydration(page);
 	await expect(page).toHaveURL(firstSearchUrl);
 	await expectSearchState(page, E2E_PRIMARY_FILE_NAME);
+
+	await page.goForward();
+	await expect(page).toHaveURL(clearedSearchUrl);
+	await expect(searchToken(page, E2E_PRIMARY_FILE_NAME)).toHaveCount(0);
+	await page.goForward();
+	await expect(page).toHaveURL(secondSearchUrl);
+	await expectSearchState(page, E2E_SIMILAR_FILE_NAME);
 
 	// A copied/bookmarked URL has no in-memory history state, so it must restore
 	// the same snapshot through the server-side lookup endpoint.
@@ -150,4 +155,44 @@ test("preserves submitted search state before immediate navigation", async ({
 	await waitForAppHydration(page);
 	await expect(page).toHaveURL(snapshotUrl);
 	await expectSearchState(page, E2E_SIMILAR_FILE_NAME);
+});
+
+test("restores a legacy local search session at a direct URL", async ({
+	page,
+}) => {
+	const key = "solid-imager:search-state:current-all";
+	await page.addInitScript(
+		({ key, fileName }) => {
+			if (sessionStorage.getItem(key) === null) {
+				sessionStorage.setItem(
+					key,
+					JSON.stringify({
+						value: {
+							type: "group",
+							operator: "and",
+							children: [
+								{
+									type: "criterion",
+									target: "keyword",
+									operator: "contains",
+									value: fileName,
+								},
+							],
+						},
+					}),
+				);
+			}
+		},
+		{ key, fileName: E2E_PRIMARY_FILE_NAME },
+	);
+	await page.goto("/search");
+	await waitForAppHydration(page);
+	await expectSearchState(page, E2E_PRIMARY_FILE_NAME);
+	await expect
+		.poll(() => page.evaluate((key) => sessionStorage.getItem(key), key))
+		.toContain('"mode":"simple"');
+
+	await page.reload();
+	await waitForAppHydration(page);
+	await expectSearchState(page, E2E_PRIMARY_FILE_NAME);
 });

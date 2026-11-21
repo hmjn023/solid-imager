@@ -52,10 +52,14 @@ test("display language changes the whole workspace and survives direct navigatio
 		"true",
 	);
 	await page.setViewportSize({ width: 375, height: 812 });
-	await expect(page.getByRole("tab", { name: /Interface/ })).toHaveAttribute(
-		"aria-selected",
-		"true",
-	);
+	await expect(
+		page.getByRole("button", { name: /^Settings categories/ }),
+	).toHaveText("Interface");
+	await expect(
+		page
+			.getByRole("tabpanel", { name: /^Interface/ })
+			.getByLabel("Display language", { exact: true }),
+	).toHaveText("English");
 	await expect
 		.poll(() =>
 			page.evaluate(

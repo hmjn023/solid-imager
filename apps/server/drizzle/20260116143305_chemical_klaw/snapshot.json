@@ -1,0 +1,82 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "6cedd404-fa2b-4d5a-a102-98646b0de103",
+  "prevIds": [
+    "b6f7eabc-e928-4d28-be5e-b4148d0294b7"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_urls",
+        "idx_media_urls_url"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_urls_url",
+        "n|idx|public.idx_media_urls_url",
+        "e|idx|public.idx_media_urls_url",
+        "n|rel|public.idx_media_urls_url"
+      ],
+      "reads": [
+        "e|tbl|public.media_urls",
+        "n|sch|public",
+        "e|col|public.media_urls.url"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_urls",
+        "idx_media_urls_url_unique"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_urls_url_unique",
+        "n|idx|public.idx_media_urls_url_unique",
+        "e|idx|public.idx_media_urls_url_unique",
+        "n|rel|public.idx_media_urls_url_unique"
+      ],
+      "reads": [
+        "n|tbl|public.media_urls",
+        "n|sch|public",
+        "n|col|public.media_urls.url"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_urls",
+        "name": "idx_media_urls_url_unique",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "url",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_media_urls_url\"]"
+    }
+  ]
+}

@@ -97,8 +97,7 @@ oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定して�
 ```bash
 bun install
 cp apps/server/.env.example apps/server/.env
-sudo -E docker compose --project-directory . up -d
-bun --filter @solid-imager/server run db:migrate
+bun run --cwd apps/server db:migrate
 bun run dev
 ```
 
@@ -124,11 +123,7 @@ importerが削除され、依存関係を解決できなくなります。通常
 引き続き `aube i` を使用します。Bun側の依存関係を更新した場合は
 `bun.lock` も合わせて更新してください。
 
-PostgreSQLを使わずPGliteで動かす場合は、DB_HOSTを上書きしてマイグレーションを実行します。
-
-```bash
-DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
-```
+PGliteとPostgreSQLは同じ `db:migrate` コマンドを使います。接続先は `apps/server/.env` で設定します。[DBのセットアップ](docs/development.md#セットアップ)
 
 PostgreSQL接続はBun.SQLを既定で使用します。`COPY`、`LISTEN/NOTIFY`、PostGISなどBun.SQLで未対応の機能が必要な環境では、`DB_POSTGRES_DRIVER=node-postgres` を設定すると従来の `pg` 経路へ切り替えられます。
 
@@ -167,7 +162,7 @@ CUDA を使用する場合は CUDA 対応の ONNX Runtime、NVIDIA ドライバ�
 
 ### 本番コンテナ
 
-本番の `app` コンテナは Python 3 を追加した `Dockerfile.runtime` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。`youtube-dl-exec` が同梱する `yt-dlp` は Python zipapp のため、Python 3 が必要です。アプリケーション依存関係の `bun install` はコンテナ内で実行しません。
+本番の `app` コンテナは FFmpeg を含む `Dockerfile.runtime` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。アプリケーション依存関係の `bun install` はコンテナ内で実行しません。
 
 ビルドホストで一度だけ実行します。
 
@@ -191,6 +186,8 @@ fi
 
 `APP_ARTIFACT_DIR` には `node_modules/` と `apps/server/.output/` を含む、ビルドホストのプロジェクトディレクトリを指定してください。
 `APP_RUNTIME_IMAGE` を指定した場合は、Python 3 がインストール済みの互換イメージを使用してください。この場合、`app` はローカルビルドせず、指定イメージをそのまま使用します。
+
+mise Daemons で PostgreSQL・Bun・nginx を起動する場合は、[開発環境と管理スクリプト](docs/development.md#mise-でサービスを起動)を参照してください。
 
 ## 主要スクリプト
 

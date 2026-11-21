@@ -18,6 +18,7 @@ import { createUserRepository } from "./repositories/user-repository";
 import type { DrizzleExecutor } from "./types";
 
 export type { DrizzleExecutor } from "./types";
+export { relations } from "./relations";
 export {
 	lockTagNames,
 	resolveTagNameRedirects,

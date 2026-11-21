@@ -775,9 +775,9 @@ test("CCIP WebMCP follows the returned job only when requested", async ({
 		const pending = page.webmcp.callTool(tool, { ...input, showJob: true });
 		try {
 			await acknowledged.promise;
-			// Leaving Jobs disposes both the list and inspector queries.
+			// Leaving Jobs disposes the list, job types, and inspector queries.
 			browserHealth.allowRequestFailure(
-				/\/api\/rpc\/jobs\/(?:get|list)(?:\?|$)/,
+				/\/api\/rpc\/jobs\/(?:get|list|types)(?:\?|$)/,
 				"net::ERR_ABORTED",
 			);
 			await page

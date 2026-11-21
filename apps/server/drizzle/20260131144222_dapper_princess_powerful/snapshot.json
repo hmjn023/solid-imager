@@ -1,0 +1,81 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "64eda839-8529-4767-abd9-10490b496c29",
+  "prevIds": [
+    "23bd4668-aa6e-44ad-bf70-a1e6781771f2"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "presets",
+        "sort"
+      ],
+      "writes": [
+        "s|col|public.presets.sort",
+        "n|col|public.presets.sort",
+        "e|col|public.presets.sort"
+      ],
+      "reads": [
+        "n|tbl|public.presets",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "presets",
+        "order"
+      ],
+      "writes": [
+        "s|col|public.presets.order",
+        "n|col|public.presets.order",
+        "e|col|public.presets.order"
+      ],
+      "reads": [
+        "n|tbl|public.presets",
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "presets",
+        "name": "sort",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "presets",
+        "name": "order",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

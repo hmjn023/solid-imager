@@ -29,7 +29,6 @@ import {
 	FormError,
 	FormFieldMessage,
 	getFormErrorMessage,
-	getFormSubmitError,
 } from "./form-message";
 import { createSourceFormSchema, type SourceFormValues } from "./form-schemas";
 import { Input } from "./input";
@@ -239,6 +238,7 @@ function SourceTextInput(props: SourceTextInputProps) {
 
 export function SourceFormModal(props: SourceFormModalProps) {
 	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
+	const [submitError, setSubmitError] = createSignal<string>();
 	const sourceTypes = () => props.sourceTypes ?? ["local"];
 	const defaultValues = () => {
 		const fallbackType = sourceTypes()[0] ?? "local";
@@ -252,17 +252,18 @@ export function SourceFormModal(props: SourceFormModalProps) {
 	};
 	const form = createForm(() => ({
 		defaultValues: defaultValues(),
+		listeners: {
+			onChange: () => setSubmitError(undefined),
+		},
 		validators: {
 			onSubmit: createSourceFormSchema(props.editingSource?.type !== "s3"),
 		},
 		onSubmit: async ({ value }) => {
-			form.setErrorMap({ onSubmit: undefined });
+			setSubmitError(undefined);
 			try {
 				await props.onSubmit(toSourceFormSubmitData(value));
 			} catch (error) {
-				form.setErrorMap({
-					onSubmit: { form: getErrorMessage(error), fields: {} },
-				});
+				setSubmitError(getErrorMessage(error));
 			}
 		},
 	}));
@@ -277,6 +278,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 				activeElement instanceof HTMLElement ? activeElement : undefined;
 			form.reset(defaultValues());
 			setShowDiscardDialog(false);
+			setSubmitError(undefined);
 		}
 		wasOpen = isOpen;
 	});
@@ -603,9 +605,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 							)}
 						</form.Subscribe>
 
-						<form.Subscribe selector={(state) => state.errorMap.onSubmit}>
-							{(error) => <FormError message={getFormSubmitError(error())} />}
-						</form.Subscribe>
+						<FormError message={submitError()} />
 
 						<DialogFooter>
 							<Button onClick={requestClose} type="button" variant="outline">

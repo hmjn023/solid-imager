@@ -118,7 +118,7 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
 
   const pgliteDir = path.join(runtimeDir, "pglite");
   const client = createPglite(pgliteDir);
-  const db = drizzle(client);
+  const db = drizzle({ client });
 
   try {
     await migrate(db, { migrationsFolder: path.join(appRoot, "drizzle") });

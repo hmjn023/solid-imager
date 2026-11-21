@@ -16,12 +16,12 @@ import type {
 	IMediaContextProcessor,
 	IMediaService,
 	ISourceEventPublisher,
-	IThumbnailManager,
 } from "./ports/media-service";
 import {
 	MediaQueryService,
 	type MediaQueryRepository,
 } from "./services/media-query-service";
+import type { MediaDeletionEffects } from "./services/media-deletion-effects";
 import { MediaServiceImpl } from "./services/media-service";
 import {
 	MediaTransferService,
@@ -33,6 +33,7 @@ import {
 } from "./services/media-upload-service";
 
 export type { DeferredActions, IMediaService } from "./ports/media-service";
+export { createMediaDeletionEffects } from "./services/media-deletion-effects";
 export { RelatedMediaService } from "./services/related-media-service";
 
 export interface MediaServiceDeps {
@@ -50,7 +51,7 @@ export interface MediaServiceDeps {
 	imageProcessor: IImageProcessor;
 	transactionManager: TransactionManager;
 	eventPublisher: ISourceEventPublisher;
-	thumbnailManager: IThumbnailManager;
+	mediaDeletionEffects: MediaDeletionEffects;
 	logger: ILogger;
 	deferredActionExecutor: IDeferredActionExecutor;
 	mediaContextProcessor: IMediaContextProcessor;
@@ -82,7 +83,7 @@ export function createMediaService(deps: MediaServiceDeps): IMediaService {
 		deps.transactionManager,
 		deps.jobRepository,
 		deps.eventPublisher,
-		deps.thumbnailManager,
+		deps.mediaDeletionEffects,
 		deps.logger,
 		deps.deferredActionExecutor,
 		deps.mediaContextProcessor,

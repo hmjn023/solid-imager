@@ -96,7 +96,7 @@ function setup() {
 		{ transaction: async (callback) => callback({}) },
 		{} as IJobRepository,
 		{ publishSource: vi.fn(), notifyMediaCopied: vi.fn() },
-		{ deleteThumbnail: vi.fn() },
+		{ execute: vi.fn() },
 		{ info: vi.fn(), error: vi.fn(), warn: vi.fn() },
 		{ execute: vi.fn() },
 		{ addContextMetadataToExistingMedia: vi.fn() },

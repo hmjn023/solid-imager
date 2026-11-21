@@ -1,9 +1,12 @@
 import { call } from "@orpc/server";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { randomUUID } from "node:crypto";
-import { createRepositories, type DrizzleExecutor } from "@solid-imager/db";
+import {
+	relations,
+	createRepositories,
+	type DrizzleExecutor,
+} from "@solid-imager/db";
 import { jobs, mediaSources } from "@solid-imager/db/schema";
-import * as schema from "@solid-imager/db/schema";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
@@ -62,11 +65,11 @@ describe("persisted import, attempt and batch transitions", () => {
 				throw new Error("Use only an isolated 855_state PostgreSQL fixture");
 			const pool = new Pool({ connectionString: postgresUrl, max: 4 });
 			client = { exec: (text) => pool.query(text), close: () => pool.end() };
-			database = drizzlePostgres(pool, { schema });
+			database = drizzlePostgres({ client: pool, relations });
 			// This dedicated database validates real independent-connection locking.
 			// Production migrations are exercised by the PGlite branch; no schema changes are introduced here.
 			await client.exec(`
-				DROP TABLE IF EXISTS jobs, media_sources CASCADE;
+				DROP TABLE IF EXISTS jobs, media, media_sources CASCADE;
 				DROP TYPE IF EXISTS job_status, media_source_type, media_source_sync_status;
 				CREATE TYPE job_status AS ENUM ('pending', 'in_progress', 'completed', 'failed', 'cancelled');
 				CREATE TYPE media_source_type AS ENUM ('local', 'sftp', 's3');
@@ -77,6 +80,11 @@ describe("persisted import, attempt and batch transitions", () => {
 					created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now(),
 					sync_status media_source_sync_status NOT NULL DEFAULT 'idle', last_sync_started_at timestamp,
 					last_sync_completed_at timestamp, last_sync_error text
+				);
+				CREATE TABLE media (
+					id uuid PRIMARY KEY DEFAULT uuidv7(),
+					source_id uuid NOT NULL REFERENCES media_sources(id) ON DELETE CASCADE,
+					file_name text NOT NULL, modified_at timestamp NOT NULL DEFAULT now()
 				);
 				CREATE TABLE jobs (
 					id uuid PRIMARY KEY DEFAULT uuidv7(), type text NOT NULL,
@@ -92,7 +100,7 @@ describe("persisted import, attempt and batch transitions", () => {
 		} else {
 			const pglite = createPglite();
 			client = pglite;
-			const pgliteDatabase = drizzle(pglite, { schema });
+			const pgliteDatabase = drizzle({ client: pglite, relations });
 			database = pgliteDatabase;
 			await migrate(pgliteDatabase, {
 				migrationsFolder: MIGRATIONS_DIR,

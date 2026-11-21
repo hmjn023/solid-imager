@@ -10,13 +10,14 @@ import {
 	For,
 	on,
 	onCleanup,
-	onMount,
+	type Accessor,
 	type JSX,
 } from "solid-js";
 import { getMediaGridColumnCount } from "../../skeleton";
 
 /** Uses the Manager or dialog scroller; cards may have different measured heights. */
 export function ClusteringVirtualGrid<T>(props: {
+	scrollRoot: Accessor<HTMLElement | undefined>;
 	items: T[];
 	itemKey: (item: T) => string | number;
 	label: string;
@@ -30,7 +31,7 @@ export function ClusteringVirtualGrid<T>(props: {
 	let root: HTMLUListElement | undefined;
 	let metricsFrame: number | undefined;
 	let measureFrame: number | undefined;
-	const [scroller, setScroller] = createSignal<HTMLElement | null>(null);
+	const scroller = () => props.scrollRoot() ?? null;
 	const [width, setWidth] = createSignal(0);
 	const [margin, setMargin] = createSignal(0);
 	const [focusedKey, setFocusedKey] = createSignal<string | number | null>(
@@ -117,23 +118,23 @@ export function ClusteringVirtualGrid<T>(props: {
 		};
 		measureFrame = requestAnimationFrame(measureVisible);
 	};
-	onMount(() => {
-		const owner = root?.closest("[data-clustering-scroll]");
-		if (!(owner instanceof HTMLElement) || !root) return;
-		setScroller(owner);
-		updateMetrics();
-		const observer = new ResizeObserver(scheduleMetrics);
-		observer.observe(root);
-		observer.observe(owner);
-		if (root.parentElement) observer.observe(root.parentElement);
-		owner.addEventListener("scroll", updateMetrics, { passive: true });
-		onCleanup(() => {
-			if (metricsFrame !== undefined) cancelAnimationFrame(metricsFrame);
-			if (measureFrame !== undefined) cancelAnimationFrame(measureFrame);
-			observer.disconnect();
-			owner.removeEventListener("scroll", updateMetrics);
-		});
-	});
+	createEffect(
+		on(scroller, (owner) => {
+			if (!owner || !root) return;
+			updateMetrics();
+			const observer = new ResizeObserver(scheduleMetrics);
+			observer.observe(root);
+			observer.observe(owner);
+			if (root.parentElement) observer.observe(root.parentElement);
+			owner.addEventListener("scroll", updateMetrics, { passive: true });
+			onCleanup(() => {
+				if (metricsFrame !== undefined) cancelAnimationFrame(metricsFrame);
+				if (measureFrame !== undefined) cancelAnimationFrame(measureFrame);
+				observer.disconnect();
+				owner.removeEventListener("scroll", updateMetrics);
+			});
+		}),
+	);
 	createEffect(
 		on(
 			() => props.resetKey,

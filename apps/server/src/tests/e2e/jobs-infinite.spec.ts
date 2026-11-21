@@ -40,6 +40,13 @@ const jobs: JobDto[] = Array.from({ length: 240 }, (_, i) => ({
 
 test("keeps the active job status visible on a phone", async ({ page }) => {
 	await page.setViewportSize({ width: 430, height: 932 });
+	// Other scenarios can leave cancelled jobs in the shared E2E database.
+	await page.route("**/api/rpc/jobs/list", (route) => {
+		if (route.request().postDataJSON()?.json?.status !== "cancelled") {
+			return route.continue();
+		}
+		return route.fulfill({ json: { json: { items: [], total: 0 } } });
+	});
 	await page.goto("/jobs");
 	await waitForAppHydration(page);
 	const status = page.getByRole("button", { name: "ジョブの状態で絞り込む" });
@@ -165,4 +172,33 @@ test("loads more jobs on scroll and counts all status/type matches beyond the fi
 	await page.reload();
 	await waitForAppHydration(page);
 	await expect(rows).toHaveCount(200);
+});
+
+test("returns to the scrolled job and restores focus on a phone", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 390, height: 640 });
+	await page.route("**/api/rpc/jobs/list", (route) =>
+		route.fulfill({ json: { json: { items: jobs.slice(0, 60), total: 60 } } }),
+	);
+	await page.route("**/api/rpc/jobs/get", (route) =>
+		route.fulfill({ json: { json: jobs[30] } }),
+	);
+	await page.goto("/jobs");
+	await waitForAppHydration(page);
+	const row = page.getByRole("table").locator("tbody tr").nth(30);
+	const selected = row.locator("button[aria-pressed]");
+	await selected.scrollIntoViewIfNeeded();
+	const scrollArea = page.locator("[data-management-scroll]").first();
+	const offset = await scrollArea.evaluate((element) => element.scrollTop);
+	expect(offset).toBeGreaterThan(100);
+	await selected.click();
+	const detail = page.getByRole("complementary", { name: "ジョブの詳細" });
+	await expect(detail).toBeVisible();
+	await expect(scrollArea).toBeHidden();
+	await detail.getByRole("button", { name: "一覧へ戻る" }).click();
+	await expect(selected).toBeFocused();
+	expect(await scrollArea.evaluate((element) => element.scrollTop)).toBe(
+		offset,
+	);
 });

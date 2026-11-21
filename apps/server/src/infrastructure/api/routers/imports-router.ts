@@ -140,8 +140,8 @@ export const importsRouter = os.router({
 	 */
 	listPending: os.listPending.handler(async () => {
 		const pendingJobs = await db.query.jobs.findMany({
-			where: and(eq(jobs.type, "import_request"), eq(jobs.status, "pending")),
-			orderBy: (fields, { desc }) => [desc(fields.createdAt)],
+			where: { type: "import_request", status: "pending" },
+			orderBy: { createdAt: "desc" },
 		});
 
 		return pendingJobs.map((job) => ({

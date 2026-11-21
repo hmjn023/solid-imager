@@ -1,0 +1,101 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "b6f7eabc-e928-4d28-be5e-b4148d0294b7",
+  "prevIds": [
+    "184a752e-e13b-4b5d-b953-4bb0fbf4f8ab"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_collections",
+        "idx_media_collections_media_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_collections_media_id",
+        "n|idx|public.idx_media_collections_media_id",
+        "e|idx|public.idx_media_collections_media_id",
+        "n|rel|public.idx_media_collections_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_collections",
+        "n|sch|public",
+        "n|col|public.media_collections.media_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_urls",
+        "idx_media_urls_url"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_urls_url",
+        "n|idx|public.idx_media_urls_url",
+        "e|idx|public.idx_media_urls_url",
+        "n|rel|public.idx_media_urls_url"
+      ],
+      "reads": [
+        "n|tbl|public.media_urls",
+        "n|sch|public",
+        "n|col|public.media_urls.url"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_collections",
+        "name": "idx_media_collections_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_urls",
+        "name": "idx_media_urls_url",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "url",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

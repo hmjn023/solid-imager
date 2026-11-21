@@ -14,13 +14,13 @@ description: DB schema・migration・repository・domain mapperを変更する�
 schemaを編集し、migrationを生成・適用する。schemaと生成migrationは同じPRに含める。
 
 ```bash
-bun --filter @solid-imager/server run db:generate
-bun --filter @solid-imager/server run db:migrate
-# PGliteの場合
-bun --filter @solid-imager/server run db:migrate:pglite
+bun run --cwd apps/server db:generate
+bun run --cwd apps/server db:migrate
 # DB内容の確認
-bun --filter @solid-imager/server run db:studio
+bun run --cwd apps/server db:studio
 ```
+
+PostgreSQLとPGliteは同じ `db:migrate` を使う。PGliteでは `DB_HOST=pglite` を設定する。
 
 ## Repository変更
 

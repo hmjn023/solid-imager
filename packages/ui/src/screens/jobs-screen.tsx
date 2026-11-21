@@ -80,6 +80,11 @@ import {
 import {
 	CategoryLabel,
 	ManagementHeader,
+	ManagementScreen,
+	ManagementScrollArea,
+	MANAGEMENT_CONTENT_PADDING,
+	MANAGEMENT_CATEGORY_GRID,
+	MANAGEMENT_CATEGORY_LIST,
 } from "../workspace/management-layout";
 import {
 	getRetryableJobIds,
@@ -911,7 +916,7 @@ function JobsInspector(props: {
 								</div>
 							</div>
 						</header>
-						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 scrollbar-stable">
+						<ManagementScrollArea class={MANAGEMENT_CONTENT_PADDING}>
 							<Show when={job().error}>
 								{(error) => (
 									<Alert class="mt-3" variant="destructive">
@@ -1077,7 +1082,7 @@ function JobsInspector(props: {
 									</dl>
 								</CollapsibleContent>
 							</Collapsible>
-						</div>
+						</ManagementScrollArea>
 					</>
 				)}
 			</Show>
@@ -1201,39 +1206,41 @@ export function JobsScreen(props: JobsScreenProps) {
 	};
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
-			<ManagementHeader
-				actions={
-					<div class="flex items-center gap-2">
-						<Show when={props.state().data}>
-							{(data) => (
-								<span class="hidden text-xs text-muted-foreground sm:inline">
-									{t("jobsScreen.valueJobs", {
-										value0: String(data().total.toLocaleString()),
-									})}
-								</span>
-							)}
-						</Show>
-						<Button
-							aria-busy={props.isRefreshing()}
-							disabled={props.isRefreshing()}
-							onClick={() => void refresh()}
-							size="sm"
-							variant="outline"
-						>
-							<RefreshCw aria-hidden="true" size={14} />
-							{props.isRefreshing()
-								? t("jobsScreen.refreshing")
-								: t("actions.refresh")}
-						</Button>
-					</div>
-				}
-				description={t(
-					"jobsScreen.reviewBackgroundJobProgressFailuresAndHistory",
-				)}
-				title={t("navigation.jobs")}
-			/>
-
+		<ManagementScreen
+			header={
+				<ManagementHeader
+					actions={
+						<div class="flex items-center gap-2">
+							<Show when={props.state().data}>
+								{(data) => (
+									<span class="hidden text-xs text-muted-foreground sm:inline">
+										{t("jobsScreen.valueJobs", {
+											value0: String(data().total.toLocaleString()),
+										})}
+									</span>
+								)}
+							</Show>
+							<Button
+								aria-busy={props.isRefreshing()}
+								disabled={props.isRefreshing()}
+								onClick={() => void refresh()}
+								size="sm"
+								variant="outline"
+							>
+								<RefreshCw aria-hidden="true" size={14} />
+								{props.isRefreshing()
+									? t("jobsScreen.refreshing")
+									: t("actions.refresh")}
+							</Button>
+						</div>
+					}
+					description={t(
+						"jobsScreen.reviewBackgroundJobProgressFailuresAndHistory",
+					)}
+					title={t("navigation.jobs")}
+				/>
+			}
+		>
 			<div
 				class={
 					detailOpen() && selectedJob()
@@ -1241,9 +1248,13 @@ export function JobsScreen(props: JobsScreenProps) {
 						: "grid min-h-0 min-w-0 flex-1"
 				}
 			>
-				<div
+				<ManagementScrollArea
 					ref={setScrollRoot}
-					class={`min-h-0 min-w-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 scrollbar-stable ${detailOpen() && selectedJob() ? "hidden border-r border-border lg:block" : "lg:px-6 xl:px-8"}`}
+					class={
+						detailOpen() && selectedJob()
+							? "hidden border-r border-border px-3 py-4 sm:px-4 lg:block"
+							: MANAGEMENT_CONTENT_PADDING
+					}
 				>
 					<Show when={props.inspection?.failed()}>
 						<ErrorState
@@ -1326,16 +1337,10 @@ export function JobsScreen(props: JobsScreenProps) {
 						</Show>
 					</div>
 					<Tabs onChange={changeStatus} value={activeFilter()}>
-						<div
-							class={
-								detailOpen()
-									? "grid gap-4"
-									: "grid gap-6 lg:grid-cols-settings-sidebar xl:gap-8"
-							}
-						>
+						<div class={detailOpen() ? "grid gap-4" : MANAGEMENT_CATEGORY_GRID}>
 							<TabsList
 								aria-label={t("jobsScreen.jobStatusFilter")}
-								class={`hidden h-auto justify-start gap-1 rounded-none bg-transparent p-0 ${detailOpen() ? "" : "lg:sticky lg:top-0 lg:flex lg:flex-col lg:self-start"}`}
+								class={`hidden h-auto justify-start gap-1 rounded-none bg-transparent p-0 ${detailOpen() ? "" : `${MANAGEMENT_CATEGORY_LIST} lg:flex lg:flex-col`}`}
 							>
 								<For each={JOB_FILTERS}>
 									{(filter) => {
@@ -1464,7 +1469,7 @@ export function JobsScreen(props: JobsScreenProps) {
 							</div>
 						</div>
 					</Tabs>
-				</div>
+				</ManagementScrollArea>
 
 				<Show when={detailOpen() && selectedJob()}>
 					<JobsInspector
@@ -1488,6 +1493,6 @@ export function JobsScreen(props: JobsScreenProps) {
 					/>
 				</Show>
 			</div>
-		</section>
+		</ManagementScreen>
 	);
 }

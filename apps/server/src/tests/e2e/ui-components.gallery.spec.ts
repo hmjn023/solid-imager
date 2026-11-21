@@ -273,6 +273,25 @@ test("virtual media grid stays populated and DOM-bounded during fast scrolling",
 	expect(transferSummary.retransferredUrls).toEqual([]);
 });
 
+test("End focuses the last virtual media tile outside the mounted rows", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1_280, height: 720 });
+	await page.goto(`${getGalleryUrl()}/?virtual-grid=1`);
+
+	const scroller = page.getByTestId("virtual-grid-scroller");
+	const firstTile = scroller.locator("[data-media-id]").first();
+	const lastTile = scroller.locator(
+		'[data-media-id="00000000-0000-4000-8000-000000000999"]',
+	);
+	await expect(firstTile).toBeInViewport();
+	await expect(lastTile).toHaveCount(0);
+	await firstTile.press("End");
+
+	await expect(lastTile).toBeFocused();
+	await expect(lastTile).toBeInViewport();
+});
+
 test("virtual media grid stays populated after restoring a deep scroll position", async ({
 	page,
 }) => {

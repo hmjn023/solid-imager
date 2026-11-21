@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
+import { relations, type DrizzleExecutor } from "@solid-imager/db";
 import { SQL } from "bun";
 import { drizzle as drizzleBunSql } from "drizzle-orm/bun-sql";
 import { drizzle as drizzleNodePg } from "drizzle-orm/node-postgres";
@@ -7,26 +8,18 @@ import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { Pool } from "pg";
 import { logger } from "~/infrastructure/logger";
 import { createPglite } from "./pglite";
+import { readPostgresConfig } from "./postgres-config";
 import { resolvePostgresDriver } from "./postgres-driver";
-import * as schema from "./schema";
 
-export type BunSqlDb = ReturnType<typeof drizzleBunSql<typeof schema>>;
-export type NodePgDb = ReturnType<typeof drizzleNodePg<typeof schema>>;
-export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
-export type DbInstance = BunSqlDb | NodePgDb | PgLiteDb;
-
-/**
- * Type representing either a database instance or a transaction client.
- * In Drizzle, both share the same common interface for queries.
- */
-export type TransactionClient = BunSqlDb | NodePgDb | PgLiteDb;
+type QueryClient = SQL | Pool | PGlite;
+type DbInstance = DrizzleExecutor & { readonly $client: QueryClient };
 
 let _db: DbInstance | null = null;
-let _queryClient: SQL | Pool | PGlite | null = null;
+let _queryClient: QueryClient | null = null;
 
 type SharedDbState = {
 	db: DbInstance;
-	queryClient: SQL | Pool | PGlite;
+	queryClient: QueryClient;
 };
 
 const sharedDbGlobal = globalThis as typeof globalThis & {
@@ -51,7 +44,6 @@ function setSharedDbState(state: SharedDbState): void {
  * Initializes and returns the Drizzle ORM database instance.
  * This function ensures that the database connection is established only once.
  * It reads database connection details from environment variables.
- * @returns {BunSqlDb | NodePgDb | PgLiteDb} The initialized Drizzle ORM database instance.
  * @throws {Error} If required database environment variables are not set.
  */
 function initializeDb() {
@@ -66,7 +58,13 @@ function initializeDb() {
 		return _db;
 	}
 
-	const dbHost = process.env.DB_HOST;
+	const {
+		host: dbHost,
+		port: dbPort,
+		database: dbName,
+		user: dbUser,
+		password: dbPassword,
+	} = readPostgresConfig();
 	const isTestEnv =
 		process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
@@ -86,7 +84,7 @@ function initializeDb() {
 		);
 		const client = createPglite(pglitePath);
 		_queryClient = client;
-		_db = drizzlePglite(client, { schema });
+		_db = drizzlePglite({ client, relations });
 		setSharedDbState({
 			db: _db,
 			queryClient: client,
@@ -94,14 +92,9 @@ function initializeDb() {
 		return _db;
 	}
 
-	const dbPort = process.env.DB_PORT || "5432";
-	const dbName = process.env.DB_DATABASE || process.env.DB_NAME;
-	const dbUser = process.env.DB_USER;
-	const dbPassword = process.env.DB_PASSWORD;
-
 	if (!(dbHost && dbName && dbUser && dbPassword)) {
 		throw new Error(
-			"Database environment variables are not set (DB_HOST, DB_DATABASE/DB_NAME, DB_USER, DB_PASSWORD)",
+			"Set DB_HOST, POSTGRES_DB, POSTGRES_USER, and POSTGRES_PASSWORD to connect to PostgreSQL",
 		);
 	}
 
@@ -109,7 +102,7 @@ function initializeDb() {
 	logger.info({ postgresDriver }, "[DB] Using PostgreSQL driver");
 
 	let queryClient: SQL | Pool;
-	let database: BunSqlDb | NodePgDb;
+	let database: DbInstance;
 	if (postgresDriver === "bun-sql") {
 		const client = new SQL({
 			adapter: "postgres",
@@ -120,7 +113,7 @@ function initializeDb() {
 			database: dbName,
 		});
 		queryClient = client;
-		database = drizzleBunSql({ client, schema });
+		database = drizzleBunSql({ client, relations });
 	} else {
 		const client = new Pool({
 			host: dbHost,
@@ -130,7 +123,7 @@ function initializeDb() {
 			database: dbName,
 		});
 		queryClient = client;
-		database = drizzleNodePg(client, { schema });
+		database = drizzleNodePg({ client, relations });
 	}
 	_queryClient = queryClient;
 	_db = database;

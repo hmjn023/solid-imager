@@ -368,9 +368,6 @@ test(
 			name: new RegExp(E2E_PRIMARY_FILE_NAME),
 		});
 		await primaryResult.click();
-		await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
-		await expect(primaryResult).toHaveAttribute("aria-current", "true");
-		await primaryResult.dblclick();
 		await expect(page).toHaveURL(new RegExp(`${mediaPath()}/?$`));
 		await expect(
 			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),

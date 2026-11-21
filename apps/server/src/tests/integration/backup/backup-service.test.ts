@@ -440,7 +440,7 @@ describe("BackupService Integration", () => {
 
 		// 3. Verify DB
 		const restoredMedia = await db.query.medias.findFirst({
-			where: eq(medias.filePath, "restore.png"),
+			where: { filePath: "restore.png" },
 			with: {
 				tags: true,
 				projects: { with: { project: true } },
@@ -523,7 +523,7 @@ describe("BackupService Integration", () => {
 
 		expect(result.processed).toBe(2);
 		const restored = await db.query.medias.findMany({
-			where: eq(medias.mediaSourceId, testSourceId),
+			where: { mediaSourceId: testSourceId },
 			with: { authors: { with: { author: { with: { accounts: true } } } } },
 		});
 		const authorIds = restored.map((media) => media.authors[0]?.author.id);
@@ -562,7 +562,7 @@ describe("BackupService Integration", () => {
 
 		// 3. Verify character-IP relationships were inferred from media
 		const character = await db.query.characters.findFirst({
-			where: eq(characters.name, "Inferred Character"),
+			where: { name: "Inferred Character" },
 			with: { ips: { with: { ip: true } } },
 		});
 
@@ -606,7 +606,7 @@ describe("BackupService Integration", () => {
 
 		// 3. Verify only linkedIps were used
 		const character = await db.query.characters.findFirst({
-			where: eq(characters.name, "Priority Character"),
+			where: { name: "Priority Character" },
 			with: { ips: { with: { ip: true } } },
 		});
 

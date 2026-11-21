@@ -39,3 +39,7 @@ export {
 export type { SearchGroup, SearchCriterion } from "../domain/search/criteria";
 export { searchGroupSchema } from "../domain/search/criteria";
 export type { MediaSort } from "../domain/search/sort";
+export {
+	decodeSearchSession,
+	encodeSearchSession,
+} from "../domain/search/session";

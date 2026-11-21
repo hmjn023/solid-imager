@@ -1,6 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import {
 	type Hotkey,
+	matchesKeyboardEvent,
 	normalizeHotkey,
 	validateHotkey,
 } from "@tanstack/solid-hotkeys";
@@ -160,12 +161,13 @@ export function serializeShortcutPreferences(
 	return typeof serialized === "string" ? serialized : "";
 }
 
-/** Finds the first normalized binding collision in the same scope, excluding the shortcut being edited. */
+/** Finds the first collision with another binding in the same scope, including overlaps observed in the recording event. */
 export function findShortcutConflict(
 	bindings: ShortcutBindings,
 	shortcutId: ShortcutId,
 	candidate: ShortcutBinding,
 	platform: ShortcutPlatform = "linux",
+	event?: KeyboardEvent,
 ): ShortcutConflict | null {
 	if (candidate === null) {
 		return null;
@@ -173,6 +175,10 @@ export function findShortcutConflict(
 
 	const definition = getShortcutDefinition(shortcutId);
 	const normalizedCandidate = normalizeShortcutBinding(candidate, platform);
+	const eventMatchesCandidate =
+		event !== undefined &&
+		typeof normalizedCandidate === "string" &&
+		matchesKeyboardEvent(event, normalizedCandidate, platform);
 
 	for (const otherDefinition of SHORTCUT_DEFINITION_LIST) {
 		if (
@@ -183,14 +189,18 @@ export function findShortcutConflict(
 		}
 
 		const otherBinding = bindings[otherDefinition.id];
+		if (otherBinding === null) continue;
+		const normalizedOther = normalizeShortcutBinding(otherBinding, platform);
 		if (
-			otherBinding !== null &&
-			normalizeShortcutBinding(otherBinding, platform) === normalizedCandidate
+			normalizedOther === normalizedCandidate ||
+			(eventMatchesCandidate &&
+				typeof normalizedOther === "string" &&
+				matchesKeyboardEvent(event, normalizedOther, platform))
 		) {
 			return {
 				shortcutId: otherDefinition.id,
 				label: otherDefinition.label,
-				binding: normalizedCandidate,
+				binding: normalizedOther,
 			};
 		}
 	}

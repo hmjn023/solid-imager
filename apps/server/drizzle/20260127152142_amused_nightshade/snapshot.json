@@ -1,0 +1,47 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "7b500850-e180-4e2b-80d5-26b0f716236a",
+  "prevIds": [
+    "5674d4c3-c8c9-4333-b01e-384546bb0ef7"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "media_ips",
+        "confidence"
+      ],
+      "writes": [
+        "s|col|public.media_ips.confidence",
+        "n|col|public.media_ips.confidence",
+        "e|col|public.media_ips.confidence"
+      ],
+      "reads": [
+        "n|tbl|public.media_ips",
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_ips",
+        "name": "confidence",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

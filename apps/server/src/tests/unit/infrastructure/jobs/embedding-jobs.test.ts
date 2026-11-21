@@ -6,7 +6,11 @@ import {
 import { importWorkOwner, type IJobRepository } from "@solid-imager/core/jobs";
 import { listBatchTargets } from "~/infrastructure/services/job-batch-targets";
 import { runImportSubmission } from "~/infrastructure/services/import-submission";
-import { createImportBatch, createRepositories } from "@solid-imager/db";
+import {
+	relations,
+	createImportBatch,
+	createRepositories,
+} from "@solid-imager/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq, sql } from "drizzle-orm";
@@ -73,7 +77,7 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 	});
 	async function setup() {
 		client = createPglite();
-		const database = drizzle(client, { schema });
+		const database = drizzle({ client, relations });
 		mocks.database = database;
 		mocks.repository = createRepositories(() => database, {
 			info: mocks.info,

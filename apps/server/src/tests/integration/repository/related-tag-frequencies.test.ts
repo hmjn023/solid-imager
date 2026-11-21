@@ -14,7 +14,7 @@ it("backfills tag frequencies and keeps them equal to live document counts", asy
 		`);
 		const migration = await readFile(
 			new URL(
-				"../../../../drizzle/0035_related_tag_frequencies.sql",
+				"../../../../drizzle/20261108094132_related_tag_frequencies/migration.sql",
 				import.meta.url,
 			),
 			"utf8",

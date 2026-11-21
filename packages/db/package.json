@@ -19,7 +19,7 @@
     "@solid-imager/core": "workspace:*"
   },
   "peerDependencies": {
-    "drizzle-orm": "^0.45.4"
+    "drizzle-orm": "1.0.0-rc.5"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
