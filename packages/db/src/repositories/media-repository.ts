@@ -294,6 +294,7 @@ function buildTimestampExactMatch(
 /**
  * Builds a Drizzle SQL predicate for timestamp columns such as `medias.createdAt`
  * without passing raw strings or numbers into Drizzle's `Date.toISOString()` serializer.
+ * Calendar dates (YYYY-MM-DD) denote UTC days, independent of the server timezone.
  */
 export function buildTimestampCondition(
 	column: SQLWrapper,

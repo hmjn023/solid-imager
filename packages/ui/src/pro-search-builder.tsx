@@ -726,6 +726,12 @@ function CriterionBuilder(props: {
 				</Match>
 			</Switch>
 
+			<Show when={isDateTarget() && !isEmptyOperator(props.criterion.operator)}>
+				<p class="text-xs text-muted-foreground">
+					{t("proSearchBuilder.utcDateHint")}
+				</p>
+			</Show>
+
 			<Button
 				class="w-full text-destructive"
 				onClick={props.onRemove}

@@ -1,5 +1,7 @@
 import { defineMessages } from "./schema";
 export const en = defineMessages({
+	"proSearchBuilder.utcDateHint":
+		"Dates are searched in UTC, which may differ from the displayed local date.",
 	"aboutScreen.aboutSolidImager": "About Solid Imager",
 	"aboutScreen.aPIDocumentation": "API documentation",
 	"aboutScreen.aWorkspaceForOrganizingAndSearchingMediaManagingRelated":

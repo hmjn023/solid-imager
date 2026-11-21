@@ -67,7 +67,7 @@ export function SearchComposer(props: SearchComposerProps) {
 	const [suggestionDraft, setSuggestionDraft] = createDebouncedSignal("", 150);
 	createEffect(() => setSuggestionDraft(props.draft));
 	const suggestions = createMemo(() => {
-		if (!props.draft.trim()) return [];
+		if (!props.draft.trim() || suggestionDraft() !== props.draft) return [];
 		return getSearchComposerSuggestions(
 			suggestionDraft(),
 			props.filterData,
@@ -85,7 +85,7 @@ export function SearchComposer(props: SearchComposerProps) {
 			inputRef={props.inputRef}
 			onDraftChange={props.onDraftChange}
 			onEmptyBackspace={() => {
-				const last = visibleTokens().findLast(
+				const last = props.tokens.findLast(
 					(token) => token.removable !== false,
 				);
 				if (last) props.onRemoveToken(last);

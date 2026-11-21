@@ -1,5 +1,7 @@
 import { defineLocale } from "./schema";
 export const ja = defineLocale({
+	"proSearchBuilder.utcDateHint":
+		"日付は UTC 基準で検索します。表示されるローカル日付と異なる場合があります。",
 	"aboutScreen.aboutSolidImager": "Solid Imagerについて",
 	"aboutScreen.aPIDocumentation": "APIドキュメント",
 	"aboutScreen.aWorkspaceForOrganizingAndSearchingMediaManagingRelated":

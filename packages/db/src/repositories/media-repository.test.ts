@@ -36,6 +36,19 @@ describe("buildTimestampCondition", () => {
 		expect(lteQuery?.params).toEqual(["2026-11-22T00:00:00.000Z"]);
 	});
 
+	it("keeps UTC calendar boundaries explicit for JST instants", () => {
+		expect(
+			compileCondition("equals", "2026-11-21T00:00:00+09:00")?.params,
+		).toEqual(["2026-11-20T15:00:00.000Z"]);
+		const day = compileCondition("equals", "2026-11-21");
+		expect(day?.sql).toContain(">=");
+		expect(day?.sql).toContain("<");
+		expect(day?.params).toEqual([
+			new Date("2026-11-21T09:00:00+09:00").toISOString(),
+			new Date("2026-11-22T09:00:00+09:00").toISOString(),
+		]);
+	});
+
 	it("accepts numeric epoch timestamps, ISO strings, and Date objects as ISO timestamp params", () => {
 		const numericQuery = compileCondition("gte", 0);
 		expect(numericQuery?.params).toEqual(["1970-01-01T00:00:00.000Z"]);
