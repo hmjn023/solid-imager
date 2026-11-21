@@ -6,6 +6,7 @@ import {
 	RelatedMedia,
 } from "@solid-imager/ui/screens/media-detail";
 import { createQuery } from "@tanstack/solid-query";
+import { ClientOnly } from "@tanstack/solid-router";
 import { type Accessor, Show } from "solid-js";
 import { MediaActions } from "~/components/media/media-actions";
 import { MediaSidebar } from "~/components/media/media-sidebar";
@@ -58,27 +59,35 @@ function MediaContent(props: {
 					media={media}
 					onUpdate={() => onUpdate()}
 					renderActions={(actionMedia, actionOnUpdate) => (
-						<MediaActions media={actionMedia} onUpdate={actionOnUpdate} />
+						<ClientOnly>
+							<MediaActions media={actionMedia} onUpdate={actionOnUpdate} />
+						</ClientOnly>
 					)}
 					sourceName={sourceName()}
 				/>
 			)}
 			renderMediaSidebar={(media, isUpdating, onUpdate) => (
-				<MediaSidebar
-					isUpdating={isUpdating}
-					media={media}
-					onUpdate={onUpdate}
-				/>
+				<ClientOnly>
+					<MediaSidebar
+						isUpdating={isUpdating}
+						media={media}
+						onUpdate={onUpdate}
+					/>
+				</ClientOnly>
 			)}
 			renderMediaViewer={(media) => <ObservedMediaViewer media={media} />}
 			renderRelatedMedia={(media) => (
-				<RelatedMedia
-					media={media}
-					queryOptions={relatedMediaQueryOptions}
-					renderThumbnail={(thumbnailProps) => (
-						<ThumbnailImage {...thumbnailProps} />
-					)}
-				/>
+				<div class="contents">
+					<ClientOnly>
+						<RelatedMedia
+							media={media}
+							queryOptions={relatedMediaQueryOptions}
+							renderThumbnail={(thumbnailProps) => (
+								<ThumbnailImage {...thumbnailProps} />
+							)}
+						/>
+					</ClientOnly>
+				</div>
 			)}
 			transport={createServerTransport(props.mediaSourceId)}
 		/>

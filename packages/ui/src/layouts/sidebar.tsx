@@ -178,7 +178,7 @@ export function Sidebar(props: SidebarProps) {
 								<NavigationItem
 									expanded={props.expanded}
 									icon={NAVIGATION_ITEMS[0].icon}
-									label={NAVIGATION_ITEMS[0].label}
+									label={t(NAVIGATION_ITEMS[0].labelKey)}
 									onClick={props.onNavigate}
 									to={NAVIGATION_ITEMS[0].to}
 								>
@@ -240,7 +240,7 @@ export function Sidebar(props: SidebarProps) {
 										<NavigationItem
 											expanded={props.expanded}
 											icon={item.icon}
-											label={item.label}
+											label={t(item.labelKey)}
 											onClick={props.onNavigate}
 											to={item.to}
 										>

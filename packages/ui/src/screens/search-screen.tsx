@@ -1,3 +1,4 @@
+import { useRenderedSearchState } from "../search-initial-state";
 import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import {
@@ -104,6 +105,7 @@ export type SearchScreenProps = SearchWorkspaceProps & {
 };
 
 export function SearchScreen(props: SearchScreenProps) {
+	const searchState = useRenderedSearchState();
 	const addSource = useContext(AddSourceContext);
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
@@ -132,7 +134,8 @@ export function SearchScreen(props: SearchScreenProps) {
 	const sourceName = () =>
 		props.sources?.find((source) => source.id === props.selectedSource)?.name ??
 		t("searchScreen.allMedia");
-	const canRenderContent = () => !props.ssrGuard || isMounted();
+	const canRenderContent = () =>
+		!props.ssrGuard || isMounted() || page().hasData();
 	const noSources = () => {
 		const state = page().filterStates.sources();
 		return (
@@ -140,7 +143,9 @@ export function SearchScreen(props: SearchScreenProps) {
 		);
 	};
 	const isUnfiltered = () =>
-		page().resultsCurrent() && !props.selectedSource && !hasSearchConditions();
+		page().resultsCurrent() &&
+		!props.selectedSource &&
+		!hasSearchConditions(searchState());
 	const clearSearch = () => {
 		clearPresetFilters();
 		page().handleSearch();
@@ -299,7 +304,7 @@ export function SearchScreen(props: SearchScreenProps) {
 							onBulkAction={props.onBulkAction}
 							onClearSelection={props.onClearSelection}
 							onClearSearch={
-								page().resultsCurrent() && hasSearchConditions()
+								page().resultsCurrent() && hasSearchConditions(searchState())
 									? clearSearch
 									: undefined
 							}

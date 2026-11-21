@@ -25,6 +25,7 @@ export const jobsQueryKeys = {
 	infinite: (input: Pick<JobListRequest, "status" | "type">) =>
 		["jobs", "infinite", input] as const,
 	types: () => ["jobs", "types"] as const,
+	activeBatches: () => ["jobs", "activeBatches"] as const,
 	targets: (jobId: string) => ["jobs", "targets", jobId] as const,
 	detail: (jobId: string) => ["jobs", "detail", jobId] as const,
 };

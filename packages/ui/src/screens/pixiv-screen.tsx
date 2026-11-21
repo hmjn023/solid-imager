@@ -9,6 +9,7 @@ import type {
 	PixivSearchResult,
 } from "@solid-imager/core/external-viewer";
 import { createQuery } from "@tanstack/solid-query";
+import { ClientOnly } from "@tanstack/solid-router";
 import Clock3 from "lucide-solid/icons/clock-3";
 import Search from "lucide-solid/icons/search";
 import UserRound from "lucide-solid/icons/user-round";
@@ -42,6 +43,7 @@ import { createPixivSearchHistory } from "../external-viewer/viewer-search-histo
 import { ViewerSearchHistoryContent } from "../external-viewer/viewer-search-history-dialog";
 import { pixivImageHref } from "../external-viewer/post-media";
 import { createViewerSearch } from "../external-viewer/use-viewer-search";
+import { viewerPostQueryOptions } from "../external-viewer/query-options";
 import { PixivBookmarkFilters } from "../external-viewer/pixiv-bookmark-filters";
 import { PixivBookmarkAction } from "../external-viewer/pixiv-bookmark-action";
 import {
@@ -196,15 +198,14 @@ export function PixivScreen(props: PixivProps) {
 		props.client.imports.bulkAdd({ items }),
 	);
 	const detail = createQuery(() => ({
-		queryKey: ["pixiv", "artwork", props.selectedPostId, ...account.scope()],
-		queryFn: () =>
-			account
-				.transport()
-				.viewer.pixivArtwork({ id: props.selectedPostId ?? 0 }),
+		...viewerPostQueryOptions(
+			"pixiv",
+			props.selectedPostId,
+			(id) => account.transport().viewer.pixivArtwork({ id }),
+			account.scope(),
+		),
 		enabled: account.ready() && !!props.selectedPostId,
 		gcTime: 0,
-		retry: false,
-		staleTime: 30_000,
 	}));
 	const history = createPixivViewingHistory(historyScope);
 	createEffect(
@@ -268,7 +269,7 @@ export function PixivScreen(props: PixivProps) {
 			emptyTitle={t("pixivScreen.noMatchingWorks")}
 			emptyDescription={emptyDescription}
 			actions={
-				<>
+				<ClientOnly>
 					<Select
 						options={feedOptions()}
 						optionValue="value"
@@ -338,7 +339,7 @@ export function PixivScreen(props: PixivProps) {
 							{accountLabel()}
 						</DropdownMenuItem>
 					</ViewerActionsMenu>
-				</>
+				</ClientOnly>
 			}
 			toolbarContent={
 				<>

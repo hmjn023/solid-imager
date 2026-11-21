@@ -108,7 +108,9 @@ describe("browser language preference", () => {
 	});
 
 	it("restores the language before module-level labels are created and updates document language", async () => {
-		vi.stubGlobal("document", { documentElement: { lang: "ja" } });
+		vi.stubGlobal("document", {
+			documentElement: { lang: "ja", dataset: {} },
+		});
 		vi.stubGlobal("localStorage", { getItem: () => "en" });
 		vi.resetModules();
 		const i18n = await import("./index");
@@ -119,7 +121,9 @@ describe("browser language preference", () => {
 	});
 
 	it("uses Japanese when storage is unavailable", async () => {
-		vi.stubGlobal("document", { documentElement: { lang: "en" } });
+		vi.stubGlobal("document", {
+			documentElement: { lang: "en", dataset: {} },
+		});
 		vi.stubGlobal("localStorage", {
 			getItem: () => {
 				throw new Error("blocked");
@@ -129,6 +133,16 @@ describe("browser language preference", () => {
 		const i18n = await import("./index");
 		expect(i18n.initializeBrowserLocale()).toBe("ja");
 		expect(i18n.t("actions.save")).toBe("保存");
+	});
+
+	it("uses the server-rendered document language during hydration", async () => {
+		vi.stubGlobal("document", {
+			documentElement: { lang: "en", dataset: { serverRendered: "" } },
+		});
+		vi.stubGlobal("localStorage", { getItem: () => "ja" });
+		vi.resetModules();
+		const i18n = await import("./index");
+		expect(i18n.t("actions.save")).toBe("Save");
 	});
 
 	it("persists language before reloading all application state", async () => {

@@ -7,4 +7,5 @@ export { useJobInspection } from "../hooks/use-job-inspection";
 export { useJobsQueryEvents } from "../hooks/use-jobs-query-events";
 export { jobSelectionSearchSchema } from "../screens/jobs-selection";
 
-export { useJobsList } from "../hooks/use-jobs-list";
+export { jobTypesQueryOptions, useJobsList } from "../hooks/use-jobs-list";
+export { buildInfiniteJobsQueryOptions } from "../query-options/jobs-query";

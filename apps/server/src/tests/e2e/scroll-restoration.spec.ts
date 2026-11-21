@@ -249,12 +249,14 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 const restorationCases = [
 	{
 		name: "search",
+		linkName: /^ライブラリ$/,
 		entryPath: "/search",
 		heading: "すべてのメディア",
 		scrollerSelector: '[data-media-scroll="search"]',
 	},
 	{
 		name: "source media",
+		linkName: new RegExp(`^${E2E_SOURCE_NAME}`),
 		entryPath: `/sources/${E2E_SOURCE_ID}`,
 		heading: E2E_SOURCE_NAME,
 		scrollerSelector: `[data-media-scroll="${E2E_SOURCE_ID}"]`,
@@ -285,7 +287,13 @@ for (const restorationCase of restorationCases) {
 					...body,
 					json: {
 						...body.json,
-						params: { ...params, limit: Math.max(1, Math.min(4, 9 - offset)) },
+						params: {
+							...params,
+							// Background jobs can change the date order between pages.
+							sort: "name",
+							order: "asc",
+							limit: Math.max(1, Math.min(4, 9 - offset)),
+						},
 					},
 				},
 			});
@@ -295,7 +303,10 @@ for (const restorationCase of restorationCases) {
 				json: { ...envelope, json: { ...envelope.json, total: 9 } },
 			});
 		});
-		await page.goto(restorationCase.entryPath);
+		// The intercepted first page must come from client-side navigation.
+		await page.goto("/about");
+		await waitForAppHydration(page);
+		await page.getByRole("link", { name: restorationCase.linkName }).click();
 		const scroller = page.locator(restorationCase.scrollerSelector);
 		const tiles = scroller.locator("[data-media-grid] [data-media-id]");
 		await expect(tiles).toHaveCount(4);

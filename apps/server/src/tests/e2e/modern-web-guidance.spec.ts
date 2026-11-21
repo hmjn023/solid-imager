@@ -46,7 +46,7 @@ test("IME confirmation does not execute a command palette action", async ({
 		});
 		await expect(palette).toBeVisible();
 		await expect(input).toHaveValue("統計");
-		await expect(page).toHaveURL(/\/search$/);
+		await expect(page).toHaveURL(/\/search(?:\?search=[0-9a-f-]+)?$/);
 	}
 	await input.press("Enter");
 	await expect(palette).toBeHidden();
@@ -134,7 +134,7 @@ test("zoomed images support keyboard and single-click panning", async ({
 		await dialog.getByRole("button", { name: "拡大", exact: true }).click();
 	}
 	await dialog
-		.getByRole("button", { name: "画像をleftへ移動", exact: true })
+		.getByRole("button", { name: "画像を左へ移動", exact: true })
 		.click();
 	await expect
 		.poll(() =>
@@ -172,8 +172,13 @@ test("reduced motion suppresses image transitions and popover scaling", async ({
 	await page.emulateMedia({ reducedMotion: "no-preference" });
 	await expect(image).toHaveCSS("transition-duration", "0.15s");
 	await page.keyboard.press("Escape");
+	const actions = page.getByRole("button", {
+		name: "その他の操作",
+		exact: true,
+	});
+	await actions.click({ trial: true });
 	await page.emulateMedia({ reducedMotion: "reduce" });
-	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
+	await actions.click();
 	const menu = page.getByRole("menu");
 	await expect(
 		menu.getByRole("menuitem", { name: "原本をダウンロード", exact: true }),

@@ -109,13 +109,12 @@ function getBrowserLocalStorage(): Storage | null {
 	}
 }
 
-const MODAL_SELECTOR =
-	'[role="dialog"]:not([hidden]), [role="alertdialog"]:not([hidden])';
-
-function hasVisibleModalInDom(): boolean {
+export function hasOpenDialog(): boolean {
 	return (
 		typeof document !== "undefined" &&
-		document.querySelector(MODAL_SELECTOR) !== null
+		document.querySelector(
+			':is([role="dialog"], [role="alertdialog"]):not([hidden], [data-closed])',
+		) !== null
 	);
 }
 
@@ -212,14 +211,14 @@ export const ShortcutPreferencesProvider: ParentComponent = (props) => {
 
 	onMount(() => {
 		const syncModalSuspended = () => {
-			setModalSuspended(hasVisibleModalInDom());
+			setModalSuspended(hasOpenDialog());
 		};
 		syncModalSuspended();
 		if (typeof MutationObserver !== "undefined" && document.body) {
 			modalObserver = new MutationObserver(syncModalSuspended);
 			modalObserver.observe(document.body, {
 				attributes: true,
-				attributeFilter: ["role", "hidden", "aria-hidden"],
+				attributeFilter: ["role", "hidden", "data-closed"],
 				childList: true,
 				subtree: true,
 			});

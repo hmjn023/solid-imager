@@ -132,6 +132,8 @@ const bypassSecFetchDestPlugin = (): Plugin => ({
 });
 
 const loadDevRpcHandler = async () => {
+	if (isE2e)
+		await runtimeImport(serverModuleUrl("scripts/e2e-external-viewer.ts"));
 	const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }] =
 		await Promise.all([
 			runtimeImport<typeof import("./src/infrastructure/api/app-router")>(

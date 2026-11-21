@@ -160,7 +160,11 @@ test("source media exposes mobile filters and touch selection", async ({
 	await selectModeButton.click();
 	const selectableMedia = page.locator("button[data-media-id]").first();
 	await expect(selectableMedia).toBeVisible();
-	await selectableMedia.click();
+	// On a phone the corner action menu can cover the center of a small tile.
+	const tileBottom = await selectableMedia.evaluate(
+		(tile) => tile.clientHeight - 8,
+	);
+	await selectableMedia.click({ position: { x: 8, y: tileBottom } });
 	await expect(bulkToolbar).toContainText("1件選択中");
 	await expect(addMediaButton).toBeVisible();
 	await expectInsideViewport(page, bulkToolbar);

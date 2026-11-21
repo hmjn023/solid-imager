@@ -10,7 +10,10 @@ import {
 	type UploadResponse,
 } from "@solid-imager/core/media";
 import type { Project } from "@solid-imager/core/projects";
-import type { SemanticSearchRequest } from "@solid-imager/core/search";
+import {
+	getSearchConditionFromState,
+	type SemanticSearchRequest,
+} from "@solid-imager/core/search";
 import type { JobProgressEvent } from "@solid-imager/core/events";
 import type { TagResponse } from "@solid-imager/core/tags";
 import { getErrorMessage } from "@solid-imager/core/utils";
@@ -32,13 +35,15 @@ import {
 	removeMediaFromInfiniteQueryData,
 	sourceMediaQueryKeys,
 } from "../query-options";
+import { SEARCH_COLLECTION_PAGE_SIZE } from "../query-options/search-query";
 import { type QueryUiState, toQueryUiState } from "../query-state";
+import {
+	useInitialSearch,
+	useRenderedSearchState,
+} from "../search-initial-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
-import {
-	getGlobalSimilarityActivation,
-	searchState,
-} from "../stores/search-store";
+import { getGlobalSimilarityActivation } from "../stores/search-store";
 import {
 	getScrollPosition,
 	setScrollPosition,
@@ -49,7 +54,7 @@ import { useMediaItemActions } from "./use-media-collection-actions";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
-export const SOURCE_MEDIA_ITEMS_PER_PAGE = 200;
+export const SOURCE_MEDIA_ITEMS_PER_PAGE = SEARCH_COLLECTION_PAGE_SIZE;
 const DEBOUNCE_DELAY_MS = 1000;
 const MEDIA_REFRESH_DEBOUNCE_MS = 300;
 
@@ -212,6 +217,8 @@ export function useSourceMediaPage(
 	} = options;
 
 	const id = mediaSourceId;
+	const initialSearch = useInitialSearch()?.initial;
+	const state = useRenderedSearchState();
 	// Global Find Similar sets shared search state before navigation can unmount
 	// this view. Its successor owns that request; do not launch a transient
 	// source-scoped query that will immediately be cancelled by navigation.
@@ -226,23 +233,23 @@ export function useSourceMediaPage(
 	});
 
 	// --- Infinite query ---
-	const searchConditionKey = createMemo(() =>
-		JSON.stringify(getSearchCondition() ?? null),
-	);
-
-	const mediaQueryOptions = createMemo(() =>
-		buildSourceMediaResultsQueryOptions({
-			similarityAnchorMediaId: searchState.similarityAnchorMediaId,
-			similarityModel: searchState.similarityModel,
+	const mediaQueryOptions = createMemo(() => {
+		const initial = initialSearch?.()?.state;
+		const condition = initial
+			? getSearchConditionFromState(initial)
+			: getSearchCondition();
+		return buildSourceMediaResultsQueryOptions({
+			similarityAnchorMediaId: state().similarityAnchorMediaId,
+			similarityModel: state().similarityModel,
 			searchSimilar: actions.searchSimilar,
-			semanticQuery: searchState.semanticQuery,
-			similarityTopK: searchState.similarityTopK,
+			semanticQuery: state().semanticQuery,
+			similarityTopK: state().similarityTopK,
 			searchSemantic: actions.searchSemantic,
 			sourceId: id(),
-			condition: getSearchCondition(),
-			conditionKey: searchConditionKey(),
-			sort: sortBy(),
-			order: sortOrder(),
+			condition,
+			conditionKey: JSON.stringify(condition ?? null),
+			sort: initial?.sortBy ?? sortBy(),
+			order: initial?.sortOrder ?? sortOrder(),
 			limit: itemsPerPage,
 			searchMedia: actions.searchMedia,
 			enabled:
@@ -250,12 +257,16 @@ export function useSourceMediaPage(
 				isSearchStateRestored() &&
 				!!id() &&
 				getGlobalSimilarityActivation() === sourceActivation,
-		}),
-	);
+		});
+	});
 	const mediaQuery = createInfiniteQuery(mediaQueryOptions);
 	const [mediaQueryData, setMediaQueryData] = createSignal<
 		InfiniteData<MediaSearchResponse> | undefined
-	>();
+	>(
+		initialSearch?.()
+			? queryClient.getQueryData(mediaQueryOptions().queryKey)
+			: undefined,
+	);
 
 	createEffect(() => {
 		// Keep paginated results outside Solid Query's resource-backed `data`
@@ -297,6 +308,7 @@ export function useSourceMediaPage(
 	let nextPageFetchInFlight = false;
 	const fetchNextPage = async (): Promise<unknown> => {
 		if (
+			!isSearchStateRestored() ||
 			nextPageFetchInFlight ||
 			!mediaQuery.hasNextPage ||
 			mediaQuery.isFetchingNextPage

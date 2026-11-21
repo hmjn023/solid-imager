@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { JSX } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import { children, Show, splitProps } from "solid-js";
 import {
 	Select,
 	SelectContent,
@@ -64,6 +64,7 @@ type ManagementHeaderProps = {
 };
 
 export function ManagementHeader(props: ManagementHeaderProps) {
+	const actions = children(() => props.actions);
 	return (
 		<header class="shrink-0 border-border border-b bg-card px-4 py-3 sm:px-6">
 			<div class="flex flex-wrap items-start justify-between gap-3">
@@ -81,8 +82,8 @@ export function ManagementHeader(props: ManagementHeaderProps) {
 						{props.description}
 					</p>
 				</div>
-				<Show when={props.actions}>
-					<div class="shrink-0">{props.actions}</div>
+				<Show when={actions()}>
+					<div class="shrink-0">{actions()}</div>
 				</Show>
 			</div>
 		</header>

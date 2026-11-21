@@ -17,6 +17,7 @@ import {
 } from "@tanstack/solid-query";
 
 export const MEDIA_RESULTS_STALE_TIME_MS = 1000 * 60 * 5;
+export const SEARCH_COLLECTION_PAGE_SIZE = 200;
 
 export type SearchResultsQueryKeyInput = {
 	similarityModel?: SimilarityModel;
