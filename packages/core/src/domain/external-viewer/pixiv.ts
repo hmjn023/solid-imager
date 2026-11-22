@@ -76,10 +76,12 @@ export function pixivDownloadItem(
 	post: PixivArtwork,
 	page: number,
 ): DownloadItem | null {
-	const url = post.animation?.zip ?? post.pages[page]?.original;
+	const image = post.pages[post.animation ? 0 : page];
+	const url = post.animation?.zip ?? image?.original;
 	if (!url) return null;
 	return {
 		targetUrl: url,
+		previewUrl: image?.preview,
 		sourceUrls: [url, "https://www.pixiv.net/artworks/" + post.id],
 		description: post.title,
 		createdAt: new Date(post.createdAt),

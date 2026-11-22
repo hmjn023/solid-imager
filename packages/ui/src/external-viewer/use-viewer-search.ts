@@ -95,6 +95,7 @@ export function createViewerSearch<T extends ViewerPage>(
 	const [mounted, setMounted] = createSignal(false);
 	const [scope, setScope] = createSignal<string>();
 	const [scrollArea, setScrollArea] = createSignal<HTMLDivElement>();
+	const [hasScrolled, setHasScrolled] = createSignal(false);
 	const [gridHandle, setGridHandle] = createSignal<ViewerGridHandle>();
 	const [restorePending, setRestoring] = createSignal(false);
 	const [prepending, setPrepending] = createSignal(false);
@@ -140,6 +141,7 @@ export function createViewerSearch<T extends ViewerPage>(
 		scrollTop = 0;
 		detailPage = undefined;
 		setFirstPage(1);
+		setHasScrolled(false);
 		setRestoring(false);
 		const area = scrollArea();
 		if (area) area.scrollTop = 0;
@@ -327,6 +329,15 @@ export function createViewerSearch<T extends ViewerPage>(
 		if (position && visible) anchor = { ...position, offset: visible.offset };
 		persist();
 	}
+	function handleScroll() {
+		if (
+			provider === "pixiv" &&
+			!restoring() &&
+			(scrollArea()?.scrollTop ?? 0) > 0
+		)
+			setHasScrolled(true);
+		rememberScroll();
+	}
 	function rememberDetail(id: number | undefined) {
 		const position =
 			id === undefined ? undefined : collection()?.positions.get(id);
@@ -463,18 +474,20 @@ export function createViewerSearch<T extends ViewerPage>(
 		});
 		if (cached) void client.resetQueries({ queryKey: nextKey, exact: true });
 	}
-	function submit(value = draft(), literal = false) {
+	function submit(value = draft(), literal?: boolean) {
 		const word = value.trim();
+		const exactTag =
+			literal ?? (provider === "pixiv" && literalPixivTag() && word === tags());
 		const active = new Set(
 			word.split(/\s+/).map((token) => token.replace(/^[-~]/, "")),
 		);
-		const mappings = literal
+		const mappings = exactTag
 			? {}
 			: Object.fromEntries(
 					Object.entries(choices()).filter(([tag]) => active.has(tag)),
 				);
 		setDraft(provider === "pixiv" && word ? word + " " : value);
-		commitSearch({ tags: word, literalPixivTag: literal, choices: mappings });
+		commitSearch({ tags: word, literalPixivTag: exactTag, choices: mappings });
 	}
 	function commitSearch(entry: ViewerSearchHistoryEntry) {
 		restart(entry.tags, entry.choices, entry.literalPixivTag);
@@ -488,6 +501,11 @@ export function createViewerSearch<T extends ViewerPage>(
 				choices: { ...choices(), [tag]: name },
 			});
 	}
+	const canAutoLoadNext = () =>
+		scope() !== undefined &&
+		results.hasNextPage &&
+		collection()?.lastPageGrew === true;
+
 	return {
 		pixivFeed,
 		showingBookmarks,
@@ -508,6 +526,7 @@ export function createViewerSearch<T extends ViewerPage>(
 		results,
 		state,
 		rememberScroll,
+		handleScroll,
 		rememberDetail,
 		scrollArea,
 		setScrollArea,
@@ -516,10 +535,8 @@ export function createViewerSearch<T extends ViewerPage>(
 		restoring,
 		hasNextPage: () => results.hasNextPage,
 		hasPreviousPage: () => results.hasPreviousPage,
-		canAutoLoadNext: () =>
-			scope() !== undefined &&
-			results.hasNextPage &&
-			collection()?.lastPageGrew === true,
+		canAutoLoadNext,
+		onlyFillViewport: () => provider === "pixiv" && !hasScrolled(),
 		canAutoLoadPrevious: () =>
 			scope() !== undefined &&
 			results.hasPreviousPage &&

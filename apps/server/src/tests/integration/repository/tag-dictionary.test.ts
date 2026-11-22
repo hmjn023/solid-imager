@@ -32,6 +32,63 @@ async function* batch<T>(data: T[]) {
 	yield data;
 }
 
+it("matches exact dictionary spellings to a single canonical tag", async () => {
+	const client = createPglite();
+	try {
+		const db = drizzle({ client, relations });
+		await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
+		const { tagDictionary } = createRepositories(() => db, {
+			info() {},
+			error() {},
+		});
+		await db.insert(schema.tagDictionaryTags).values([
+			tag,
+			{
+				...tag,
+				name: "curly_hair",
+				japanese: "髪型",
+				aliases: [tag.name],
+			},
+		]);
+		await db.insert(schema.tagDictionaryWiki).values([
+			{
+				name: tag.name,
+				body: null,
+				otherNames: ["波状の髪", "ウェーブヘア", "髪型"],
+				updatedAt: "2026-06-01T00:00:00.000Z",
+			},
+			{
+				name: "uncatalogued",
+				body: null,
+				otherNames: ["辞書にないタグ"],
+				updatedAt: "2026-06-01T00:00:00.000Z",
+			},
+		]);
+
+		expect(
+			await tagDictionary.matchNames([
+				" wavy hair ",
+				"ＷＡＶＥＤ＿ＨＡＩＲ",
+				"ウェーブヘア",
+				"波状の髪",
+				"髪型",
+				"波状",
+				"辞書にないタグ",
+				"",
+			]),
+		).toEqual(
+			new Map([
+				[" wavy hair ", tag.name],
+				["ＷＡＶＥＤ＿ＨＡＩＲ", tag.name],
+				["ウェーブヘア", tag.name],
+				["波状の髪", tag.name],
+			]),
+		);
+	} finally {
+		await client.close();
+	}
+});
+
 it("serializes refresh jobs and preserves the searchable snapshot on failure or stale redelivery", async () => {
 	const client = createPglite();
 	try {

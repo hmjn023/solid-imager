@@ -31,7 +31,7 @@ import {
 	writePixivRelatedSnapshot,
 	type PixivRelatedSnapshot,
 } from "./pixiv-related-history";
-import { pixivImageHref } from "./post-media";
+import { pixivThumbnailSource } from "./post-media";
 
 export function PixivRelatedWorks(props: {
 	history: Map<string, PixivRelatedSnapshot>;
@@ -254,9 +254,7 @@ export function PixivRelatedWorks(props: {
 									post.title ||
 									t("pixivScreen.pixivValue", { value0: String(post.id) }),
 								info: post.author,
-								thumbnail:
-									post.thumbnail &&
-									pixivImageHref(props.apiBase, post.thumbnail),
+								thumbnail: pixivThumbnailSource(props.apiBase, post.thumbnail),
 							})}
 						/>
 					</Show>

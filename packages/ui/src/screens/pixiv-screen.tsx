@@ -25,7 +25,7 @@ import {
 import { Dialog } from "../dialog";
 import { DropdownMenuItem, DropdownMenuSeparator } from "../dropdown-menu";
 import { ViewerActionsMenu } from "../external-viewer/actions-menu";
-import { createViewerImports } from "../external-viewer/viewer-imports";
+import type { createViewerImports } from "../external-viewer/viewer-imports";
 import {
 	createPixivAccount,
 	type ViewerFetch,
@@ -41,7 +41,7 @@ import {
 } from "../external-viewer/pixiv-viewing-history-dialog";
 import { createPixivSearchHistory } from "../external-viewer/viewer-search-history";
 import { ViewerSearchHistoryContent } from "../external-viewer/viewer-search-history-dialog";
-import { pixivImageHref } from "../external-viewer/post-media";
+import { pixivThumbnailSource } from "../external-viewer/post-media";
 import { createViewerSearch } from "../external-viewer/use-viewer-search";
 import { viewerPostQueryOptions } from "../external-viewer/query-options";
 import { PixivBookmarkFilters } from "../external-viewer/pixiv-bookmark-filters";
@@ -61,7 +61,8 @@ import {
 type PixivToolbarDialog = "viewingHistory" | "searchHistory" | "account";
 
 type PixivProps = ViewerNavigation & {
-	client: Pick<AppContractClient, "viewer" | "imports">;
+	client: Pick<AppContractClient, "viewer">;
+	imports: ReturnType<typeof createViewerImports>;
 	apiBase: () => string;
 	fetch?: ViewerFetch;
 	createViewer: PixivClientFactory;
@@ -194,9 +195,6 @@ export function PixivScreen(props: PixivProps) {
 			},
 		),
 	);
-	const imports = createViewerImports((items) =>
-		props.client.imports.bulkAdd({ items }),
-	);
 	const detail = createQuery(() => ({
 		...viewerPostQueryOptions(
 			"pixiv",
@@ -224,8 +222,7 @@ export function PixivScreen(props: PixivProps) {
 	const describePost = (post: PixivCard) => ({
 		title:
 			post.title || t("pixivScreen.pixivValue", { value0: String(post.id) }),
-		thumbnail:
-			post.thumbnail && pixivImageHref(props.apiBase(), post.thumbnail),
+		thumbnail: pixivThumbnailSource(props.apiBase(), post.thumbnail),
 		info: [post.author, t("pixivScreen.imageCount", { count: post.pageCount })]
 			.filter(Boolean)
 			.join(" · "),
@@ -404,7 +401,7 @@ export function PixivScreen(props: PixivProps) {
 				<PixivArtworkDetail
 					{...navigation}
 					query={detail}
-					imports={imports}
+					imports={props.imports}
 					historyAction={
 						<PixivViewingHistoryDialog
 							{...viewingHistory}

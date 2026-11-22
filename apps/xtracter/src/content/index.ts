@@ -4,9 +4,9 @@ import {
 	observeTwitterAccounts,
 } from "./twitter-account-cache";
 import type { DownloadItem } from "@ext/schema";
-import { processDanbooruMedia } from "./danbooru";
+import { getDanbooruPageMetadata, processDanbooruMedia } from "./danbooru";
 import { processFanboxMedia } from "./fanbox";
-import { processPixivMedia } from "./pixiv";
+import { getPixivPageMetadata, processPixivMedia } from "./pixiv";
 import { processTwitterMedia } from "./twitter";
 
 const OBSERVER_CONFIG: MutationObserverInit = {
@@ -204,6 +204,20 @@ chrome.runtime.onMessage.addListener(
 			"type" in message &&
 			message.type === "GET_METADATA"
 		) {
+			const hostname = window.location.hostname;
+			const metadataRequest =
+				hostname === "www.pixiv.net"
+					? getPixivPageMetadata()
+					: hostname === "danbooru.donmai.us"
+						? getDanbooruPageMetadata()
+						: null;
+			if (metadataRequest) {
+				void metadataRequest.then(
+					(items) => sendResponse(items.map(enrichTwitterMetadata)),
+					() => sendResponse([]),
+				);
+				return true;
+			}
 			const allMetadata = Array.from(processedMetadata.values()).map(
 				enrichTwitterMetadata,
 			);
@@ -220,11 +234,11 @@ function processMedia() {
 	} else if (hostname === "fanbox.cc" || hostname.endsWith(".fanbox.cc")) {
 		processFanboxMedia(processedMetadata, createButtonContainer);
 	} else if (hostname === "www.pixiv.net") {
-		processPixivMedia(processedMetadata, (fetchMetadata) =>
+		processPixivMedia((fetchMetadata) =>
 			createAsyncButtonContainer(fetchMetadata, "IMAGE", false),
 		);
-	} else if (hostname.includes("danbooru.donmai.us")) {
-		processDanbooruMedia(createButtonContainer, createAsyncButtonContainer);
+	} else if (hostname === "danbooru.donmai.us") {
+		processDanbooruMedia(createAsyncButtonContainer);
 	}
 }
 

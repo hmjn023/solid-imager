@@ -1,9 +1,22 @@
 import { createSharedEventSubscription } from "@solid-imager/ui/event-stream";
 import type { PendingDownloadsIndicatorProps } from "@solid-imager/ui/pending-downloads-indicator";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { getApiOrigin, orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
+export const subscribeImportEvents = createSharedEventSubscription((signal) =>
+	orpc.imports.events(undefined, { signal }),
+);
+
 export const pendingDownloadsIndicatorProps: PendingDownloadsIndicatorProps = {
+	danbooruPreview: {
+		apiBase: getApiOrigin,
+		loadPost: (id) => orpc.danbooru.getPost({ id }),
+	},
+	pixivPreview: {
+		apiBase: getApiOrigin,
+		loadPoster: async (id) =>
+			(await orpc.viewer.pixivArtwork({ id })).pages[0]?.preview,
+	},
 	countPending: async () => {
 		const result = await orpc.imports.countPending();
 		return result.count;
@@ -30,7 +43,5 @@ export const pendingDownloadsIndicatorProps: PendingDownloadsIndicatorProps = {
 		const result = await orpc.imports.cancel({ jobIds });
 		return { success: result.success };
 	},
-	subscribeImportEvents: createSharedEventSubscription((signal) =>
-		orpc.imports.events(undefined, { signal }),
-	),
+	subscribeImportEvents,
 };

@@ -60,5 +60,6 @@ export function createRepositories(
 export {
 	ClosedImportScanError,
 	createImportBatch,
+	lockActiveDownloadUrls,
 	sealImportScan,
 } from "./repositories/import-batch";

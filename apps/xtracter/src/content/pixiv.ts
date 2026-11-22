@@ -216,6 +216,15 @@ function getArtwork(artworkId: string): Promise<DownloadItem[] | null> {
 	return request;
 }
 
+export async function getPixivPageMetadata(): Promise<DownloadItem[]> {
+	const artworkId = getPixivArtworkId(window.location.href);
+	if (!artworkId) return [];
+	const items = await getArtwork(artworkId);
+	return getPixivArtworkId(window.location.href) === artworkId
+		? (items ?? [])
+		: [];
+}
+
 function imagePage(
 	image: HTMLImageElement,
 	artworkId: string,
@@ -257,7 +266,6 @@ function mediaPage(
 
 /** Add POST controls to the artwork's images and primary animation player. */
 export function processPixivMedia(
-	processedMetadata: Map<string, DownloadItem>,
 	createAsyncPostButtonContainer: (
 		fetchMetadata: () => Promise<DownloadItem | null>,
 	) => HTMLDivElement,
@@ -297,7 +305,6 @@ export function processPixivMedia(
 			if (!items || !isCurrentImage()) return null;
 			const item = items[targetPage === "ugoira" ? 0 : targetPage];
 			if (!item || (targetPage === "ugoira" && !item.ugoira)) return null;
-			for (const item of items) processedMetadata.set(item.targetUrl, item);
 			return item;
 		});
 		if (window.getComputedStyle(container).position === "static")

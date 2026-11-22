@@ -8,12 +8,12 @@ import {
 	type MediaGridAnchor,
 	type MediaGridHandle,
 } from "../media-tile-grid";
-import { ThumbnailImage } from "../thumbnail-image";
+import { ThumbnailImage, type StaticThumbnailSource } from "../thumbnail-image";
 
 export type ViewerGridItemDescription = {
 	title: string;
 	info: string;
-	thumbnail: string | null;
+	thumbnail: StaticThumbnailSource | null;
 	width?: number;
 	height?: number;
 };
@@ -87,7 +87,7 @@ export function ViewerResultsGrid<T extends { id: number }>(
 								{...thumbnail}
 								referrerPolicy="no-referrer"
 								fallback={t("importReviewModal.noPreview")}
-								source={{ getUrl: () => item().thumbnail ?? "" }}
+								source={item().thumbnail}
 							/>
 						)}
 					/>

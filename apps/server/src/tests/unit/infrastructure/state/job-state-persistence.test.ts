@@ -322,18 +322,28 @@ describe("persisted import, attempt and batch transitions", () => {
 		expect(await call(importsRouter.countPending, undefined)).toEqual({
 			count: 0,
 		});
-		await call(importsRouter.bulkAdd, { items });
+		const result = await call(importsRouter.bulkAdd, { items });
 		expect(await call(importsRouter.countPending, undefined)).toEqual({
 			count: items.length,
 		});
+		const pending = await call(importsRouter.listPending, undefined);
+		expect(result.createdRequests).toHaveLength(items.length);
+		expect(
+			new Map(
+				result.createdRequests?.map(({ id, targetUrl }) => [id, targetUrl]),
+			),
+		).toEqual(new Map(pending.map(({ id, item }) => [id, item.targetUrl])));
 	});
 
-	async function receipt(status: "pending" | "completed" = "pending") {
+	async function receipt(
+		status: "pending" | "completed" = "pending",
+		targetUrl = "https://example.com/image.png",
+	) {
 		return repositories.job.create({
 			type: "import_request",
 			status,
 			payload: {
-				targetUrl: "https://example.com/image.png",
+				targetUrl,
 				fileName: "image.png",
 			},
 		});
@@ -382,7 +392,11 @@ describe("persisted import, attempt and batch transitions", () => {
 	});
 
 	it("shows one import parent for an approved batch and keeps receipts out of lists, counts and type filters", async () => {
-		const requests = await Promise.all([receipt(), receipt(), receipt()]);
+		const requests = await Promise.all(
+			[1, 2, 3].map((page) =>
+				receipt("pending", `https://example.com/${page}.png`),
+			),
+		);
 		const approval = await processImportRequests(
 			requests.map((job) => job.id),
 			SOURCE_ID,
@@ -450,11 +464,118 @@ describe("persisted import, attempt and batch transitions", () => {
 		).toBe(true);
 	});
 
+	it("downloads the same inbox URL once per batch without skipping a different artwork page", async () => {
+		const pageOne = await receipt();
+		const duplicate = await receipt();
+		const pageTwo = await receipt("pending", "https://example.com/page-2.png");
+		const { processedCount, batchId } = await processImportRequests(
+			[pageOne.id, duplicate.id, pageTwo.id],
+			SOURCE_ID,
+		);
+
+		expect(processedCount).toBe(3);
+		const rows = await database.select().from(jobs);
+		expect(rows.find((row) => row.id === batchId)?.payload).toMatchObject({
+			processed: 0,
+			total: 2,
+		});
+		expect(
+			rows
+				.filter((row) => row.type === "downloadImage")
+				.map((row) => row.payload),
+		).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ targetUrl: "https://example.com/image.png" }),
+				expect.objectContaining({
+					targetUrl: "https://example.com/page-2.png",
+				}),
+			]),
+		);
+		expect(rows.filter((row) => row.type === "downloadImage")).toHaveLength(2);
+		const [download] = await repositories.job.claimPending(1);
+		await repositories.job.finishAttempt(
+			download.id,
+			download.attemptCount ?? 0,
+			{
+				status: "failed",
+				error: "Upstream returned 503",
+			},
+		);
+		expect(await repositories.job.findById(batchId ?? "")).toMatchObject({
+			payload: { processed: 0, failed: 1, total: 2 },
+		});
+		expect(await call(importsRouter.countPending, undefined)).toEqual({
+			count: 0,
+		});
+	});
+
+	it("leaves conflicting approvals pending so they can be retried after a download fails", async () => {
+		const first = await receipt();
+		const second = await receipt();
+		const requests = [first, second];
+		const approvals = await Promise.allSettled(
+			requests.map(({ id }) =>
+				call(importsRouter.process, {
+					jobIds: [id],
+					targetSourceId: SOURCE_ID,
+				}),
+			),
+		);
+		const denial = approvals.findIndex(
+			(result) => result.status === "rejected",
+		);
+		expect(approvals[denial]).toMatchObject({
+			status: "rejected",
+			reason: { code: "CONFLICT" },
+		});
+		const retryId = requests[denial].id;
+		const rows = await database.select().from(jobs);
+		expect(rows.filter((row) => row.type === "downloadImage")).toHaveLength(1);
+		expect(await repositories.job.findById(retryId)).toMatchObject({
+			status: "pending",
+		});
+		const [download] = await repositories.job.claimPending(1);
+		await repositories.job.finishAttempt(
+			download.id,
+			download.attemptCount ?? 0,
+			{
+				status: "failed",
+				error: "Upstream returned 503",
+			},
+		);
+		expect(await processImportRequests([retryId], SOURCE_ID)).toMatchObject({
+			processedCount: 1,
+		});
+		expect(
+			await repositories.job.findById(importDownloadJobId(retryId)),
+		).toMatchObject({
+			status: "pending",
+		});
+	});
+
+	it("queues a replacement when the active download is being cancelled", async () => {
+		await database.insert(jobs).values({
+			type: "downloadImage",
+			status: "in_progress",
+			mediaSourceId: SOURCE_ID,
+			cancelRequestedAt: new Date(),
+			payload: { targetUrl: "https://example.com/image.png" },
+		});
+		const request = await receipt();
+		await processImportRequests([request.id], SOURCE_ID);
+		expect(
+			await repositories.job.findById(importDownloadJobId(request.id)),
+		).toMatchObject({ status: "pending" });
+	});
+
 	it("preserves standalone and unapproved receipts when hiding batch approval receipts", async () => {
 		const standalone = await receipt();
 		await processImportRequests([standalone.id], SOURCE_ID);
 		const waiting = await receipt();
-		const batch = await Promise.all([receipt(), receipt()]);
+		const batch = await Promise.all([
+			receipt("pending", "https://example.com/batch-1.png"),
+			receipt("pending", "https://example.com/batch-2.png"),
+		]);
 		await processImportRequests(
 			batch.map((job) => job.id),
 			SOURCE_ID,
@@ -471,6 +592,21 @@ describe("persisted import, attempt and batch transitions", () => {
 		expect(
 			(await call(importsRouter.listPending, undefined)).map((job) => job.id),
 		).toEqual([waiting.id]);
+	});
+
+	it("looks up pending and approved receipts without returning cancelled or unrelated jobs", async () => {
+		const pending = await receipt();
+		const approved = await receipt("completed");
+		const cancelled = await receipt();
+		const unrelated = await repositories.job.create({
+			type: "auto_tagging",
+			payload: {},
+		});
+		await cancelImportRequests([cancelled.id]);
+		const existing = await call(importsRouter.existingRequestIds, {
+			jobIds: [pending.id, approved.id, cancelled.id, unrelated.id],
+		});
+		expect(existing.sort()).toEqual([pending.id, approved.id].sort());
 	});
 
 	it("orders concurrent approval and cancellation without an orphaned download", async () => {

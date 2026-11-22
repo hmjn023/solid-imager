@@ -7,6 +7,7 @@ export function ViewerLoadBoundary(props: {
 	direction: "previous" | "next";
 	root: () => HTMLDivElement | undefined;
 	autoLoad: boolean;
+	onlyFillViewport?: boolean;
 	loading: boolean;
 	failed: boolean;
 	onLoad: () => Promise<unknown>;
@@ -16,8 +17,20 @@ export function ViewerLoadBoundary(props: {
 		target: () => boundary,
 		root: props.root,
 		enabled: () => props.autoLoad && !props.loading && !props.failed,
-		rootMargin: props.direction === "next" ? "0px 0px 240px" : "0px",
-		load: props.onLoad,
+		rootMargin: () =>
+			props.direction === "next" && !props.onlyFillViewport
+				? "0px 0px 240px"
+				: "0px",
+		load: () => {
+			if (!props.onlyFillViewport) return props.onLoad();
+			const root = props.root();
+			if (!root || !boundary) return;
+			const remainingHeight =
+				root.getBoundingClientRect().bottom -
+				boundary.getBoundingClientRect().bottom;
+			// A full first page can fit on a wide display without being short.
+			if (remainingHeight >= root.clientHeight / 4) return props.onLoad();
+		},
 	});
 	return (
 		<div

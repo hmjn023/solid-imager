@@ -1,6 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import type { ViewerFetch, PixivClientFactory } from "./pixiv-account";
 import type { AppContractClient } from "@solid-imager/core/contract";
+import { onCleanup, onMount } from "solid-js";
 import {
 	type RouterHistory,
 	Outlet,
@@ -9,6 +10,11 @@ import {
 } from "@tanstack/solid-router";
 import { DanbooruScreen } from "../screens/danbooru-screen";
 import { PixivScreen } from "../screens/pixiv-screen";
+import type {
+	ImportEventConnectedHandler,
+	ImportEventHandler,
+} from "../pending-downloads-indicator.types";
+import { createViewerImports } from "./viewer-imports";
 
 export {
 	initialViewerSearchOptions,
@@ -26,6 +32,10 @@ export function ExternalViewerRoute(
 		client: Pick<AppContractClient, "viewer" | "danbooru" | "imports">;
 		apiBase: () => string;
 		history: Pick<RouterHistory, "go" | "createHref">;
+		subscribeImportEvents: (
+			handler: ImportEventHandler,
+			onConnected: ImportEventConnectedHandler,
+		) => () => void;
 	} & (
 		| { provider: "danbooru" }
 		| {
@@ -38,6 +48,18 @@ export function ExternalViewerRoute(
 ) {
 	const navigate = useNavigate(),
 		location = useLocation();
+	const imports = createViewerImports(
+		(items) => props.client.imports.bulkAdd({ items }),
+		(jobIds) => props.client.imports.existingRequestIds({ jobIds }),
+	);
+	onMount(() => {
+		onCleanup(
+			props.subscribeImportEvents((event) => {
+				if (event.event === "import-request:deleted")
+					imports.clearCancelled(event.data.jobIds);
+			}, imports.onConnected),
+		);
+	});
 	const collectionDepth = () => {
 		const { state } = location();
 		if (
@@ -99,14 +121,13 @@ export function ExternalViewerRoute(
 					}}
 					getPost={(id) => props.client.danbooru.getPost({ id })}
 					suggestTags={(query) => props.client.viewer.suggestTags({ query })}
-					enqueueImport={(item) =>
-						props.client.imports.bulkAdd({ items: [item] })
-					}
+					imports={imports}
 				/>
 			) : (
 				<PixivScreen
 					{...navigation}
 					client={props.client}
+					imports={imports}
 					apiBase={props.apiBase}
 					createViewer={props.createViewer}
 					openPixivLogin={props.openPixivLogin}

@@ -3,7 +3,16 @@ import {
 	type ImportBatchContext,
 } from "@solid-imager/core/jobs";
 import { isRecord } from "@solid-imager/core/utils";
-import { and, eq, inArray, isNotNull, lt, sql, type SQL } from "drizzle-orm";
+import {
+	and,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	lt,
+	sql,
+	type SQL,
+} from "drizzle-orm";
 import { jobs } from "../schema";
 import { normalizedPayloadExpression } from "./job-payload";
 import type { DrizzleExecutor } from "../types";
@@ -28,6 +37,31 @@ export async function lockBatchAdmissions(
 }
 
 export class ClosedImportScanError extends Error {}
+
+/** Serialize approvals for the same destination before checking its active downloads. */
+export async function lockActiveDownloadUrls(
+	tx: Executor,
+	mediaSourceId: string,
+	urls: string[],
+): Promise<Set<string>> {
+	const key = sql`hashtextextended('solid-imager:import-destination:' || ${mediaSourceId}::uuid::text, 0)`;
+	await tx.execute(sql`SELECT pg_advisory_xact_lock(${key})`);
+	if (urls.length === 0) return new Set();
+	const targetUrl = sql<string>`${normalizedPayloadExpression()}->>'targetUrl'`;
+	const active = await tx
+		.select({ targetUrl })
+		.from(jobs)
+		.where(
+			and(
+				eq(jobs.mediaSourceId, mediaSourceId),
+				eq(jobs.type, "downloadImage"),
+				inArray(jobs.status, ["pending", "in_progress"]),
+				isNull(jobs.cancelRequestedAt),
+				inArray(targetUrl, urls),
+			),
+		);
+	return new Set(active.map((job) => job.targetUrl));
+}
 
 /** All target reservations and their first work are published by the caller's transaction. */
 export async function createImportBatch(

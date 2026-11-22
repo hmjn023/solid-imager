@@ -1,8 +1,12 @@
-import { implement } from "@orpc/server";
-import { importsContract } from "@solid-imager/core/contract";
+import { implement, ORPCError } from "@orpc/server";
+import { ResourceConflictError } from "@solid-imager/core/errors";
+import {
+	importsContract,
+	type AppContractClient,
+} from "@solid-imager/core/contract";
 import type { downloadItemSchema } from "@solid-imager/core/media";
 import type { ImportEvent } from "@solid-imager/core/events";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
@@ -15,6 +19,10 @@ import {
 } from "~/infrastructure/services/import-queue-service";
 import { logger } from "~/infrastructure/logger";
 import type { BackupService } from "~/infrastructure/services/backup-service";
+
+type BulkAddResult = Awaited<
+	ReturnType<AppContractClient["imports"]["bulkAdd"]>
+>;
 
 /**
  * Helper to classify items into Restore (file exists) and Import (URL available)
@@ -84,7 +92,6 @@ export const bulkAddHandler = async ({
 	let { skippedCount } = classification;
 
 	let restoredCount = 0;
-	let addedCount = 0;
 
 	// 2. Execute Restore
 	for (const [sourceId, group] of restoreGroups) {
@@ -99,6 +106,7 @@ export const bulkAddHandler = async ({
 	}
 
 	// 3. Create Import Jobs
+	const createdRequests: NonNullable<BulkAddResult["createdRequests"]> = [];
 	if (importItems.length > 0) {
 		const jobValues = importItems.map((item) => ({
 			type: "import_request",
@@ -110,17 +118,28 @@ export const bulkAddHandler = async ({
 		await db.transaction(async (tx) => {
 			const chunkSize = 100;
 			for (let i = 0; i < jobValues.length; i += chunkSize) {
-				await tx.insert(jobs).values(jobValues.slice(i, i + chunkSize));
+				const created = await tx
+					.insert(jobs)
+					.values(jobValues.slice(i, i + chunkSize))
+					.returning({
+						id: jobs.id,
+						targetUrl: sql<string>`${jobs.payload}->>'targetUrl'`,
+					});
+				createdRequests.push(...created);
 			}
 		});
-		addedCount = importItems.length;
 
 		RealtimeEventBus.publishImport("import-request:created", {
-			count: addedCount,
+			count: createdRequests.length,
 		});
 	}
 
-	return { addedCount, skippedCount, restoredCount };
+	return {
+		addedCount: createdRequests.length,
+		skippedCount,
+		restoredCount,
+		createdRequests,
+	};
 };
 
 /**
@@ -131,7 +150,7 @@ const os = implement(importsContract);
 export const importsRouter = os.router({
 	/**
 	 * Bulk add items from Xtracter.
-	 * Checks for duplicates and creates import_request jobs.
+	 * Restores local files and creates import_request jobs for remote URLs.
 	 */
 	bulkAdd: os.bulkAdd.handler(bulkAddHandler),
 
@@ -163,6 +182,17 @@ export const importsRouter = os.router({
 		return { count: result?.count ?? 0 };
 	}),
 
+	existingRequestIds: os.existingRequestIds.handler(async ({ input }) => {
+		if (!input.jobIds.length) return [];
+		const rows = await db
+			.select({ id: jobs.id })
+			.from(jobs)
+			.where(
+				and(eq(jobs.type, "import_request"), inArray(jobs.id, input.jobIds)),
+			);
+		return rows.map(({ id }) => id);
+	}),
+
 	/**
 	 * Process selected import requests (Queue downloads).
 	 */
@@ -170,7 +200,11 @@ export const importsRouter = os.router({
 		const { processedCount, batchId } = await processImportRequests(
 			input.jobIds,
 			input.targetSourceId,
-		);
+		).catch((error) => {
+			if (error instanceof ResourceConflictError)
+				throw new ORPCError("CONFLICT", { message: error.message });
+			throw error;
+		});
 		if (batchId)
 			await notifyBatchState(JobRepository, batchId, { created: true });
 		try {

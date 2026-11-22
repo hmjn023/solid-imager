@@ -11,12 +11,22 @@ const postId = 76241001;
 const pixivTitle = "SSR fixture illustration";
 const danbooruTag = "ssr_fixture_tag";
 const preview = `https://i.pximg.net/img-master/img/e2e-ssr/${postId}_p0_master1200.png`;
+const pixivLargeThumbnail = preview.replace(
+	"/img-master/",
+	"/c/480x960/img-master/",
+);
+const pixivSmallThumbnail = pixivLargeThumbnail.replace(
+	"/c/480x960/",
+	"/c/240x480/",
+);
+const danbooruThumbnail = "https://cdn.donmai.us/180x180/ab/cd/abcd.jpg";
 const danbooruPost = {
 	id: postId,
 	rating: "g",
 	created_at: "2026-01-01T00:00:00Z",
 	tag_string_general: danbooruTag,
 	file_ext: "png",
+	preview_file_url: danbooruThumbnail,
 };
 
 test.describe("public viewer SSR", () => {
@@ -32,7 +42,7 @@ test.describe("public viewer SSR", () => {
 							illust_id: postId,
 							title: pixivTitle,
 							user_name: "SSR fixture artist",
-							url: preview,
+							url: pixivLargeThumbnail,
 							illust_page_count: 1,
 						},
 					],
@@ -73,13 +83,19 @@ test.describe("public viewer SSR", () => {
 			path: "/danbooru",
 			text: `Danbooru #${postId}`,
 			endpoint: "/api/rpc/viewer/search",
+			thumbnail: danbooruThumbnail,
 		},
 		{
 			path: `/danbooru/${postId}`,
 			text: danbooruTag,
 			endpoint: "/api/rpc/danbooru/getPost",
 		},
-		{ path: "/pixiv", text: pixivTitle, endpoint: "/api/rpc/viewer/search" },
+		{
+			path: "/pixiv",
+			text: pixivTitle,
+			endpoint: "/api/rpc/viewer/search",
+			thumbnail: pixivSmallThumbnail,
+		},
 		{
 			path: `/pixiv/${postId}`,
 			text: "SSR fixture metadata",
@@ -96,7 +112,7 @@ test.describe("public viewer SSR", () => {
 				baseURL,
 				javaScriptEnabled: false,
 			});
-			const image = "**/api/pixiv-image?*";
+			const image = /\/api\/(pixiv-image|danbooru-thumbnail)\?/;
 			const path = getFixtureMediaPath(E2E_PRIMARY_FILE_NAME);
 			await Promise.all([
 				context.route(image, (request) => request.fulfill({ path })),
@@ -111,6 +127,20 @@ test.describe("public viewer SSR", () => {
 						.getByText(route.text, { exact: true })
 						.first(),
 				).toBeVisible();
+				if (route.thumbnail) {
+					const img = document.locator(`[data-media-id="${postId}"] img`);
+					const src = await img.getAttribute("src");
+					expect(new URL(src ?? "", baseURL).searchParams.get("url")).toBe(
+						route.thumbnail,
+					);
+					await expect(img).toHaveAttribute("loading", "eager");
+					await expect(img).toHaveAttribute("fetchpriority", "high");
+					await expect
+						.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
+						.toBeGreaterThan(0);
+					if (route.path === "/pixiv")
+						await expect(img).toHaveAttribute("srcset", / 1x, .* 2x$/);
+				}
 				if (route.path === `/danbooru/${postId}`) {
 					await context.addCookies([
 						{ name: "solid-imager.locale", value: "en", url: document.url() },
@@ -143,6 +173,30 @@ test.describe("public viewer SSR", () => {
 			}
 		});
 	}
+
+	test("Pixiv retries a missing 240px thumbnail with the upstream variant", async ({
+		browserHealth,
+		page,
+	}) => {
+		const urlOfImage = (url: URL) => url.searchParams.get("url");
+		const missing = (url: URL) => urlOfImage(url) === pixivSmallThumbnail;
+		browserHealth.allowResponseFailure(/\/api\/pixiv-image\?.*240x480/);
+		browserHealth.allowConsole(
+			"Failed to load resource: the server responded with a status of 404",
+		);
+		await page.route(missing, (request) => request.fulfill({ status: 404 }));
+		await page.route(
+			(url) => urlOfImage(url) === pixivLargeThumbnail,
+			(request) =>
+				request.fulfill({ path: getFixtureMediaPath(E2E_PRIMARY_FILE_NAME) }),
+		);
+		await page.goto("/pixiv");
+		const img = page.locator(`[data-media-id="${postId}"] img`);
+		await expect(img).toHaveAttribute("src", /480x960/);
+		await expect
+			.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
+			.toBeGreaterThan(0);
+	});
 });
 
 test("statistics renders charts with the reporting time zone and reuses the query on reload", async ({

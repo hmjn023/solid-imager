@@ -207,7 +207,7 @@ it("returns related cards without the current work, duplicates, ads or masked wo
 it("requests only the next batch and excludes unrelated recommendations", async () => {
 	const service = createPixivService(async (url, init) => {
 		expect(url.pathname).toBe("/ajax/illust/recommend/illusts");
-		expect(url.searchParams.getAll("illust_ids")).toEqual(["456", "789"]);
+		expect(url.searchParams.getAll("illust_ids[]")).toEqual(["456", "789"]);
 		expect(new Headers(init.headers).get("Cookie")).toBe("PHPSESSID=fixture");
 		return Response.json({
 			error: false,

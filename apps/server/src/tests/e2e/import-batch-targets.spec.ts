@@ -1,7 +1,11 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
+import { pendingImportJobSchema } from "@solid-imager/core/media";
+import { generateMediaFilename } from "@solid-imager/core/media/files";
 import {
 	E2E_SOURCE_ID,
 	E2E_PRIMARY_FILE_NAME,
+	E2E_PRIMARY_MEDIA_ID,
+	getE2eMediaDir,
 	getFixtureMediaPath,
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
@@ -103,6 +107,57 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	await page.reload();
 	await waitForAppHydration(page);
 	await expect(cancelledRow).toBeVisible();
+});
+
+test("saves one file when the same Pixiv item is approved twice in a batch", async ({
+	baseURL,
+	request,
+}) => {
+	if (!baseURL) throw new Error("Expected the isolated test server URL");
+	const targetUrl = new URL(
+		`/api/sources/${E2E_SOURCE_ID}/thumbnail/${E2E_PRIMARY_MEDIA_ID}`,
+		baseURL,
+	).href;
+	const description = `duplicate-import-${crypto.randomUUID()}`;
+	const item = {
+		targetUrl,
+		sourceUrls: [targetUrl, `https://www.pixiv.net/artworks/${Date.now()}`],
+		description,
+	};
+	for (let index = 0; index < 2; index++) {
+		const added = await request.post("/api/rest/imports/bulkAdd", {
+			data: { items: [item] },
+		});
+		expect(added.ok()).toBe(true);
+		expect(await added.json()).toMatchObject({ addedCount: 1 });
+	}
+	const pending = await request.post("/api/rest/imports/listPending");
+	expect(pending.ok()).toBe(true);
+	const requests = pendingImportJobSchema.array().parse(await pending.json());
+	const jobIds = requests
+		.filter((job) => job.item.description === description)
+		.map((job) => job.id);
+	expect(jobIds).toHaveLength(2);
+	const approved = await request.post("/api/rest/imports/process", {
+		data: { jobIds, targetSourceId: E2E_SOURCE_ID },
+	});
+	expect(approved.ok()).toBe(true);
+	const { batchId, processedCount } = await approved.json();
+	expect(processedCount).toBe(2);
+	expect(batchId).toBeTruthy();
+	await expect
+		.poll(async () =>
+			(
+				await request.post("/api/rest/jobs/get", { data: { id: batchId } })
+			).json(),
+		)
+		.toMatchObject({
+			status: "completed",
+			progress: { processed: 1, failed: 0, total: 1 },
+		});
+	const stem = generateMediaFilename(item, "");
+	const files = await readdir(getE2eMediaDir());
+	expect(files.filter((file) => file.startsWith(stem))).toHaveLength(1);
 });
 
 test("retries a failed upload from the parent and replaces only its file", async ({

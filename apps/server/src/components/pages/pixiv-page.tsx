@@ -3,6 +3,7 @@ import type { AppContract } from "@solid-imager/core/contract";
 import { useRouter } from "@tanstack/solid-router";
 import { ExternalViewerRoute } from "@solid-imager/ui/external-viewer";
 import { client, getApiOrigin } from "~/infrastructure/api-clients/orpc-client";
+import { subscribeImportEvents } from "../imports/pending-downloads-indicator-data";
 export function PixivPage() {
 	const { history } = useRouter();
 	return (
@@ -14,6 +15,7 @@ export function PixivPage() {
 			}
 			client={client}
 			apiBase={getApiOrigin}
+			subscribeImportEvents={subscribeImportEvents}
 		/>
 	);
 }

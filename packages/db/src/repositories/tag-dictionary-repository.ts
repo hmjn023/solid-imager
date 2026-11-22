@@ -37,6 +37,79 @@ const summaryFields = {
 };
 const LEGACY_MIGRATION_BATCH_SIZE = 30;
 
+async function matchDictionaryNames(
+	db: DrizzleExecutor,
+	names: readonly string[],
+): Promise<ReadonlyMap<string, string>> {
+	const inputs = [...new Set(names)].map((name) => {
+		const trimmed = name.trim();
+		const normalized = trimmed.normalize("NFKC");
+		const canonical = [canonicalTagName(trimmed), canonicalTagName(normalized)];
+		const spellings = new Set([
+			trimmed,
+			normalized,
+			normalizeTagDictionaryQuery(trimmed),
+			...canonical,
+		]);
+		spellings.delete("");
+		return { name, canonical, spellings };
+	});
+	const spellings = [
+		...new Set(inputs.flatMap((input) => [...input.spellings])),
+	];
+	const results = new Map<string, string>();
+	if (!spellings.length) return results;
+
+	const keys = sql`array(select jsonb_array_elements_text(${JSON.stringify(spellings)}::jsonb))`;
+	// Filter each dictionary field separately so its index can serve the lookup.
+	const candidates = await db.select({
+		name: sql<string>`name`,
+		spelling: sql<string>`spelling`,
+		canonical: sql<boolean>`canonical`,
+	}).from(sql`(
+		select name, name as spelling, true as canonical
+		from ${tags} where name = any(${keys})
+		union all
+		select name, japanese, false
+		from ${tags} where japanese = any(${keys})
+		union all
+		select name, jsonb_array_elements_text(aliases), false
+		from ${tags} where aliases ?| ${keys}
+		union all
+		select entry.name, jsonb_array_elements_text(page.other_names), false
+		from ${wiki} page join ${tags} entry on entry.name = page.name
+		where page.other_names ?| ${keys}
+	) candidates`);
+	const canonicalNames = new Set<string>();
+	const alternatives = new Map<string, Set<string>>();
+	for (const candidate of candidates) {
+		if (candidate.canonical) {
+			canonicalNames.add(candidate.name);
+		} else {
+			const matches = alternatives.get(candidate.spelling) ?? new Set<string>();
+			matches.add(candidate.name);
+			alternatives.set(candidate.spelling, matches);
+		}
+	}
+	for (const input of inputs) {
+		const canonical = input.canonical.find((name) => canonicalNames.has(name));
+		if (canonical) {
+			results.set(input.name, canonical);
+			continue;
+		}
+		const matches = new Set(
+			[...input.spellings].flatMap((spelling) => [
+				...(alternatives.get(spelling) ?? []),
+			]),
+		);
+		if (matches.size === 1) {
+			const [name] = matches;
+			results.set(input.name, name);
+		}
+	}
+	return results;
+}
+
 async function assertRefreshAttempt(
 	db: DrizzleExecutor,
 	attempt: { id: string; number: number },
@@ -219,6 +292,8 @@ export function createTagDictionaryRepository(
 					}
 				: null;
 		},
+
+		matchNames: (names) => matchDictionaryNames(db(), names),
 
 		async listLegacy({ query, offset }) {
 			const exec = db();

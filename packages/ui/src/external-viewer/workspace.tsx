@@ -179,7 +179,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 								browse.setScrollArea(area);
 								onCleanup(() => browse.setScrollArea(undefined));
 							}}
-							onScroll={browse.rememberScroll}
+							onScroll={browse.handleScroll}
 						>
 							<QueryStatus
 								hideWhenIdle
@@ -272,6 +272,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 												<ViewerLoadBoundary
 													direction="next"
 													root={browse.scrollArea}
+													onlyFillViewport={browse.onlyFillViewport()}
 													autoLoad={
 														!browse.restoring() &&
 														!results.isFetching &&
