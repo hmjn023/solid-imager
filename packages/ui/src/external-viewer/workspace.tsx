@@ -272,10 +272,11 @@ export function ViewerWorkspace<T extends ViewerResults>(
 												<ViewerLoadBoundary
 													direction="next"
 													root={browse.scrollArea}
+													onlyFillViewport={browse.onlyFillViewport()}
 													autoLoad={
 														!browse.restoring() &&
 														!results.isFetching &&
-														browse.canAutoLoadNextFromGrid() &&
+														browse.canAutoLoadNext() &&
 														!!browse.gridHandle()
 													}
 													loading={results.isFetchingNextPage}

@@ -243,3 +243,109 @@ test("import inbox previews Pixiv originals and ugoira through the image proxy",
 		expect(cancel.ok()).toBe(true);
 	}
 });
+
+test("import inbox shows Danbooru video posters and plays the original on demand", async ({
+	page,
+}) => {
+	const cdn = "https://cdn.donmai.us";
+	const clips = [171, 172].map((id) => ({
+		id,
+		fileUrl: `${cdn}/original/${id}.webm`,
+		previewUrl: `${cdn}/preview/${id}.jpg`,
+	}));
+	const [current, legacy] = clips;
+	const items = clips.map((clip) => ({
+		targetUrl: clip.fileUrl,
+		description: `Danbooru Post #${clip.id}`,
+		sourceUrls: [`https://danbooru.donmai.us/posts/${clip.id}`],
+		previewUrl: clip === current ? clip.previewUrl : undefined,
+	}));
+	const thumbnails = clips.map((clip) => clip.previewUrl);
+	await page.route("**/api/danbooru-thumbnail?*", (route) => {
+		const url = new URL(route.request().url()).searchParams.get("url");
+		expect(thumbnails).toContain(url);
+		return route.fulfill({ path: getFixtureMediaPath(E2E_PRIMARY_FILE_NAME) });
+	});
+	const loadedPosts: number[] = [];
+	await page.route("**/api/rpc/danbooru/getPost", (route) => {
+		const id: number = route.request().postDataJSON().json.id;
+		loadedPosts.push(id);
+		return route.fulfill({ json: { json: legacy } });
+	});
+	const videoRequests: string[] = [];
+	await page.route(`${cdn}/original/*.webm`, (route) => {
+		videoRequests.push(route.request().url());
+		return route.fulfill({
+			path: "src/tests/e2e/ui-gallery/video-player.webm",
+			contentType: "video/webm",
+		});
+	});
+
+	await page.goto("/about");
+	await waitForAppHydration(page);
+	const response = await page.request.post("/api/rpc/imports/bulkAdd", {
+		data: { json: { items } },
+	});
+	expect(response.ok()).toBe(true);
+	const list = await page.request.post("/api/rpc/imports/listPending", {
+		data: { json: null },
+	});
+	const pending = z
+		.array(pendingImportJobSchema)
+		.parse((await list.json()).json);
+	const jobs = pending.filter((job) =>
+		items.some((item) => item.targetUrl === job.item.targetUrl),
+	);
+
+	try {
+		expect(jobs).toHaveLength(clips.length);
+		await page.getByRole("button", { name: /^取り込み待ち/ }).click();
+		const inbox = page.getByRole("dialog", {
+			name: "取り込み待ち",
+			exact: true,
+		});
+		await expect
+			.poll(async () =>
+				inbox.locator("img").evaluateAll((images: HTMLImageElement[]) =>
+					images
+						.filter((image) => image.naturalWidth > 0)
+						.map((image) => new URL(image.src).searchParams.get("url"))
+						.sort((left, right) => String(left).localeCompare(String(right))),
+				),
+			)
+			.toEqual(thumbnails);
+		expect(loadedPosts).toEqual([legacy.id]);
+		expect(videoRequests).toEqual([]);
+
+		for (const item of items) {
+			await inbox
+				.getByRole("button", {
+					name: "内容を見る",
+					exact: true,
+					description: item.description,
+				})
+				.click();
+			const preview = page.getByRole("dialog", { name: "取り込みプレビュー" });
+			const video = preview.locator("video");
+			await expect(video).toHaveAttribute("src", item.targetUrl);
+			await expect
+				.poll(() =>
+					video.evaluate((element: HTMLVideoElement) => element.readyState),
+				)
+				.toBeGreaterThan(0);
+			await preview.locator("media-play-button").click();
+			await expect
+				.poll(() =>
+					video.evaluate((element: HTMLVideoElement) => element.paused),
+				)
+				.toBe(false);
+			await page.keyboard.press("Escape");
+			await expect(preview).toBeHidden();
+		}
+	} finally {
+		const cancel = await page.request.post("/api/rpc/imports/cancel", {
+			data: { json: { jobIds: jobs.map((job) => job.id) } },
+		});
+		expect(cancel.ok()).toBe(true);
+	}
+});

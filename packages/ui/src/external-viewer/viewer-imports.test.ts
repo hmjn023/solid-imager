@@ -36,3 +36,36 @@ it("retries failed pages without re-queuing pages from an overlapping submission
 	expect(enqueue).toHaveBeenCalledTimes(3);
 	expect(toast.success).toHaveBeenCalledTimes(2);
 });
+
+it("only clears the cancelled receipt, including cancellation before its enqueue response", async () => {
+	const cancelled = { targetUrl: "https://example.org/cancelled.mp4" };
+	const retained = { targetUrl: "https://example.org/retained.png" };
+	const firstReceipt = { id: "removed-before-response", ...cancelled };
+	const secondReceipt = { id: "removed-after-response", ...cancelled };
+	const retainedReceipt = { id: "still-pending", ...retained };
+	const pending = Promise.withResolvers<{
+		createdRequests: (typeof firstReceipt)[];
+	}>();
+	const enqueue = vi
+		.fn()
+		.mockResolvedValueOnce({ createdRequests: [retainedReceipt] })
+		.mockReturnValueOnce(pending.promise)
+		.mockResolvedValueOnce({ createdRequests: [secondReceipt] });
+	const imports = createViewerImports(enqueue);
+	await imports.add([retained]);
+	const original = imports.add([cancelled]);
+	imports.clearCancelled([firstReceipt.id]);
+	expect(imports.state(retained.targetUrl)).toBe("queued");
+	expect(imports.state(cancelled.targetUrl)).toBe("pending");
+	pending.resolve({ createdRequests: [firstReceipt] });
+	await original;
+	expect(imports.state(cancelled.targetUrl)).toBeUndefined();
+
+	await imports.add([cancelled]);
+	imports.clearCancelled([firstReceipt.id]);
+	expect(imports.state(cancelled.targetUrl)).toBe("queued");
+	expect(enqueue).toHaveBeenNthCalledWith(3, [cancelled]);
+	imports.clearCancelled([secondReceipt.id]);
+	expect(imports.state(cancelled.targetUrl)).toBeUndefined();
+	expect(imports.state(retained.targetUrl)).toBe("queued");
+});

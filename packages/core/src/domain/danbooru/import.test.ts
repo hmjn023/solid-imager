@@ -57,17 +57,20 @@ describe("Danbooru import metadata", () => {
 		"imports the original %s video with its categorized metadata",
 		(fileExt) => {
 			const fileUrl = `https://cdn.donmai.us/original/123.${fileExt}`;
+			const previewUrl = "https://cdn.donmai.us/180x180/123.jpg";
 			const item = downloadItemSchema.parse(
 				danbooruPostToDownloadItem({
 					...post,
 					fileExt,
 					fileUrl,
+					previewUrl,
 					sampleUrl: "https://cdn.donmai.us/sample/123.webm",
 				}),
 			);
 			expect(item).toEqual({
 				...danbooruPostToDownloadItem(post),
 				targetUrl: fileUrl,
+				previewUrl,
 				sourceUrls: [
 					fileUrl,
 					post.source,

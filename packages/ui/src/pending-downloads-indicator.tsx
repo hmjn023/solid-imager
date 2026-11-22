@@ -84,6 +84,7 @@ export function PendingDownloadsIndicator(
 				<ImportReviewModal
 					{...modalProps}
 					cancelPending={props.cancelPending}
+					danbooruPreview={props.danbooruPreview}
 					listPending={props.listPending}
 					listSources={props.listSources}
 					pixivPreview={props.pixivPreview}

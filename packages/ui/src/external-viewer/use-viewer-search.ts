@@ -474,18 +474,20 @@ export function createViewerSearch<T extends ViewerPage>(
 		});
 		if (cached) void client.resetQueries({ queryKey: nextKey, exact: true });
 	}
-	function submit(value = draft(), literal = false) {
+	function submit(value = draft(), literal?: boolean) {
 		const word = value.trim();
+		const exactTag =
+			literal ?? (provider === "pixiv" && literalPixivTag() && word === tags());
 		const active = new Set(
 			word.split(/\s+/).map((token) => token.replace(/^[-~]/, "")),
 		);
-		const mappings = literal
+		const mappings = exactTag
 			? {}
 			: Object.fromEntries(
 					Object.entries(choices()).filter(([tag]) => active.has(tag)),
 				);
 		setDraft(provider === "pixiv" && word ? word + " " : value);
-		commitSearch({ tags: word, literalPixivTag: literal, choices: mappings });
+		commitSearch({ tags: word, literalPixivTag: exactTag, choices: mappings });
 	}
 	function commitSearch(entry: ViewerSearchHistoryEntry) {
 		restart(entry.tags, entry.choices, entry.literalPixivTag);
@@ -534,8 +536,7 @@ export function createViewerSearch<T extends ViewerPage>(
 		hasNextPage: () => results.hasNextPage,
 		hasPreviousPage: () => results.hasPreviousPage,
 		canAutoLoadNext,
-		canAutoLoadNextFromGrid: () =>
-			(provider !== "pixiv" || hasScrolled()) && canAutoLoadNext(),
+		onlyFillViewport: () => provider === "pixiv" && !hasScrolled(),
 		canAutoLoadPrevious: () =>
 			scope() !== undefined &&
 			results.hasPreviousPage &&

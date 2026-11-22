@@ -130,6 +130,9 @@ export type TagDictionaryRepository = {
 		input: z.output<typeof tagDictionarySearchSchema>,
 	) => Promise<TagDictionarySearchResult>;
 	detail: (name: string) => Promise<TagDictionaryDetail | null>;
+	matchNames: (
+		names: readonly string[],
+	) => Promise<ReadonlyMap<string, string>>;
 	listLegacy: (
 		input: z.output<typeof tagDictionaryLegacySearchSchema>,
 	) => Promise<TagDictionaryLegacyResult>;

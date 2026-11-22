@@ -1034,11 +1034,13 @@ test("searches for the exact artwork tag from Pixiv detail", async ({
 	page,
 }, info) => {
 	const tag = "Re:ゼロ";
+	const requests: z.infer<typeof viewerRequestSchema>[] = [];
 	await mockPixivDetail(page, { ...artwork, tags: [tag] });
 	await page.route("**/api/rpc/viewer/search", (route) => {
 		const input = viewerRequestSchema.parse(
 			route.request().postDataJSON().json,
 		);
+		requests.push(input);
 		const posts =
 			input.literalPixivTag && input.tags === tag && input.page === 1
 				? [{ ...artwork, title: "タグの検索結果" }]
@@ -1068,6 +1070,14 @@ test("searches for the exact artwork tag from Pixiv detail", async ({
 	await expect(
 		page.getByRole("button", { name: "「" + tag + "」を検索条件から削除" }),
 	).toBeVisible();
+	await expect(
+		page.getByRole("link", { name: "タグの検索結果 を開く" }),
+	).toBeVisible();
+	const beforeSubmit = requests.length;
+	await page.getByRole("button", { name: "検索", exact: true }).click();
+	await expect
+		.poll(() => requests.slice(beforeSubmit))
+		.toMatchObject([{ tags: tag, literalPixivTag: true, page: 1 }]);
 	await expect(
 		page.getByRole("link", { name: "タグの検索結果 を開く" }),
 	).toBeVisible();
@@ -1641,8 +1651,6 @@ test("pixiv keeps the ranking on a failed append, retries the same page and star
 	browserHealth,
 }, info) => {
 	const viewport = page.viewportSize();
-	if (viewport && viewport.width >= 1120)
-		await page.setViewportSize({ ...viewport, height: 560 });
 	const requests: z.infer<typeof viewerRequestSchema>[] = [];
 	let failAppend = true;
 	browserHealth.allowResponseFailure("/api/rpc/viewer/search");
@@ -1701,7 +1709,15 @@ test("pixiv keeps the ranking on a failed append, retries the same page and star
 	const scroller = page.locator('[data-media-scroll="pixiv"]');
 	await expect(first).toBeVisible();
 	if (info.project.name !== "tauri") await waitForAppHydration(page);
+	await scroller.evaluate(
+		() =>
+			new Promise<void>((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+			),
+	);
 	expect(requests.map(({ page }) => page)).toEqual([1]);
+	if (viewport && viewport.width >= 1120)
+		await page.setViewportSize({ ...viewport, height: 560 });
 	expect(
 		await scroller.evaluate((el) => {
 			el.scrollTo(0, el.scrollHeight);

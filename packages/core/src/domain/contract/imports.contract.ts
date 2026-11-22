@@ -18,7 +18,22 @@ export const importsContract = {
 					"ダウンロード情報などの項目をインポート待ちリストへまとめて追加します。",
 			}),
 		)
-		.input(z.object({ items: z.array(downloadItemSchema) })),
+		.input(z.object({ items: z.array(downloadItemSchema) }))
+		.output(
+			z.object({
+				addedCount: z.number().int().nonnegative(),
+				skippedCount: z.number().int().nonnegative(),
+				restoredCount: z.number().int().nonnegative(),
+				createdRequests: z
+					.array(
+						z.object({
+							id: z.uuid(),
+							targetUrl: z.url(),
+						}),
+					)
+					.optional(),
+			}),
+		),
 
 	listPending: oc
 		.meta(

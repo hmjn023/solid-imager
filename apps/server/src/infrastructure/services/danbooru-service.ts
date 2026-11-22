@@ -24,12 +24,27 @@ const remotePostSchema = z.object({
 	tag_string_character: z.string().default(""),
 	tag_string_meta: z.string().default(""),
 });
+const remotePostsSchema = z.array(remotePostSchema);
 const remoteTagsSchema = z.array(
 	z.object({
 		name: z.string(),
 		category: z.number().int(),
 		post_count: z.number().int().nonnegative(),
 	}),
+);
+const remoteWikiNamesSchema = z.array(
+	z.object({ title: z.string(), other_names: z.array(z.string()) }),
+);
+const remoteWikiPagesSchema = z.array(
+	z.object({
+		title: z.string(),
+		body: z.string(),
+		other_names: z.array(z.string()),
+		updated_at: z.iso.datetime({ offset: true }),
+	}),
+);
+const remoteWikiTitlesSchema = z.array(
+	z.object({ title: z.string(), category_name: z.string().nullish() }),
 );
 
 const tags = (value: string) => value.split(/\s+/).filter(Boolean);
@@ -89,19 +104,20 @@ export function createDanbooruService(
 	let nextRequestAt = 0;
 	const cache = new Map<string, { expires: number; value: unknown }>();
 	const pending = new Map<string, Promise<unknown>>();
-	async function request(
+	async function request<T>(
 		path: string,
 		params: URLSearchParams,
+		schema: z.ZodType<T>,
 		ttl = 30_000,
-		validate?: (value: unknown) => void,
-	): Promise<unknown> {
+	): Promise<T> {
 		const url = new URL(path, "https://danbooru.donmai.us");
 		url.search = params.toString();
 		const key = url.href;
 		const cached = cache.get(key);
-		if (cached && cached.expires > Date.now()) return cached.value;
+		if (cached && cached.expires > Date.now())
+			return schema.parse(cached.value);
 		const active = pending.get(key);
-		if (active) return active;
+		if (active) return schema.parse(await active);
 		const response = (async () => {
 			const turn = queue.then(async () => {
 				await wait(Math.max(0, nextRequestAt - Date.now()));
@@ -142,16 +158,16 @@ export function createDanbooruService(
 									: "Danbooru から取得できませんでした。公開範囲やアクセス制限を確認してください。";
 				throw new DanbooruRequestError(result.status, message);
 			}
-			let value: unknown;
+			let data: unknown;
 			try {
-				value = await result.json();
+				data = await result.json();
 			} catch {
 				throw new DanbooruRequestError(
 					502,
 					"Danbooru の応答を読み取れませんでした。",
 				);
 			}
-			validate?.(value);
+			const value = schema.parse(data);
 			const directives = result.headers
 				.get("Cache-Control")
 				?.toLowerCase()
@@ -175,87 +191,72 @@ export function createDanbooruService(
 
 	return {
 		async search(input: DanbooruSearch) {
-			const data = await request(
+			const rows = await request(
 				"/posts.json",
 				new URLSearchParams({
 					tags: input.tags,
 					page: String(input.page),
 					limit: String(input.limit),
 				}),
+				remotePostsSchema,
 			);
-			const posts = z.array(remotePostSchema).parse(data).map(mapPost);
+			const posts = rows.map(mapPost);
 			return {
 				posts,
 				hasNextPage: posts.length === input.limit && input.page < 1000,
 			};
 		},
 		async getPost(id: number) {
-			return mapPost(
-				remotePostSchema.parse(
-					await request(`/posts/${id}.json`, new URLSearchParams()),
-				),
+			const post = await request(
+				`/posts/${id}.json`,
+				new URLSearchParams(),
+				remotePostSchema,
 			);
+			return mapPost(post);
 		},
 		async wikiNames(tag: string): Promise<string[]> {
 			// Query by exact title, so tag punctuation cannot alter the upstream path.
-			const rows = z
-				.array(
-					z.object({ title: z.string(), other_names: z.array(z.string()) }),
-				)
-				.parse(
-					await request(
-						"/wiki_pages.json",
-						new URLSearchParams({
-							"search[title]": tag,
-							"search[hide_deleted]": "true",
-							only: "title,other_names",
-							limit: "1",
-						}),
-						3_600_000,
-					),
-				);
+			const rows = await request(
+				"/wiki_pages.json",
+				new URLSearchParams({
+					"search[title]": tag,
+					"search[hide_deleted]": "true",
+					only: "title,other_names",
+					limit: "1",
+				}),
+				remoteWikiNamesSchema,
+				3_600_000,
+			);
 			return rows.find((row) => row.title === tag)?.other_names ?? [];
 		},
 		async wikiPage(tag: string) {
-			const schema = z.array(
-				z.object({
-					title: z.string(),
-					body: z.string(),
-					other_names: z.array(z.string()),
-					updated_at: z.iso.datetime({ offset: true }),
-				}),
-			);
 			const params = new URLSearchParams({
 				"search[title]": tag,
 				"search[hide_deleted]": "true",
 				only: "title,body,other_names,updated_at",
 				limit: "1",
 			});
-			const rows = schema.parse(
-				await request("/wiki_pages.json", params, 3_600_000, (value) => {
-					schema.parse(value);
-				}),
+			const rows = await request(
+				"/wiki_pages.json",
+				params,
+				remoteWikiPagesSchema,
+				3_600_000,
 			);
 			return rows.find((row) => row.title === tag) ?? null;
 		},
 		async suggestWikiTitles(query: string) {
-			const rows = z
-				.array(
-					z.object({ title: z.string(), category_name: z.string().nullish() }),
-				)
-				.parse(
-					await request(
-						"/wiki_pages.json",
-						new URLSearchParams({
-							"search[other_names_match]": query + "*",
-							"search[hide_deleted]": "true",
-							"search[order]": "post_count",
-							only: "title,category_name",
-							limit: "12",
-						}),
-						300_000,
-					),
-				);
+			const rows = await request(
+				"/wiki_pages.json",
+				new URLSearchParams({
+					"search[other_names_match]": query + "*",
+					"search[hide_deleted]": "true",
+					"search[order]": "post_count",
+					only: "title,category_name",
+					limit: "12",
+				}),
+				remoteWikiTitlesSchema,
+				300_000,
+			);
 			const categories: Record<string, number> = {
 				general: 0,
 				artist: 1,
@@ -270,7 +271,7 @@ export function createDanbooruService(
 			}));
 		},
 		async suggestTags(query: string) {
-			const data = await request(
+			const rows = await request(
 				"/tags.json",
 				new URLSearchParams({
 					"search[name_or_alias_matches]": `${query}*`,
@@ -279,9 +280,10 @@ export function createDanbooruService(
 					"search[is_deprecated]": "false",
 					limit: "12",
 				}),
+				remoteTagsSchema,
 				300_000,
 			);
-			return remoteTagsSchema.parse(data).map((tag) => ({
+			return rows.map((tag) => ({
 				name: tag.name,
 				category: tag.category,
 				postCount: tag.post_count,

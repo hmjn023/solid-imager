@@ -411,15 +411,22 @@ export const tagDictionaryTags = pgTable(
 	(table) => [
 		index("idx_tag_dictionary_popular").on(table.postCount.desc(), table.name),
 		index("idx_tag_dictionary_aliases").using("gin", table.aliases),
+		index("idx_tag_dictionary_japanese").on(table.japanese),
 	],
 );
 
-export const tagDictionaryWiki = pgTable("tag_dictionary_wiki", {
-	name: text("name").primaryKey(),
-	body: text("body"),
-	otherNames: jsonb("other_names").$type<string[]>().notNull(),
-	updatedAt: text("updated_at").notNull(),
-});
+export const tagDictionaryWiki = pgTable(
+	"tag_dictionary_wiki",
+	{
+		name: text("name").primaryKey(),
+		body: text("body"),
+		otherNames: jsonb("other_names").$type<string[]>().notNull(),
+		updatedAt: text("updated_at").notNull(),
+	},
+	(table) => [
+		index("idx_tag_dictionary_wiki_other_names").using("gin", table.otherNames),
+	],
+);
 
 export const tagDictionaryAttributes = pgTable("tag_dictionary_attributes", {
 	name: text("name").primaryKey(),

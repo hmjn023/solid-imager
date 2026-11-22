@@ -7,11 +7,10 @@ import type {
 	ExternalSearch,
 	ViewerTag,
 } from "@solid-imager/core/external-viewer";
-import type { DownloadItem } from "@solid-imager/core/media";
 import { createQuery } from "@tanstack/solid-query";
 import { createSignal, onMount } from "solid-js";
 import { DanbooruPostDetail } from "../external-viewer/danbooru-post-detail";
-import { createViewerImports } from "../external-viewer/viewer-imports";
+import type { createViewerImports } from "../external-viewer/viewer-imports";
 import {
 	danbooruRatingLabel,
 	viewerImageHref,
@@ -28,7 +27,7 @@ export type DanbooruScreenProps = ViewerNavigation & {
 	search: (input: ExternalSearch) => Promise<DanbooruSearchResult>;
 	getPost: (id: number) => Promise<DanbooruPost>;
 	suggestTags: (query: string) => Promise<ViewerTag[]>;
-	enqueueImport: (item: DownloadItem) => Promise<unknown>;
+	imports: ReturnType<typeof createViewerImports>;
 };
 
 export function DanbooruScreen(props: DanbooruScreenProps) {
@@ -39,9 +38,6 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 		props.search,
 		undefined,
 		() => props.selectedPostId,
-	);
-	const imports = createViewerImports((items) =>
-		Promise.all(items.map((item) => props.enqueueImport(item))),
 	);
 	const detail = createQuery(() => ({
 		...viewerPostQueryOptions("danbooru", props.selectedPostId, props.getPost),
@@ -78,7 +74,7 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 				<DanbooruPostDetail
 					{...navigation}
 					query={detail}
-					imports={imports}
+					imports={props.imports}
 					onSearchTag={(tag) => {
 						browse.submit(tag);
 						openNewCollection();

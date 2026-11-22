@@ -25,6 +25,7 @@ const {
 	mockSaveFile,
 	mockDownloadUgoiraArchive,
 	mockConvertUgoiraToMp4,
+	mockMatchTagNames,
 } = vi.hoisted(() => ({
 	mockFindById: vi.fn(),
 	mockGetFileMetadata: vi.fn(),
@@ -39,6 +40,7 @@ const {
 	mockSaveFile: vi.fn(),
 	mockDownloadUgoiraArchive: vi.fn(),
 	mockConvertUgoiraToMp4: vi.fn(),
+	mockMatchTagNames: vi.fn(),
 }));
 
 // Mocks
@@ -59,6 +61,7 @@ vi.mock("~/infrastructure/db/repositories", () => ({
 	DrizzleSourceRepository: {
 		findById: mockFindById,
 	},
+	TagDictionaryRepository: { matchNames: mockMatchTagNames },
 	MediaRepository: {
 		create: mockMediaCreate,
 		update: mockMediaUpdate,
@@ -136,6 +139,7 @@ const DOWNLOAD_FILENAME_PATTERN = /^user_twitter_123_image\.jpg$/;
 describe("processDownloadJob", () => {
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		mockMatchTagNames.mockResolvedValue(new Map<string, string>());
 		vi.mocked(fs.access).mockRejectedValue(new Error("ENOENT"));
 		vi.mocked(fs.mkdtemp).mockResolvedValue(
 			"/tmp/downloads/.xtracter-ugoira-fixture",
@@ -572,51 +576,92 @@ describe("processDownloadJob", () => {
 		);
 	});
 
-	it("should download a Pixiv original with the artwork page as Referer and preserve both source URLs", async () => {
-		const targetUrl =
-			"https://i.pximg.net/img-original/img/2026/09/30/12/00/00/123456789_p1.png";
-		const artworkUrl = "https://www.pixiv.net/artworks/123456789";
-		const sourceUrls = [targetUrl, artworkUrl];
-		const createdAt = new Date("2026-09-30T12:00:00+09:00");
-		fetchMock.mockResolvedValueOnce({
-			ok: true,
-			headers: new Headers({ "content-type": "image/png" }),
-			arrayBuffer: async () => new ArrayBuffer(10),
-		});
-		const job = {
-			id: "job-pixiv-original",
-			mediaSourceId: "source-1",
-			type: "downloadImage",
-			payload: {
+	it.each(["built-in viewer", "Xtracter"])(
+		"canonicalizes Pixiv tags from the %s while preserving download metadata",
+		async (producer) => {
+			const targetUrl =
+				"https://i.pximg.net/img-original/img/2026/09/30/12/00/00/123456789_p0.png";
+			const artworkUrl = "https://www.pixiv.net/artworks/123456789";
+			const sourceUrls = [targetUrl, artworkUrl];
+			const createdAt = "2026-09-30T12:00:00+09:00";
+			const description = "Pixiv artwork description";
+			const tagNames = ["オリジナル", "辞書未登録"];
+			const tags = tagNames.map((name) => ({
+				name,
+				type: "positive" as const,
+				source: "pixiv",
+			}));
+			const payload =
+				producer === "built-in viewer"
+					? pixivDownloadItem(
+							{
+								id: 123456789,
+								title: description,
+								userId: "12345",
+								author: "Pixiv Artist",
+								createdAt,
+								pageCount: 1,
+								isAnimation: false,
+								thumbnail: targetUrl,
+								tags: tagNames,
+								pages: [
+									{
+										preview: targetUrl,
+										original: targetUrl,
+										width: 800,
+										height: 600,
+									},
+								],
+							},
+							0,
+						)
+					: {
+							targetUrl,
+							sourceUrls,
+							createdAt,
+							description,
+							authors: [
+								{ name: "Pixiv Artist", accountId: "12345", platform: "pixiv" },
+							],
+							tags,
+							userAgent: "Xtracter fixture",
+						};
+			if (!payload) throw new Error("Missing download fixture");
+			mockMatchTagNames.mockResolvedValueOnce(
+				new Map([["オリジナル", "original"]]),
+			);
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				headers: new Headers({ "content-type": "image/png" }),
+				arrayBuffer: async () => new ArrayBuffer(10),
+			});
+			await processDownloadJob({
+				id: "job-pixiv-original",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload,
+			} as any);
+
+			expect(mockMatchTagNames).toHaveBeenCalledExactlyOnceWith(tagNames);
+			expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
 				targetUrl,
-				sourceUrls,
-				createdAt: createdAt.toISOString(),
-				description: "Pixiv artwork description",
-				authors: [{ name: "Pixiv Artist", accountId: "12345" }],
-				tags: [{ name: "オリジナル", source: "pixiv" }],
-			},
-		} as any;
-
-		await processDownloadJob(job);
-
-		expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
-			targetUrl,
-			expect.objectContaining({
-				headers: expect.objectContaining({ Referer: artworkUrl }),
-			}),
-		);
-		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
-			"source-1",
-			expect.stringMatching(/123456789_p1\.png$/),
-			expect.objectContaining({
-				sourceUrls,
-				createdAt,
-				description: "Pixiv artwork description",
-				authors: job.payload.authors,
-				tags: job.payload.tags,
-			}),
-		);
-	});
+				expect.objectContaining({
+					headers: expect.objectContaining({ Referer: artworkUrl }),
+				}),
+			);
+			expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+				"source-1",
+				expect.stringMatching(/123456789_p0\.png$/),
+				expect.objectContaining({
+					sourceUrls,
+					createdAt: new Date(createdAt),
+					description,
+					authors: payload.authors,
+					tags: [{ ...tags[0], name: "original" }, tags[1]],
+				}),
+			);
+		},
+	);
 
 	it("converts ugoira and registers only the completed MP4 with its artwork metadata", async () => {
 		const targetUrl =
@@ -970,3 +1015,4 @@ describe("processDownloadJob", () => {
 		);
 	});
 });
+import { pixivDownloadItem } from "@solid-imager/core/external-viewer";

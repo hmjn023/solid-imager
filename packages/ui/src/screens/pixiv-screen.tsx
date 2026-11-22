@@ -25,7 +25,7 @@ import {
 import { Dialog } from "../dialog";
 import { DropdownMenuItem, DropdownMenuSeparator } from "../dropdown-menu";
 import { ViewerActionsMenu } from "../external-viewer/actions-menu";
-import { createViewerImports } from "../external-viewer/viewer-imports";
+import type { createViewerImports } from "../external-viewer/viewer-imports";
 import {
 	createPixivAccount,
 	type ViewerFetch,
@@ -61,7 +61,8 @@ import {
 type PixivToolbarDialog = "viewingHistory" | "searchHistory" | "account";
 
 type PixivProps = ViewerNavigation & {
-	client: Pick<AppContractClient, "viewer" | "imports">;
+	client: Pick<AppContractClient, "viewer">;
+	imports: ReturnType<typeof createViewerImports>;
 	apiBase: () => string;
 	fetch?: ViewerFetch;
 	createViewer: PixivClientFactory;
@@ -193,9 +194,6 @@ export function PixivScreen(props: PixivProps) {
 				}
 			},
 		),
-	);
-	const imports = createViewerImports((items) =>
-		props.client.imports.bulkAdd({ items }),
 	);
 	const detail = createQuery(() => ({
 		...viewerPostQueryOptions(
@@ -403,7 +401,7 @@ export function PixivScreen(props: PixivProps) {
 				<PixivArtworkDetail
 					{...navigation}
 					query={detail}
-					imports={imports}
+					imports={props.imports}
 					historyAction={
 						<PixivViewingHistoryDialog
 							{...viewingHistory}

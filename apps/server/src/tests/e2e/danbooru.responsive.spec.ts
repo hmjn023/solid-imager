@@ -145,6 +145,7 @@ test("Danbooru video imports preserve the original and metadata after navigation
 	await expect(
 		detail.getByRole("button", { name: "取り込み待ちに追加済み", exact: true }),
 	).toBeDisabled();
+	await page.getByRole("button", { name: "通知を閉じる" }).click();
 	const pending = await page.request.post("/api/rpc/imports/listPending", {
 		data: { json: {} },
 	});
@@ -153,6 +154,7 @@ test("Danbooru video imports preserve the original and metadata after navigation
 		.parse((await pending.json()).json);
 	const job = jobs.find((entry) => entry.item.targetUrl === videoPost.fileUrl);
 	expect(job).toBeDefined();
+	expect(job?.item.previewUrl).toBe(videoPost.previewUrl);
 	expect(job?.item.sourceUrls).toEqual([
 		videoPost.fileUrl,
 		videoPost.source,
@@ -172,6 +174,28 @@ test("Danbooru video imports preserve the original and metadata after navigation
 		});
 		expect(cancelled.ok()).toBe(true);
 	}
+	await expect(add).toBeEnabled();
+	await expect(detail).toBeVisible();
+	const readded = page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname === "/api/rpc/imports/bulkAdd" &&
+			response.ok(),
+	);
+	await add.click();
+	await readded;
+	const list = await page.request.post("/api/rpc/imports/listPending", {
+		data: { json: {} },
+	});
+	const readdedJobs = z
+		.array(pendingImportJobSchema)
+		.parse((await list.json()).json)
+		.filter((entry) => entry.item.targetUrl === videoPost.fileUrl);
+	expect(readdedJobs).toHaveLength(1);
+	expect(readdedJobs[0]?.id).not.toBe(job?.id);
+	const cleanup = await page.request.post("/api/rpc/imports/cancel", {
+		data: { json: { jobIds: readdedJobs.map((entry) => entry.id) } },
+	});
+	expect(cleanup.ok()).toBe(true);
 });
 
 test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", async ({

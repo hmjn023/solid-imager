@@ -3,7 +3,15 @@ import type { PendingDownloadsIndicatorProps } from "@solid-imager/ui/pending-do
 import { getApiOrigin, orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
+export const subscribeImportEvents = createSharedEventSubscription((signal) =>
+	orpc.imports.events(undefined, { signal }),
+);
+
 export const pendingDownloadsIndicatorProps: PendingDownloadsIndicatorProps = {
+	danbooruPreview: {
+		apiBase: getApiOrigin,
+		loadPost: (id) => orpc.danbooru.getPost({ id }),
+	},
 	pixivPreview: {
 		apiBase: getApiOrigin,
 		loadPoster: async (id) =>
@@ -35,7 +43,5 @@ export const pendingDownloadsIndicatorProps: PendingDownloadsIndicatorProps = {
 		const result = await orpc.imports.cancel({ jobIds });
 		return { success: result.success };
 	},
-	subscribeImportEvents: createSharedEventSubscription((signal) =>
-		orpc.imports.events(undefined, { signal }),
-	),
+	subscribeImportEvents,
 };

@@ -1,6 +1,7 @@
 import { downloadItemSchema, type DownloadItem } from "@ext/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	getPixivPageMetadata,
 	getPixivArtworkId,
 	getPixivImagePage,
 	parsePixivMetadata,
@@ -37,11 +38,11 @@ function ugoiraResponse() {
 	};
 }
 
-function artworkResponse() {
+function artworkResponse(id = artworkId) {
 	return {
 		error: false,
 		body: {
-			id: artworkId,
+			id,
 			illustType: 1,
 			pageCount: 2,
 			title: "作品タイトル",
@@ -54,10 +55,12 @@ function artworkResponse() {
 	};
 }
 
-function pagesResponse() {
+function pagesResponse(id = artworkId) {
 	return {
 		error: false,
-		body: originalUrls.map((original) => ({ urls: { original } })),
+		body: originalUrls.map((original) => ({
+			urls: { original: original.replace(artworkId, id) },
+		})),
 	};
 }
 
@@ -231,8 +234,7 @@ function mediaFixture(urls: string[] = originalUrls) {
 		buttons.push(button);
 		return button;
 	});
-	const metadata = new Map<string, DownloadItem>();
-	return { location, images, factory, callbacks, buttons, metadata, document };
+	return { location, images, factory, callbacks, buttons, document };
 }
 
 function mockSuccess() {
@@ -245,6 +247,39 @@ function mockSuccess() {
 	return fetchMock;
 }
 
+describe("Pixiv popup metadata", () => {
+	it("loads the current artwork without using its individual controls", async () => {
+		const { location } = mediaFixture([]);
+		const nextId = "111";
+		const fetchMock = vi.fn(async (url: string) => {
+			const id = url.split("/")[3];
+			return Response.json(
+				url.endsWith("/pages") ? pagesResponse(id) : artworkResponse(id),
+			);
+		});
+		vi.stubGlobal("fetch", fetchMock);
+
+		expect(
+			(await getPixivPageMetadata()).map((item) => item.targetUrl),
+		).toEqual(originalUrls);
+		location.href = `https://www.pixiv.net/artworks/${nextId}`;
+		expect(
+			(await getPixivPageMetadata()).map((item) => item.targetUrl),
+		).toEqual(originalUrls.map((url) => url.replace(artworkId, nextId)));
+		location.href = "https://www.pixiv.net/discovery";
+		expect(await getPixivPageMetadata()).toEqual([]);
+		expect(fetchMock).toHaveBeenCalledTimes(4);
+	});
+
+	it("discards a request if SPA navigation changes the active artwork", async () => {
+		const { location } = mediaFixture([]);
+		mockSuccess();
+		const pending = getPixivPageMetadata();
+		location.href = "https://www.pixiv.net/artworks/111";
+		expect(await pending).toEqual([]);
+	});
+});
+
 describe("Pixiv POST controls", () => {
 	it("adds controls only for current artwork and deduplicates repeated DOM processing", () => {
 		const fixture = mediaFixture([
@@ -252,15 +287,15 @@ describe("Pixiv POST controls", () => {
 			"https://i.pximg.net/img-master/111_p0.jpg",
 		]);
 		const fetchMock = mockSuccess();
-		processPixivMedia(fixture.metadata, fixture.factory);
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
+		processPixivMedia(fixture.factory);
 		expect(fixture.factory).toHaveBeenCalledTimes(2);
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
-	it("shares pending API requests for multiple pages and retains all fetched metadata", async () => {
+	it("shares pending API requests for multiple page controls", async () => {
 		const fixture = mediaFixture();
 		const fetchMock = mockSuccess();
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		const items = await Promise.all(
 			fixture.callbacks.map((callback) => callback()),
 		);
@@ -272,7 +307,6 @@ describe("Pixiv POST controls", () => {
 		expect(fetchMock).toHaveBeenCalledWith(`/ajax/illust/${artworkId}/pages`, {
 			credentials: "same-origin",
 		});
-		expect([...fixture.metadata.keys()]).toEqual(originalUrls);
 	});
 	it("permits retry after API failure", async () => {
 		const fixture = mediaFixture();
@@ -280,7 +314,7 @@ describe("Pixiv POST controls", () => {
 			"fetch",
 			vi.fn(async () => new Response("failed", { status: 403 })),
 		);
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		expect(await fixture.callbacks[0]()).toBeNull();
 		const fetchMock = mockSuccess();
 		expect((await fixture.callbacks[0]())?.targetUrl).toBe(originalUrls[0]);
@@ -288,7 +322,7 @@ describe("Pixiv POST controls", () => {
 	});
 	it("rejects an old button after navigation before or during the request", async () => {
 		const fixture = mediaFixture();
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		const fetchMock = mockSuccess();
 		fixture.location.href = "https://www.pixiv.net/artworks/111";
 		expect(await fixture.callbacks[0]()).toBeNull();
@@ -297,15 +331,14 @@ describe("Pixiv POST controls", () => {
 		const pending = fixture.callbacks[0]();
 		fixture.location.href = "https://www.pixiv.net/artworks/111";
 		expect(await pending).toBeNull();
-		expect(fixture.metadata.size).toBe(0);
 	});
 	it("replaces controls on a reused image node and rejects stale page callbacks", async () => {
 		const fixture = mediaFixture([originalUrls[0]]);
 		fixture.images[0].currentSrc = originalUrls[0];
 		mockSuccess();
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		fixture.images[0].src = originalUrls[1];
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		expect(fixture.buttons[0].remove).toHaveBeenCalled();
 		expect(await fixture.callbacks[0]()).toBeNull();
 		expect((await fixture.callbacks[1]())?.targetUrl).toBe(originalUrls[1]);
@@ -408,7 +441,7 @@ describe("Pixiv ugoira POST controls", () => {
 				`https://i.pximg.net/img-master/img/date/${artworkId}_${suffix}`,
 			]);
 			const fetchMock = mockUgoiraSuccess();
-			processPixivMedia(fixture.metadata, fixture.factory);
+			processPixivMedia(fixture.factory);
 			expect(fetchMock).not.toHaveBeenCalled();
 			const item = await fixture.callbacks[0]();
 			expect(item?.targetUrl).toBe(ugoiraUrl);
@@ -429,8 +462,8 @@ describe("Pixiv ugoira POST controls", () => {
 				fixture.images[0] as unknown as HTMLElement,
 			);
 			const fetchMock = mockUgoiraSuccess();
-			processPixivMedia(fixture.metadata, fixture.factory);
-			processPixivMedia(fixture.metadata, fixture.factory);
+			processPixivMedia(fixture.factory);
+			processPixivMedia(fixture.factory);
 			expect(fixture.factory).toHaveBeenCalledTimes(1);
 			expect(fetchMock).not.toHaveBeenCalled();
 			expect((await fixture.callbacks[0]())?.targetUrl).toBe(ugoiraUrl);
@@ -442,7 +475,7 @@ describe("Pixiv ugoira POST controls", () => {
 			"",
 		]);
 		fixture.images[1].tagName = "CANVAS";
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		expect(fixture.factory).not.toHaveBeenCalled();
 	});
 	it("does not silently import a still image from an unrelated player candidate", async () => {
@@ -452,9 +485,8 @@ describe("Pixiv ugoira POST controls", () => {
 			fixture.images[0] as unknown as HTMLElement,
 		);
 		mockSuccess();
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		expect(await fixture.callbacks[0]()).toBeNull();
-		expect(fixture.metadata.size).toBe(0);
 	});
 	it("rejects a player callback if SPA navigation occurs during metadata fetch", async () => {
 		const fixture = mediaFixture([""]);
@@ -463,11 +495,10 @@ describe("Pixiv ugoira POST controls", () => {
 			fixture.images[0] as unknown as HTMLElement,
 		);
 		mockUgoiraSuccess();
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		const pending = fixture.callbacks[0]();
 		fixture.location.href = "https://www.pixiv.net/artworks/111";
 		expect(await pending).toBeNull();
-		expect(fixture.metadata.size).toBe(0);
 	});
 	it("retries the ugoira endpoint after an error and never sends its poster", async () => {
 		const fixture = mediaFixture([
@@ -481,9 +512,8 @@ describe("Pixiv ugoira POST controls", () => {
 					: Response.json(ugoiraArtworkResponse()),
 			),
 		);
-		processPixivMedia(fixture.metadata, fixture.factory);
+		processPixivMedia(fixture.factory);
 		expect(await fixture.callbacks[0]()).toBeNull();
-		expect(fixture.metadata.size).toBe(0);
 		mockUgoiraSuccess();
 		expect((await fixture.callbacks[0]())?.targetUrl).toBe(ugoiraUrl);
 	});

@@ -86,6 +86,58 @@ describe("Danbooru service", () => {
 		expect(fetchRemote).toHaveBeenCalledTimes(2);
 	});
 
+	it.each<{
+		operation: string;
+		read: (
+			service: ReturnType<typeof createDanbooruService>,
+		) => Promise<unknown>;
+		response: unknown;
+	}>([
+		{
+			operation: "post search",
+			read: (service) =>
+				service.search({ tags: "blue_hair", page: 1, limit: 40 }),
+			response: [remotePost],
+		},
+		{
+			operation: "post detail",
+			read: (service) => service.getPost(remotePost.id),
+			response: remotePost,
+		},
+		{
+			operation: "wiki names",
+			read: (service) => service.wikiNames("blue_hair"),
+			response: [{ title: "blue_hair", other_names: ["青髪"] }],
+		},
+		{
+			operation: "wiki title suggestions",
+			read: (service) => service.suggestWikiTitles("青髪"),
+			response: [{ title: "blue_hair", category_name: "general" }],
+		},
+		{
+			operation: "tag suggestions",
+			read: (service) => service.suggestTags("blue"),
+			response: [{ name: "blue_hair", category: 0, post_count: 100 }],
+		},
+	])(
+		"retries malformed $operation responses and caches the valid result",
+		async ({ read, response }) => {
+			const fetchRemote = vi
+				.fn<typeof fetch>()
+				.mockResolvedValueOnce(Response.json([{}]))
+				.mockResolvedValueOnce(Response.json(response));
+			const service = createDanbooruService({
+				fetch: fetchRemote,
+				wait: async () => undefined,
+			});
+
+			await expect(read(service)).rejects.toThrow();
+			const recovered = await read(service);
+			await expect(read(service)).resolves.toEqual(recovered);
+			expect(fetchRemote).toHaveBeenCalledTimes(2);
+		},
+	);
+
 	it("coalesces concurrent tag requests and caches their results", async () => {
 		const fetchRemote = vi
 			.fn<typeof fetch>()

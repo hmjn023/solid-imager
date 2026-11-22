@@ -1,4 +1,9 @@
+import { createSharedEventSubscription } from "@solid-imager/ui/event-stream";
 import { client } from "~/orpc-client";
+
+export const subscribeImportEvents = createSharedEventSubscription((signal) =>
+	client.imports.events(undefined, { signal }),
+);
 
 export function listPendingImports() {
 	return client.imports.listPending();

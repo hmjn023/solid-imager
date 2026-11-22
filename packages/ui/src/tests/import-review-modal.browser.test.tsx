@@ -9,6 +9,7 @@ import type {
 	ImportReviewModalProps,
 	PendingImportJob,
 } from "../import-review-modal.types";
+import { setImportSourcePreference } from "../import-source-preference";
 import { Toaster } from "../toast";
 import { renderComponent } from "./render-component";
 
@@ -42,6 +43,66 @@ const JOBS: PendingImportJob[] = [
 		createdAt: "2026-01-01T00:00:00Z",
 	},
 ];
+
+test("chooses a local import destination when the remembered default is remote", async ({
+	onTestFinished,
+}) => {
+	const remote: SafeMediaSource = {
+		id: "00000000-0000-4000-8000-000000000003",
+		name: "Default",
+		description: null,
+		type: "s3",
+		connectionInfo: { region: "us-east-1", bucket: "fixture" },
+	};
+	setImportSourcePreference(true, remote.id);
+	onTestFinished(() => setImportSourcePreference(false));
+	const processPending = vi
+		.fn<ImportReviewModalProps["processPending"]>()
+		.mockResolvedValue({ success: true, processedCount: JOBS.length });
+	onTestFinished(
+		renderComponent(() => (
+			<ImportReviewModal
+				cancelPending={vi.fn()}
+				isOpen
+				listPending={async () => JOBS}
+				listSources={async () => [remote, ...SOURCES]}
+				onClose={vi.fn()}
+				onImportCompleted={vi.fn()}
+				processPending={processPending}
+			/>
+		)),
+	);
+
+	const dialog = page.getByRole("dialog", {
+		name: t("navigation.importInbox"),
+	});
+	const destination = dialog.getByRole("button", {
+		name: new RegExp(`^${t("importReviewModal.targetSource")}`),
+	});
+	await expect
+		.element(destination)
+		.toHaveTextContent(`Library · ${sourceTypeLabel("local")}`);
+	await destination.click();
+	await expect.element(dialog.getByRole("option")).toHaveLength(SOURCES.length);
+	await expect
+		.element(dialog.getByRole("option", { name: /Default/ }))
+		.not.toBeInTheDocument();
+	await userEvent.keyboard("{Escape}");
+	await dialog
+		.getByRole("button", {
+			name: t("importReviewModal.importValue", {
+				value0: t("importReviewModal.value", { value0: String(JOBS.length) }),
+			}),
+			exact: true,
+		})
+		.click();
+	await vi.waitFor(() =>
+		expect(processPending).toHaveBeenCalledExactlyOnceWith(
+			JOBS.map((job) => job.id),
+			SOURCE_ID,
+		),
+	);
+});
 
 test("keeps a long destination list inside the short dialog's scroll boundaries", async ({
 	onTestFinished,

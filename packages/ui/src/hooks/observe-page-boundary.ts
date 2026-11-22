@@ -5,7 +5,7 @@ export function observePageBoundary(options: {
 	target: () => Element | undefined;
 	root?: () => Element | undefined;
 	enabled: () => boolean;
-	rootMargin: string;
+	rootMargin: string | (() => string);
 	load: () => void | Promise<unknown>;
 }) {
 	createEffect(() => {
@@ -24,7 +24,10 @@ export function observePageBoundary(options: {
 			},
 			{
 				root: options.root?.(),
-				rootMargin: options.rootMargin,
+				rootMargin:
+					typeof options.rootMargin === "string"
+						? options.rootMargin
+						: options.rootMargin(),
 				threshold: 0.5,
 			},
 		);

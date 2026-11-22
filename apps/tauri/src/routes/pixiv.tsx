@@ -5,6 +5,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { createFileRoute, useRouter } from "@tanstack/solid-router";
 import { client, fetchServer } from "~/orpc-client";
 import { getApiBaseUrl } from "~/infrastructure/api-base";
+import { subscribeImportEvents } from "~/infrastructure/api-clients/imports-api";
 export const Route = createFileRoute("/pixiv")({
 	component: PixivPage,
 });
@@ -24,6 +25,7 @@ function PixivPage() {
 			client={client}
 			apiBase={getApiBaseUrl}
 			fetch={fetchServer}
+			subscribeImportEvents={subscribeImportEvents}
 		/>
 	);
 }

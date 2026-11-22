@@ -1,4 +1,5 @@
 import { t } from "@solid-imager/i18n";
+import { danbooruMediaUrlSchema } from "@solid-imager/core/danbooru";
 import { pixivImageUrlSchema } from "@solid-imager/core/external-viewer";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
@@ -34,12 +35,13 @@ import {
 	DialogTrigger,
 } from "./dialog";
 import { sourceTypeLabel } from "./display-labels";
-import { pixivImageHref } from "./external-viewer/post-media";
+import { pixivImageHref, viewerImageHref } from "./external-viewer/post-media";
 import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
 } from "./import-inbox-helpers";
 import type {
+	DanbooruImportPreview,
 	ImportReviewModalProps,
 	PendingImportJob,
 	PixivImportPreview,
@@ -58,6 +60,7 @@ import {
 	SelectValue,
 } from "./select";
 import { toast } from "./toast";
+import { VideoPlayer } from "./video-player";
 import { Maximize2 } from "./workspace/icons";
 
 type ImportSourceOption = {
@@ -103,6 +106,25 @@ function pixivAnimationId(item: PendingImportJob["item"]): number | undefined {
 	if (Number.isSafeInteger(id) && id > 0) return id;
 }
 
+function danbooruPostId(item: PendingImportJob["item"]): number | undefined {
+	for (const source of item.sourceUrls ?? []) {
+		const url = URL.parse(source);
+		if (
+			url?.origin !== "https://danbooru.donmai.us" ||
+			url.username ||
+			url.password
+		)
+			continue;
+		const id = Number(url.pathname.match(/^\/posts\/(\d+)\/?$/)?.[1]);
+		if (Number.isSafeInteger(id) && id > 0) return id;
+	}
+}
+
+function danbooruPosterUrl(value?: string | null): string | undefined {
+	const url = danbooruMediaUrlSchema.safeParse(value).data;
+	if (url && /\.(?:jpe?g|png|webp)$/i.test(new URL(url).pathname)) return url;
+}
+
 function ImportPreviewImage(props: { src?: string; expanded?: boolean }) {
 	const [failedSrc, setFailedSrc] = createSignal<string | null>();
 	return (
@@ -140,6 +162,7 @@ function ImportPreviewImage(props: { src?: string; expanded?: boolean }) {
 
 function ImportReviewCard(props: {
 	item: PendingImportJob["item"];
+	danbooruPreview?: DanbooruImportPreview;
 	pixivPreview?: PixivImportPreview;
 	checked: boolean;
 	disabled: boolean;
@@ -168,6 +191,32 @@ function ImportReviewCard(props: {
 			return pixivImageUrlSchema.safeParse(url).data;
 		},
 	);
+	const danbooruTarget = createMemo(
+		() => danbooruMediaUrlSchema.safeParse(props.item.targetUrl).data,
+	);
+	const danbooruVideo = createMemo(() => {
+		const url = danbooruTarget();
+		if (url && /\.(?:mp4|webm)$/i.test(new URL(url).pathname)) return url;
+	});
+	const danbooruPoster = createMemo(() =>
+		danbooruPosterUrl(props.item.previewUrl),
+	);
+	const [legacyDanbooruPoster] = createResource(
+		() => {
+			const url = danbooruVideo();
+			const id =
+				url && !danbooruPoster() && props.danbooruPreview
+					? danbooruPostId(props.item)
+					: undefined;
+			return id && url ? { id, url } : undefined;
+		},
+		async ({ id, url }) => {
+			const post = await props.danbooruPreview
+				?.loadPost(id)
+				.catch(() => undefined);
+			if (post?.fileUrl === url) return danbooruPosterUrl(post.previewUrl);
+		},
+	);
 	function imageSource(expanded: boolean) {
 		const base = props.pixivPreview?.apiBase();
 		const target = original();
@@ -176,6 +225,15 @@ function ImportReviewCard(props: {
 		if (animationId()) {
 			const poster = preview() ?? legacyPoster();
 			return base && poster ? pixivImageHref(base, poster) : undefined;
+		}
+		if (!expanded && danbooruTarget()) {
+			const poster = danbooruPoster() ?? legacyDanbooruPoster();
+			const danbooruBase = props.danbooruPreview?.apiBase();
+			if (poster)
+				return danbooruBase
+					? viewerImageHref(danbooruBase, "/api/danbooru-thumbnail", poster)
+					: poster;
+			if (danbooruVideo()) return;
 		}
 		return expanded
 			? props.item.targetUrl
@@ -241,7 +299,16 @@ function ImportReviewCard(props: {
 								)}
 							</Show>
 						</div>
-						<ImportPreviewImage expanded src={imageSource(true)} />
+						<Show
+							when={danbooruVideo()}
+							fallback={<ImportPreviewImage expanded src={imageSource(true)} />}
+						>
+							{(url) => (
+								<div class="aspect-video max-h-dialog-screen-compact overflow-hidden rounded-md bg-muted">
+									<VideoPlayer fileName={title()} src={url()} />
+								</div>
+							)}
+						</Show>
 					</div>
 				</DialogContent>
 			</Dialog>
@@ -273,6 +340,14 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		props.listPending,
 	);
 	const [sources] = createResource(openGeneration, props.listSources);
+	const localSources = createMemo(() =>
+		(sources() ?? []).filter(
+			(source): source is typeof source & { id: string } =>
+				source.type === "local" && !!source.id,
+		),
+	);
+	const sourceSelectionDisabled = () =>
+		sources.loading || !localSources().length || activeAction() !== null;
 
 	createEffect(
 		on(
@@ -297,8 +372,8 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 
 	createEffect(() => {
 		if (!props.isOpen) return;
-		const sourceList = sources();
-		if (!sourceList?.length) {
+		const sourceList = localSources();
+		if (!sourceList.length) {
 			setSelectedSourceId("");
 			return;
 		}
@@ -352,7 +427,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 
 	const handleProcess = async () => {
 		const jobIds = Array.from(selectedJobIds());
-		const sourceId = selectedSourceId();
+		const sourceId = selectedSourceOption()?.id;
 		if (!jobIds.length || !sourceId) {
 			return;
 		}
@@ -383,16 +458,10 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	};
 
 	const sourceOptions = (): ImportSourceOption[] =>
-		(sources() ?? []).flatMap((source) =>
-			source.id
-				? [
-						{
-							id: source.id,
-							label: `${source.name} · ${sourceTypeLabel(source.type)}`,
-						},
-					]
-				: [],
-		);
+		localSources().map((source) => ({
+			id: source.id,
+			label: `${source.name} · ${sourceTypeLabel(source.type)}`,
+		}));
 	const selectedSourceOption = () =>
 		sourceOptions().find((option) => option.id === selectedSourceId()) ?? null;
 
@@ -444,7 +513,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 							<div class="grid min-w-0 gap-2 sm:w-80" ref={setSourceField}>
 								<Select<ImportSourceOption>
 									class="grid gap-1"
-									disabled={sources.loading || activeAction() !== null}
+									disabled={sourceSelectionDisabled()}
 									disallowEmptySelection
 									itemComponent={(itemProps) => (
 										<SelectItem item={itemProps.item}>
@@ -481,7 +550,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								<Checkbox
 									checked={rememberSource()}
 									class="flex items-center gap-2"
-									disabled={sources.loading || activeAction() !== null}
+									disabled={sourceSelectionDisabled()}
 									onChange={handleRememberSourceChange}
 								>
 									<CheckboxControl />
@@ -544,6 +613,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										{(job) => (
 											<ImportReviewCard
 												checked={selectedJobIds().has(job.id)}
+												danbooruPreview={props.danbooruPreview}
 												disabled={activeAction() !== null}
 												item={job.item}
 												pixivPreview={props.pixivPreview}
@@ -603,7 +673,8 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 							class="flex-1 px-2 sm:flex-none sm:px-4"
 							disabled={
 								selectedJobIds().size === 0 ||
-								!selectedSourceId() ||
+								sources.loading ||
+								!selectedSourceOption() ||
 								activeAction() !== null
 							}
 							onClick={() => void handleProcess()}

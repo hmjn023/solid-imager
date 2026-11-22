@@ -322,18 +322,28 @@ describe("persisted import, attempt and batch transitions", () => {
 		expect(await call(importsRouter.countPending, undefined)).toEqual({
 			count: 0,
 		});
-		await call(importsRouter.bulkAdd, { items });
+		const result = await call(importsRouter.bulkAdd, { items });
 		expect(await call(importsRouter.countPending, undefined)).toEqual({
 			count: items.length,
 		});
+		const pending = await call(importsRouter.listPending, undefined);
+		expect(result.createdRequests).toHaveLength(items.length);
+		expect(
+			new Map(
+				result.createdRequests?.map(({ id, targetUrl }) => [id, targetUrl]),
+			),
+		).toEqual(new Map(pending.map(({ id, item }) => [id, item.targetUrl])));
 	});
 
-	async function receipt(status: "pending" | "completed" = "pending") {
+	async function receipt(
+		status: "pending" | "completed" = "pending",
+		targetUrl = "https://example.com/image.png",
+	) {
 		return repositories.job.create({
 			type: "import_request",
 			status,
 			payload: {
-				targetUrl: "https://example.com/image.png",
+				targetUrl,
 				fileName: "image.png",
 			},
 		});
@@ -382,7 +392,11 @@ describe("persisted import, attempt and batch transitions", () => {
 	});
 
 	it("shows one import parent for an approved batch and keeps receipts out of lists, counts and type filters", async () => {
-		const requests = await Promise.all([receipt(), receipt(), receipt()]);
+		const requests = await Promise.all(
+			[1, 2, 3].map((page) =>
+				receipt("pending", `https://example.com/${page}.png`),
+			),
+		);
 		const approval = await processImportRequests(
 			requests.map((job) => job.id),
 			SOURCE_ID,
@@ -448,6 +462,70 @@ describe("persisted import, attempt and batch transitions", () => {
 				await call(jobsRouter.targets, { id: batchId, limit: 25, offset: 0 })
 			).items.every((target) => target.status === "cancelled"),
 		).toBe(true);
+	});
+
+	it("downloads the same inbox URL once per batch without skipping a different artwork page", async () => {
+		const pageOne = await receipt();
+		const duplicate = await receipt();
+		const pageTwo = await receipt("pending", "https://example.com/page-2.png");
+		const { processedCount, batchId } = await processImportRequests(
+			[pageOne.id, duplicate.id, pageTwo.id],
+			SOURCE_ID,
+		);
+
+		expect(processedCount).toBe(3);
+		const rows = await database.select().from(jobs);
+		expect(rows.find((row) => row.id === batchId)?.payload).toMatchObject({
+			processed: 1,
+			total: 3,
+		});
+		expect(
+			rows
+				.filter((row) => row.type === "downloadImage")
+				.map((row) => row.payload),
+		).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ targetUrl: "https://example.com/image.png" }),
+				expect.objectContaining({
+					targetUrl: "https://example.com/page-2.png",
+				}),
+			]),
+		);
+		expect(rows.filter((row) => row.type === "downloadImage")).toHaveLength(2);
+		expect(await call(importsRouter.countPending, undefined)).toEqual({
+			count: 0,
+		});
+	});
+
+	it("shares one active download for simultaneous approvals of separate inbox receipts", async () => {
+		const first = await receipt();
+		const second = await receipt();
+		const approvals = await Promise.all([
+			processImportRequests([first.id], SOURCE_ID),
+			processImportRequests([second.id], SOURCE_ID),
+		]);
+
+		expect(approvals.map((result) => result.processedCount)).toEqual([1, 1]);
+		const rows = await database.select().from(jobs);
+		expect(rows.filter((row) => row.type === "downloadImage")).toHaveLength(1);
+		expect(await call(importsRouter.countPending, undefined)).toEqual({
+			count: 0,
+		});
+	});
+
+	it("queues a replacement when the active download is being cancelled", async () => {
+		await database.insert(jobs).values({
+			type: "downloadImage",
+			status: "in_progress",
+			mediaSourceId: SOURCE_ID,
+			cancelRequestedAt: new Date(),
+			payload: { targetUrl: "https://example.com/image.png" },
+		});
+		const request = await receipt();
+		await processImportRequests([request.id], SOURCE_ID);
+		expect(
+			await repositories.job.findById(importDownloadJobId(request.id)),
+		).toMatchObject({ status: "pending" });
 	});
 
 	it("preserves standalone and unapproved receipts when hiding batch approval receipts", async () => {

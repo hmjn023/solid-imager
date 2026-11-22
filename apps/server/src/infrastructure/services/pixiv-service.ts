@@ -309,7 +309,7 @@ export function createPixivService(
 		},
 		async related(postId: number, ids?: number[]): Promise<PixivRelatedPage> {
 			const params = new URLSearchParams({ limit: "18", lang: "ja" });
-			for (const id of ids ?? []) params.append("illust_ids", String(id));
+			for (const id of ids ?? []) params.append("illust_ids[]", String(id));
 			const data = z
 				.object({
 					illusts: z.array(z.unknown()),
