@@ -86,6 +86,7 @@ export function PendingDownloadsIndicator(
 					cancelPending={props.cancelPending}
 					listPending={props.listPending}
 					listSources={props.listSources}
+					pixivPreview={props.pixivPreview}
 					processPending={props.processPending}
 				/>
 			)}

@@ -1,7 +1,9 @@
 import { t } from "@solid-imager/i18n";
+import { pixivImageUrlSchema } from "@solid-imager/core/external-viewer";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
+	createMemo,
 	createResource,
 	createSignal,
 	createUniqueId,
@@ -32,6 +34,7 @@ import {
 	DialogTrigger,
 } from "./dialog";
 import { sourceTypeLabel } from "./display-labels";
+import { pixivImageHref } from "./external-viewer/post-media";
 import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
@@ -39,6 +42,7 @@ import {
 import type {
 	ImportReviewModalProps,
 	PendingImportJob,
+	PixivImportPreview,
 } from "./import-review-modal.types";
 import {
 	getRememberedImportSourceId,
@@ -82,15 +86,32 @@ function getPreviewUrl(url?: string): string {
 	return url;
 }
 
+function pixivAnimationId(item: PendingImportJob["item"]): number | undefined {
+	if (!item.ugoira || !item.targetUrl) return;
+	const url = URL.parse(item.targetUrl);
+	if (
+		url?.origin !== "https://i.pximg.net" ||
+		url.username ||
+		url.password ||
+		!url.pathname.startsWith("/img-zip-ugoira/")
+	)
+		return;
+	const match = url.pathname.match(
+		/\/(\d+)(?:-[a-z0-9]+)?_ugoira\d+x\d+\.zip$/i,
+	);
+	const id = Number(match?.[1]);
+	if (Number.isSafeInteger(id) && id > 0) return id;
+}
+
 function ImportPreviewImage(props: { src?: string; expanded?: boolean }) {
-	const [failed, setFailed] = createSignal(false);
+	const [failedSrc, setFailedSrc] = createSignal<string | null>();
 	return (
 		<div
 			class="overflow-hidden rounded-md bg-muted"
 			classList={{ "aspect-landscape": !props.expanded }}
 		>
 			<Show
-				when={!failed() && props.src}
+				when={props.src !== failedSrc() && props.src}
 				fallback={
 					<div class="flex h-full min-h-thumbnail-preview items-center justify-center px-2 text-muted-foreground text-xs">
 						{t("importReviewModal.noPreview")}
@@ -106,7 +127,9 @@ function ImportPreviewImage(props: { src?: string; expanded?: boolean }) {
 							"h-full object-cover": !props.expanded,
 						}}
 						loading={props.expanded ? "eager" : "lazy"}
-						onError={() => setFailed(true)}
+						onError={(event) =>
+							setFailedSrc(event.currentTarget.getAttribute("src"))
+						}
 						src={src()}
 					/>
 				)}
@@ -117,6 +140,7 @@ function ImportPreviewImage(props: { src?: string; expanded?: boolean }) {
 
 function ImportReviewCard(props: {
 	item: PendingImportJob["item"];
+	pixivPreview?: PixivImportPreview;
 	checked: boolean;
 	disabled: boolean;
 	onToggle: () => void;
@@ -128,6 +152,36 @@ function ImportReviewCard(props: {
 		props.item.targetUrl ||
 		t("importReviewModal.untitledImport");
 	const author = () => getPendingImportPrimaryAuthor(props.item);
+	const original = createMemo(
+		() => pixivImageUrlSchema.safeParse(props.item.targetUrl).data,
+	);
+	const preview = createMemo(
+		() => pixivImageUrlSchema.safeParse(props.item.previewUrl).data,
+	);
+	const animationId = createMemo(() => pixivAnimationId(props.item));
+	const [legacyPoster] = createResource(
+		() => props.pixivPreview && !preview() && animationId(),
+		async (id) => {
+			const url = await props.pixivPreview
+				?.loadPoster(id)
+				.catch(() => undefined);
+			return pixivImageUrlSchema.safeParse(url).data;
+		},
+	);
+	function imageSource(expanded: boolean) {
+		const base = props.pixivPreview?.apiBase();
+		const target = original();
+		if (base && target)
+			return pixivImageHref(base, expanded ? target : (preview() ?? target));
+		if (animationId()) {
+			const poster = preview() ?? legacyPoster();
+			return base && poster ? pixivImageHref(base, poster) : undefined;
+		}
+		return expanded
+			? props.item.targetUrl
+			: getPreviewUrl(props.item.previewUrl ?? props.item.targetUrl);
+	}
+
 	return (
 		<div
 			class="flex min-w-0 flex-col rounded-lg border border-border bg-card transition-colors"
@@ -141,7 +195,7 @@ function ImportReviewCard(props: {
 			>
 				<CheckboxControl class="absolute top-3 right-3 z-10 size-5 border-input bg-background" />
 				<CheckboxLabel class="block h-full cursor-pointer p-2">
-					<ImportPreviewImage src={getPreviewUrl(props.item.targetUrl)} />
+					<ImportPreviewImage src={imageSource(false)} />
 					<p
 						class="mt-2 line-clamp-3 wrap-anywhere font-medium text-sm"
 						id={titleId}
@@ -187,7 +241,7 @@ function ImportReviewCard(props: {
 								)}
 							</Show>
 						</div>
-						<ImportPreviewImage expanded src={props.item.targetUrl} />
+						<ImportPreviewImage expanded src={imageSource(true)} />
 					</div>
 				</DialogContent>
 			</Dialog>
@@ -492,6 +546,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 												checked={selectedJobIds().has(job.id)}
 												disabled={activeAction() !== null}
 												item={job.item}
+												pixivPreview={props.pixivPreview}
 												onToggle={() => toggleSelection(job.id)}
 											/>
 										)}

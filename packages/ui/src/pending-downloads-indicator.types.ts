@@ -1,12 +1,16 @@
 import type { ImportEvent } from "@solid-imager/core/events";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
-import type { PendingImportJob } from "./import-review-modal.types";
+import type {
+	PendingImportJob,
+	PixivImportPreview,
+} from "./import-review-modal.types";
 
 export type ImportEventHandler = (event: ImportEvent) => void | Promise<void>;
 export type ImportEventConnectedHandler = () => void | Promise<void>;
 
 export type PendingDownloadsIndicatorProps = {
 	countPending: () => Promise<number>;
+	pixivPreview?: PixivImportPreview;
 	listPending: () => Promise<PendingImportJob[]>;
 	listSources: () => Promise<SafeMediaSource[]>;
 	processPending: (

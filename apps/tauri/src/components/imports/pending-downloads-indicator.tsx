@@ -1,5 +1,6 @@
 import { createSharedEventSubscription } from "@solid-imager/ui/event-stream";
 import { PendingDownloadsIndicator as SharedPendingDownloadsIndicator } from "@solid-imager/ui/pending-downloads-indicator";
+import { getApiBaseUrl } from "~/infrastructure/api-base";
 import {
 	cancelPendingImports,
 	listPendingImports,
@@ -23,6 +24,11 @@ export function PendingDownloadsIndicator(props: { compact?: boolean }) {
 			}}
 			listPending={listPendingImports}
 			listSources={fetchMediaSources}
+			pixivPreview={{
+				apiBase: getApiBaseUrl,
+				loadPoster: async (id) =>
+					(await orpc.viewer.pixivArtwork({ id })).pages[0]?.preview,
+			}}
 			processPending={(jobIds, targetSourceId) =>
 				processPendingImports(jobIds, targetSourceId)
 			}

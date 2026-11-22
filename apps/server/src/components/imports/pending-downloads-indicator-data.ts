@@ -1,9 +1,14 @@
 import { createSharedEventSubscription } from "@solid-imager/ui/event-stream";
 import type { PendingDownloadsIndicatorProps } from "@solid-imager/ui/pending-downloads-indicator";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { getApiOrigin, orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
 export const pendingDownloadsIndicatorProps: PendingDownloadsIndicatorProps = {
+	pixivPreview: {
+		apiBase: getApiOrigin,
+		loadPoster: async (id) =>
+			(await orpc.viewer.pixivArtwork({ id })).pages[0]?.preview,
+	},
 	countPending: async () => {
 		const result = await orpc.imports.countPending();
 		return result.count;

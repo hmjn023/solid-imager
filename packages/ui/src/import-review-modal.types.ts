@@ -8,8 +8,14 @@ export type PendingImportJob = {
 	targetSourceId?: string;
 };
 
+export type PixivImportPreview = {
+	apiBase: () => string;
+	loadPoster: (id: number) => Promise<string | undefined>;
+};
+
 export type ImportReviewModalProps = {
 	isOpen: boolean;
+	pixivPreview?: PixivImportPreview;
 	onClose: () => void;
 	onImportCompleted: () => void;
 	listPending: () => Promise<PendingImportJob[]>;

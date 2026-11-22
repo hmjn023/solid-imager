@@ -14788,6 +14788,10 @@
                           "type": "string",
                           "format": "uri"
                         },
+                        "previewUrl": {
+                          "type": "string",
+                          "format": "uri"
+                        },
                         "filePath": {
                           "type": "string"
                         },
@@ -16699,6 +16703,10 @@
                           "type": "string",
                           "format": "uri"
                         },
+                        "previewUrl": {
+                          "type": "string",
+                          "format": "uri"
+                        },
                         "filePath": {
                           "type": "string"
                         },
@@ -17120,6 +17128,10 @@
                             ]
                           },
                           "targetUrl": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "previewUrl": {
                             "type": "string",
                             "format": "uri"
                           },
