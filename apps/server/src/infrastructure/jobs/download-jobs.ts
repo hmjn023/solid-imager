@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import { constants } from "node:fs";
 import { createHash } from "node:crypto";
 import type { Transaction } from "@solid-imager/core/ports";
+import { ResourceConflictError } from "@solid-imager/core/errors";
 import { getExecutor } from "~/infrastructure/db/executor";
 import path from "node:path";
 import {
@@ -869,7 +870,7 @@ export function importDownloadJobId(requestId: string): string {
 	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-/** Queue downloads, skipping media already saved and duplicate inbox approvals. */
+/** Queue one target per distinct approved URL, or skip it if it is already saved. */
 export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
@@ -891,26 +892,29 @@ export async function queueDownloadJobs(
 		throw new Error("Media source not found or not a local source");
 	}
 
-	const seenUrls = options.requestIds
-		? await lockActiveDownloadUrls(
-				getExecutor(options.transaction),
-				mediaSourceId,
-				[
-					...new Set(
-						items.flatMap((item) => (item.targetUrl ? [item.targetUrl] : [])),
-					),
-				],
-			)
-		: undefined;
-	const entries = items.map((item) => {
-		if (!seenUrls || !item.targetUrl) return { item, skip: false };
-		const skip = seenUrls.has(item.targetUrl);
-		seenUrls.add(item.targetUrl);
-		return { item, skip };
-	});
-	// Check stored media after active downloads so that jobs that finish during approval are covered.
-	const poolResults = await asyncPool(entries, 5, async ({ item, skip }) => {
-		if (skip) return { item, skip };
+	const seenUrls = new Set<string>();
+	const entries = items
+		.map((item, index) => ({ item, requestId: options.requestIds?.[index] }))
+		.filter(({ item, requestId }) => {
+			if (!requestId || !item.targetUrl) return true;
+			if (seenUrls.has(item.targetUrl)) return false;
+			seenUrls.add(item.targetUrl);
+			return true;
+		});
+	if (options.requestIds) {
+		const active = await lockActiveDownloadUrls(
+			getExecutor(options.transaction),
+			mediaSourceId,
+			[...seenUrls],
+		);
+		if (active.size) {
+			throw new ResourceConflictError(
+				"Some selected files are already being downloaded to this destination. Wait for those downloads to finish or deselect the matching requests.",
+			);
+		}
+	}
+	// Look for saved media after checking active downloads.
+	const poolResults = await asyncPool(entries, 5, async ({ item }) => {
 		const urls = item.sourceUrls || [];
 		if (urls.length < 2) return { item, skip: false };
 		const existingMediaId = await MediaRepository.findMediaIdWithMatchingUrlSet(
@@ -928,7 +932,7 @@ export async function queueDownloadJobs(
 	});
 
 	if (items.length > 1) {
-		const targets = items.map((item, index) => {
+		const targets = entries.map(({ item, requestId }, index) => {
 			const result = poolResults[index];
 			return {
 				label: path.win32.basename(
@@ -938,9 +942,7 @@ export async function queueDownloadJobs(
 					result.status === "fulfilled" ? result.value.mediaId : undefined,
 				skipped: result.status === "fulfilled" && result.value.skip,
 				work: {
-					...(options.requestIds
-						? { id: importDownloadJobId(options.requestIds[index]) }
-						: {}),
+					...(requestId ? { id: importDownloadJobId(requestId) } : {}),
 					type: "downloadImage",
 					payload: {
 						...item,

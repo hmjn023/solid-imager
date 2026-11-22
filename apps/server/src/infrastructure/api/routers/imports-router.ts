@@ -1,11 +1,12 @@
-import { implement } from "@orpc/server";
+import { implement, ORPCError } from "@orpc/server";
+import { ResourceConflictError } from "@solid-imager/core/errors";
 import {
 	importsContract,
 	type AppContractClient,
 } from "@solid-imager/core/contract";
 import type { downloadItemSchema } from "@solid-imager/core/media";
 import type { ImportEvent } from "@solid-imager/core/events";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
@@ -181,6 +182,17 @@ export const importsRouter = os.router({
 		return { count: result?.count ?? 0 };
 	}),
 
+	existingRequestIds: os.existingRequestIds.handler(async ({ input }) => {
+		if (!input.jobIds.length) return [];
+		const rows = await db
+			.select({ id: jobs.id })
+			.from(jobs)
+			.where(
+				and(eq(jobs.type, "import_request"), inArray(jobs.id, input.jobIds)),
+			);
+		return rows.map(({ id }) => id);
+	}),
+
 	/**
 	 * Process selected import requests (Queue downloads).
 	 */
@@ -188,7 +200,11 @@ export const importsRouter = os.router({
 		const { processedCount, batchId } = await processImportRequests(
 			input.jobIds,
 			input.targetSourceId,
-		);
+		).catch((error) => {
+			if (error instanceof ResourceConflictError)
+				throw new ORPCError("CONFLICT", { message: error.message });
+			throw error;
+		});
 		if (batchId)
 			await notifyBatchState(JobRepository, batchId, { created: true });
 		try {

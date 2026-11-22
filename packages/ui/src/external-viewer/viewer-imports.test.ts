@@ -69,3 +69,35 @@ it("only clears the cancelled receipt, including cancellation before its enqueue
 	expect(imports.state(cancelled.targetUrl)).toBeUndefined();
 	expect(imports.state(retained.targetUrl)).toBe("queued");
 });
+
+it("reconciles tracked receipts on reconnect even if the add response arrives later", async () => {
+	const approved = {
+		id: "approved",
+		targetUrl: "https://example.org/approved.png",
+	};
+	const cancelled = {
+		id: "cancelled",
+		targetUrl: "https://example.org/cancelled.png",
+	};
+	const pending = Promise.withResolvers<{
+		createdRequests: (typeof cancelled)[];
+	}>();
+	const enqueue = vi
+		.fn()
+		.mockResolvedValueOnce({ createdRequests: [approved] })
+		.mockReturnValueOnce(pending.promise);
+	const findExisting = vi.fn().mockResolvedValue([approved.id]);
+	const imports = createViewerImports(enqueue, findExisting);
+	await imports.add([approved]);
+	const add = imports.add([cancelled]);
+
+	await imports.onConnected();
+	expect(findExisting).toHaveBeenCalledExactlyOnceWith([approved.id]);
+	pending.resolve({ createdRequests: [cancelled] });
+	await add;
+	await vi.waitFor(() => {
+		expect(imports.state(cancelled.targetUrl)).toBeUndefined();
+	});
+	expect(findExisting).toHaveBeenLastCalledWith([approved.id, cancelled.id]);
+	expect(imports.state(approved.targetUrl)).toBe("queued");
+});

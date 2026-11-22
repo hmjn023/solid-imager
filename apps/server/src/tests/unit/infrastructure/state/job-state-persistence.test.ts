@@ -476,8 +476,8 @@ describe("persisted import, attempt and batch transitions", () => {
 		expect(processedCount).toBe(3);
 		const rows = await database.select().from(jobs);
 		expect(rows.find((row) => row.id === batchId)?.payload).toMatchObject({
-			processed: 1,
-			total: 3,
+			processed: 0,
+			total: 2,
 		});
 		expect(
 			rows
@@ -492,24 +492,64 @@ describe("persisted import, attempt and batch transitions", () => {
 			]),
 		);
 		expect(rows.filter((row) => row.type === "downloadImage")).toHaveLength(2);
+		const [download] = await repositories.job.claimPending(1);
+		await repositories.job.finishAttempt(
+			download.id,
+			download.attemptCount ?? 0,
+			{
+				status: "failed",
+				error: "Upstream returned 503",
+			},
+		);
+		expect(await repositories.job.findById(batchId ?? "")).toMatchObject({
+			payload: { processed: 0, failed: 1, total: 2 },
+		});
 		expect(await call(importsRouter.countPending, undefined)).toEqual({
 			count: 0,
 		});
 	});
 
-	it("shares one active download for simultaneous approvals of separate inbox receipts", async () => {
+	it("leaves conflicting approvals pending so they can be retried after a download fails", async () => {
 		const first = await receipt();
 		const second = await receipt();
-		const approvals = await Promise.all([
-			processImportRequests([first.id], SOURCE_ID),
-			processImportRequests([second.id], SOURCE_ID),
-		]);
-
-		expect(approvals.map((result) => result.processedCount)).toEqual([1, 1]);
+		const requests = [first, second];
+		const approvals = await Promise.allSettled(
+			requests.map(({ id }) =>
+				call(importsRouter.process, {
+					jobIds: [id],
+					targetSourceId: SOURCE_ID,
+				}),
+			),
+		);
+		const denial = approvals.findIndex(
+			(result) => result.status === "rejected",
+		);
+		expect(approvals[denial]).toMatchObject({
+			status: "rejected",
+			reason: { code: "CONFLICT" },
+		});
+		const retryId = requests[denial].id;
 		const rows = await database.select().from(jobs);
 		expect(rows.filter((row) => row.type === "downloadImage")).toHaveLength(1);
-		expect(await call(importsRouter.countPending, undefined)).toEqual({
-			count: 0,
+		expect(await repositories.job.findById(retryId)).toMatchObject({
+			status: "pending",
+		});
+		const [download] = await repositories.job.claimPending(1);
+		await repositories.job.finishAttempt(
+			download.id,
+			download.attemptCount ?? 0,
+			{
+				status: "failed",
+				error: "Upstream returned 503",
+			},
+		);
+		expect(await processImportRequests([retryId], SOURCE_ID)).toMatchObject({
+			processedCount: 1,
+		});
+		expect(
+			await repositories.job.findById(importDownloadJobId(retryId)),
+		).toMatchObject({
+			status: "pending",
 		});
 	});
 
@@ -532,7 +572,10 @@ describe("persisted import, attempt and batch transitions", () => {
 		const standalone = await receipt();
 		await processImportRequests([standalone.id], SOURCE_ID);
 		const waiting = await receipt();
-		const batch = await Promise.all([receipt(), receipt()]);
+		const batch = await Promise.all([
+			receipt("pending", "https://example.com/batch-1.png"),
+			receipt("pending", "https://example.com/batch-2.png"),
+		]);
 		await processImportRequests(
 			batch.map((job) => job.id),
 			SOURCE_ID,
@@ -549,6 +592,21 @@ describe("persisted import, attempt and batch transitions", () => {
 		expect(
 			(await call(importsRouter.listPending, undefined)).map((job) => job.id),
 		).toEqual([waiting.id]);
+	});
+
+	it("looks up pending and approved receipts without returning cancelled or unrelated jobs", async () => {
+		const pending = await receipt();
+		const approved = await receipt("completed");
+		const cancelled = await receipt();
+		const unrelated = await repositories.job.create({
+			type: "auto_tagging",
+			payload: {},
+		});
+		await cancelImportRequests([cancelled.id]);
+		const existing = await call(importsRouter.existingRequestIds, {
+			jobIds: [pending.id, approved.id, cancelled.id, unrelated.id],
+		});
+		expect(existing.sort()).toEqual([pending.id, approved.id].sort());
 	});
 
 	it("orders concurrent approval and cancellation without an orphaned download", async () => {

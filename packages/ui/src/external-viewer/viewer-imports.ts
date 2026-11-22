@@ -12,12 +12,14 @@ type QueuedImports = Pick<
 /** Keep the state of an import with its URL as the viewer moves between posts and pages. */
 export function createViewerImports(
 	enqueue: (items: DownloadItem[]) => Promise<QueuedImports | void>,
+	findExisting?: (jobIds: string[]) => Promise<string[]>,
 ) {
 	type ImportTarget =
 		| { state: "pending" }
 		| { state: "queued"; requestId?: string };
 	const [targets, setTargets] = createSignal(new Map<string, ImportTarget>());
 	let additionsInFlight = 0;
+	let connectionRevision = 0;
 	// A different tab can cancel a committed request before its enqueue response arrives.
 	const recentlyCancelled = new Set<string>();
 
@@ -44,6 +46,7 @@ export function createViewerImports(
 			});
 		}
 		additionsInFlight++;
+		const revision = connectionRevision;
 		setBatchTargets(() => ({ state: "pending" }));
 		try {
 			const result = await enqueue([...batch.values()]);
@@ -69,6 +72,8 @@ export function createViewerImports(
 						"detail.chooseADestinationFromTheSidebarImportInboxTo",
 					),
 				});
+				if (revision !== connectionRevision)
+					void reconcile().catch(() => undefined);
 			}
 		} catch (error) {
 			setBatchTargets(() => undefined);
@@ -98,9 +103,23 @@ export function createViewerImports(
 			return next.size === current.size ? current : next;
 		});
 	}
+	async function reconcile() {
+		if (!findExisting) return;
+		const jobIds = Array.from(targets().values()).flatMap((target) =>
+			target.state === "queued" && target.requestId ? [target.requestId] : [],
+		);
+		if (!jobIds.length) return;
+		const existing = new Set(await findExisting(jobIds));
+		clearCancelled(jobIds.filter((id) => !existing.has(id)));
+	}
+	async function onConnected() {
+		connectionRevision++;
+		await reconcile();
+	}
 	return {
 		state: (url?: string) => (url ? targets().get(url)?.state : undefined),
 		add,
 		clearCancelled,
+		onConnected,
 	};
 }

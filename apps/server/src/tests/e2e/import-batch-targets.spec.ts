@@ -153,7 +153,7 @@ test("saves one file when the same Pixiv item is approved twice in a batch", asy
 		)
 		.toMatchObject({
 			status: "completed",
-			progress: { processed: 2, failed: 0, total: 2 },
+			progress: { processed: 1, failed: 0, total: 1 },
 		});
 	const stem = generateMediaFilename(item, "");
 	const files = await readdir(getE2eMediaDir());

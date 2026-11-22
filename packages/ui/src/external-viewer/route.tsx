@@ -10,7 +10,10 @@ import {
 } from "@tanstack/solid-router";
 import { DanbooruScreen } from "../screens/danbooru-screen";
 import { PixivScreen } from "../screens/pixiv-screen";
-import type { ImportEventHandler } from "../pending-downloads-indicator.types";
+import type {
+	ImportEventConnectedHandler,
+	ImportEventHandler,
+} from "../pending-downloads-indicator.types";
 import { createViewerImports } from "./viewer-imports";
 
 export {
@@ -29,7 +32,10 @@ export function ExternalViewerRoute(
 		client: Pick<AppContractClient, "viewer" | "danbooru" | "imports">;
 		apiBase: () => string;
 		history: Pick<RouterHistory, "go" | "createHref">;
-		subscribeImportEvents: (handler: ImportEventHandler) => () => void;
+		subscribeImportEvents: (
+			handler: ImportEventHandler,
+			onConnected: ImportEventConnectedHandler,
+		) => () => void;
 	} & (
 		| { provider: "danbooru" }
 		| {
@@ -42,15 +48,16 @@ export function ExternalViewerRoute(
 ) {
 	const navigate = useNavigate(),
 		location = useLocation();
-	const imports = createViewerImports((items) =>
-		props.client.imports.bulkAdd({ items }),
+	const imports = createViewerImports(
+		(items) => props.client.imports.bulkAdd({ items }),
+		(jobIds) => props.client.imports.existingRequestIds({ jobIds }),
 	);
 	onMount(() => {
 		onCleanup(
 			props.subscribeImportEvents((event) => {
 				if (event.event === "import-request:deleted")
 					imports.clearCancelled(event.data.jobIds);
-			}),
+			}, imports.onConnected),
 		);
 	});
 	const collectionDepth = () => {

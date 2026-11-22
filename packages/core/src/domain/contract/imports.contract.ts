@@ -55,6 +55,18 @@ export const importsContract = {
 		)
 		.output(pendingImportCountSchema),
 
+	existingRequestIds: oc
+		.meta(
+			openapi({
+				tags: ["Imports"],
+				summary: "インポート受付の確認",
+				description:
+					"指定された ID のうち、現在も存在するインポート受付を返します。",
+			}),
+		)
+		.input(z.object({ jobIds: z.array(z.uuid()) }))
+		.output(z.array(z.uuid())),
+
 	process: oc
 		.meta(
 			openapi({
