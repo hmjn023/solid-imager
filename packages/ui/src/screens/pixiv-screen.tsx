@@ -41,7 +41,7 @@ import {
 } from "../external-viewer/pixiv-viewing-history-dialog";
 import { createPixivSearchHistory } from "../external-viewer/viewer-search-history";
 import { ViewerSearchHistoryContent } from "../external-viewer/viewer-search-history-dialog";
-import { pixivImageHref } from "../external-viewer/post-media";
+import { pixivThumbnailSource } from "../external-viewer/post-media";
 import { createViewerSearch } from "../external-viewer/use-viewer-search";
 import { viewerPostQueryOptions } from "../external-viewer/query-options";
 import { PixivBookmarkFilters } from "../external-viewer/pixiv-bookmark-filters";
@@ -224,8 +224,7 @@ export function PixivScreen(props: PixivProps) {
 	const describePost = (post: PixivCard) => ({
 		title:
 			post.title || t("pixivScreen.pixivValue", { value0: String(post.id) }),
-		thumbnail:
-			post.thumbnail && pixivImageHref(props.apiBase(), post.thumbnail),
+		thumbnail: pixivThumbnailSource(props.apiBase(), post.thumbnail),
 		info: [post.author, t("pixivScreen.imageCount", { count: post.pageCount })]
 			.filter(Boolean)
 			.join(" · "),

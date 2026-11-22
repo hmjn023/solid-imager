@@ -95,6 +95,7 @@ export function createViewerSearch<T extends ViewerPage>(
 	const [mounted, setMounted] = createSignal(false);
 	const [scope, setScope] = createSignal<string>();
 	const [scrollArea, setScrollArea] = createSignal<HTMLDivElement>();
+	const [hasScrolled, setHasScrolled] = createSignal(false);
 	const [gridHandle, setGridHandle] = createSignal<ViewerGridHandle>();
 	const [restorePending, setRestoring] = createSignal(false);
 	const [prepending, setPrepending] = createSignal(false);
@@ -140,6 +141,7 @@ export function createViewerSearch<T extends ViewerPage>(
 		scrollTop = 0;
 		detailPage = undefined;
 		setFirstPage(1);
+		setHasScrolled(false);
 		setRestoring(false);
 		const area = scrollArea();
 		if (area) area.scrollTop = 0;
@@ -327,6 +329,15 @@ export function createViewerSearch<T extends ViewerPage>(
 		if (position && visible) anchor = { ...position, offset: visible.offset };
 		persist();
 	}
+	function handleScroll() {
+		if (
+			provider === "pixiv" &&
+			!restoring() &&
+			(scrollArea()?.scrollTop ?? 0) > 0
+		)
+			setHasScrolled(true);
+		rememberScroll();
+	}
 	function rememberDetail(id: number | undefined) {
 		const position =
 			id === undefined ? undefined : collection()?.positions.get(id);
@@ -488,6 +499,11 @@ export function createViewerSearch<T extends ViewerPage>(
 				choices: { ...choices(), [tag]: name },
 			});
 	}
+	const canAutoLoadNext = () =>
+		scope() !== undefined &&
+		results.hasNextPage &&
+		collection()?.lastPageGrew === true;
+
 	return {
 		pixivFeed,
 		showingBookmarks,
@@ -508,6 +524,7 @@ export function createViewerSearch<T extends ViewerPage>(
 		results,
 		state,
 		rememberScroll,
+		handleScroll,
 		rememberDetail,
 		scrollArea,
 		setScrollArea,
@@ -516,10 +533,9 @@ export function createViewerSearch<T extends ViewerPage>(
 		restoring,
 		hasNextPage: () => results.hasNextPage,
 		hasPreviousPage: () => results.hasPreviousPage,
-		canAutoLoadNext: () =>
-			scope() !== undefined &&
-			results.hasNextPage &&
-			collection()?.lastPageGrew === true,
+		canAutoLoadNext,
+		canAutoLoadNextFromGrid: () =>
+			(provider !== "pixiv" || hasScrolled()) && canAutoLoadNext(),
 		canAutoLoadPrevious: () =>
 			scope() !== undefined &&
 			results.hasPreviousPage &&

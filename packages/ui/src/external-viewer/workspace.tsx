@@ -179,7 +179,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 								browse.setScrollArea(area);
 								onCleanup(() => browse.setScrollArea(undefined));
 							}}
-							onScroll={browse.rememberScroll}
+							onScroll={browse.handleScroll}
 						>
 							<QueryStatus
 								hideWhenIdle
@@ -275,7 +275,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 													autoLoad={
 														!browse.restoring() &&
 														!results.isFetching &&
-														browse.canAutoLoadNext() &&
+														browse.canAutoLoadNextFromGrid() &&
 														!!browse.gridHandle()
 													}
 													loading={results.isFetchingNextPage}

@@ -61,13 +61,15 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 			emptyTitle={t("danbooruScreen.noMatchingPosts")}
 			describePost={(post) => ({
 				title: t("danbooruScreen.danbooruValue", { value0: String(post.id) }),
-				thumbnail:
-					post.previewUrl &&
-					viewerImageHref(
-						props.apiBase(),
-						"/api/danbooru-thumbnail",
-						post.previewUrl,
-					),
+				thumbnail: post.previewUrl
+					? {
+							url: viewerImageHref(
+								props.apiBase(),
+								"/api/danbooru-thumbnail",
+								post.previewUrl,
+							),
+						}
+					: null,
 				info: `${post.fileExt.toUpperCase()} · ${danbooruRatingLabel(post.rating)}`,
 				width: post.width || undefined,
 				height: post.height || undefined,

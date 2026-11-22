@@ -1640,6 +1640,9 @@ test("pixiv keeps the ranking on a failed append, retries the same page and star
 	page,
 	browserHealth,
 }, info) => {
+	const viewport = page.viewportSize();
+	if (viewport && viewport.width >= 1120)
+		await page.setViewportSize({ ...viewport, height: 560 });
 	const requests: z.infer<typeof viewerRequestSchema>[] = [];
 	let failAppend = true;
 	browserHealth.allowResponseFailure("/api/rpc/viewer/search");
@@ -1697,7 +1700,14 @@ test("pixiv keeps the ranking on a failed append, retries the same page and star
 	const next = grid.getByRole("link", { name: "作品 201 を開く", exact: true });
 	const scroller = page.locator('[data-media-scroll="pixiv"]');
 	await expect(first).toBeVisible();
-	await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	if (info.project.name !== "tauri") await waitForAppHydration(page);
+	expect(requests.map(({ page }) => page)).toEqual([1]);
+	expect(
+		await scroller.evaluate((el) => {
+			el.scrollTo(0, el.scrollHeight);
+			return el.scrollTop;
+		}),
+	).toBeGreaterThan(0);
 	const retry = scroller.getByRole("button", { name: /再試行/ });
 	await expect(retry).toBeVisible();
 	await expect(first).toHaveCount(1);
