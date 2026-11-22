@@ -357,14 +357,13 @@ export function createAuthorRepository(
 		tx?: unknown,
 	): Promise<Author[]> => {
 		const client = getExecutor(tx);
-		const rows = await client
-			.select({ author: authors })
-			.from(mediaAuthors)
-			.innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
-			.where(eq(mediaAuthors.mediaId, mediaId));
-		return mapAuthors(
-			client,
-			rows.map((row) => row.author),
+		const media = await client.query.medias.findFirst({
+			where: { id: mediaId },
+			columns: {},
+			with: { authors: { with: { accounts: true } } },
+		});
+		return (
+			media?.authors.map((author) => mapAuthor(author, author.accounts)) ?? []
 		);
 	};
 	return {

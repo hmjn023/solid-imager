@@ -96,10 +96,8 @@ type MediaWithRelations = InferSelectModel<typeof medias> & {
 		tag: InferSelectModel<typeof tags>;
 	})[];
 	generationInfo: InferSelectModel<typeof mediaGenerationInfo> | null;
-	authors: (InferSelectModel<typeof mediaAuthors> & {
-		author: InferSelectModel<typeof authors> & {
-			accounts: InferSelectModel<typeof import("../schema").authorAccounts>[];
-		};
+	authors: (InferSelectModel<typeof authors> & {
+		accounts: InferSelectModel<typeof import("../schema").authorAccounts>[];
 	})[];
 	urls: InferSelectModel<typeof mediaUrls>[];
 	characters: (InferSelectModel<typeof mediaCharacters> & {
@@ -177,9 +175,7 @@ function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
 					steps: row.generationInfo.steps ?? 0,
 				}
 			: null,
-		authors: row.authors.map(({ author }) =>
-			mapAuthor(author, author.accounts),
-		),
+		authors: row.authors.map((author) => mapAuthor(author, author.accounts)),
 		urls: row.urls.map(mapToMediaUrl),
 		characters: row.characters.map((mc) => ({
 			...mc.character,
@@ -847,6 +843,39 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 // Factory Function
 // ============================================================================
 
+function prepareMediaDetails(client: DrizzleExecutor) {
+	return client.query.medias
+		.findFirst({
+			where: { id: { eq: sql.placeholder("mediaId") } },
+			with: {
+				tags: {
+					with: {
+						tag: true,
+					},
+				},
+				details: true,
+				generationInfo: true,
+				authors: {
+					with: {
+						accounts: true,
+					},
+				},
+				urls: true,
+				characters: {
+					with: {
+						character: true,
+					},
+				},
+				ips: {
+					with: {
+						ip: true,
+					},
+				},
+			},
+		})
+		.prepare();
+}
+
 export function createMediaRepository(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
 	deps?: {
@@ -859,6 +888,11 @@ export function createMediaRepository(
 	},
 ): IMediaRepository {
 	const executeSearch = makeExecuteSearch(getExecutor);
+	// A prepared query belongs to its executor, including when it runs in a transaction.
+	const mediaDetailsQueries = new WeakMap<
+		DrizzleExecutor,
+		ReturnType<typeof prepareMediaDetails>
+	>();
 
 	return {
 		getStatistics: (input) => readLibraryStatistics(getExecutor(), input),
@@ -1200,44 +1234,18 @@ export function createMediaRepository(
 			return executeSearch(params, undefined, tx);
 		},
 
-		/**
-		 * Optimized: Fetch media and all relations in a single query using Drizzle's relational query builder.
-		 * This avoids N+1 query issues (or N+4 in this case) when fetching details.
-		 */
 		async getDetails(
 			mediaId: string,
 			tx?: Transaction,
 		): Promise<MediaDetails | null> {
 			try {
 				const client = getExecutor(tx);
-				const result = await client.query.medias.findFirst({
-					where: { id: mediaId },
-					with: {
-						tags: {
-							with: {
-								tag: true,
-							},
-						},
-						details: true,
-						generationInfo: true,
-						authors: {
-							with: {
-								author: { with: { accounts: true } },
-							},
-						},
-						urls: true,
-						characters: {
-							with: {
-								character: true,
-							},
-						},
-						ips: {
-							with: {
-								ip: true,
-							},
-						},
-					},
-				});
+				let query = mediaDetailsQueries.get(client);
+				if (!query) {
+					query = prepareMediaDetails(client);
+					mediaDetailsQueries.set(client, query);
+				}
+				const result = await query.execute({ mediaId });
 
 				if (!result) {
 					return null;

@@ -3,11 +3,15 @@ import os from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
 import type { MediaDumpItem } from "@solid-imager/core/media";
+import type { TransactionSQL } from "bun";
+import { QueryPromise } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db";
+import { copyBackupMediaTags } from "~/infrastructure/db/backup-media-tags";
 import {
 	mediaCharacters,
 	mediaIps,
+	mediaProjects,
 	mediaTags,
 } from "~/infrastructure/db/schema";
 import { BackupService } from "~/infrastructure/services/backup-service";
@@ -86,6 +90,10 @@ vi.mock("~/infrastructure/db", () => ({
 
 vi.mock("~/infrastructure/storage/factory", () => ({
 	getDriver: () => ({ getStream: mockGetStream }),
+}));
+
+vi.mock("~/infrastructure/db/backup-media-tags", () => ({
+	copyBackupMediaTags: vi.fn(),
 }));
 
 function readTarEntry(archive: Buffer, entryName: string): string {
@@ -185,7 +193,7 @@ describe("BackupService", () => {
 							character: {
 								name: "char1",
 								description: "desc",
-								ips: [{ ip: { name: "ip1" } }],
+								ips: [{ name: "ip1" }],
 							},
 							confidence: 0.8,
 							source: "AI",
@@ -245,6 +253,70 @@ describe("BackupService", () => {
 	});
 
 	describe("_restoreRelations", () => {
+		it("pipelines Bun.SQL relation inserts once tag COPY completes", async () => {
+			class InsertQuery extends QueryPromise<void> {
+				constructor(readonly execute: () => Promise<void>) {
+					super();
+				}
+			}
+
+			const nativeTx = {} as TransactionSQL;
+			const copy = Promise.withResolvers<void>();
+			const project = Promise.withResolvers<void>();
+			const projectQuery = new InsertQuery(vi.fn(() => project.promise));
+			const characterQuery = new InsertQuery(vi.fn(() => Promise.resolve()));
+			vi.mocked(copyBackupMediaTags).mockReturnValueOnce(copy.promise);
+			mockValues
+				.mockReturnValueOnce({
+					onConflictDoNothing: vi.fn(() => projectQuery),
+					onConflictDoUpdate: vi.fn(),
+				})
+				.mockReturnValueOnce({
+					onConflictDoNothing: vi.fn(() => characterQuery),
+					onConflictDoUpdate: vi.fn(),
+				});
+
+			const restore = BackupService._restoreRelations(
+				{
+					validItems: [
+						{
+							filePath: "media.jpg",
+							tags: [{ name: "tag" }],
+							projects: [{ name: "project" }],
+							characters: [{ name: "character" }],
+						},
+					],
+					mediaPathToId: new Map([["media.jpg", "media-id"]]),
+					tagMap: new Map([["tag", "tag-id"]]),
+					authorMap: new Map(),
+					projectMap: new Map([["project", "project-id"]]),
+					ipMap: new Map(),
+					charMap: new Map([["character", "character-id"]]),
+				},
+				db,
+				nativeTx,
+			);
+
+			try {
+				await vi.waitFor(() =>
+					expect(copyBackupMediaTags).toHaveBeenCalledOnce(),
+				);
+				expect(db.insert).not.toHaveBeenCalled();
+				copy.resolve();
+				await vi.waitFor(() => {
+					expect(projectQuery.execute).toHaveBeenCalledOnce();
+					expect(characterQuery.execute).toHaveBeenCalledOnce();
+				});
+				expect(db.insert).toHaveBeenCalledTimes(2);
+				expect(db.insert).toHaveBeenNthCalledWith(1, mediaProjects);
+				expect(db.insert).toHaveBeenNthCalledWith(2, mediaCharacters);
+			} finally {
+				copy.resolve();
+				project.resolve();
+				await restore;
+			}
+		});
+
 		it("should restore source and confidence for relations", async () => {
 			const validItems: MediaDumpItem[] = [
 				{

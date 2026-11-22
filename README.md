@@ -125,7 +125,7 @@ importerが削除され、依存関係を解決できなくなります。通常
 
 PGliteとPostgreSQLは同じ `db:migrate` コマンドを使います。接続先は `apps/server/.env` で設定します。[DBのセットアップ](docs/development.md#セットアップ)
 
-PostgreSQL接続はBun.SQLを既定で使用します。`COPY`、`LISTEN/NOTIFY`、PostGISなどBun.SQLで未対応の機能が必要な環境では、`DB_POSTGRES_DRIVER=node-postgres` を設定すると従来の `pg` 経路へ切り替えられます。
+PostgreSQL 接続は Bun.SQL を既定で使用します。Bun.SQL は `COPY` のストリーミングと `LISTEN/NOTIFY` に対応しており、バックアップ復元ではメディアとタグの関連行の一括取り込みに `COPY` を使います。`DB_POSTGRES_DRIVER=node-postgres` を設定すると `pg` に切り替えられます。
 
 画像処理はサムネイル変換と寸法取得を Bun.Image に寄せ、EXIF/コメント抽出と AI 用 crop は互換性のため sharp を継続利用します。
 

@@ -968,37 +968,39 @@ function buildSimpleClaimQuery(
 }
 
 function buildClaimUpdate(now: Date) {
+	// Match the UTC timestamps used by the typed job queries across driver parsers.
+	const claimedAt = sql.param(now, jobs.updatedAt);
 	return sql`
 		UPDATE jobs
 		SET status = 'in_progress',
 			attempt_count = attempt_count + 1,
-			started_at = ${now},
+			started_at = ${claimedAt},
 			finished_at = NULL,
 			cancel_requested_at = NULL,
 			cancelled_at = NULL,
-			updated_at = ${now}
+			updated_at = ${claimedAt}
 		WHERE id IN (SELECT id FROM next_jobs)
 		RETURNING
 			id,
 			type,
 			source_id AS "mediaSourceId",
-					status,
-					payload,
+			status,
+			payload,
 			result,
 			error,
-			created_at AS "createdAt",
-			updated_at AS "updatedAt",
-					parent_id AS "parentId",
-			cancel_requested_at AS "cancelRequestedAt",
-			cancelled_at AS "cancelledAt",
+			created_at AT TIME ZONE 'UTC' AS "createdAt",
+			updated_at AT TIME ZONE 'UTC' AS "updatedAt",
+			parent_id AS "parentId",
+			cancel_requested_at AT TIME ZONE 'UTC' AS "cancelRequestedAt",
+			cancelled_at AT TIME ZONE 'UTC' AS "cancelledAt",
 			attempt_count AS "attemptCount",
-			started_at AS "startedAt",
-			finished_at AS "finishedAt",
+			started_at AT TIME ZONE 'UTC' AS "startedAt",
+			finished_at AT TIME ZONE 'UTC' AS "finishedAt",
 			artifact_path AS "artifactPath",
 			artifact_file_name AS "artifactFileName",
 			artifact_content_type AS "artifactContentType",
 			artifact_size AS "artifactSize",
-			artifact_expires_at AS "artifactExpiresAt"
+			artifact_expires_at AT TIME ZONE 'UTC' AS "artifactExpiresAt"
 	`;
 }
 

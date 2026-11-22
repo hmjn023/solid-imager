@@ -21,7 +21,10 @@ import {
 	tagDictionaryTags,
 	tags,
 } from "~/infrastructure/db/schema";
-import { TagDictionaryRepository } from "~/infrastructure/db/repositories";
+import {
+	MediaRepository,
+	TagDictionaryRepository,
+} from "~/infrastructure/db/repositories";
 import { BackupService } from "~/infrastructure/services/backup-service";
 
 // Mock external modules if necessary (e.g. storage driver, archiver)
@@ -122,6 +125,7 @@ describe("BackupService Integration", () => {
 						confidence: 0.8,
 					},
 					{ name: oldName, type: "negative", source: "AI", confidence: 0.6 },
+					{ name: oldName, type: "positive", source: "AI", confidence: 0.4 },
 				],
 			};
 			expect(
@@ -135,9 +139,16 @@ describe("BackupService Integration", () => {
 					target: currentName,
 				}),
 			).toBe(true);
-			expect(
-				(await BackupService.restoreSource(testSourceId, [item])).processed,
-			).toBe(1);
+			const restored = await BackupService.restoreSource(testSourceId, [
+				{
+					...item,
+					tags: [
+						...item.tags,
+						{ name: currentName, type: "positive", source: "AI" },
+					],
+				},
+			]);
+			expect(restored.processed).toBe(1);
 			expect(
 				await db.select().from(tags).where(eq(tags.name, oldName)),
 			).toEqual([]);
@@ -145,12 +156,12 @@ describe("BackupService Integration", () => {
 				.select()
 				.from(medias)
 				.where(eq(medias.filePath, item.filePath));
-			expect(
-				await db
-					.select()
-					.from(mediaTags)
-					.where(eq(mediaTags.mediaId, media.id)),
-			).toEqual(
+			const restoredTags = await db
+				.select()
+				.from(mediaTags)
+				.where(eq(mediaTags.mediaId, media.id));
+			expect(restoredTags).toHaveLength(2);
+			expect(restoredTags).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
 						tagId: old.id,
@@ -220,11 +231,20 @@ describe("BackupService Integration", () => {
 			.insert(authors)
 			.values({ name: "Dump Author" })
 			.returning();
-		await db.insert(authorAccounts).values({
-			authorId: author.id,
-			platform: "pixiv-fanbox",
-			accountId: "dump-author",
-		});
+		await db.insert(authorAccounts).values([
+			{
+				authorId: author.id,
+				platform: "twitter",
+				accountId: "dump-author-twitter",
+				createdAt: new Date("2026-02-02"),
+			},
+			{
+				authorId: author.id,
+				platform: "pixiv-fanbox",
+				accountId: "dump-author",
+				createdAt: new Date("2026-02-01"),
+			},
+		]);
 
 		await db
 			.insert(mediaProjects)
@@ -275,6 +295,7 @@ describe("BackupService Integration", () => {
 		expect(item.characters).toHaveLength(1);
 		expect(item.characters[0].name).toBe("Dump Character");
 		expect(item.characters[0].confidence).toBe(confidenceChar);
+		expect(item.characters[0].linkedIps).toEqual(["Dump IP"]);
 
 		expect(item.ips).toHaveLength(1);
 		expect(item.ips[0].name).toBe("Dump IP");
@@ -282,6 +303,24 @@ describe("BackupService Integration", () => {
 		expect(item.authors).toHaveLength(1);
 		expect(item.authors[0].name).toBe("Dump Author");
 		expect(item.authors[0].platform).toBe("pixiv-fanbox");
+		expect(item.authors[0].accounts).toMatchObject([
+			{ accountId: "dump-author" },
+			{ accountId: "dump-author-twitter" },
+		]);
+		const linkedAuthors = await MediaRepository.getAuthors(media.id);
+		expect(linkedAuthors).toMatchObject([
+			{
+				id: author.id,
+				accountId: "dump-author",
+				accounts: [
+					{ accountId: "dump-author" },
+					{ accountId: "dump-author-twitter" },
+				],
+			},
+		]);
+		expect((await MediaRepository.getDetails(media.id))?.authors).toEqual(
+			linkedAuthors,
+		);
 
 		expect(item.sourceUrls).toHaveLength(1);
 		expect(item.sourceUrls[0]).toBe("https://example.com/source");
@@ -292,20 +331,17 @@ describe("BackupService Integration", () => {
 			{
 				authors: [
 					{
-						author: {
-							name: "Multi-account Author",
-							accountId: "account-a",
-							accounts: [
-								{
-									platform: "twitter",
-									accountId: "account-b",
-								},
-								{
-									platform: "pixiv-fanbox",
-									accountId: "account-a",
-								},
-							],
-						},
+						name: "Multi-account Author",
+						accounts: [
+							{
+								platform: "twitter",
+								accountId: "account-b",
+							},
+							{
+								platform: "pixiv-fanbox",
+								accountId: "account-a",
+							},
+						],
 					},
 				],
 			},
@@ -343,27 +379,25 @@ describe("BackupService Integration", () => {
 				fileSize: 100,
 				authors: [
 					{
-						author: {
-							name: "My management label",
-							accounts: [
-								{
-									platform: "twitter",
-									accountId: "renamed",
-									remoteId: "18446744073709551615",
-									displayName: "External display",
-									profileUrl: "https://x.com/renamed",
-									observedAt: new Date("2026-02-01"),
-								},
-								{
-									platform: "pixiv-fanbox",
-									accountId: "fanbox-creator",
-									remoteId: "789",
-									displayName: "Other profile",
-									profileUrl: "https://fanbox-creator.fanbox.cc",
-									observedAt: new Date("2026-01-01"),
-								},
-							],
-						},
+						name: "My management label",
+						accounts: [
+							{
+								platform: "twitter",
+								accountId: "renamed",
+								remoteId: "18446744073709551615",
+								displayName: "External display",
+								profileUrl: "https://x.com/renamed",
+								observedAt: new Date("2026-02-01"),
+							},
+							{
+								platform: "pixiv-fanbox",
+								accountId: "fanbox-creator",
+								remoteId: "789",
+								displayName: "Other profile",
+								profileUrl: "https://fanbox-creator.fanbox.cc",
+								observedAt: new Date("2026-01-01"),
+							},
+						],
 					},
 				],
 			},
@@ -446,7 +480,7 @@ describe("BackupService Integration", () => {
 				projects: { with: { project: true } },
 				characters: true,
 				ips: { with: { ip: true } },
-				authors: { with: { author: { with: { accounts: true } } } },
+				authors: { with: { accounts: true } },
 				urls: true,
 			},
 		});
@@ -465,11 +499,11 @@ describe("BackupService Integration", () => {
 		expect(restoredMedia?.ips[0].ip.name).toBe("Restore IP");
 
 		expect(restoredMedia?.authors).toHaveLength(1);
-		expect(restoredMedia?.authors[0].author.name).toBe("Restore Author");
-		expect(restoredMedia?.authors[0].author.accounts[0]?.accountId).toBe(
+		expect(restoredMedia?.authors[0].name).toBe("Restore Author");
+		expect(restoredMedia?.authors[0].accounts[0]?.accountId).toBe(
 			"test_account_123",
 		);
-		expect(restoredMedia?.authors[0].author.accounts).toEqual([
+		expect(restoredMedia?.authors[0].accounts).toEqual([
 			expect.objectContaining({
 				platform: "pixiv-fanbox",
 				accountId: "test_account_123",
@@ -524,12 +558,12 @@ describe("BackupService Integration", () => {
 		expect(result.processed).toBe(2);
 		const restored = await db.query.medias.findMany({
 			where: { mediaSourceId: testSourceId },
-			with: { authors: { with: { author: { with: { accounts: true } } } } },
+			with: { authors: { with: { accounts: true } } },
 		});
-		const authorIds = restored.map((media) => media.authors[0]?.author.id);
+		const authorIds = restored.map((media) => media.authors[0]?.id);
 		expect(new Set(authorIds).size).toBe(2);
 		expect(
-			restored.map((media) => media.authors[0]?.author.accounts[0]?.platform),
+			restored.map((media) => media.authors[0]?.accounts[0]?.platform),
 		).toEqual(expect.arrayContaining(["pixiv-fanbox", "twitter"]));
 	});
 
@@ -563,12 +597,12 @@ describe("BackupService Integration", () => {
 		// 3. Verify character-IP relationships were inferred from media
 		const character = await db.query.characters.findFirst({
 			where: { name: "Inferred Character" },
-			with: { ips: { with: { ip: true } } },
+			with: { ips: true },
 		});
 
 		expect(character).toBeDefined();
 		expect(character?.ips).toHaveLength(2);
-		const ipNames = character?.ips.map((ci) => ci.ip.name).sort();
+		const ipNames = character?.ips.map((ip) => ip.name).sort();
 		expect(ipNames).toEqual(["Inferred IP 1", "Inferred IP 2"]);
 	});
 
@@ -607,11 +641,11 @@ describe("BackupService Integration", () => {
 		// 3. Verify only linkedIps were used
 		const character = await db.query.characters.findFirst({
 			where: { name: "Priority Character" },
-			with: { ips: { with: { ip: true } } },
+			with: { ips: true },
 		});
 
 		expect(character).toBeDefined();
 		expect(character?.ips).toHaveLength(1);
-		expect(character?.ips[0].ip.name).toBe("Specific IP");
+		expect(character?.ips[0].name).toBe("Specific IP");
 	});
 });
