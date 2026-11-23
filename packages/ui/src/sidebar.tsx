@@ -27,9 +27,10 @@ import { createSignal } from "solid-js";
 
 import type { ButtonProps } from "./button";
 import { buttonVariants } from "./button";
+import { SidebarTooltip } from "./layouts/sidebar-tooltip";
 import { Sheet, SheetContent } from "./sheet";
 import { Skeleton } from "./skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
+import { TooltipContent, TooltipTrigger } from "./tooltip";
 import { cn } from "./utils/cn";
 
 const MOBILE_BREAKPOINT = 768;
@@ -529,6 +530,7 @@ type SidebarMenuButtonProps<T extends ValidComponent = "button"> =
 		VariantProps<typeof sidebarMenuButtonVariants> & {
 			isActive?: boolean;
 			tooltip?: string;
+			tooltipDisabled?: boolean;
 		};
 
 const SidebarMenuButton = <T extends ValidComponent = "button">(
@@ -540,7 +542,16 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 	);
 	const [local, others] = splitProps(
 		props as SidebarMenuButtonProps & { as?: ValidComponent },
-		["as", "type", "isActive", "tooltip", "variant", "size", "class"],
+		[
+			"as",
+			"type",
+			"isActive",
+			"tooltip",
+			"tooltipDisabled",
+			"variant",
+			"size",
+			"class",
+		],
 	);
 	const { isMobile, state } = useSidebar();
 	const component = () => local.as ?? "button";
@@ -572,7 +583,13 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 			}
 			when={local.tooltip}
 		>
-			<Tooltip placement="right">
+			<SidebarTooltip
+				disabled={
+					Boolean(local.tooltipDisabled) ||
+					state() !== "collapsed" ||
+					isMobile()
+				}
+			>
 				<TooltipTrigger
 					as={component()}
 					class={cn(
@@ -590,10 +607,8 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 					type={buttonType()}
 					{...others}
 				/>
-				<TooltipContent hidden={state() !== "collapsed" || isMobile()}>
-					{local.tooltip}
-				</TooltipContent>
-			</Tooltip>
+				<TooltipContent>{local.tooltip}</TooltipContent>
+			</SidebarTooltip>
 		</Show>
 	);
 };

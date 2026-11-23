@@ -7,10 +7,8 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
-	getOwner,
 	onCleanup,
 	onMount,
-	runWithOwner,
 	Show,
 } from "solid-js";
 import { Button } from "../button";
@@ -100,10 +98,6 @@ function formatDate(date: Date) {
 }
 
 export function CollectionInspector(props: CollectionInspectorProps) {
-	const owner = getOwner();
-	const renderOwned = (render: () => JSX.Element) =>
-		owner ? runWithOwner(owner, render) : render();
-
 	return (
 		<aside
 			aria-label={t("labels.selectedMedia")}
@@ -128,7 +122,6 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 
 			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 scrollbar-stable">
 				<Show
-					keyed
 					fallback={
 						<div class="space-y-4">
 							<div class="flex aspect-landscape items-center justify-center rounded-md bg-muted px-6 text-center text-muted-foreground text-sm">
@@ -142,19 +135,21 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 					when={props.media}
 				>
 					{(media) => (
-						<div>
+						<>
 							<div class="aspect-landscape overflow-hidden rounded-md bg-muted">
-								{renderOwned(() => props.renderPreview(media))}
+								<Show keyed when={media()}>
+									{(preview) => props.renderPreview(preview)}
+								</Show>
 							</div>
 							<section class="border-border border-b py-4">
 								<h3
 									class="break-words font-semibold text-foreground text-sm"
-									title={media.fileName}
+									title={media().fileName}
 								>
-									{media.fileName}
+									{media().fileName}
 								</h3>
 								<p class="mt-2 whitespace-pre-wrap break-words text-muted-foreground text-xs leading-5">
-									{media.description?.trim() || t("labels.noDescription")}
+									{media().description?.trim() || t("labels.noDescription")}
 								</p>
 							</section>
 							<dl class="grid grid-cols-label-field gap-x-3 gap-y-2.5 py-4 text-xs">
@@ -162,15 +157,15 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 									{t("collectionInspector.resolution")}
 								</dt>
 								<dd class="text-right text-foreground">
-									{media.width && media.height
-										? `${media.width} × ${media.height}`
+									{media().width && media().height
+										? `${media().width} × ${media().height}`
 										: "—"}
 								</dd>
 								<dt class="text-muted-foreground">
 									{t("collectionInspector.size")}
 								</dt>
 								<dd class="text-right text-foreground">
-									{formatFileSize(media.fileSize)}
+									{formatFileSize(media().fileSize)}
 								</dd>
 								<dt class="text-muted-foreground">{t("labels.source")}</dt>
 								<dd
@@ -183,16 +178,16 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 									{t("collectionInspector.created")}
 								</dt>
 								<dd class="text-right text-foreground">
-									{formatDate(media.createdAt)}
+									{formatDate(media().createdAt)}
 								</dd>
 								<dt class="text-muted-foreground">
 									{t("collectionInspector.updated")}
 								</dt>
 								<dd class="text-right text-foreground">
-									{formatDate(media.modifiedAt)}
+									{formatDate(media().modifiedAt)}
 								</dd>
 							</dl>
-						</div>
+						</>
 					)}
 				</Show>
 			</div>

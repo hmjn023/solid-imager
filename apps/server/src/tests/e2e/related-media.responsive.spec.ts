@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { z } from "zod";
 import { apiPathPattern, apiRequestInput, apiRoute } from "./support/api";
+import { expectDomPreserved } from "./support/dom";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -308,70 +309,75 @@ test(
 	},
 );
 
-test("related media filters real relations and follows navigation, reload, and browser Back", async ({
-	page,
-}, testInfo) => {
-	await withRelatedMedia(page.request, async () => {
-		await page.goto(mediaPath());
-		await waitForAppHydration(page);
-		const related = relatedSection(page);
-		await openRelatedMedia(page);
-		const candidate = related.locator(
-			`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
-		);
-		await expect(candidate).toBeVisible();
-		await expect(candidate).toHaveCount(1);
-		await expect(
-			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
-		).toHaveCount(0);
-		for (const name of ["同じキャラ", "同じIP"]) {
-			await related.getByRole("tab", { name, exact: true }).click();
+test(
+	"related media filters real relations and follows navigation, reload, and browser Back",
+	{ tag: "@dom-stability" },
+	async ({ page }, testInfo) => {
+		await withRelatedMedia(page.request, async () => {
+			await page.goto(mediaPath());
+			await waitForAppHydration(page);
+			const related = relatedSection(page);
+			await openRelatedMedia(page);
+			const candidate = related.locator(
+				`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
+			);
 			await expect(candidate).toBeVisible();
 			await expect(candidate).toHaveCount(1);
-		}
-		await related.getByRole("tab", { name: "おすすめ", exact: true }).click();
-		const thumbnail = candidate.getByRole("img");
-		await expect
-			.poll(() =>
-				thumbnail.evaluate(
-					(image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
-				),
-			)
-			.toBe(true);
-		await expectNoHorizontalOverflow(page);
-		await page.screenshot({
-			path: testInfo.outputPath("related-media.png"),
-			animations: "disabled",
-		});
+			await expect(
+				related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+			).toHaveCount(0);
+			for (const name of ["同じキャラ", "同じIP", "おすすめ"]) {
+				await expectDomPreserved({ candidate }, async () => {
+					const tab = related.getByRole("tab", { name, exact: true });
+					await tab.click();
+					await expect(tab).toHaveAttribute("aria-selected", "true");
+					await expect(candidate).toBeVisible();
+				});
+			}
+			const thumbnail = candidate.getByRole("img");
+			await expect
+				.poll(() =>
+					thumbnail.evaluate(
+						(image: HTMLImageElement) =>
+							image.complete && image.naturalWidth > 0,
+					),
+				)
+				.toBe(true);
+			await expectNoHorizontalOverflow(page);
+			await page.screenshot({
+				path: testInfo.outputPath("related-media.png"),
+				animations: "disabled",
+			});
 
-		await candidate.click();
-		await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
-		await expect(
-			page.getByRole("heading", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
-		).toBeVisible();
-		await openRelatedMedia(page);
-		await expect(
-			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
-		).toBeVisible();
-		await expect(
-			related.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`),
-		).toHaveCount(0);
-		await page.reload();
-		await waitForAppHydration(page);
-		await openRelatedMedia(page);
-		await expect(
-			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
-		).toBeVisible();
-		await page.goBack();
-		await expect(page).toHaveURL(mediaPath());
-		await expect(
-			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
-		).toBeVisible();
-		await openRelatedMedia(page);
-		await expect(candidate).toBeVisible();
-		await expectNoHorizontalOverflow(page);
-	});
-});
+			await candidate.click();
+			await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
+			await expect(
+				page.getByRole("heading", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
+			).toBeVisible();
+			await openRelatedMedia(page);
+			await expect(
+				related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+			).toBeVisible();
+			await expect(
+				related.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`),
+			).toHaveCount(0);
+			await page.reload();
+			await waitForAppHydration(page);
+			await openRelatedMedia(page);
+			await expect(
+				related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+			).toBeVisible();
+			await page.goBack();
+			await expect(page).toHaveURL(mediaPath());
+			await expect(
+				page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+			).toBeVisible();
+			await openRelatedMedia(page);
+			await expect(candidate).toBeVisible();
+			await expectNoHorizontalOverflow(page);
+		});
+	},
+);
 
 test(
 	"related navigation preserves the original collection return history",

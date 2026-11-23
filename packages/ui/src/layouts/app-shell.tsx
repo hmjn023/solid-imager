@@ -25,7 +25,7 @@ export type AppShellProps = ParentProps<{
 	apiDocsHref?: string;
 	mediaSources: Accessor<SafeMediaSource[]>;
 	onNavigate?: (to: "/search" | "/manager" | "/jobs" | "/config") => void;
-	renderPendingDownloadsIndicator?: (compact: boolean) => JSX.Element;
+	renderPendingDownloadsIndicator?: (compact: Accessor<boolean>) => JSX.Element;
 	serverConnectionsHref?: string;
 	sourcePage: UseSourcesPageResult;
 	statusIndicator?: JSX.Element;
@@ -167,28 +167,25 @@ export function AppShell(props: AppShellProps) {
 				>
 					{t("appShell.skipToMainContent")}
 				</button>
-				<aside
+				<Sidebar
+					apiDocsHref={props.apiDocsHref}
 					aria-label={t("appShell.applicationSidebar")}
-					class="hidden min-h-0 border-border border-r md:block"
-					data-state={sidebarExpanded() ? "expanded" : "collapsed"}
-				>
-					<Sidebar
-						apiDocsHref={props.apiDocsHref}
-						expanded={sidebarExpanded()}
-						mediaSources={props.mediaSources()}
-						onAddSource={sourcePage.handleAddSource}
-						onCollapseToggle={toggleSidebar}
-						onDeleteSource={sourcePage.handleDeleteSource}
-						onEditSource={sourcePage.handleEditSource}
-						onNavigate={navigate}
-						onOpenCommandPalette={() => updateCommandPaletteOpen(true)}
-						onSyncSource={(source) => void sourcePage.handleSyncSource(source)}
-						renderPendingDownloadsIndicator={
-							props.renderPendingDownloadsIndicator
-						}
-						serverConnectionsHref={props.serverConnectionsHref}
-					/>
-				</aside>
+					as="aside"
+					class="hidden border-border border-r md:flex"
+					expanded={sidebarExpanded()}
+					mediaSources={props.mediaSources()}
+					onAddSource={sourcePage.handleAddSource}
+					onCollapseToggle={toggleSidebar}
+					onDeleteSource={sourcePage.handleDeleteSource}
+					onEditSource={sourcePage.handleEditSource}
+					onNavigate={navigate}
+					onOpenCommandPalette={() => updateCommandPaletteOpen(true)}
+					onSyncSource={(source) => void sourcePage.handleSyncSource(source)}
+					renderPendingDownloadsIndicator={
+						props.renderPendingDownloadsIndicator
+					}
+					serverConnectionsHref={props.serverConnectionsHref}
+				/>
 
 				<div class="flex min-h-0 min-w-0 flex-col">
 					<MobileHeader

@@ -1174,14 +1174,12 @@ function JobsInspector(props: {
 function JobsLoadMore(props: {
 	screen: JobsScreenProps;
 	root: Accessor<HTMLDivElement | undefined>;
-	active: Accessor<boolean>;
 }) {
 	const [boundary, setBoundary] = createSignal<HTMLDivElement>();
 	observePageBoundary({
 		target: boundary,
 		root: props.root,
 		enabled: () =>
-			props.active() &&
 			props.screen.hasMore() &&
 			!props.screen.isRefreshing() &&
 			!props.screen.isLoadingMore() &&
@@ -1220,6 +1218,8 @@ function JobsLoadMore(props: {
 
 export function JobsScreen(props: JobsScreenProps) {
 	const activeFilter = () => props.status() ?? "all";
+	const isUnfiltered = () => activeFilter() === "all" && !props.type();
+	const resultsPanelId = `jobs-results-${createUniqueId()}`;
 	const [scrollRoot, setScrollRoot] = createSignal<HTMLDivElement>();
 	const [localSelection, setLocalSelection] = createSignal<string | null>(null);
 	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
@@ -1424,141 +1424,129 @@ export function JobsScreen(props: JobsScreenProps) {
 							</Button>
 						</Show>
 					</div>
-					<Tabs onChange={changeStatus} value={activeFilter()}>
-						<div class={detailOpen() ? "grid gap-4" : MANAGEMENT_CATEGORY_GRID}>
-							<TabsList
-								aria-label={t("jobsScreen.jobStatusFilter")}
-								class={`hidden h-auto justify-start gap-1 rounded-none bg-transparent p-0 ${detailOpen() ? "" : `${MANAGEMENT_CATEGORY_LIST} lg:flex lg:flex-col`}`}
-							>
-								<For each={JOB_FILTERS}>
-									{(filter) => {
-										const Icon = filter.icon;
-										return (
-											<TabsTrigger
-												class="min-h-10 w-full justify-start gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary"
-												type="button"
-												value={filter.value}
-											>
-												<CategoryLabel
-													description={filter.description}
-													icon={<Icon aria-hidden="true" size={16} />}
-													label={filter.label}
-												/>
-											</TabsTrigger>
-										);
-									}}
-								</For>
-							</TabsList>
-							<div class="min-w-0">
-								<For each={JOB_FILTERS}>
-									{(filter) => (
-										<TabsContent
-											class="@container/jobs-list mt-0"
+					<Tabs
+						class={detailOpen() ? "grid gap-4" : MANAGEMENT_CATEGORY_GRID}
+						onChange={changeStatus}
+						value={activeFilter()}
+					>
+						<TabsList
+							aria-label={t("jobsScreen.jobStatusFilter")}
+							class={`hidden h-auto justify-start gap-1 rounded-none bg-transparent p-0 ${detailOpen() ? "" : `${MANAGEMENT_CATEGORY_LIST} lg:flex lg:flex-col`}`}
+						>
+							<For each={JOB_FILTERS}>
+								{(filter) => {
+									const Icon = filter.icon;
+									return (
+										<TabsTrigger
+											aria-controls={resultsPanelId}
+											class="min-h-10 w-full justify-start gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary"
+											type="button"
 											value={filter.value}
 										>
-											<Switch>
-												<Match when={props.state().phase === "pending"}>
-													<LoadingRegion label={t("jobsScreen.loadingJobs")}>
-														<div class="h-64 rounded-md border border-border bg-card" />
-													</LoadingRegion>
-												</Match>
-												<Match when={props.state().phase === "error"}>
-													<ErrorState
-														description={t(
-															"jobsScreen.checkYourConnectionAndTryAgain",
-														)}
-														onRetry={refresh}
-														title={t("jobsScreen.couldNotLoadJobs")}
-													/>
-												</Match>
-												<Match when={props.state().phase === "offline"}>
-													<OfflineState
-														description={t(
-															"jobsScreen.tryAgainWhenYourConnectionReturns",
-														)}
-														onRetry={refresh}
-													/>
-												</Match>
-												<Match
-													when={
-														props.state().phase === "data" ||
-														props.state().phase === "empty"
-													}
-												>
-													<Show
-														fallback={
-															<EmptyState
-																description={t(
-																	filter.value === "all" && !props.type()
-																		? "jobsScreen.newJobsAndTheirStatusWillAppearHere"
-																		: "jobsScreen.adjustFiltersToSeeJobs",
-																)}
-																icon={<Clock3 size={20} />}
-																title={t(
-																	filter.value === "all" && !props.type()
-																		? "jobsScreen.noJobsYet"
-																		: "jobsScreen.noMatchingJobs",
-																)}
-															/>
-														}
-														when={props.jobs().length > 0}
-													>
-														<Show when={retryableJobIds().length > 0}>
-															<JobsBulkActions
-																action={bulkAction()}
-																allSelected={
-																	selectedRetryableJobIds().length ===
-																	retryableJobIds().length
-																}
-																hasSelection={
-																	selectedRetryableJobIds().length > 0
-																}
-																isApplying={isApplyingBulkAction()}
-																onActionChange={setBulkAction}
-																onApply={applyBulkAction}
-																onToggleAll={toggleAllJobs}
-																selectableCount={retryableJobIds().length}
-																selectedCount={selectedRetryableJobIds().length}
-															/>
-														</Show>
-														<JobsTable
-															compact={detailOpen()}
-															buildThumbnailUrl={props.buildThumbnailUrl}
-															jobs={props.jobs()}
-															onSelect={selectJob}
-															onToggleSelect={toggleJob}
-															selectedJobId={selectedId() ?? null}
-															selectedJobIds={selectedJobIds()}
-														/>
-													</Show>
-													<Show when={props.jobs().length > 0}>
-														<p
-															class="mt-3 text-xs text-muted-foreground"
-															aria-live="polite"
-														>
-															{t(
-																"jobsScreen.showingValueValueOfValueValueJobs",
-																{
-																	value1: props.jobs().length.toLocaleString(),
-																	value3: (
-																		props.state().data?.total ?? 0
-																	).toLocaleString(),
-																},
-															)}
-														</p>
-													</Show>
-													<JobsLoadMore
-														screen={props}
-														root={scrollRoot}
-														active={() => activeFilter() === filter.value}
-													/>
-												</Match>
-											</Switch>
-										</TabsContent>
-									)}
-								</For>
-							</div>
-						</div>
+											<CategoryLabel
+												description={filter.description}
+												icon={<Icon aria-hidden="true" size={16} />}
+												label={filter.label}
+											/>
+										</TabsTrigger>
+									);
+								}}
+							</For>
+						</TabsList>
+						<TabsContent
+							class="@container/jobs-list mt-0 min-w-0"
+							forceMount
+							id={resultsPanelId}
+							value={activeFilter()}
+						>
+							<Switch>
+								<Match when={props.state().phase === "pending"}>
+									<LoadingRegion label={t("jobsScreen.loadingJobs")}>
+										<div class="h-64 rounded-md border border-border bg-card" />
+									</LoadingRegion>
+								</Match>
+								<Match when={props.state().phase === "error"}>
+									<ErrorState
+										description={t("jobsScreen.checkYourConnectionAndTryAgain")}
+										onRetry={refresh}
+										title={t("jobsScreen.couldNotLoadJobs")}
+									/>
+								</Match>
+								<Match when={props.state().phase === "offline"}>
+									<OfflineState
+										description={t(
+											"jobsScreen.tryAgainWhenYourConnectionReturns",
+										)}
+										onRetry={refresh}
+									/>
+								</Match>
+								<Match
+									when={
+										props.state().phase === "data" ||
+										props.state().phase === "empty"
+									}
+								>
+									<Show
+										fallback={
+											<EmptyState
+												description={t(
+													isUnfiltered()
+														? "jobsScreen.newJobsAndTheirStatusWillAppearHere"
+														: "jobsScreen.adjustFiltersToSeeJobs",
+												)}
+												icon={<Clock3 size={20} />}
+												title={t(
+													isUnfiltered()
+														? "jobsScreen.noJobsYet"
+														: "jobsScreen.noMatchingJobs",
+												)}
+											/>
+										}
+										when={props.jobs().length > 0}
+									>
+										<Show when={retryableJobIds().length > 0}>
+											<JobsBulkActions
+												action={bulkAction()}
+												allSelected={
+													selectedRetryableJobIds().length ===
+													retryableJobIds().length
+												}
+												hasSelection={selectedRetryableJobIds().length > 0}
+												isApplying={isApplyingBulkAction()}
+												onActionChange={setBulkAction}
+												onApply={applyBulkAction}
+												onToggleAll={toggleAllJobs}
+												selectableCount={retryableJobIds().length}
+												selectedCount={selectedRetryableJobIds().length}
+											/>
+										</Show>
+										<JobsTable
+											compact={detailOpen()}
+											buildThumbnailUrl={props.buildThumbnailUrl}
+											jobs={props.jobs()}
+											onSelect={selectJob}
+											onToggleSelect={toggleJob}
+											selectedJobId={selectedId() ?? null}
+											selectedJobIds={selectedJobIds()}
+										/>
+									</Show>
+									<Show when={props.jobs().length > 0}>
+										<p
+											class="mt-3 text-xs text-muted-foreground"
+											aria-live="polite"
+										>
+											{t("jobsScreen.showingValueValueOfValueValueJobs", {
+												value1: props.jobs().length.toLocaleString(),
+												value3: (
+													props.state().data?.total ?? 0
+												).toLocaleString(),
+											})}
+										</p>
+									</Show>
+									<JobsLoadMore screen={props} root={scrollRoot} />
+								</Match>
+							</Switch>
+						</TabsContent>
 					</Tabs>
 				</ManagementScrollArea>
 

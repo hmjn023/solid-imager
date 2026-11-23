@@ -13,6 +13,7 @@ import type { Accessor, JSX, Setter } from "solid-js";
 import {
 	createEffect,
 	createMemo,
+	createSelector,
 	createSignal,
 	For,
 	Match,
@@ -158,6 +159,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const showEmptyState = () => props.showEmptyState ?? true;
 	const showOpenInNewTab = () => props.showOpenInNewTab ?? true;
 	const disableContextMenu = () => props.disableContextMenu ?? false;
+	const isPreviewSelected = createSelector(() =>
+		props.previewSelectedMediaId?.(),
+	);
 	const totalCount = () => props.totalCount ?? props.mediaResults().length;
 	const selectionModeFromEvent = (
 		event: MouseEvent | KeyboardEvent,
@@ -618,7 +622,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						? (event) => selectFromGesture(media, event)
 						: undefined,
 					get isPreviewSelected() {
-						return props.previewSelectedMediaId?.() === media.id;
+						return isPreviewSelected(media.id);
 					},
 				});
 
@@ -715,13 +719,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								aria-selected={
 									props.isBulkSelectMode?.()
 										? props.isSelected?.(media.id)
-										: props.previewSelectedMediaId?.() === media.id
+										: isPreviewSelected(media.id)
 								}
 								class={
 									(
 										props.isBulkSelectMode?.()
 											? props.isSelected?.(media.id)
-											: props.previewSelectedMediaId?.() === media.id
+											: isPreviewSelected(media.id)
 									)
 										? "bg-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-accent"
 										: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-muted"
@@ -1005,7 +1009,17 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							}}
 						>
 							<ContextMenuTrigger
+								aria-label={t("sourceMediaGrid.mediaListActionTarget")}
+								as="section"
 								class="block min-w-0 w-full"
+								onContextMenu={(event) => {
+									const media = findMediaFromEventTarget(event.target);
+									setContextMenuTarget(media);
+									if (!media) {
+										event.preventDefault();
+										event.stopPropagation();
+									}
+								}}
 								onPointerDown={(event) => {
 									if (event.button === 2) {
 										setContextMenuTarget(
@@ -1014,20 +1028,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									}
 								}}
 							>
-								<section
-									class="min-w-0 w-full"
-									aria-label={t("sourceMediaGrid.mediaListActionTarget")}
-									onContextMenu={(event) => {
-										const media = findMediaFromEventTarget(event.target);
-										setContextMenuTarget(media);
-										if (!media) {
-											event.preventDefault();
-											event.stopPropagation();
-										}
-									}}
-								>
-									<CollectionContent />
-								</section>
+								<CollectionContent />
 							</ContextMenuTrigger>
 							<MediaContextMenuContent onShortcut={handleContextMenuKeyDown}>
 								<Show

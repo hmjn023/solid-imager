@@ -55,7 +55,7 @@ export function AppShell(props: AppShellProps) {
 			mediaSources={() => mediaSources.data ?? []}
 			onNavigate={(to) => void navigate({ to })}
 			renderPendingDownloadsIndicator={(compact) => (
-				<PendingDownloadsIndicator compact={compact} />
+				<PendingDownloadsIndicator compact={compact()} />
 			)}
 			sourcePage={sourcePage}
 			statusIndicator={props.statusIndicator}

@@ -51,10 +51,11 @@ export function NavigationItem(props: {
 	onClick?: () => void;
 	to: string;
 }) {
-	const location = useLocation();
-	const active = () =>
-		location().pathname === props.to ||
-		(props.to !== "/search" && location().pathname.startsWith(`${props.to}/`));
+	const active = useLocation({
+		select: ({ pathname }) =>
+			pathname === props.to ||
+			(props.to !== "/search" && pathname.startsWith(`${props.to}/`)),
+	});
 	const Icon = props.icon;
 
 	return (
@@ -70,14 +71,18 @@ export function NavigationItem(props: {
 				}
 				isActive={active()}
 				onClick={props.onClick}
-				tooltip={props.expanded ? undefined : props.label}
+				tooltip={props.label}
+				tooltipDisabled={props.expanded}
 				to={props.to}
 			>
 				<Icon aria-hidden="true" class="shrink-0" size={18} />
-				<Show when={props.expanded}>
-					<span class="min-w-0 flex-1 truncate">{props.label}</span>
-					{props.children}
-				</Show>
+				<span
+					class="min-w-0 flex-1 truncate"
+					classList={{ hidden: !props.expanded }}
+				>
+					{props.label}
+				</span>
+				<Show when={props.expanded}>{props.children}</Show>
 			</SidebarMenuButton>
 		</SidebarMenuItem>
 	);
