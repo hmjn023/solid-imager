@@ -1,11 +1,10 @@
+import { resolveServerUrl } from "@solid-imager/core/http";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { getApiBaseUrl, isDevelopmentProxy } from "./api-base";
 
 /** Resolves an API path against the configured base, retaining any base pathname. */
 export function buildAbsoluteUrl(path: string): string {
-	const baseUrl = new URL(getApiBaseUrl());
-	const basePath = baseUrl.pathname.replace(/\/+$/, "");
-	return `${baseUrl.origin}${basePath}${path.startsWith("/") ? path : `/${path}`}`;
+	return resolveServerUrl(getApiBaseUrl(), path);
 }
 
 /**

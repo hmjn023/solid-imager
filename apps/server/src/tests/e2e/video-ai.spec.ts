@@ -14,6 +14,7 @@ import {
 } from "@solid-imager/core/tagging";
 import ffmpegPath from "ffmpeg-static";
 import { z } from "zod";
+import { apiPathPattern, apiRequest } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	getE2eRuntimeDir,
@@ -32,28 +33,27 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 	browserHealth,
 }, testInfo) => {
 	test.setTimeout(240_000);
-	browserHealth.allowRequestFailure(/\/api\/rpc\/jobs\/events(?:\?|$)/);
-	const rpc = async (
+	browserHealth.allowRequestFailure(apiPathPattern("jobs/events"));
+	const callApi = async (
 		endpoint: string,
-		input: object,
+		input: Record<string, unknown>,
 		timeout = 30_000,
 	): Promise<unknown> => {
-		const response = await page.request.post(`/api/rpc/${endpoint}`, {
-			data: { json: input },
+		const response = await apiRequest(page.request, endpoint, input, "", {
 			timeout,
 		});
 		expect(
 			response.ok(),
 			`${endpoint}: ${response.status()} ${response.ok() ? "" : await response.text()}`,
 		).toBe(true);
-		return z.object({ json: z.unknown() }).parse(await response.json()).json;
+		return await response.json();
 	};
 	const waitForJob = async (jobId: string, expectedType: string) => {
 		await expect
 			.poll(
 				async () => {
 					const job = jobResultSchema.parse(
-						await rpc("jobs/get", { id: jobId }),
+						await callApi("jobs/get", { id: jobId }),
 					);
 					expect(job.type).toBe(expectedType);
 					return job.status;
@@ -61,18 +61,18 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 				{ timeout: 120_000 },
 			)
 			.toMatch(/^(completed|failed|cancelled)$/);
-		const job = jobResultSchema.parse(await rpc("jobs/get", { id: jobId }));
+		const job = jobResultSchema.parse(await callApi("jobs/get", { id: jobId }));
 		expect(job.status, job.error ?? `${expectedType} did not complete`).toBe(
 			"completed",
 		);
 	};
-	const config = AppConfigSchema.parse(await rpc("config/get", {}));
+	const config = AppConfigSchema.parse(await callApi("config/get", {}));
 	const sourceId = randomUUID();
 	const directory = path.join(getE2eRuntimeDir(), sourceId);
 	const videoName = "video-ai-fixture.webm";
 	let sourceCreated = false;
 	try {
-		await rpc("config/update", {
+		await callApi("config/update", {
 			ai: { ...config.ai, provider: "cpu", device: "" },
 		});
 		await mkdir(directory);
@@ -102,7 +102,7 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			"-an",
 			path.join(directory, videoName),
 		]);
-		await rpc("sources/create", {
+		await callApi("sources/create", {
 			id: sourceId,
 			name: `Video AI test ${sourceId}`,
 			description: null,
@@ -110,13 +110,13 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			connectionInfo: { path: directory },
 		});
 		sourceCreated = true;
-		await rpc("sources/sync", { ids: [sourceId] });
+		await callApi("sources/sync", { ids: [sourceId] });
 		let imageId = "";
 		let videoId = "";
 		await expect
 			.poll(async () => {
 				const result = mediaSearchResponseSchema.parse(
-					await rpc("media/search", {
+					await callApi("media/search", {
 						sourceId,
 						params: { limit: 20, offset: 0 },
 					}),
@@ -133,7 +133,7 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			.toBe(true);
 
 		const tags = taggingResponseSchema.parse(
-			await rpc(
+			await callApi(
 				"ai/tag",
 				{
 					mediaSourceId: sourceId,
@@ -143,7 +143,7 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			),
 		);
 		const savedTags = z.array(z.object({ name: z.string() })).parse(
-			await rpc("media/getTags", {
+			await callApi("media/getTags", {
 				sourceId,
 				mediaId: videoId,
 			}),
@@ -154,7 +154,7 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			expect.arrayContaining(inferredNames),
 		);
 		const tagged = mediaSearchResponseSchema.parse(
-			await rpc("media/search", {
+			await callApi("media/search", {
 				sourceId,
 				params: {
 					condition: {
@@ -186,7 +186,7 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 		] as const) {
 			for (const mediaId of [imageId, videoId]) {
 				const queued = startCcipExtractionResponseSchema.parse(
-					await rpc(endpoint, {
+					await callApi(endpoint, {
 						mediaSourceId: sourceId,
 						mediaId,
 						force: true,
@@ -201,7 +201,7 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 				[videoId, imageId],
 			]) {
 				const similar = mediaSearchResponseSchema.parse(
-					await rpc("media/searchSimilar", {
+					await callApi("media/searchSimilar", {
 						model,
 						anchorMediaId,
 						mediaSourceId: sourceId,
@@ -221,7 +221,11 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			[videoId, imageId],
 		]) {
 			const related = relatedMediaResponseSchema.parse(
-				await rpc("media/getRelated", { sourceId, mediaId: anchor, limit: 12 }),
+				await callApi("media/getRelated", {
+					sourceId,
+					mediaId: anchor,
+					limit: 12,
+				}),
 			);
 			expect(related.items).toContainEqual(
 				expect.objectContaining({
@@ -231,7 +235,7 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			);
 		}
 		const semantic = mediaSearchResponseSchema.parse(
-			await rpc(
+			await callApi(
 				"media/searchSemantic",
 				{
 					text: "a purple circle with white mountains",
@@ -290,10 +294,10 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 	} finally {
 		await page.goto("about:blank");
 		try {
-			if (sourceCreated) await rpc("sources/delete", { id: sourceId });
+			if (sourceCreated) await callApi("sources/delete", { id: sourceId });
 		} finally {
 			await rm(directory, { recursive: true, force: true });
-			await rpc("config/update", { ai: config.ai });
+			await callApi("config/update", { ai: config.ai });
 		}
 	}
 });

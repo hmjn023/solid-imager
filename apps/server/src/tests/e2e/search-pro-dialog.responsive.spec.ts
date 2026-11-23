@@ -1,3 +1,4 @@
+import { apiPathPattern } from "./support/api";
 import { expect, test } from "./support/test";
 
 test(
@@ -8,7 +9,7 @@ test(
 	async ({ page, browserHealth }) => {
 		// Mode and condition edits cancel searches for superseded query keys.
 		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/media\/search(?:\?|$)/,
+			apiPathPattern("media/search"),
 			"net::ERR_ABORTED",
 		);
 		await page.goto("/search");

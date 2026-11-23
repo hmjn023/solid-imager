@@ -12,15 +12,36 @@ import {
 
 export const danbooruContract = {
 	search: oc
-		.meta(openapi({ tags: ["Danbooru"], summary: "Danbooru の投稿を検索" }))
+		.meta(
+			openapi({
+				method: "POST",
+				path: "/danbooru/search",
+				tags: ["Danbooru"],
+				summary: "Danbooru の投稿を検索",
+			}),
+		)
 		.input(danbooruSearchSchema)
 		.output(danbooruSearchResultSchema),
 	getPost: oc
-		.meta(openapi({ tags: ["Danbooru"], summary: "Danbooru の投稿を取得" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/danbooru/posts/{id}",
+				tags: ["Danbooru"],
+				summary: "Danbooru の投稿を取得",
+			}),
+		)
 		.input(danbooruPostRequestSchema)
 		.output(danbooruPostSchema),
 	suggestTags: oc
-		.meta(openapi({ tags: ["Danbooru"], summary: "Danbooru のタグ候補を取得" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/danbooru/tags/suggestions",
+				tags: ["Danbooru"],
+				summary: "Danbooru のタグ候補を取得",
+			}),
+		)
 		.input(danbooruTagSearchSchema)
 		.output(z.array(danbooruTagSchema)),
 };

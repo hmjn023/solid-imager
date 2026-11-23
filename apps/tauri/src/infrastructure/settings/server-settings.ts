@@ -1,5 +1,5 @@
 import { t } from "@solid-imager/i18n";
-import { SCALAR_DOCS_PATH } from "@solid-imager/core/http";
+import { resolveServerUrl, SCALAR_DOCS_PATH } from "@solid-imager/core/http";
 import { Store } from "@tauri-apps/plugin-store";
 import { z } from "zod";
 import { getBuildTimeServerUrl } from "~/infrastructure/api-base";
@@ -191,11 +191,11 @@ export function getActiveServer(): ServerConnection | null {
 	);
 }
 
-/** Returns the selected server’s documentation URL, even when RPC uses the Vite proxy. */
+/** Returns the selected server’s documentation URL, even when the API uses the Vite proxy. */
 export function getApiDocsUrl(): string | undefined {
 	const server = getActiveServer();
 	return server
-		? server.baseUrl.replace(/\/api\/rpc$/, "") + SCALAR_DOCS_PATH
+		? resolveServerUrl(server.baseUrl, SCALAR_DOCS_PATH)
 		: undefined;
 }
 
@@ -238,7 +238,7 @@ async function commitSettings(next: ServerSettings): Promise<ServerSettings> {
 		settings = normalized;
 		if (nextServer) setApiBaseUrl(nextServer.baseUrl);
 		// Invalidation is synchronous up to the first await, in the same turn as
-		// publishing the new DB/RPC target. Disposal completes before returning.
+		// publishing the new DB/API target. Disposal completes before returning.
 		cleanup = reset?.() ?? Promise.resolve();
 	};
 	try {

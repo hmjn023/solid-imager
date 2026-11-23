@@ -18,6 +18,7 @@ export const charactersContract = {
 		.meta(
 			openapi({
 				method: "POST",
+				path: "/characters/clustering-runs",
 				tags: ["Characters"],
 				summary: "キャラクタークラスタリングを開始",
 				description:
@@ -29,6 +30,8 @@ export const charactersContract = {
 	clusteringRuns: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/characters/clustering-runs",
 				tags: ["Characters"],
 				summary: "保存済みクラスタリング結果一覧",
 				description: "保存済み解析結果の条件と件数を取得します。",
@@ -38,6 +41,8 @@ export const charactersContract = {
 	clusteringGroups: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/characters/clustering-runs/{runId}/groups",
 				tags: ["Characters"],
 				summary: "クラスタリングのグループ一覧",
 				description:
@@ -49,6 +54,8 @@ export const charactersContract = {
 	clusteringMedia: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/characters/clustering-runs/{runId}/groups/{clusterId}/media",
 				tags: ["Characters"],
 				summary: "クラスタ・ノイズの画像一覧",
 				description:
@@ -60,6 +67,8 @@ export const charactersContract = {
 	list: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/characters",
 				tags: ["Characters"],
 				summary: "キャラクター一覧取得",
 				description: "登録済みのキャラクターを一覧で取得します。",
@@ -70,6 +79,8 @@ export const charactersContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/characters/{id}",
 				tags: ["Characters"],
 				summary: "キャラクター取得",
 				description: "UUIDで指定したキャラクターの情報を取得します。",
@@ -81,6 +92,8 @@ export const charactersContract = {
 	create: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/characters",
 				tags: ["Characters"],
 				summary: "キャラクター作成",
 				description: "新しいキャラクターを登録します。",
@@ -92,6 +105,8 @@ export const charactersContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/characters/{id}",
 				tags: ["Characters"],
 				summary: "キャラクター更新",
 				description: "UUIDで指定したキャラクターの情報を更新します。",
@@ -108,6 +123,8 @@ export const charactersContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/characters/{id}",
 				tags: ["Characters"],
 				summary: "キャラクター削除",
 				description: "UUIDで指定したキャラクターを削除します。",
@@ -118,6 +135,8 @@ export const charactersContract = {
 	listForMedia: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/media/{mediaId}/characters",
 				tags: ["Characters"],
 				summary: "メディアのキャラクター一覧取得",
 				description:
@@ -130,6 +149,8 @@ export const charactersContract = {
 	addToMedia: oc
 		.meta(
 			openapi({
+				method: "PUT",
+				path: "/media/{mediaId}/characters/{characterId}",
 				tags: ["Characters"],
 				summary: "メディアにキャラクターを追加",
 				description: "指定したキャラクターをメディアに関連付けます。",
@@ -146,6 +167,8 @@ export const charactersContract = {
 	removeFromMedia: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/media/{mediaId}/characters/{characterId}",
 				tags: ["Characters"],
 				summary: "メディアからキャラクターを削除",
 				description: "指定したキャラクターとメディアの関連付けを解除します。",

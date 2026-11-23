@@ -83,20 +83,19 @@ it("only relays images on the trusted CDN and never forwards session credentials
 		.mockResolvedValue(
 			new Response("image", { headers: { "Content-Type": "image/png" } }),
 		);
-	const request = (src: string) =>
-		new Request(
-			"https://example.org/api/pixiv-image?" +
-				new URLSearchParams({ url: src }),
-		);
 	for (const url of [
 		"http://127.0.0.1/admin",
 		good.replace("i.pximg.net", "i.pximg.net.evil.com"),
 		good.replace("https://", "https://user@"),
 	]) {
-		expect((await servePixivImage(request(url), fetchRemote)).status).toBe(400);
+		expect((await servePixivImage(url, undefined, fetchRemote)).status).toBe(
+			400,
+		);
 	}
 	expect(fetchRemote).not.toHaveBeenCalled();
-	expect((await servePixivImage(request(good), fetchRemote)).status).toBe(200);
+	expect((await servePixivImage(good, undefined, fetchRemote)).status).toBe(
+		200,
+	);
 	const init = fetchRemote.mock.calls[0][1];
 	expect(init?.redirect).toBe("error");
 	expect(new Headers(init?.headers).get("Referer")).toBe(

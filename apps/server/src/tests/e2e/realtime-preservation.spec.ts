@@ -1,3 +1,4 @@
+import { apiPathPattern } from "./support/api";
 import { randomUUID } from "node:crypto";
 import { copyFile } from "node:fs/promises";
 import path from "node:path";
@@ -11,7 +12,7 @@ import {
 import { syncFixtureSource } from "./support/source-sync";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const sourceEventsEndpoint = /\/api\/rpc\/sources\/events(?:\?|$)/;
+const sourceEventsEndpoint = apiPathPattern("sources/events");
 
 test(
 	"preserves an open dialog, input value, and focus after an SSE reconnect refreshes media",

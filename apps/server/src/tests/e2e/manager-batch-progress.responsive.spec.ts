@@ -1,3 +1,4 @@
+import { apiPathPattern, apiRequest, routeApi } from "./support/api";
 import { selectManagerCategory } from "./support/manager-navigation";
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
@@ -32,7 +33,7 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 		page,
 		browserHealth,
 	}, testInfo) => {
-		browserHealth.allowRequestFailure(/\/api\/rpc\/jobs\/events(?:\?|$)/);
+		browserHealth.allowRequestFailure(apiPathPattern("jobs/events"));
 		const jobId = randomUUID();
 		let releaseReconnect: () => void = () => {};
 		const reconnectGate = new Promise<void>((resolve) => {
@@ -40,7 +41,7 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 		});
 		let streamAttempts = 0;
 		if (kind === "embedding") {
-			await page.route(/\/api\/rpc\/jobs\/events(?:\?|$)/, async (route) => {
+			await routeApi(page, "jobs/events", async (route) => {
 				streamAttempts++;
 				if (streamAttempts === 2) await reconnectGate;
 				if (streamAttempts <= 2) {
@@ -87,14 +88,12 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 						? "ai/startBatchTagging"
 						: "thumbnails/generate";
 		// Deterministic job snapshots isolate UI recovery and geometry from AI timing.
-		await page.route(`**/api/rpc/${endpoint}`, (route) =>
+		await routeApi(page, endpoint, (route) =>
 			route.fulfill({
-				json: { json: { success: true, jobId, message: "Batch queued" } },
+				json: { success: true, jobId, message: "Batch queued" },
 			}),
 		);
-		await page.route(/\/api\/rpc\/jobs\/get(?:\?|$)/, (route) =>
-			route.fulfill({ json: { json: job } }),
-		);
+		await routeApi(page, "jobs/get", (route) => route.fulfill({ json: job }));
 		await page.goto("/manager");
 		await waitForAppHydration(page);
 		const category =
@@ -207,25 +206,23 @@ test("shows another client's batch on Manager and after reload", async ({
 }) => {
 	const id = randomUUID();
 	let visible = false;
-	const activeBatches = "/api/rpc/jobs/activeBatches";
-	const events = "/api/rpc/jobs/events";
+	const activeBatches = "/api/jobs/batches/active";
+	const events = "/api/jobs/events";
 	// Hold the remote batch snapshot steady across the reload. The event which
 	// discovers it comes from a real start request in an independent API client.
 	await page.route(`**${activeBatches}`, (route) =>
 		route.fulfill({
-			json: {
-				json: visible
-					? [
-							{
-								id,
-								type: "batch_ccip_parent",
-								mediaSourceId: E2E_SOURCE_ID,
-								status: "in_progress",
-								progress: { processed: 24, failed: 1, total: 50 },
-							},
-						]
-					: [],
-			},
+			json: visible
+				? [
+						{
+							id,
+							type: "batch_ccip_parent",
+							mediaSourceId: E2E_SOURCE_ID,
+							status: "in_progress",
+							progress: { processed: 24, failed: 1, total: 50 },
+						},
+					]
+				: [],
 		}),
 	);
 	await Promise.all([
@@ -241,8 +238,8 @@ test("shows another client's batch on Manager and after reload", async ({
 	});
 	await expect(bar).toHaveCount(0);
 	visible = true;
-	const started = await request.post("/api/rest/ai/startBatchCcipExtraction", {
-		data: { mediaSourceId: E2E_SOURCE_ID },
+	const started = await apiRequest(request, "ai/startBatchCcipExtraction", {
+		mediaSourceId: E2E_SOURCE_ID,
 	});
 	expect(started.ok(), await started.text()).toBe(true);
 	await expect(bar).toHaveAttribute("aria-valuenow", "50");
@@ -250,7 +247,7 @@ test("shows another client's batch on Manager and after reload", async ({
 	// With no events replayed, the initial connection must reconcile the SSR list.
 	const stream = Promise.withResolvers<void>();
 	await page.route(
-		`**${events}`,
+		apiPathPattern("jobs/events"),
 		async (route) => {
 			await stream.promise;
 			await route.fulfill({

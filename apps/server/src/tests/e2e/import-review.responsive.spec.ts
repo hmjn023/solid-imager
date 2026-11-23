@@ -2,8 +2,11 @@ import {
 	pixivDownloadItem,
 	type PixivArtwork,
 } from "@solid-imager/core/external-viewer";
+import { danbooruPostSchema } from "@solid-imager/core/danbooru";
+import { mediaThumbnailPath } from "@solid-imager/core/http";
 import { pendingImportJobSchema } from "@solid-imager/core/media";
 import { z } from "zod";
+import { apiRequest, apiRequestInput, apiRoute, routeApi } from "./support/api";
 import {
 	E2E_PRIMARY_MEDIA_ID,
 	E2E_PRIMARY_FILE_NAME,
@@ -25,24 +28,18 @@ test("import inbox previews the full image and details without changing the sele
 		{ mediaId: E2E_SIMILAR_MEDIA_ID, kind: "夜景版", author: "大橋 茜" },
 	].map(({ mediaId, kind, author }) => ({
 		targetUrl: new URL(
-			`/api/sources/${E2E_SOURCE_ID}/thumbnail/${mediaId}`,
+			mediaThumbnailPath(E2E_SOURCE_ID, mediaId),
 			page.url(),
 		).toString(),
 		description: `${titlePrefix}・${kind}`,
 		fileName: `設定資料-${kind}.png`,
 		authors: [{ name: author }],
 	}));
-	const response = await page.request.post("/api/rpc/imports/bulkAdd", {
-		data: { json: { items } },
-	});
+	const response = await apiRequest(page.request, "imports/bulkAdd", { items });
 	expect(response.ok()).toBe(true);
-	const list = await page.request.post("/api/rpc/imports/listPending", {
-		data: { json: null },
-	});
+	const list = await apiRequest(page.request, "imports/listPending");
 	expect(list.ok()).toBe(true);
-	const pending = z
-		.array(pendingImportJobSchema)
-		.parse((await list.json()).json);
+	const pending = z.array(pendingImportJobSchema).parse(await list.json());
 	const jobs = pending.filter((job) =>
 		items.some((item) => item.description === job.item.description),
 	);
@@ -109,8 +106,8 @@ test("import inbox previews the full image and details without changing the sele
 		await expect(openPreview).toBeFocused();
 		await expect(inbox.getByText("2件中1件 選択中")).toBeVisible();
 	} finally {
-		const cancel = await page.request.post("/api/rpc/imports/cancel", {
-			data: { json: { jobIds: jobs.map((job) => job.id) } },
+		const cancel = await apiRequest(page.request, "imports/cancel", {
+			jobIds: jobs.map((job) => job.id),
 		});
 		expect(cancel.ok()).toBe(true);
 	}
@@ -160,31 +157,27 @@ test("import inbox previews Pixiv originals and ugoira through the image proxy",
 		...[queuedAnimation, olderAnimation].map((post) => post.pages[0].preview),
 	];
 	await page.route(`${cdn}/**`, (route) => route.fulfill({ status: 403 }));
-	await page.route("**/api/pixiv-image?*", (route) => {
+	await page.route(apiRoute("viewer/pixivImage"), (route) => {
 		const url = new URL(route.request().url()).searchParams.get("url");
 		expect(previewUrls).toContain(url);
 		return route.fulfill({ path: getFixtureMediaPath(E2E_PRIMARY_FILE_NAME) });
 	});
 	const lookups: number[] = [];
-	await page.route("**/api/rpc/viewer/pixivArtwork", (route) => {
-		const id: number = route.request().postDataJSON().json.id;
+	await routeApi(page, "viewer/pixivArtwork", (route) => {
+		const id = Number(
+			apiRequestInput(route.request(), "viewer/pixivArtwork").id,
+		);
 		lookups.push(id);
-		return route.fulfill({ json: { json: olderAnimation } });
+		return route.fulfill({ json: olderAnimation });
 	});
 
 	await page.goto("/about");
 	await waitForAppHydration(page);
-	const response = await page.request.post("/api/rpc/imports/bulkAdd", {
-		data: { json: { items } },
-	});
+	const response = await apiRequest(page.request, "imports/bulkAdd", { items });
 	expect(response.ok()).toBe(true);
-	const list = await page.request.post("/api/rpc/imports/listPending", {
-		data: { json: null },
-	});
+	const list = await apiRequest(page.request, "imports/listPending");
 	expect(list.ok()).toBe(true);
-	const pending = z
-		.array(pendingImportJobSchema)
-		.parse((await list.json()).json);
+	const pending = z.array(pendingImportJobSchema).parse(await list.json());
 	const jobs = pending.filter((job) =>
 		items.some((item) => item.targetUrl === job.item.targetUrl),
 	);
@@ -237,8 +230,8 @@ test("import inbox previews Pixiv originals and ugoira through the image proxy",
 			await expect(preview).toBeHidden();
 		}
 	} finally {
-		const cancel = await page.request.post("/api/rpc/imports/cancel", {
-			data: { json: { jobIds: jobs.map((job) => job.id) } },
+		const cancel = await apiRequest(page.request, "imports/cancel", {
+			jobIds: jobs.map((job) => job.id),
 		});
 		expect(cancel.ok()).toBe(true);
 	}
@@ -261,16 +254,36 @@ test("import inbox shows Danbooru video posters and plays the original on demand
 		previewUrl: clip === current ? clip.previewUrl : undefined,
 	}));
 	const thumbnails = clips.map((clip) => clip.previewUrl);
-	await page.route("**/api/danbooru-thumbnail?*", (route) => {
+	await page.route(apiRoute("viewer/danbooruThumbnail"), (route) => {
 		const url = new URL(route.request().url()).searchParams.get("url");
 		expect(thumbnails).toContain(url);
 		return route.fulfill({ path: getFixtureMediaPath(E2E_PRIMARY_FILE_NAME) });
 	});
 	const loadedPosts: number[] = [];
-	await page.route("**/api/rpc/danbooru/getPost", (route) => {
-		const id: number = route.request().postDataJSON().json.id;
+	await routeApi(page, "danbooru/getPost", (route) => {
+		const id = Number(apiRequestInput(route.request(), "danbooru/getPost").id);
 		loadedPosts.push(id);
-		return route.fulfill({ json: { json: legacy } });
+		return route.fulfill({
+			json: danbooruPostSchema.parse({
+				...legacy,
+				sampleUrl: null,
+				fileExt: "webm",
+				width: 640,
+				height: 400,
+				fileSize: 1000,
+				rating: "g",
+				score: 0,
+				createdAt: "2026-01-01T00:00:00Z",
+				source: "",
+				tags: {
+					general: [],
+					artist: [],
+					copyright: [],
+					character: [],
+					meta: [],
+				},
+			}),
+		});
 	});
 	const videoRequests: string[] = [];
 	await page.route(`${cdn}/original/*.webm`, (route) => {
@@ -283,16 +296,10 @@ test("import inbox shows Danbooru video posters and plays the original on demand
 
 	await page.goto("/about");
 	await waitForAppHydration(page);
-	const response = await page.request.post("/api/rpc/imports/bulkAdd", {
-		data: { json: { items } },
-	});
+	const response = await apiRequest(page.request, "imports/bulkAdd", { items });
 	expect(response.ok()).toBe(true);
-	const list = await page.request.post("/api/rpc/imports/listPending", {
-		data: { json: null },
-	});
-	const pending = z
-		.array(pendingImportJobSchema)
-		.parse((await list.json()).json);
+	const list = await apiRequest(page.request, "imports/listPending");
+	const pending = z.array(pendingImportJobSchema).parse(await list.json());
 	const jobs = pending.filter((job) =>
 		items.some((item) => item.targetUrl === job.item.targetUrl),
 	);
@@ -343,8 +350,8 @@ test("import inbox shows Danbooru video posters and plays the original on demand
 			await expect(preview).toBeHidden();
 		}
 	} finally {
-		const cancel = await page.request.post("/api/rpc/imports/cancel", {
-			data: { json: { jobIds: jobs.map((job) => job.id) } },
+		const cancel = await apiRequest(page.request, "imports/cancel", {
+			jobIds: jobs.map((job) => job.id),
 		});
 		expect(cancel.ok()).toBe(true);
 	}

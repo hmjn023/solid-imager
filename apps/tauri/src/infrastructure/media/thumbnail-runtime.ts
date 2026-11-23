@@ -1,3 +1,4 @@
+import { mediaContentPath, mediaThumbnailPath } from "@solid-imager/core/http";
 import { buildAbsoluteUrl } from "~/infrastructure/tauri-fetch-helpers";
 
 /** Returns the remote thumbnail endpoint for a media item. */
@@ -5,7 +6,7 @@ export function getThumbnailResource(
 	mediaSourceId: string,
 	mediaId: string,
 ): string {
-	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/thumbnail/${mediaId}`);
+	return buildAbsoluteUrl(mediaThumbnailPath(mediaSourceId, mediaId));
 }
 
 /** Builds a thumbnail URL with optional size and cache-busting timestamp. */
@@ -15,14 +16,9 @@ export function buildThumbnailUrl(args: {
 	mediaSourceId: string;
 	size?: 256 | 512;
 }): string {
-	const base = buildAbsoluteUrl(
-		`/api/sources/${args.mediaSourceId}/thumbnail/${args.mediaId}`,
+	return buildAbsoluteUrl(
+		mediaThumbnailPath(args.mediaSourceId, args.mediaId, args),
 	);
-	const query = new URLSearchParams();
-	if (args.size) query.set("size", String(args.size));
-	if (args.cacheKey) query.set("t", String(args.cacheKey));
-	const search = query.toString();
-	return search ? `${base}?${search}` : base;
 }
 
 /** Returns the remote content URL for a media item. */
@@ -30,7 +26,7 @@ export function buildMediaContentUrl(
 	mediaSourceId: string,
 	mediaId: string,
 ): string {
-	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/${mediaId}`);
+	return buildAbsoluteUrl(mediaContentPath(mediaSourceId, mediaId));
 }
 
 /** Remote server mode does not require a local thumbnail-ready notification. */

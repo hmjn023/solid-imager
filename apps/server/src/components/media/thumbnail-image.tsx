@@ -1,3 +1,4 @@
+import { mediaThumbnailPath } from "@solid-imager/core/http";
 import type { MediaSafe } from "@solid-imager/core/media";
 import { ThumbnailImage as SharedThumbnailImage } from "@solid-imager/ui/thumbnail-image";
 import {
@@ -25,12 +26,7 @@ type ThumbnailImageProps = {
 };
 
 export function buildThumbnailUrl(args: BuildThumbnailUrlArgs): string {
-	const base = `/api/sources/${args.mediaSourceId}/thumbnail/${args.mediaId}`;
-	const query = new URLSearchParams();
-	if (args.size) query.set("size", String(args.size));
-	if (args.cacheKey) query.set("t", String(args.cacheKey));
-	const search = query.toString();
-	return search ? `${base}?${search}` : base;
+	return mediaThumbnailPath(args.mediaSourceId, args.mediaId, args);
 }
 
 export function ThumbnailImage(props: ThumbnailImageProps) {

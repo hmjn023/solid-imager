@@ -1,3 +1,4 @@
+import { mediaThumbnailPath } from "@solid-imager/core/http";
 import type { DuplicateGroup } from "@solid-imager/core/media";
 import { t } from "@solid-imager/i18n";
 import ExternalLink from "lucide-solid/icons/external-link";
@@ -45,7 +46,9 @@ export function DuplicateToolPanel(props: {
 	const resolveThumbnail = (item: DuplicateGroup["media"][number]) =>
 		props.actions?.thumbnailUrl
 			? props.actions.thumbnailUrl(item)
-			: `/api/sources/${item.mediaSourceId}/thumbnail/${item.id}?t=${new Date(item.modifiedAt).getTime()}`;
+			: mediaThumbnailPath(item.mediaSourceId, item.id, {
+					cacheKey: new Date(item.modifiedAt).getTime(),
+				});
 
 	return (
 		<div class="space-y-5">

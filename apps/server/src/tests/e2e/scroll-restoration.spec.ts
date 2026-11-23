@@ -1,8 +1,9 @@
 import type { Page } from "@playwright/test";
+import { apiPathPattern, apiRoute } from "./support/api";
 import { E2E_SOURCE_ID, E2E_SOURCE_NAME } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const searchEndpoint = "**/api/rpc/media/search**";
+const searchEndpoint = apiPathPattern("media/search");
 
 function getSearchOffset(postData: string | null): number | undefined {
 	const offset = postData?.match(/"offset"\s*:\s*(\d+)/)?.[1];
@@ -166,7 +167,7 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	);
 	const nextPageResponsePromise = page.waitForResponse(
 		(response) =>
-			response.url().includes("/api/rpc/media/search") &&
+			apiRoute("media/search")(new URL(response.url())) &&
 			(getSearchOffset(response.request().postData()) ?? 0) >
 				loadedOffsetBeforeReturn,
 		{ timeout: 30_000 },
@@ -269,13 +270,13 @@ for (const restorationCase of restorationCases) {
 	}) => {
 		const successfulOffsets: number[] = [];
 		let allowRetry = false;
-		browserHealth.allowResponseFailure("/api/rpc/media/search");
+		browserHealth.allowResponseFailure(apiPathPattern("media/search"));
 		browserHealth.allowConsole(
 			"Failed to load resource: the server responded with a status of 503",
 		);
 		await page.route(searchEndpoint, async (route) => {
 			const body = route.request().postDataJSON();
-			const params = body.json.params;
+			const params = body.params;
 			const offset = params.offset ?? 0;
 			if (offset === 4 && !allowRetry) {
 				await route.fulfill({ status: 503, body: "Unavailable" });
@@ -285,22 +286,19 @@ for (const restorationCase of restorationCases) {
 			const response = await route.fetch({
 				postData: {
 					...body,
-					json: {
-						...body.json,
-						params: {
-							...params,
-							// Background jobs can change the date order between pages.
-							sort: "name",
-							order: "asc",
-							limit: Math.max(1, Math.min(4, 9 - offset)),
-						},
+					params: {
+						...params,
+						// Background jobs can change the date order between pages.
+						sort: "name",
+						order: "asc",
+						limit: Math.max(1, Math.min(4, 9 - offset)),
 					},
 				},
 			});
-			const envelope = await response.json();
+			const results = await response.json();
 			await route.fulfill({
 				response,
-				json: { ...envelope, json: { ...envelope.json, total: 9 } },
+				json: { ...results, total: 9 },
 			});
 		});
 		// The intercepted first page must come from client-side navigation.
@@ -327,7 +325,7 @@ for (const restorationCase of restorationCases) {
 		}) => {
 			// Leaving media detail unmounts its job subscription and cancels the SSE fetch.
 			browserHealth.allowRequestFailure(
-				/\/api\/rpc\/jobs\/events(?:\?|$)/,
+				apiPathPattern("jobs/events"),
 				"net::ERR_ABORTED",
 			);
 			await verifyRestoredScrollerDuringFastPageFetch(

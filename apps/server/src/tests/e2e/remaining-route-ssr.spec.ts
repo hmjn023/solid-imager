@@ -1,5 +1,6 @@
 import { rm, writeFile } from "node:fs/promises";
 import { statisticsResponseSchema } from "@solid-imager/core/statistics";
+import { apiRequest } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	externalViewerFixturePath,
@@ -82,24 +83,24 @@ test.describe("public viewer SSR", () => {
 		{
 			path: "/danbooru",
 			text: `Danbooru #${postId}`,
-			endpoint: "/api/rpc/viewer/search",
+			endpoint: "/api/viewer/search",
 			thumbnail: danbooruThumbnail,
 		},
 		{
 			path: `/danbooru/${postId}`,
 			text: danbooruTag,
-			endpoint: "/api/rpc/danbooru/getPost",
+			endpoint: `/api/danbooru/posts/${postId}`,
 		},
 		{
 			path: "/pixiv",
 			text: pixivTitle,
-			endpoint: "/api/rpc/viewer/search",
+			endpoint: "/api/viewer/search",
 			thumbnail: pixivSmallThumbnail,
 		},
 		{
 			path: `/pixiv/${postId}`,
 			text: "SSR fixture metadata",
-			endpoint: "/api/rpc/viewer/pixivArtwork",
+			endpoint: `/api/viewer/pixiv/posts/${postId}`,
 		},
 	]) {
 		test(`${route.path} renders provider data and reuses it after hydration`, async ({
@@ -112,7 +113,7 @@ test.describe("public viewer SSR", () => {
 				baseURL,
 				javaScriptEnabled: false,
 			});
-			const image = /\/api\/(pixiv-image|danbooru-thumbnail)\?/;
+			const image = /\/api\/viewer\/(?:pixiv\/image|danbooru\/thumbnail)\?/;
 			const path = getFixtureMediaPath(E2E_PRIMARY_FILE_NAME);
 			await Promise.all([
 				context.route(image, (request) => request.fulfill({ path })),
@@ -180,7 +181,9 @@ test.describe("public viewer SSR", () => {
 	}) => {
 		const urlOfImage = (url: URL) => url.searchParams.get("url");
 		const missing = (url: URL) => urlOfImage(url) === pixivSmallThumbnail;
-		browserHealth.allowResponseFailure(/\/api\/pixiv-image\?.*240x480/);
+		browserHealth.allowResponseFailure(
+			/\/api\/viewer\/pixiv\/image\?.*240x480/,
+		);
 		browserHealth.allowConsole(
 			"Failed to load resource: the server responded with a status of 404",
 		);
@@ -209,12 +212,13 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 	const zone = await page.evaluate(
 		() => Intl.DateTimeFormat().resolvedOptions().timeZone,
 	);
-	const statistics = await page.request.post("/api/rpc/media/statistics", {
-		data: { json: { period: "all", timeZone: zone } },
+	const statistics = await apiRequest(page.request, "media/statistics", {
+		period: "all",
+		timeZone: zone,
 	});
 	await expect(statistics).toBeOK();
 	const { mediaTypes } = statisticsResponseSchema.parse(
-		(await statistics.json()).json,
+		await statistics.json(),
 	);
 	const imageCount =
 		mediaTypes.find((entry) => entry.type === "image")?.count ?? 0;
@@ -250,7 +254,7 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 	} finally {
 		await documentContext.close();
 	}
-	const endpoint = "/api/rpc/media/statistics";
+	const endpoint = "/api/media/statistics";
 	const firstVisit = browserHealth.requestCheckpoint();
 	const [firstQuery] = await Promise.all([
 		page.waitForRequest(
@@ -258,7 +262,7 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 		),
 		page.goto("/statistics?period=all"),
 	]);
-	expect(firstQuery.postDataJSON()).toMatchObject({ json: { timeZone: zone } });
+	expect(firstQuery.postDataJSON()).toMatchObject({ timeZone: zone });
 	await waitForAppHydration(page);
 	await expect(
 		page.getByRole("heading", { name: "メディアの内訳", exact: true }),

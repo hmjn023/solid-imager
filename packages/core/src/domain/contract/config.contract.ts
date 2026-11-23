@@ -6,19 +6,34 @@ import {
 	AppConfigSchema,
 	AppConfigUpdateSchema,
 } from "../config/config-schema";
+import { CONFIG_ROUTE } from "./http-paths";
 
 export const configContract = {
 	mcpCatalog: oc
-		.meta(openapi({ tags: ["Configuration"], summary: "MCP 公開候補一覧" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/config/mcp/catalog",
+				tags: ["Configuration"],
+				summary: "MCP 公開候補一覧",
+			}),
+		)
 		.output(z.array(mcpToolInfoSchema)),
 	webTools: oc
 		.meta(
-			openapi({ tags: ["Configuration"], summary: "公開中の WebMCP ツール" }),
+			openapi({
+				method: "GET",
+				path: "/config/mcp/web-tools",
+				tags: ["Configuration"],
+				summary: "公開中の WebMCP ツール",
+			}),
 		)
 		.output(z.array(webToolInfoSchema)),
 	callWebTool: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/config/mcp/web-tools/calls",
 				tags: ["Configuration"],
 				summary: "公開中の WebMCP データ操作を実行",
 			}),
@@ -33,6 +48,8 @@ export const configContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: CONFIG_ROUTE,
 				tags: ["Configuration"],
 				summary: "アプリ設定取得",
 				description: "現在保存されているアプリケーション設定を取得します。",
@@ -43,6 +60,8 @@ export const configContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: CONFIG_ROUTE,
 				tags: ["Configuration"],
 				summary: "アプリ設定更新",
 				description:

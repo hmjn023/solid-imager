@@ -1,5 +1,5 @@
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/contract";
+import { appContract } from "@solid-imager/core/contract";
 import { ExternalViewerRoute } from "@solid-imager/ui/external-viewer";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { createFileRoute, useRouter } from "@tanstack/solid-router";
@@ -20,7 +20,7 @@ function PixivPage() {
 				isTauri() ? () => invoke<void>("open_pixiv_login") : undefined
 			}
 			createViewer={(url, fetch) =>
-				createClient<AppContract>({ url, fetch }).viewer
+				createClient(appContract, { url, fetch }).viewer
 			}
 			client={client}
 			apiBase={getApiBaseUrl}

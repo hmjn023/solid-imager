@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
+import { apiPathPattern, apiRequest, apiRoute, routeApi } from "./support/api";
 import {
 	E2E_CORRECT_AUTHOR_ID,
 	E2E_PRIMARY_MEDIA_ID,
@@ -10,12 +11,14 @@ import {
 import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-async function rpc(page: Page, name: string, input: object) {
-	const response = await page.request.post(`/api/rpc/authors/${name}`, {
-		data: { json: input },
-	});
+async function callAuthorApi(
+	page: Page,
+	name: string,
+	input: Record<string, unknown>,
+) {
+	const response = await apiRequest(page.request, `authors/${name}`, input);
 	expect(response.ok()).toBe(true);
-	return response.json() as Promise<{ json: { items?: { id: string }[] } }>;
+	return response.json() as Promise<{ items?: { id: string }[] }>;
 }
 async function openAuthors(page: Page) {
 	await selectManagerCategory(page, "作者・外部アカウント");
@@ -48,41 +51,39 @@ test("large author lists debounce suggestions and preserve selections @desktop-o
 		createdAt: timestamp,
 		updatedAt: timestamp,
 	}));
-	await page.route("**/api/rpc/authors/list", (route) =>
+	await routeApi(page, "authors/list", (route) =>
 		route.fulfill({
-			json: {
-				json: [
-					...authors,
-					{
-						id: E2E_WRONG_AUTHOR_ID,
-						name: "E2E incorrect author",
-						accountId: "bulk_source_handle",
-						createdAt: timestamp,
-						updatedAt: timestamp,
-					},
-					{
-						id: E2E_CORRECT_AUTHOR_ID,
-						name: "E2E correct author",
-						accountId: null,
-						accounts: [
-							{
-								id: randomUUID(),
-								authorId: E2E_CORRECT_AUTHOR_ID,
-								platform: "twitter",
-								accountId: "bulk_target_handle",
-								remoteId: null,
-								displayName: null,
-								profileUrl: null,
-								observedAt: null,
-								createdAt: timestamp,
-								updatedAt: timestamp,
-							},
-						],
-						createdAt: timestamp,
-						updatedAt: timestamp,
-					},
-				],
-			},
+			json: [
+				...authors,
+				{
+					id: E2E_WRONG_AUTHOR_ID,
+					name: "E2E incorrect author",
+					accountId: "bulk_source_handle",
+					createdAt: timestamp,
+					updatedAt: timestamp,
+				},
+				{
+					id: E2E_CORRECT_AUTHOR_ID,
+					name: "E2E correct author",
+					accountId: null,
+					accounts: [
+						{
+							id: randomUUID(),
+							authorId: E2E_CORRECT_AUTHOR_ID,
+							platform: "twitter",
+							accountId: "bulk_target_handle",
+							remoteId: null,
+							displayName: null,
+							profileUrl: null,
+							observedAt: null,
+							createdAt: timestamp,
+							updatedAt: timestamp,
+						},
+					],
+					createdAt: timestamp,
+					updatedAt: timestamp,
+				},
+			],
 		}),
 	);
 	// Finish the initial SSE reconciliation before advancing the browser clock.
@@ -90,7 +91,7 @@ test("large author lists debounce suggestions and preserve selections @desktop-o
 		page.waitForResponse(
 			(response) =>
 				response.ok() &&
-				new URL(response.url()).pathname === "/api/rpc/jobs/activeBatches",
+				apiRoute("jobs/activeBatches")(new URL(response.url())),
 		),
 		page.goto("/manager"),
 	]);
@@ -145,11 +146,11 @@ test("large author lists debounce suggestions and preserve selections @desktop-o
 test("author correction preserves coauthors after direct navigation and F5", async ({
 	page,
 }, testInfo) => {
-	const correct = await rpc(page, "listMedia", {
+	const correct = await callAuthorApi(page, "listMedia", {
 		authorId: E2E_CORRECT_AUTHOR_ID,
 	});
-	if (correct.json.items?.some((item) => item.id === E2E_PRIMARY_MEDIA_ID)) {
-		await rpc(page, "correctMedia", {
+	if (correct.items?.some((item) => item.id === E2E_PRIMARY_MEDIA_ID)) {
+		await callAuthorApi(page, "correctMedia", {
 			mediaIds: [E2E_PRIMARY_MEDIA_ID],
 			sourceAuthorId: E2E_CORRECT_AUTHOR_ID,
 			targetAuthorId: E2E_WRONG_AUTHOR_ID,
@@ -247,7 +248,7 @@ test("author correction preserves coauthors after direct navigation and F5", asy
 		page.getByText("E2E correct author", { exact: true }),
 	).toBeVisible();
 	// Restore the fixture so other projects and specs start from the same relation.
-	await rpc(page, "correctMedia", {
+	await callAuthorApi(page, "correctMedia", {
 		mediaIds: [E2E_PRIMARY_MEDIA_ID],
 		sourceAuthorId: E2E_CORRECT_AUTHOR_ID,
 		targetAuthorId: E2E_WRONG_AUTHOR_ID,
@@ -258,7 +259,7 @@ test("a concurrent correction shows a recoverable conflict and does not silently
 	page,
 	browserHealth,
 }) => {
-	browserHealth.allowResponseFailure("/api/rpc/authors/correctMedia");
+	browserHealth.allowResponseFailure(apiPathPattern("authors/correctMedia"));
 	browserHealth.allowConsole(/409 \(Conflict\)/);
 	await page.goto("/manager");
 	await waitForAppHydration(page);
@@ -268,7 +269,7 @@ test("a concurrent correction shows a recoverable conflict and does not silently
 	await page
 		.getByRole("checkbox", { name: `${E2E_PRIMARY_FILE_NAME}を選択` })
 		.press("Space");
-	await rpc(page, "correctMedia", {
+	await callAuthorApi(page, "correctMedia", {
 		mediaIds: [E2E_PRIMARY_MEDIA_ID],
 		sourceAuthorId: E2E_WRONG_AUTHOR_ID,
 		targetAuthorId: E2E_CORRECT_AUTHOR_ID,
@@ -297,7 +298,7 @@ test("a concurrent correction shows a recoverable conflict and does not silently
 			page.getByText("この作者に紐づくメディアはありません。", { exact: true }),
 		).toBeVisible();
 	} finally {
-		await rpc(page, "correctMedia", {
+		await callAuthorApi(page, "correctMedia", {
 			mediaIds: [E2E_PRIMARY_MEDIA_ID],
 			sourceAuthorId: E2E_CORRECT_AUTHOR_ID,
 			targetAuthorId: E2E_WRONG_AUTHOR_ID,
@@ -309,10 +310,10 @@ test("author list errors recover without losing the management screen", async ({
 	page,
 	browserHealth,
 }) => {
-	browserHealth.allowResponseFailure("/api/rpc/authors/list");
+	browserHealth.allowResponseFailure(apiPathPattern("authors/list"));
 	browserHealth.allowConsole(/503 \(Service Unavailable\)/);
 	let failing = true;
-	await page.route("**/api/rpc/authors/list", async (route) => {
+	await routeApi(page, "authors/list", async (route) => {
 		if (failing)
 			await route.fulfill({
 				status: 503,

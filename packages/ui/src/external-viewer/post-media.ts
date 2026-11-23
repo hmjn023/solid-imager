@@ -1,4 +1,10 @@
 import { t, type StaticMessageKey } from "@solid-imager/i18n";
+import {
+	API_PREFIX,
+	DANBOORU_THUMBNAIL_ROUTE,
+	PIXIV_IMAGE_ROUTE,
+	resolveServerUrl,
+} from "@solid-imager/core/http";
 import type { StaticThumbnailSource } from "../thumbnail-image";
 
 const ratingLabels = new Map<string, StaticMessageKey>([
@@ -14,7 +20,11 @@ export function danbooruRatingLabel(rating: string): string {
 }
 
 export function pixivImageHref(base: string, url: string): string {
-	return viewerImageHref(base, "/api/pixiv-image", url);
+	return viewerImageHref(base, PIXIV_IMAGE_ROUTE, url);
+}
+
+export function danbooruThumbnailHref(base: string, url: string): string {
+	return viewerImageHref(base, DANBOORU_THUMBNAIL_ROUTE, url);
 }
 
 export function pixivThumbnailSource(
@@ -39,12 +49,12 @@ export function pixivThumbnailSource(
 	};
 }
 
-export function viewerImageHref(
+function viewerImageHref(
 	base: string,
-	path: "/api/pixiv-image" | "/api/danbooru-thumbnail",
+	path: typeof PIXIV_IMAGE_ROUTE | typeof DANBOORU_THUMBNAIL_ROUTE,
 	url: string,
 ) {
-	const proxy = new URL(path, base);
+	const proxy = new URL(resolveServerUrl(base, API_PREFIX + path));
 	proxy.searchParams.set("url", url);
 	return proxy.href;
 }

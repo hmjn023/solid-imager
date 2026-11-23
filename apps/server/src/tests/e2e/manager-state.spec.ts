@@ -1,3 +1,4 @@
+import { apiPathPattern, apiResponse, routeApi } from "./support/api";
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import type { JobDto } from "@solid-imager/core/jobs";
@@ -56,28 +57,26 @@ test("keeps the selected batch's read error when an earlier tracked GET finishes
 	let oldReadRequested = false;
 	let selectedReadFailed = false;
 	const releaseOld = gate();
-	browserHealth.allowResponseFailure(/\/api\/rpc\/jobs\/get(?:\?|$)/);
+	browserHealth.allowResponseFailure(apiPathPattern("jobs/get"));
 	browserHealth.allowConsole(/Failed to load resource:.*503/);
-	await page.route("**/api/rpc/jobs/activeBatches", (route) =>
+	await routeApi(page, "jobs/activeBatches", (route) =>
 		route.fulfill({
-			json: { json: selectedReadFailed ? [] : [snapshot(selectedId)] },
+			json: selectedReadFailed ? [] : [snapshot(selectedId)],
 		}),
 	);
-	await page.route("**/api/rpc/ai/startBatchTagging", (route) =>
+	await routeApi(page, "ai/startBatchTagging", (route) =>
 		route.fulfill({
-			json: {
-				json: { success: true, jobId: oldId, message: "Started old batch" },
-			},
+			json: { success: true, jobId: oldId, message: "Started old batch" },
 		}),
 	);
-	await page.route(/\/api\/rpc\/jobs\/get(?:\?|$)/, async (route) => {
+	await routeApi(page, "jobs/get", async (route) => {
 		if (
 			route.request().url().includes(oldId) ||
 			route.request().postData()?.includes(oldId)
 		) {
 			oldReadRequested = true;
 			await releaseOld.promise;
-			await route.fulfill({ json: { json: snapshot(oldId) } });
+			await route.fulfill({ json: snapshot(oldId) });
 		} else {
 			// An unrelated stream refresh must not provide a newer successful snapshot.
 			selectedReadFailed = true;
@@ -106,7 +105,7 @@ test("keeps the selected batch's read error when an earlier tracked GET finishes
 	await expect(error).toBeVisible();
 	const oldResponse = page.waitForResponse(
 		(response) =>
-			response.url().includes("/api/rpc/jobs/get") &&
+			apiResponse("jobs/get")(response) &&
 			(response.url().includes(oldId) ||
 				response.request().postData()?.includes(oldId) === true),
 	);
@@ -134,25 +133,21 @@ test("retains pending submissions across tabs and restores the latest requested 
 	const submitted = gate();
 	const delayed = gate();
 	const delivered = gate();
-	await page.route("**/api/rpc/ai/startBatchTagging", async (route) => {
+	await routeApi(page, "ai/startBatchTagging", async (route) => {
 		submitted.release();
 		await delayed.promise;
 		await route.fulfill({
-			json: {
-				json: { success: true, jobId: firstId, message: "First submitted" },
-			},
+			json: { success: true, jobId: firstId, message: "First submitted" },
 		});
 		delivered.release();
 	});
-	await page.route("**/api/rpc/ai/startBatchEmbeddingExtraction", (route) =>
+	await routeApi(page, "ai/startBatchEmbeddingExtraction", (route) =>
 		route.fulfill({
-			json: {
-				json: { success: true, jobId: latestId, message: "Latest submitted" },
-			},
+			json: { success: true, jobId: latestId, message: "Latest submitted" },
 		}),
 	);
-	await page.route(/\/api\/rpc\/jobs\/get(?:\?|$)/, (route) =>
-		route.fulfill({ json: { json: snapshot(latestId) } }),
+	await routeApi(page, "jobs/get", (route) =>
+		route.fulfill({ json: snapshot(latestId) }),
 	);
 	await page.goto("/manager");
 	await waitForAppHydration(page);
@@ -193,23 +188,21 @@ test("shows a new target scan separately from the previous completed batch", asy
 	page,
 }) => {
 	const id = randomUUID();
-	await page.route("**/api/rpc/ai/startBatchTagging", (route) =>
+	await routeApi(page, "ai/startBatchTagging", (route) =>
 		route.fulfill({
-			json: { json: { success: true, jobId: id, message: "Batch queued" } },
+			json: { success: true, jobId: id, message: "Batch queued" },
 		}),
 	);
-	await page.route("**/api/rpc/ai/scanBatchTaggingTargets", (route) =>
-		route.fulfill({ json: { json: { count: 3 } } }),
+	await routeApi(page, "ai/scanBatchTaggingTargets", (route) =>
+		route.fulfill({ json: { count: 3 } }),
 	);
-	await page.route(/\/api\/rpc\/jobs\/get(?:\?|$)/, (route) =>
+	await routeApi(page, "jobs/get", (route) =>
 		route.fulfill({
-			json: {
-				json: snapshot(id, {
-					type: "bulk_tagging_parent",
-					status: "completed",
-					progress: { processed: 4, failed: 0, total: 4 },
-				}),
-			},
+			json: snapshot(id, {
+				type: "bulk_tagging_parent",
+				status: "completed",
+				progress: { processed: 4, failed: 0, total: 4 },
+			}),
 		}),
 	);
 	await page.goto("/manager");
@@ -262,22 +255,19 @@ test("drops a duplicate scan after scope change and confirms the actual source a
 			})),
 		},
 	];
-	await page.route(
-		/\/api\/rpc\/media\/findDuplicates(?:\?|$)/,
-		async (route) => {
-			scans++;
-			if (scans === 1) {
-				submitted.release();
-				await delayed.promise;
-			}
-			await route.fulfill({ json: { json: { groups } } });
-			if (scans === 1) delivered.release();
-		},
-	);
+	await routeApi(page, "media/findDuplicates", async (route) => {
+		scans++;
+		if (scans === 1) {
+			submitted.release();
+			await delayed.promise;
+		}
+		await route.fulfill({ json: { groups } });
+		if (scans === 1) delivered.release();
+	});
 	const deletions: object[] = [];
-	await page.route("**/api/rpc/media/bulkDelete", async (route) => {
+	await routeApi(page, "media/bulkDelete", async (route) => {
 		deletions.push(route.request().postDataJSON());
-		await route.fulfill({ json: { json: { success: true } } });
+		await route.fulfill({ json: { success: true } });
 	});
 	await page.goto("/manager");
 	await waitForAppHydration(page);
@@ -318,12 +308,7 @@ test("drops a duplicate scan after scope change and confirms the actual source a
 	await expect
 		.poll(() => deletions)
 		.toEqual([
-			{
-				json: {
-					mediaSourceId: E2E_SOURCE_ID,
-					mediaIds: [E2E_SIMILAR_MEDIA_ID],
-				},
-			},
+			{ mediaSourceId: E2E_SOURCE_ID, mediaIds: [E2E_SIMILAR_MEDIA_ID] },
 		]);
 	await expect(confirmation).toBeHidden();
 });

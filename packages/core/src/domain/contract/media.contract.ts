@@ -1,7 +1,9 @@
 import { openapi } from "@orpc/openapi";
 import { oc } from "@orpc/contract";
-import { rpcOnly } from "./rest-visibility";
 import { z } from "zod";
+import { binaryResponseBody } from "./binary-response";
+import { MEDIA_CONTENT_ROUTE, MEDIA_THUMBNAIL_ROUTE } from "./http-paths";
+import { omitFromMcp } from "./publication";
 import {
 	bulkCopyToSourceMediaRequestSchema,
 	bulkMediaOperationResultSchema,
@@ -29,16 +31,33 @@ import {
 import { uploadResponseSchema } from "../media/upload-schemas";
 import { similarMediaRequestSchema } from "../tagging/schemas";
 import { semanticSearchRequestSchema } from "../search/embedding";
+import { thumbnailSizeSchema } from "../thumbnails/schemas";
 
 import {
 	statisticsRequestSchema,
 	statisticsResponseSchema,
 } from "../media/statistics";
 
+const mediaContentHeadersSchema = z.object({
+	"accept-ranges": z.string().optional(),
+	"cache-control": z.string().optional(),
+	"content-length": z.string().optional(),
+	"content-range": z.string().optional(),
+	"content-type": z.string().optional(),
+});
+
+const thumbnailHeadersSchema = z.object({
+	"cache-control": z.string().optional(),
+	"content-type": z.string().optional(),
+	"x-thumbnail-fallback": z.string().optional(),
+});
+
 export const mediaContract = {
 	getRelated: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources/{sourceId}/media/{mediaId}/related",
 				tags: ["Media"],
 				summary: "関連メディア取得",
 				description:
@@ -50,6 +69,8 @@ export const mediaContract = {
 	statistics: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/statistics",
 				tags: ["Media"],
 				summary: "ライブラリ統計",
 				description:
@@ -61,6 +82,8 @@ export const mediaContract = {
 	updatePreferences: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/sources/{sourceId}/media/{mediaId}/preferences",
 				tags: ["Media"],
 				summary: "メディアの評価・お気に入りを更新",
 				description:
@@ -72,6 +95,8 @@ export const mediaContract = {
 	recordView: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources/{sourceId}/media/{mediaId}/views",
 				tags: ["Media"],
 				summary: "メディアの閲覧を記録",
 				description:
@@ -83,6 +108,8 @@ export const mediaContract = {
 	searchSemantic: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/search/semantic",
 				tags: ["Media"],
 				summary: "自然言語で画像・動画を検索",
 				description:
@@ -94,6 +121,8 @@ export const mediaContract = {
 	search: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/search",
 				tags: ["Media"],
 				summary: "メディア検索",
 				description:
@@ -111,6 +140,8 @@ export const mediaContract = {
 	searchSimilar: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/search/similar",
 				tags: ["Media"],
 				summary: "類似メディア検索",
 				description:
@@ -123,6 +154,8 @@ export const mediaContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources/{sourceId}/media/{mediaId}",
 				tags: ["Media"],
 				summary: "メディア取得",
 				description:
@@ -135,6 +168,8 @@ export const mediaContract = {
 	getDetails: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources/{sourceId}/media/{mediaId}/details",
 				tags: ["Media"],
 				summary: "メディア詳細取得",
 				description:
@@ -144,12 +179,114 @@ export const mediaContract = {
 		.input(mediaLocationSchema)
 		.output(mediaDetailsSchema),
 
-	// Legacy RPC callers get directions to the dedicated media endpoint.
-	getContent: oc.meta(rpcOnly).input(mediaLocationSchema).output(z.never()),
+	getContent: oc
+		.meta(omitFromMcp)
+		.meta(
+			openapi({
+				method: "GET",
+				path: MEDIA_CONTENT_ROUTE,
+				tags: ["Media"],
+				summary: "メディア原本を取得",
+				inputStructure: "detailed",
+				outputStructure: "detailed",
+				spec: (operation) => {
+					const response = operation.responses?.["416"];
+					if (response && !("$ref" in response)) {
+						response.headers = {
+							...response.headers,
+							"content-range": {
+								description:
+									"原本のバイト数を bytes */{length} 形式で返します。",
+								schema: { type: "string" },
+							},
+						};
+					}
+					return operation;
+				},
+			}),
+		)
+		.input(
+			z.object({
+				params: mediaLocationSchema,
+				headers: z
+					.object({
+						range: z.string().optional(),
+						"if-range": z.string().optional(),
+					})
+					.optional(),
+			}),
+		)
+		.errors({
+			RANGE_NOT_SATISFIABLE: { message: "Requested range is not satisfiable" },
+		})
+		.output(
+			z.object({
+				status: z.union([z.literal(200), z.literal(206)]),
+				headers: mediaContentHeadersSchema,
+				body: binaryResponseBody("*/*"),
+			}),
+		),
+
+	headContent: oc
+		.meta(omitFromMcp)
+		.meta(
+			openapi({
+				method: "HEAD",
+				path: MEDIA_CONTENT_ROUTE,
+				tags: ["Media"],
+				summary: "メディア原本のヘッダーを取得",
+				outputStructure: "detailed",
+				spec: (operation) => {
+					const response = operation.responses?.["200"];
+					if (response && "content" in response) delete response.content;
+					return operation;
+				},
+			}),
+		)
+		.input(mediaLocationSchema)
+		.output(
+			z.object({
+				headers: mediaContentHeadersSchema,
+				body: z.instanceof(ReadableStream<Uint8Array>),
+			}),
+		),
+
+	getThumbnail: oc
+		.meta(omitFromMcp)
+		.meta(
+			openapi({
+				method: "GET",
+				path: MEDIA_THUMBNAIL_ROUTE,
+				tags: ["Media"],
+				summary: "メディアのサムネイルを取得",
+				outputStructure: "detailed",
+			}),
+		)
+		.input(
+			mediaLocationSchema.extend({
+				size: thumbnailSizeSchema.optional(),
+				t: z.string().optional(),
+			}),
+		)
+		.output(
+			z.union([
+				z.object({
+					status: z.literal(200),
+					headers: thumbnailHeadersSchema,
+					body: binaryResponseBody("image/webp"),
+				}),
+				z.object({
+					status: z.literal(204),
+					headers: thumbnailHeadersSchema,
+				}),
+			]),
+		),
 
 	getTags: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources/{sourceId}/media/{mediaId}/tags",
 				tags: ["Media"],
 				summary: "メディアタグ一覧取得",
 				description:
@@ -162,6 +299,8 @@ export const mediaContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/sources/{sourceId}/media/{mediaId}",
 				tags: ["Media"],
 				summary: "メディア情報更新",
 				description:
@@ -180,6 +319,8 @@ export const mediaContract = {
 	sync: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources/{sourceId}/media/sync",
 				tags: ["Media"],
 				summary: "メディア情報の再解析",
 				description:
@@ -207,6 +348,8 @@ export const mediaContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/sources/{sourceId}/media/{mediaId}",
 				tags: ["Media"],
 				summary: "メディア削除",
 				description:
@@ -219,6 +362,8 @@ export const mediaContract = {
 	copy: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/{mediaId}/copy",
 				tags: ["Media"],
 				summary: "メディアを別ソースへコピー",
 				description: "指定したメディアを対象メディアソースへコピーします。",
@@ -235,6 +380,8 @@ export const mediaContract = {
 	move: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/{mediaId}/move",
 				tags: ["Media"],
 				summary: "メディアを別ソースへ移動",
 				description: "指定したメディアを対象メディアソースへ移動します。",
@@ -251,6 +398,8 @@ export const mediaContract = {
 	reserveUploads: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources/{sourceId}/media/upload-reservations",
 				tags: ["Media"],
 				summary: "複数アップロードの取り込み対象を登録",
 			}),
@@ -268,6 +417,8 @@ export const mediaContract = {
 		})
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources/{sourceId}/media",
 				tags: ["Media"],
 				summary: "メディアアップロード",
 				description:
@@ -291,6 +442,8 @@ export const mediaContract = {
 	findDuplicates: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/search/duplicates",
 				tags: ["Media"],
 				summary: "重複メディア検索",
 				description:
@@ -303,6 +456,8 @@ export const mediaContract = {
 	bulkDelete: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/bulk-delete",
 				tags: ["Media"],
 				summary: "メディア一括削除",
 				description:
@@ -315,6 +470,8 @@ export const mediaContract = {
 	bulkEdit: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/media/bulk-edit",
 				tags: ["Media"],
 				summary: "メディア一括編集",
 				description: "指定した複数メディアに共通のメタデータ変更を適用します。",
@@ -326,6 +483,8 @@ export const mediaContract = {
 	bulkMove: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/bulk-move",
 				tags: ["Media"],
 				summary: "メディア一括移動",
 				description:
@@ -336,13 +495,22 @@ export const mediaContract = {
 		.output(bulkMediaOperationResultSchema),
 
 	updatePositiveTags: oc
-		.meta(openapi({ tags: ["Media"], summary: "メディアの正タグを更新" }))
+		.meta(
+			openapi({
+				method: "PATCH",
+				path: "/media/positive-tags",
+				tags: ["Media"],
+				summary: "メディアの正タグを更新",
+			}),
+		)
 		.input(updatePositiveMediaTagsSchema)
 		.output(z.object({ success: z.literal(true) })),
 
 	bulkTag: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/media/tags",
 				tags: ["Media"],
 				summary: "メディアタグ一括変更",
 				description: "複数メディアにタグを追加し、指定されたタグを削除します。",
@@ -354,6 +522,8 @@ export const mediaContract = {
 	bulkCopyToSource: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/bulk-copy-to-source",
 				tags: ["Media"],
 				summary: "メディア一括コピー",
 				description:
@@ -366,6 +536,8 @@ export const mediaContract = {
 	bulkMoveToSource: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/media/bulk-move-to-source",
 				tags: ["Media"],
 				summary: "メディア一括ソース間移動",
 				description:

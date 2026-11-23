@@ -36,7 +36,7 @@ Web と Tauri の **Settings → MCP** で、接続先サーバーの公開候�
 
 既存の画面随伴ツールは操作の開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
 
-追加の候補は oRPC の契約から生成します。たとえば `tags.list` は `tags_list` として両方で公開でき、WebMCP ではタブを移動せずにデータを返します。設定 API、イベント購読、ファイルやバイナリを扱う API、旧 `media.getContent` は対象外です。新しい候補は初期状態で非公開です。
+追加の候補は oRPC の契約から生成します。たとえば `tags.list` は `tags_list` として両方で公開でき、WebMCP ではタブを移動せずにデータを返します。設定 API、イベント購読、ファイルやバイナリを扱う API は対象外です。新しい候補は初期状態で非公開です。
 
 WebMCP で `ai_startCcipExtraction` を公開すると、`showJob: true` を指定して CCIP 特徴抽出を登録し、返された `jobId` の詳細を Jobs 画面で開けます。省略時はジョブを登録したタブに留まります。登録後に別画面へ移った場合もジョブは有効で、結果の `presentation: "unconfirmed"` は表示を確認できなかったことを示します。受け取った ID でジョブを確認できます。
 
@@ -90,7 +90,7 @@ Tooling: Vite / Oxlint / Oxfmt
 - `packages/ui/`: 共通UIコンポーネントライブラリ。
 - `packages/client/`: oRPC client factory などの共有クライアント基盤。
 
-oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定しています。[v1 と v2 の RPC 通信形式は非互換](https://orpc.dev/docs/migrations/from-v1)です。更新時は Web とサーバー、Tauri、CLI、xtracter、およびリモート推論先の Solid Imager を同じリリースに揃えてください。
+oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定しています。更新時は Web とサーバー、Tauri、CLI、xtracter、およびリモート推論先の Solid Imager を同じリリースに揃えてください。
 
 ## セットアップ
 
@@ -221,7 +221,7 @@ mise Daemons で PostgreSQL・Bun・nginx を起動する場合は、[開発環�
 ## 詳細
 
 - **テストの棚卸し・実行方針**: [テスト棚卸し](./docs/testing-audit.md)
-- **API 仕様と実行**: 起動中のサーバーの `/docs/scalar`（Web・Tauri の「API Docs」）で操作を選び、**Test Request → Send** から実行できます。[OpenAPI 仕様](./apps/server/public/openapi.json) は `/openapi.json` で配信し、REST の接続先は `/api/rest` です。たとえば `curl -X POST http://localhost:3000/api/rest/sources/list` でソース一覧を取得できます。アプリ・CLI・拡張機能の型付きクライアントは `/api/rpc` を使用します。メディア本体は `GET /api/sources/{sourceId}/{mediaId}` で取得します。
+- **API 仕様と実行**: 起動中のサーバーの `/docs/scalar`（Web・Tauri の「API Docs」）で操作を選び、**Test Request → Send** から実行できます。[OpenAPI 仕様](./apps/server/public/openapi.json) は `/openapi.json` で配信します。アプリ・CLI・拡張機能は `OpenAPILink` で同じ `/api` を呼びます。`curl http://localhost:3000/api/sources` でソース一覧、`GET /api/sources/{sourceId}/media/{mediaId}/content` で原本を取得できます。
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面）
 - **DBスキーマ**: `packages/db/src/schema.ts`
@@ -230,6 +230,6 @@ mise Daemons で PostgreSQL・Bun・nginx を起動する場合は、[開発環�
 
 ### リバースプロキシ経由での API 公開
 
-リバースプロキシが `/imager/` を取り除いて転送する場合、Scalar は `/imager/docs/scalar` から `/imager/openapi.json` を読み、`/imager/api/rest` に送信します。TLS をプロキシで終端する場合は、サーバーに `REST_PUBLIC_ORIGIN=https://imager.example.com` のように公開 Origin を設定してください。設定値にはパスを含めません。
+リバースプロキシが `/imager/` を取り除いて転送する場合、Scalar は `/imager/docs/scalar` から `/imager/openapi.json` を読み、`/imager/api` に送信します。TLS をプロキシで終端する場合は、サーバーに `API_PUBLIC_ORIGIN=https://imager.example.com` のように公開 Origin を設定してください。設定値にはパスを含めません。
 
-`/api/rest` と `/api/rpc` は削除や設定変更も実行できます。外部公開時は両方をリバースプロキシなどの認証・アクセス制御で保護してください。REST の Origin 検証はブラウザーのクロスサイト送信を防ぐためのもので、利用者の認証は行いません。
+`/api` は削除や設定変更も実行できます。Origin 検証はブラウザーからのクロスサイト送信を防ぎます。外部公開時はリバースプロキシなどで利用者の認証・アクセス制御を設定してください。

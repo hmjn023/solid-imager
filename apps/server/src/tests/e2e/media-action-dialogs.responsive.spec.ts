@@ -1,3 +1,4 @@
+import { apiPathPattern, apiRequest } from "./support/api";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -13,14 +14,12 @@ import { expect, test, waitForAppHydration } from "./support/test";
 async function delayMutationFailure(page: Page, action: "copy" | "delete") {
 	const gate = Promise.withResolvers<void>();
 	await page.route(
-		`**/api/rpc/media/${action}`,
+		apiPathPattern(`media/${action}`),
 		async (route) => {
 			await gate.promise;
 			await route.fulfill({
 				status: 503,
-				json: {
-					json: { code: "SERVICE_UNAVAILABLE", message: "Fixture unavailable" },
-				},
+				json: { code: "SERVICE_UNAVAILABLE", message: "Fixture unavailable" },
 			});
 		},
 		{ times: 1 },
@@ -36,26 +35,23 @@ for (const collection of [
 		page,
 		browserHealth,
 	}) => {
-		browserHealth.allowResponseFailure(/\/api\/rpc\/media\/(?:copy|delete)$/);
+		for (const action of ["copy", "delete"])
+			browserHealth.allowResponseFailure(apiPathPattern(`media/${action}`));
 		browserHealth.allowConsole(/Failed to load resource:.*503/);
 		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/sources\/list(?:\?|$)/,
+			apiPathPattern("sources/list"),
 			"net::ERR_ABORTED",
 		);
 		const id = randomUUID();
 		const directory = path.join(getE2eRuntimeDir(), id);
 		const destination = `Transfer destination ${id}`;
 		await mkdir(directory);
-		const created = await page.request.post("/api/rpc/sources/create", {
-			data: {
-				json: {
-					id,
-					name: destination,
-					description: null,
-					type: "local",
-					connectionInfo: { path: directory },
-				},
-			},
+		const created = await apiRequest(page.request, "sources/create", {
+			id,
+			name: destination,
+			description: null,
+			type: "local",
+			connectionInfo: { path: directory },
 		});
 		expect(created.ok()).toBe(true);
 		try {
@@ -111,10 +107,10 @@ for (const collection of [
 				await expect(copy).toBeEnabled();
 				await expect(copyAlert).toHaveText(copyWarning);
 				expect(
-					browserHealth.apiRequestCountPathSince(
-						retryCheckpoint,
-						"/api/rpc/media/copy",
-					),
+					browserHealth
+						.apiRequests()
+						.slice(retryCheckpoint)
+						.filter((url) => apiPathPattern("media/copy").test(url)).length,
 				).toBe(0);
 			} finally {
 				releaseRetry();
@@ -157,9 +153,7 @@ for (const collection of [
 				.click();
 			await expect(item).toBeVisible();
 		} finally {
-			await page.request.post("/api/rpc/sources/delete", {
-				data: { json: { id } },
-			});
+			await apiRequest(page.request, "sources/delete", { id });
 			await rm(directory, { recursive: true, force: true });
 		}
 	});

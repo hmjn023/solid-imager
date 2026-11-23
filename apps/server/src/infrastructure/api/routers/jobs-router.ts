@@ -1,6 +1,7 @@
 import { jobListOrder } from "./job-list-order";
 import { listBatchTargets } from "~/infrastructure/services/job-batch-targets";
 import { implement, ORPCError } from "@orpc/server";
+import type { ResponseHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { jobsContract } from "@solid-imager/core/contract";
 import {
 	canCancelJobType,
@@ -15,7 +16,10 @@ import {
 import type { JobEvent } from "@solid-imager/core/events";
 import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
-import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
+import {
+	createJobArtifactHeaders,
+	resolveJobArtifact,
+} from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -157,7 +161,8 @@ function jobWhere(input: Pick<JobListRequest, "status" | "type"> = {}) {
 	);
 }
 
-const os = implement(jobsContract);
+const os =
+	implement(jobsContract).$context<ResponseHeadersHandlerPluginContext>();
 
 export const jobsRouter = os.router({
 	types: os.types.handler(async () => {
@@ -218,7 +223,7 @@ export const jobsRouter = os.router({
 		return toJobDto(job, await findTargetMediaModifiedAt(job));
 	}),
 
-	downloadArtifact: os.downloadArtifact.handler(async ({ input }) => {
+	downloadArtifact: os.downloadArtifact.handler(async ({ input, context }) => {
 		const artifact = await resolveJobArtifact(input.id);
 		if (!artifact) {
 			throw new ORPCError("NOT_FOUND", {
@@ -226,6 +231,11 @@ export const jobsRouter = os.router({
 			});
 		}
 
+		for (const [name, value] of new Headers(
+			createJobArtifactHeaders(artifact),
+		)) {
+			context.resHeaders?.set(name, value);
+		}
 		return artifact.stream;
 	}),
 

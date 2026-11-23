@@ -1,6 +1,7 @@
 import { danbooruSearchSchema } from "@solid-imager/core/danbooru";
 import { implement, ORPCError } from "@orpc/server";
 import { viewerContract } from "@solid-imager/core/contract";
+import { serveDanbooruThumbnail } from "~/infrastructure/services/danbooru-thumbnail";
 import {
 	danbooruService,
 	DanbooruRequestError,
@@ -11,6 +12,8 @@ import {
 	readPixivBookmarkToken,
 } from "~/infrastructure/services/pixiv-sessions";
 import { createPixivService } from "~/infrastructure/services/pixiv-service";
+import { servePixivAnimation } from "~/infrastructure/services/pixiv-animation";
+import { servePixivImage } from "~/infrastructure/services/pixiv-image";
 import {
 	resolvePixivQuery,
 	suggestViewerTags,
@@ -54,7 +57,38 @@ async function readViewer<T>(operation: () => Promise<T>): Promise<T> {
 		});
 	}
 }
+
+const VIEWER_MEDIA_ERRORS: Partial<Record<number, string>> = {
+	400: "BAD_REQUEST",
+	401: "UNAUTHORIZED",
+	404: "NOT_FOUND",
+	429: "TOO_MANY_REQUESTS",
+	502: "BAD_GATEWAY",
+};
+
+async function viewerMediaResponse(operation: Promise<Response>) {
+	const response = await operation;
+	if (!response.ok) {
+		throw new ORPCError(VIEWER_MEDIA_ERRORS[response.status] ?? "BAD_GATEWAY", {
+			message: response.body ? await response.text() : undefined,
+		});
+	}
+	if (!response.body) throw new ORPCError("BAD_GATEWAY");
+	return { headers: Object.fromEntries(response.headers), body: response.body };
+}
+
 export const viewerRouter = os.router({
+	pixivImage: os.pixivImage.handler(({ input, signal }) =>
+		viewerMediaResponse(servePixivImage(input.url, signal)),
+	),
+	pixivAnimation: os.pixivAnimation.handler(({ input, context }) =>
+		viewerMediaResponse(
+			servePixivAnimation(input.id, context.pixivAuthorization),
+		),
+	),
+	danbooruThumbnail: os.danbooruThumbnail.handler(({ input, signal }) =>
+		viewerMediaResponse(serveDanbooruThumbnail(input.url, signal)),
+	),
 	issuePixivCode: os.issuePixivCode.handler(({ input }) =>
 		pixivSessions.issue(input.sessionId),
 	),

@@ -1,3 +1,4 @@
+import { mediaThumbnailPath } from "@solid-imager/core/http";
 import { t } from "@solid-imager/i18n";
 import { fetchAsBlobUrl } from "~/infrastructure/tauri-fetch-helpers";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
@@ -213,7 +214,7 @@ function ManagerPage() {
 				listMedia: (input) => orpc.characters.clusteringMedia(input),
 				thumbnailUrl: (sourceId, mediaId, modifiedAt) =>
 					fetchAsBlobUrl(
-						`/api/sources/${sourceId}/thumbnail/${mediaId}?t=${encodeURIComponent(modifiedAt)}`,
+						mediaThumbnailPath(sourceId, mediaId, { cacheKey: modifiedAt }),
 					),
 				releaseThumbnailUrl: (url) => URL.revokeObjectURL(url),
 			}}
@@ -245,7 +246,7 @@ function ManagerPage() {
 					return result;
 				},
 				thumbnailUrl: (sourceId, mediaId) =>
-					fetchAsBlobUrl(`/api/sources/${sourceId}/thumbnail/${mediaId}`),
+					fetchAsBlobUrl(mediaThumbnailPath(sourceId, mediaId)),
 				releaseThumbnailUrl: (url) => URL.revokeObjectURL(url),
 			}}
 			manager={manager}
@@ -258,7 +259,9 @@ function ManagerPage() {
 				},
 				thumbnailUrl: (item) =>
 					fetchAsBlobUrl(
-						`/api/sources/${item.mediaSourceId}/thumbnail/${item.id}?t=${new Date(item.modifiedAt).getTime()}`,
+						mediaThumbnailPath(item.mediaSourceId, item.id, {
+							cacheKey: new Date(item.modifiedAt).getTime(),
+						}),
 					),
 				releaseThumbnailUrl: (url) => URL.revokeObjectURL(url),
 			}}

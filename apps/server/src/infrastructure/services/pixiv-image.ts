@@ -1,11 +1,13 @@
 import { pixivImageUrlSchema } from "@solid-imager/core/external-viewer";
 import { serveViewerImage } from "./viewer-image";
 export function servePixivImage(
-	request: Request,
+	url: string,
+	signal?: AbortSignal,
 	fetchImage: typeof fetch = fetch,
 ) {
 	return serveViewerImage(
-		request,
+		url,
+		signal,
 		pixivImageUrlSchema,
 		{ Referer: "https://www.pixiv.net/" },
 		fetchImage,

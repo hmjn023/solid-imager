@@ -415,6 +415,9 @@ importers:
       '@orpc/contract':
         specifier: 2.0.0-beta.48
         version: 2.0.0-beta.48
+      '@orpc/openapi':
+        specifier: 2.0.0-beta.48
+        version: 2.0.0-beta.48(@scalar/api-reference@1.76.2(@oxc-project/types@0.156.0)(esbuild@0.28.2)(lightningcss@1.33.0)(oxc-parser@0.148.0)(rolldown@1.2.16)(supports-color@10.2.2)(tailwindcss@4.3.3)(typescript@7.0.2)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))(zod@4.6.7))(crossws@0.4.17(srvx@1.0.8))
     devDependencies:
       typescript:
         specifier: 7.0.2

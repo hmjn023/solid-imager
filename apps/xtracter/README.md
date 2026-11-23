@@ -16,7 +16,7 @@ xtracter is a Chrome extension that extracts images from X (Twitter), Pixiv, pix
 
 ## Managerでのアカウント確認
 
-`bun run --cwd apps/xtracter build` でビルドした `dist` をChromeへ読み込み、更新時は拡張機能を再読み込みする。ポップアップのAPI URLをManagerと同じサーバーの `/api/rpc` に設定する。
+`bun run --cwd apps/xtracter build` でビルドした `dist` をChromeへ読み込み、更新時は拡張機能を再読み込みする。ポップアップのAPI URLにはManagerと同じサーバーのベースURL（例 `http://localhost:3000`）を設定する。
 
 Manager → 作者・外部アカウントで現在の@ユーザー名を入力し、確認ダイアログからXプロフィールを開く。Xにログインしたブラウザでプロフィールの読み込みが完了すると、取得結果がManagerへ戻る。本人のアカウントと照合してチェックを入れ、確認ボタンで登録する。取得に失敗した場合は接続先設定とXへのログインを確認し、Managerから新しい確認用リンクを開く。
 

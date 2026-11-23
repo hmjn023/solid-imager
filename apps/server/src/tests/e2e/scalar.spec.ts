@@ -9,22 +9,22 @@ import {
 } from "./support/fixture";
 import { expect, test } from "./support/test";
 
-async function listSourcesFromScalar(page: Page, restPrefix: string) {
+async function listSourcesFromScalar(page: Page, apiPrefix: string) {
 	// Scalar renders operations lazily; open the requested group and operation first.
 	await page
 		.getByRole("button", { name: "Open Group - Media Tools", exact: true })
 		.click();
 	await page
 		.getByRole("complementary")
-		.locator('a[href$="/POST/tools/list_sources"]')
+		.locator('a[href$="/GET/tools/sources"]')
 		.click();
 	await page
-		.getByRole("button", { name: /Test Request.*POST \/tools\/list_sources/i })
+		.getByRole("button", { name: /Test Request.*GET \/tools\/sources/i })
 		.click();
 	const result = page.waitForResponse(
 		(response) =>
-			new URL(response.url()).pathname === restPrefix + "/tools/list_sources" &&
-			response.request().method() === "POST",
+			new URL(response.url()).pathname === apiPrefix + "/tools/sources" &&
+			response.request().method() === "GET",
 	);
 	await page
 		.getByRole("button", { name: /^Send Request/i })
@@ -42,7 +42,7 @@ async function listSourcesFromScalar(page: Page, restPrefix: string) {
 	).toBeVisible();
 }
 
-test("Scalar sends its documented request to the local REST API", async ({
+test("Scalar sends its documented request to the local HTTP API", async ({
 	page,
 }) => {
 	await page.goto("/about");
@@ -53,72 +53,50 @@ test("Scalar sends its documented request to the local REST API", async ({
 		.click();
 	const reference = await popup;
 	await expect(reference).toHaveURL(/\/docs\/scalar\/?(?:#.*)?$/);
-	await listSourcesFromScalar(reference, "/api/rest");
+	await listSourcesFromScalar(reference, "/api");
 	await reference.close();
 });
 
-test("the published REST server shares RPC data and returns standard HTTP errors", async ({
+test("the published API exposes typed resource operations and HTTP errors", async ({
 	request,
 }) => {
 	const specResponse = await request.get("/openapi.json");
 	const spec = await specResponse.json();
-	expect(spec.servers).toMatchObject([{ url: "api/rest" }]);
-	expect(spec.paths).not.toHaveProperty("/media/getContent");
-	expect(spec.paths["/tags/create"].post.requestBody.content).toHaveProperty(
+	expect(spec.servers).toMatchObject([{ url: "api" }]);
+	expect(
+		spec.paths["/sources/{sourceId}/media/{mediaId}/content"],
+	).toHaveProperty("head");
+	expect(spec.paths["/tags"].post.requestBody.content).toHaveProperty(
 		"application/json",
 	);
-	const rest = new URL(spec.servers[0].url, specResponse.url()).pathname;
-	const location = { sourceId: E2E_SOURCE_ID, mediaId: E2E_SOURCE_ID };
-	expect(
-		(
-			await request.post(rest + "/media/getContent", { data: location })
-		).status(),
-	).toBe(404);
-	expect(
-		(
-			await request.post("/api/rpc/media/getContent", {
-				data: { json: location },
-			})
-		).status(),
-	).toBe(400);
+	expect(spec.paths).not.toHaveProperty("/viewer/pixiv/session");
+	expect((await request.post("/api/rpc/sources/list")).status()).toBe(404);
+	expect((await request.post("/api/rest/sources/list")).status()).toBe(404);
 	const name = "scalar-" + randomUUID();
-	const created = await request.post(rest + "/tags/create", { data: { name } });
-	expect(created.status()).toBe(200);
+	const created = await request.post("/api/tags", { data: { name } });
+	expect(created.ok()).toBe(true);
 	const tag = await created.json();
-	expect(tag).toMatchObject({ id: expect.any(String), name });
+	const path = `/api/tags/${tag.id}`;
 	try {
-		const rpc = await request.post("/api/rpc/tags/get", {
-			data: { json: { id: tag.id } },
-		});
-		expect(await rpc.json()).toMatchObject({ json: { id: tag.id, name } });
-		expect(
-			(
-				await request.post(rest + "/tags/get", { data: { id: "bad-id" } })
-			).status(),
-		).toBe(400);
-		expect((await request.get(rest + "/tags/list")).status()).toBe(404);
-		expect((await request.post(rest + "/unknown")).status()).toBe(404);
-		const foreignForm = await request.post(rest + "/tags/delete", {
+		const fetched = await request.get(path);
+		expect(await fetched.json()).toMatchObject({ id: tag.id, name });
+		expect((await request.get("/api/tags/bad-id")).status()).toBe(400);
+		expect((await request.post("/api/unknown")).status()).toBe(404);
+		const foreignMutation = await request.delete(path, {
 			headers: { Origin: "https://untrusted.example" },
-			form: { id: tag.id },
 		});
-		expect(foreignForm.status()).toBe(403);
+		expect(foreignMutation.status()).toBe(403);
 	} finally {
-		expect(
-			(
-				await request.post(rest + "/tags/delete", { data: { id: tag.id } })
-			).ok(),
-		).toBe(true);
+		expect((await request.delete(path)).ok()).toBe(true);
 	}
 });
 
-test("REST accepts the documented multipart upload and detects an existing file", async ({
+test("HTTP API accepts the documented multipart upload and detects an existing file", async ({
 	request,
 }) => {
 	const file = await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
-	const response = await request.post("/api/rest/media/upload", {
+	const response = await request.post(`/api/sources/${E2E_SOURCE_ID}/media`, {
 		multipart: {
-			sourceId: E2E_SOURCE_ID,
 			file: {
 				name: E2E_PRIMARY_FILE_NAME,
 				mimeType: "image/png",
@@ -133,14 +111,14 @@ test("REST accepts the documented multipart upload and detects an existing file"
 	});
 });
 
-test("the standalone documentation bookmark opens the bundled Scalar page", async ({
+test("the API documentation opens the bundled Scalar page on navigation and reload", async ({
 	page,
 }) => {
 	let specRequests = 0;
 	page.on("request", (request) => {
 		if (new URL(request.url()).pathname === "/openapi.json") specRequests++;
 	});
-	await page.goto("/api-docs.html");
+	await page.goto("/docs/scalar");
 	await expect(page).toHaveURL(/\/docs\/scalar\/?(?:#.*)?$/);
 	await expect(
 		page.getByRole("heading", { name: "Solid Imager oRPC API", exact: true }),
@@ -168,7 +146,7 @@ test("the API reference lists operations with JavaScript disabled", async ({
 		).toBeVisible();
 		await page.getByText("API operations", { exact: true }).click();
 		await expect(
-			page.getByText("POST /tools/list_sources", { exact: true }),
+			page.getByText("GET /tools/sources", { exact: true }),
 		).toBeVisible();
 	} finally {
 		await context.close();
@@ -198,28 +176,18 @@ test("Scalar works when a proxy serves only /imager/ and strips the prefix", asy
 	);
 	const response = await page.goto(prefix + "/docs/scalar/");
 	expect(response?.ok()).toBe(true);
-	await listSourcesFromScalar(page, prefix + "/api/rest");
+	await listSourcesFromScalar(page, prefix + "/api");
 });
 
-test("legacy Swagger bookmarks redirect relative to their public mount", async ({
+test("the HTTP API behind TLS termination validates the configured public Origin", async ({
 	request,
 }) => {
-	for (const path of ["/docs/swagger", "/docs/swagger/"]) {
-		const result = await request.get(path + "?lang=ja", { maxRedirects: 0 });
-		expect(result.status()).toBe(302);
-		const publicURL = new URL("/imager" + path, "https://imager.example.test");
-		expect(new URL(result.headers().location, publicURL).href).toBe(
-			"https://imager.example.test/imager/docs/scalar?lang=ja",
-		);
-	}
-});
-
-test("REST behind TLS termination validates the configured public Origin", async ({
-	request,
-}) => {
-	const path = "/api/rest/sources/list";
+	const path = "/api/media/search";
 	const publicOrigin = "https://imager.example.test";
-	const valid = await request.post(path, { headers: { Origin: publicOrigin } });
+	const valid = await request.post(path, {
+		headers: { Origin: publicOrigin },
+		data: { params: { limit: 1 } },
+	});
 	expect(valid.status()).toBe(200);
 	const rejected: Record<string, string>[] = [
 		{

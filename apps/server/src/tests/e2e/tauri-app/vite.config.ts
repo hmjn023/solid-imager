@@ -82,7 +82,9 @@ function handleBinaryMediaRequest(
 
 	const requestUrl = new URL(req.url, fixtureOrigin);
 	if (
-		!/^\/api\/sources\/[^/]+\/(?:thumbnail\/)?[^/]+$/.test(requestUrl.pathname)
+		!/^\/api\/sources\/[^/]+\/media\/[^/]+\/(?:content|thumbnail)$/.test(
+			requestUrl.pathname,
+		)
 	) {
 		next();
 		return;

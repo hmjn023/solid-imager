@@ -1,18 +1,18 @@
+import { apiPathPattern, apiRequest, routeApi } from "./support/api";
 import { mkdtemp } from "node:fs/promises";
 import { join } from "node:path";
 import { mediaSourceInfoSchema } from "@solid-imager/core/sources";
 import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
-	E2E_SOURCE_ID,
 	getE2eRuntimeDir,
 	mediaPath,
 	sourcePath,
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const searchEndpoint = /\/api\/rpc\/media\/search(?:\?|$)/;
-const mediaDetailsEndpoint = /\/api\/rpc\/media\/getDetails(?:\?|$)/;
+const searchEndpoint = apiPathPattern("media/search");
+const mediaDetailsEndpoint = apiPathPattern("media/getDetails");
 const networkFailures = [
 	{
 		name: "connection failed",
@@ -220,7 +220,7 @@ test.describe("loading and recovery", () => {
 		page,
 		browserHealth,
 	}) => {
-		browserHealth.allowResponseFailure("/api/rpc/media/getDetails");
+		browserHealth.allowResponseFailure(apiPathPattern("media/getDetails"));
 		browserHealth.allowConsole(
 			"Failed to load resource: the server responded with a status of 503",
 		);
@@ -260,7 +260,7 @@ test.describe("loading and recovery", () => {
 			page,
 			browserHealth,
 		}) => {
-			browserHealth.allowRequestFailure("/api/rpc/media/search");
+			browserHealth.allowRequestFailure(apiPathPattern("media/search"));
 			browserHealth.allowConsole(failure.consoleMessage);
 			await page.route(searchEndpoint, (route) =>
 				route.abort(failure.errorCode),
@@ -283,7 +283,7 @@ test.describe("loading and recovery", () => {
 		page,
 		browserHealth,
 	}) => {
-		browserHealth.allowResponseFailure("/api/rpc/media/search");
+		browserHealth.allowResponseFailure(apiPathPattern("media/search"));
 		browserHealth.allowConsole(
 			"Failed to load resource: the server responded with a status of 503",
 		);
@@ -336,11 +336,11 @@ test.describe("loading and recovery", () => {
 	test("opens the source form from an unconfigured library", async ({
 		page,
 	}) => {
-		await page.route(/\/api\/rpc\/sources\/list(?:\?|$)/, (route) =>
-			route.fulfill({ json: { json: [] } }),
+		await routeApi(page, "sources/list", (route) =>
+			route.fulfill({ json: [] }),
 		);
 		await page.route(searchEndpoint, (route) =>
-			route.fulfill({ json: { json: { media: [], total: 0 } } }),
+			route.fulfill({ json: { media: [], total: 0 } }),
 		);
 		// The standalone route does not prime the server's source query. Navigate
 		// within the browser so the mock supplies the first source response.
@@ -362,18 +362,14 @@ test.describe("loading and recovery", () => {
 	}) => {
 		await page.setViewportSize({ width: 1600, height: 900 });
 		const directory = await mkdtemp(join(getE2eRuntimeDir(), "empty-source-"));
-		const created = await page.request.post("/api/rpc/sources/create", {
-			data: {
-				json: {
-					name: "Empty source",
-					description: null,
-					type: "local",
-					connectionInfo: { path: directory },
-				},
-			},
+		const created = await apiRequest(page.request, "sources/create", {
+			name: "Empty source",
+			description: null,
+			type: "local",
+			connectionInfo: { path: directory },
 		});
 		await expect(created).toBeOK();
-		const { id } = mediaSourceInfoSchema.parse((await created.json()).json);
+		const { id } = mediaSourceInfoSchema.parse(await created.json());
 		if (!id) throw new Error("Source ID missing");
 		try {
 			await page.goto(`/sources/${id}`);
@@ -397,9 +393,7 @@ test.describe("loading and recovery", () => {
 			await addMedia.click();
 			await fileChooser;
 		} finally {
-			const deleted = await page.request.post("/api/rpc/sources/delete", {
-				data: { json: { id } },
-			});
+			const deleted = await apiRequest(page.request, "sources/delete", { id });
 			await expect(deleted).toBeOK();
 		}
 	});
@@ -417,12 +411,12 @@ test.describe("loading and recovery", () => {
 
 		browserHealth.allowConsole("net::ERR_INTERNET_DISCONNECTED");
 		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/(?:media\/search|sources\/events|jobs\/events|searchSnapshots\/capture)(?:\?|$)/,
+			/\/api\/(?:media\/search|sources\/[^/]+\/events|jobs\/events|search-snapshots)(?:\?|$)/,
 			"net::ERR_INTERNET_DISCONNECTED",
 		);
 		// Lazy thumbnails may start while the browser is deliberately offline.
 		browserHealth.allowRequestFailure(
-			new RegExp(`/api/sources/${E2E_SOURCE_ID}/thumbnail/[^/?]+(?:\\?|$)`),
+			apiPathPattern("media/getThumbnail"),
 			"net::ERR_INTERNET_DISCONNECTED",
 		);
 		await context.setOffline(true);
@@ -447,7 +441,7 @@ test.describe("loading and recovery", () => {
 		).toBeVisible();
 		const recoveredSearch = page.waitForResponse(
 			(response) =>
-				new URL(response.url()).pathname === "/api/rpc/media/search" &&
+				new URL(response.url()).pathname === "/api/media/search" &&
 				response.ok(),
 		);
 		await context.setOffline(false);

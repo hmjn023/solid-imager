@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
+import { apiPathPattern, apiRequest } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
+	E2E_PRIMARY_MEDIA_ID,
 	E2E_SIMILAR_MEDIA_ID,
 	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
@@ -30,20 +32,20 @@ const SPA_CONTENT_BUDGET_MS = isProduction ? 1_500 : 6_000;
 const DEV_DIRECT_NAVIGATION_BUDGET_MS = 20_000;
 
 const searchFilterEndpoints = [
-	"/api/rpc/tags/list",
-	"/api/rpc/sources/list",
-	"/api/rpc/projects/list",
-	"/api/rpc/ips/list",
-	"/api/rpc/characters/list",
-	"/api/rpc/authors/list",
+	"/api/tags",
+	"/api/sources",
+	"/api/projects",
+	"/api/ips",
+	"/api/characters",
+	"/api/authors",
 ] as const;
 
 const mediaDetailHydratedEndpoints = [
-	"/api/rpc/media/getDetails",
-	"/api/rpc/projects/listForMedia",
-	"/api/rpc/projects/list",
-	"/api/rpc/ips/list",
-	"/api/rpc/characters/list",
+	`/api/sources/${E2E_SOURCE_ID}/media/${E2E_PRIMARY_MEDIA_ID}/details`,
+	`/api/media/${E2E_PRIMARY_MEDIA_ID}/projects`,
+	"/api/projects",
+	"/api/ips",
+	"/api/characters",
 ] as const;
 
 async function expectSsrHtmlHealthy(response: {
@@ -87,7 +89,7 @@ const routeCases: readonly RouteCase[] = [
 			name: "jobs",
 			path: "/jobs",
 			heading: "ジョブ",
-			serverEndpoints: ["/api/rpc/jobs/list", "/api/rpc/jobs/types"],
+			serverEndpoints: ["/api/jobs", "/api/jobs/types"],
 		},
 		{ name: "about", path: "/about", heading: "Solid Imagerについて" },
 	].map((route) => ({
@@ -102,7 +104,7 @@ const routeCases: readonly RouteCase[] = [
 		heading: "すべてのメディア",
 		readyMediaLink: E2E_PRIMARY_FILE_NAME,
 		seedSearchSession: true,
-		clientEndpoints: ["/api/rpc/media/search"],
+		clientEndpoints: ["/api/media/search"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_000 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -110,7 +112,7 @@ const routeCases: readonly RouteCase[] = [
 		name: "settings",
 		path: "/config",
 		heading: "設定",
-		serverEndpoints: ["/api/rpc/config/get"],
+		serverEndpoints: ["/api/config"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -118,11 +120,7 @@ const routeCases: readonly RouteCase[] = [
 		name: "entity manager",
 		path: "/manager",
 		heading: "管理",
-		serverEndpoints: [
-			"/api/rpc/projects/list",
-			"/api/rpc/ips/list",
-			"/api/rpc/characters/list",
-		],
+		serverEndpoints: ["/api/projects", "/api/ips", "/api/characters"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -138,7 +136,9 @@ const routeCases: readonly RouteCase[] = [
 		tag: "@dev-smoke",
 		path: mediaPath(),
 		heading: E2E_PRIMARY_FILE_NAME,
-		serverEndpoints: ["/api/rpc/media/getDetails"],
+		serverEndpoints: [
+			`/api/sources/${E2E_SOURCE_ID}/media/${E2E_PRIMARY_MEDIA_ID}/details`,
+		],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_000 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -207,19 +207,18 @@ test.describe("direct navigation and reload", () => {
 			{ tag: routeCase.tag },
 			async ({ page, browserHealth, request }) => {
 				if (routeCase.name === "jobs") {
-					const reservation = await request.post(
-						"/api/rest/media/reserveUploads",
+					const reservation = await apiRequest(
+						request,
+						"media/reserveUploads",
 						{
-							data: {
-								sourceId: E2E_SOURCE_ID,
-								filenames: ["route-reload-reservation.png"],
-							},
+							sourceId: E2E_SOURCE_ID,
+							filenames: ["route-reload-reservation.png"],
 						},
 					);
 					expect(reservation.ok()).toBe(true);
 					const { jobId } = await reservation.json();
-					const cancelled = await request.post("/api/rest/jobs/cancel", {
-						data: { id: jobId },
+					const cancelled = await apiRequest(request, "jobs/cancel", {
+						id: jobId,
 					});
 					expect(cancelled.ok()).toBe(true);
 					expect(await cancelled.json()).toMatchObject({ status: "cancelled" });
@@ -401,10 +400,7 @@ test(
 		await searchLink.hover();
 		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 		expect(
-			browserHealth.apiRequestCountPathSince(
-				searchCheckpoint,
-				"/api/rpc/tags/list",
-			),
+			browserHealth.apiRequestCountPathSince(searchCheckpoint, "/api/tags"),
 		).toBeLessThanOrEqual(1);
 
 		const searchNavigationStartedAt = Date.now();
@@ -421,10 +417,7 @@ test(
 			searchCheckpoint,
 		);
 		expect(searchNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
-		for (const endpoint of [
-			...searchFilterEndpoints,
-			"/api/rpc/media/search",
-		]) {
+		for (const endpoint of [...searchFilterEndpoints, "/api/media/search"]) {
 			expect(
 				browserHealth.apiRequestCountPathSince(searchCheckpoint, endpoint),
 				`Search intent prefetch duplicated ${endpoint}`,
@@ -457,7 +450,7 @@ test(
 		expect(
 			browserHealth.apiRequestCountPathSince(
 				sourceMediaCheckpoint,
-				"/api/rpc/media/search",
+				"/api/media/search",
 			),
 		).toBeLessThanOrEqual(1);
 		await expectRouteHealthy(page);
@@ -520,13 +513,14 @@ test(
 		expect(
 			browserHealth.apiRequestCountPathSince(
 				revisitCheckpoint,
-				"/api/rpc/media/search",
+				"/api/media/search",
 			),
 		).toBeLessThanOrEqual(1);
-		const sourceEventRequestCount = browserHealth.apiRequestCountPathSince(
-			searchCheckpoint,
-			"/api/rpc/sources/events",
-		);
+		const sourceEvents = apiPathPattern("sources/events");
+		const sourceEventRequestCount = browserHealth
+			.apiRequests()
+			.slice(searchCheckpoint)
+			.filter((url) => sourceEvents.test(url)).length;
 		expect(sourceEventRequestCount).toBeGreaterThan(0);
 		expect(
 			sourceEventRequestCount,

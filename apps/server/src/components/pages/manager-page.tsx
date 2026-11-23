@@ -1,3 +1,4 @@
+import { mediaThumbnailPath } from "@solid-imager/core/http";
 import { t } from "@solid-imager/i18n";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import {
@@ -210,7 +211,7 @@ export function ManagerPage(): JSX.Element {
 				listGroups: (input) => orpc.characters.clusteringGroups(input),
 				listMedia: (input) => orpc.characters.clusteringMedia(input),
 				thumbnailUrl: (sourceId, mediaId, modifiedAt) =>
-					`/api/sources/${sourceId}/thumbnail/${mediaId}?t=${encodeURIComponent(modifiedAt)}`,
+					mediaThumbnailPath(sourceId, mediaId, { cacheKey: modifiedAt }),
 			}}
 			authorActions={{
 				beginAccountVerification: (input) =>
@@ -237,7 +238,7 @@ export function ManagerPage(): JSX.Element {
 					return result;
 				},
 				thumbnailUrl: (sourceId, mediaId) =>
-					`/api/sources/${sourceId}/thumbnail/${mediaId}`,
+					mediaThumbnailPath(sourceId, mediaId),
 			}}
 			manager={manager}
 			duplicateActions={{
@@ -248,7 +249,9 @@ export function ManagerPage(): JSX.Element {
 					});
 				},
 				thumbnailUrl: (item) =>
-					`/api/sources/${item.mediaSourceId}/thumbnail/${item.id}?t=${new Date(item.modifiedAt).getTime()}`,
+					mediaThumbnailPath(item.mediaSourceId, item.id, {
+						cacheKey: new Date(item.modifiedAt).getTime(),
+					}),
 			}}
 			transferActions={createTransferActions(queryClient)}
 		/>

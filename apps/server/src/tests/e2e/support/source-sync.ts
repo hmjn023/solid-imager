@@ -16,7 +16,7 @@ export async function syncFixtureSource(
 			.click();
 		const syncResponse = syncPage.waitForResponse(
 			(response) =>
-				new URL(response.url()).pathname === "/api/rpc/sources/sync" &&
+				new URL(response.url()).pathname === "/api/sources/sync" &&
 				response.ok(),
 		);
 		await syncPage.getByRole("menuitem", { name: "同期", exact: true }).click();

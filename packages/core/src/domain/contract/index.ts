@@ -32,6 +32,7 @@ import { viewerContract } from "./viewer.contract";
 import { danbooruContract } from "./danbooru.contract";
 import { directoriesContract } from "./directories.contract";
 import { downloadsContract } from "./downloads.contract";
+import { healthContract } from "./health.contract";
 import { importsContract } from "./imports.contract";
 import { ipsContract } from "./ips.contract";
 import { jobsContract } from "./jobs.contract";
@@ -50,6 +51,7 @@ import { utilsContract } from "./utils.contract";
  * フロントエンド（Tauriアプリ、ブラウザ拡張等）とバックエンドで共有される型定義
  */
 export const appContract = {
+	health: healthContract,
 	viewer: viewerContract,
 	danbooru: danbooruContract,
 	sources: sourcesContract,
@@ -78,4 +80,4 @@ export type AppContract = typeof appContract;
 export type AppContractClient = RouterContractClient<AppContract>;
 
 export type { SourceSyncResult } from "./sources.contract";
-export { isRestProcedure } from "./rest-visibility";
+export { isDocumentedProcedure, isMcpEligibleProcedure } from "./publication";

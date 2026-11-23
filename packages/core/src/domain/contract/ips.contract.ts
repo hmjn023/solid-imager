@@ -7,6 +7,8 @@ export const ipsContract = {
 	list: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/ips",
 				tags: ["IPs"],
 				summary: "IP一覧取得",
 				description: "登録済みのIPを一覧で取得します。",
@@ -17,6 +19,8 @@ export const ipsContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/ips/{id}",
 				tags: ["IPs"],
 				summary: "IP取得",
 				description: "UUIDで指定したIPの情報を取得します。",
@@ -28,6 +32,8 @@ export const ipsContract = {
 	create: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ips",
 				tags: ["IPs"],
 				summary: "IP作成",
 				description: "新しいIPを登録します。",
@@ -44,6 +50,8 @@ export const ipsContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/ips/{id}",
 				tags: ["IPs"],
 				summary: "IP更新",
 				description: "UUIDで指定したIPの情報を更新します。",
@@ -63,6 +71,8 @@ export const ipsContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/ips/{id}",
 				tags: ["IPs"],
 				summary: "IP削除",
 				description: "UUIDで指定したIPを削除します。",
@@ -73,6 +83,8 @@ export const ipsContract = {
 	listForMedia: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/media/{mediaId}/ips",
 				tags: ["IPs"],
 				summary: "メディアのIP一覧取得",
 				description:
@@ -85,6 +97,8 @@ export const ipsContract = {
 	addToMedia: oc
 		.meta(
 			openapi({
+				method: "PUT",
+				path: "/media/{mediaId}/ips/{ipId}",
 				tags: ["IPs"],
 				summary: "メディアにIPを追加",
 				description: "指定したIPをメディアに関連付けます。",
@@ -100,6 +114,8 @@ export const ipsContract = {
 	removeFromMedia: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/media/{mediaId}/ips/{ipId}",
 				tags: ["IPs"],
 				summary: "メディアからIPを削除",
 				description: "指定したIPとメディアの関連付けを解除します。",

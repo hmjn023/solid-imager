@@ -1,4 +1,11 @@
+import {
+	apiPathPattern,
+	apiRequest,
+	apiRequestMatches,
+	apiResponse,
+} from "./support/api";
 import { readdir, readFile } from "node:fs/promises";
+import { mediaThumbnailPath } from "@solid-imager/core/http";
 import { pendingImportJobSchema } from "@solid-imager/core/media";
 import { generateMediaFilename } from "@solid-imager/core/media/files";
 import {
@@ -15,28 +22,28 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	browserHealth,
 }) => {
 	// SSE invalidation supersedes in-flight reads of these same two queries.
-	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/jobs\/(list|targets|types)$/,
-		"net::ERR_ABORTED",
-	);
+	for (const operation of ["jobs/list", "jobs/targets", "jobs/types"]) {
+		browserHealth.allowRequestFailure(
+			apiPathPattern(operation),
+			"net::ERR_ABORTED",
+		);
+	}
 	const filenames = Array.from({ length: 26 }, (_, i) =>
 		i === 0 ? E2E_PRIMARY_FILE_NAME : `batch-target-${i}.png`,
 	);
 	// The first dev navigation compiles the route before opening the stream.
-	const subscribed = page.waitForRequest(
-		(request) => request.url().endsWith("/jobs/events"),
-		{ timeout: 60_000 },
-	);
+	const subscribed = page.waitForRequest(apiRequestMatches("jobs/events"), {
+		timeout: 60_000,
+	});
 	await page.goto("/jobs", { waitUntil: "domcontentloaded", timeout: 60_000 });
 	await waitForAppHydration(page);
 	await subscribed;
-	const response = await page.request.post("/api/rpc/media/reserveUploads", {
-		data: { json: { sourceId: E2E_SOURCE_ID, filenames } },
+	const response = await apiRequest(page.request, "media/reserveUploads", {
+		sourceId: E2E_SOURCE_ID,
+		filenames,
 	});
 	expect(response.ok()).toBe(true);
-	const {
-		json: { jobId, reservations },
-	} = await response.json();
+	const { jobId, reservations } = await response.json();
 	await page
 		.getByRole("button", { name: new RegExp(jobId) })
 		.filter({ visible: true })
@@ -55,18 +62,20 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	});
 	await expect(uploadProgress).toHaveAttribute("aria-valuenow", "0");
 	await expect(stages).toContainText(/待機 26|Queued 26/);
-	const upload = await page.request.post("/api/rest/media/upload", {
-		multipart: {
-			sourceId: E2E_SOURCE_ID,
-			reservationId: reservations[0],
-			filename: E2E_PRIMARY_FILE_NAME,
-			file: {
-				name: E2E_PRIMARY_FILE_NAME,
-				mimeType: "image/png",
-				buffer: await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME)),
+	const upload = await page.request.post(
+		`/api/sources/${E2E_SOURCE_ID}/media`,
+		{
+			multipart: {
+				reservationId: reservations[0],
+				filename: E2E_PRIMARY_FILE_NAME,
+				file: {
+					name: E2E_PRIMARY_FILE_NAME,
+					mimeType: "image/png",
+					buffer: await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME)),
+				},
 			},
 		},
-	});
+	);
 	expect(upload.ok()).toBe(true);
 	// The upload came from a separate API client. The open inspector updates via SSE.
 	await expect(uploadProgress).toHaveAttribute("aria-valuenow", "4");
@@ -115,7 +124,7 @@ test("saves one file when the same Pixiv item is approved twice in a batch", asy
 }) => {
 	if (!baseURL) throw new Error("Expected the isolated test server URL");
 	const targetUrl = new URL(
-		`/api/sources/${E2E_SOURCE_ID}/thumbnail/${E2E_PRIMARY_MEDIA_ID}`,
+		mediaThumbnailPath(E2E_SOURCE_ID, E2E_PRIMARY_MEDIA_ID),
 		baseURL,
 	).href;
 	const description = `duplicate-import-${crypto.randomUUID()}`;
@@ -125,21 +134,22 @@ test("saves one file when the same Pixiv item is approved twice in a batch", asy
 		description,
 	};
 	for (let index = 0; index < 2; index++) {
-		const added = await request.post("/api/rest/imports/bulkAdd", {
-			data: { items: [item] },
+		const added = await apiRequest(request, "imports/bulkAdd", {
+			items: [item],
 		});
 		expect(added.ok()).toBe(true);
 		expect(await added.json()).toMatchObject({ addedCount: 1 });
 	}
-	const pending = await request.post("/api/rest/imports/listPending");
+	const pending = await apiRequest(request, "imports/listPending");
 	expect(pending.ok()).toBe(true);
 	const requests = pendingImportJobSchema.array().parse(await pending.json());
 	const jobIds = requests
 		.filter((job) => job.item.description === description)
 		.map((job) => job.id);
 	expect(jobIds).toHaveLength(2);
-	const approved = await request.post("/api/rest/imports/process", {
-		data: { jobIds, targetSourceId: E2E_SOURCE_ID },
+	const approved = await apiRequest(request, "imports/process", {
+		jobIds,
+		targetSourceId: E2E_SOURCE_ID,
 	});
 	expect(approved.ok()).toBe(true);
 	const { batchId, processedCount } = await approved.json();
@@ -147,9 +157,7 @@ test("saves one file when the same Pixiv item is approved twice in a batch", asy
 	expect(batchId).toBeTruthy();
 	await expect
 		.poll(async () =>
-			(
-				await request.post("/api/rest/jobs/get", { data: { id: batchId } })
-			).json(),
+			(await apiRequest(request, "jobs/get", { id: batchId })).json(),
 		)
 		.toMatchObject({
 			status: "completed",
@@ -165,21 +173,23 @@ test("retries a failed upload from the parent and replaces only its file", async
 	request,
 	browserHealth,
 }) => {
-	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/jobs\/(list|targets|types)$/,
-		"net::ERR_ABORTED",
-	);
+	for (const operation of ["jobs/list", "jobs/targets", "jobs/types"]) {
+		browserHealth.allowRequestFailure(
+			apiPathPattern(operation),
+			"net::ERR_ABORTED",
+		);
+	}
 	const name = `retry-${crypto.randomUUID()}.png`;
 	const good = await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
-	const reserved = await request.post("/api/rest/media/reserveUploads", {
-		data: { sourceId: E2E_SOURCE_ID, filenames: [E2E_PRIMARY_FILE_NAME, name] },
+	const reserved = await apiRequest(request, "media/reserveUploads", {
+		sourceId: E2E_SOURCE_ID,
+		filenames: [E2E_PRIMARY_FILE_NAME, name],
 	});
 	expect(reserved.ok()).toBe(true);
 	const { jobId, reservations } = await reserved.json();
 	const send = (filename: string, reservationId: string, buffer: Buffer) =>
-		request.post("/api/rest/media/upload", {
+		request.post(`/api/sources/${E2E_SOURCE_ID}/media`, {
 			multipart: {
-				sourceId: E2E_SOURCE_ID,
 				reservationId,
 				file: { name: filename, mimeType: "image/png", buffer },
 			},
@@ -197,15 +207,13 @@ test("retries a failed upload from the parent and replaces only its file", async
 		.filter({ visible: true });
 	await expect(retry).toBeVisible();
 	const response = page.waitForResponse(
-		(res) => res.url().includes("/jobs/retry") && res.ok(),
+		(res) => apiResponse("jobs/retry")(res) && res.ok(),
 	);
 	await retry.click();
 	await response;
 	const failedAttempt = async () =>
 		await (
-			await request.post("/api/rest/jobs/get", {
-				data: { id: reservations[1] },
-			})
+			await apiRequest(request, "jobs/get", { id: reservations[1] })
 		).json();
 	await expect
 		.poll(failedAttempt)
@@ -217,18 +225,14 @@ test("retries a failed upload from the parent and replaces only its file", async
 		.filter({ visible: true })
 		.setInputFiles({ name, mimeType: "image/png", buffer: good });
 	const parent = async () =>
-		await (
-			await request.post("/api/rest/jobs/get", { data: { id: jobId } })
-		).json();
+		await (await apiRequest(request, "jobs/get", { id: jobId })).json();
 	await expect.poll(parent, { timeout: 60000 }).toMatchObject({
 		status: "completed",
 		progress: { processed: 2, failed: 0, total: 2 },
 	});
 	expect(
 		await (
-			await request.post("/api/rest/jobs/get", {
-				data: { id: reservations[0] },
-			})
+			await apiRequest(request, "jobs/get", { id: reservations[0] })
 		).json(),
 	).toMatchObject({ status: "completed", attemptCount: 1 });
 });

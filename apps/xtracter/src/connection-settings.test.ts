@@ -23,7 +23,7 @@ function storage(initial: Record<string, unknown>) {
 
 describe("server scoped extension settings", () => {
 	it("adopts the legacy selection only for its saved server and preserves it across URL edits", async () => {
-		const apiUrl = "https://old.example/api/rpc";
+		const apiUrl = "https://old.example";
 		storage({ apiUrl, selectedSourceId: "legacy-source" });
 		const { readConnectionSettings, updateConnectionSettings } =
 			await import("./connection-settings");
@@ -34,7 +34,7 @@ describe("server scoped extension settings", () => {
 		});
 		await updateConnectionSettings((current) => ({
 			...current,
-			apiUrl: "https://new.example/api/rpc",
+			apiUrl: "https://new.example",
 			generation: current.generation + 1,
 		}));
 		const next = await readConnectionSettings();
@@ -62,7 +62,7 @@ describe("server scoped extension settings", () => {
 				generation: current.generation + 1,
 				selectedSourceIds: {
 					...current.selectedSourceIds,
-					"https://other.example/api/rpc": "b",
+					"https://other.example": "b",
 				},
 			})),
 		]);
@@ -70,7 +70,7 @@ describe("server scoped extension settings", () => {
 			generation: 2,
 			selectedSourceIds: {
 				[change]: "a",
-				"https://other.example/api/rpc": "b",
+				"https://other.example": "b",
 			},
 		});
 	});

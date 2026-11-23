@@ -3,6 +3,12 @@ import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { mediaSearchResponseSchema } from "@solid-imager/core/media";
 import {
+	apiPathPattern,
+	apiRequest,
+	apiResponse,
+	apiRoute,
+} from "./support/api";
+import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
 	E2E_SIMILAR_MEDIA_ID,
@@ -18,7 +24,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 	// Copy/move/delete and fixture cleanup invalidate the source list while a
 	// previous refresh can still be pending. Only its deliberate abort is allowed.
 	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/sources\/list(?:\?|$)/,
+		apiPathPattern("sources/list"),
 		"net::ERR_ABORTED",
 	);
 	const sources = ["Copy destination", "Move destination"].map((name) => {
@@ -32,11 +38,12 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 	const [copyDestination, moveDestination] = sources;
 	const mediaItem = (id: string) => page.locator(`[data-media-id="${id}"]`);
 	const searchSource = async (sourceId: string) => {
-		const response = await page.request.post("/api/rpc/media/search", {
-			data: { json: { sourceId, params: { limit: 20, offset: 0 } } },
+		const response = await apiRequest(page.request, "media/search", {
+			sourceId,
+			params: { limit: 20, offset: 0 },
 		});
 		expect(response.ok()).toBe(true);
-		return mediaSearchResponseSchema.parse((await response.json()).json);
+		return mediaSearchResponseSchema.parse(await response.json());
 	};
 	const transfer = async (
 		mediaId: string,
@@ -63,8 +70,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 			.click();
 		const completed = page.waitForResponse(
 			(response) =>
-				new URL(response.url()).pathname === `/api/rpc/media/${mode}` &&
-				response.ok(),
+				apiRoute(`media/${mode}`)(new URL(response.url())) && response.ok(),
 		);
 		await dialog
 			.getByRole("button", {
@@ -85,16 +91,12 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 	try {
 		for (const source of sources) {
 			await mkdir(source.directory);
-			const response = await page.request.post("/api/rpc/sources/create", {
-				data: {
-					json: {
-						id: source.id,
-						name: source.name,
-						description: null,
-						type: "local",
-						connectionInfo: { path: source.directory },
-					},
-				},
+			const response = await apiRequest(page.request, "sources/create", {
+				id: source.id,
+				name: source.name,
+				description: null,
+				type: "local",
+				connectionInfo: { path: source.directory },
 			});
 			expect(response.ok()).toBe(true);
 		}
@@ -155,9 +157,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 			.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
 			.click();
 		const deleted = page.waitForResponse(
-			(response) =>
-				new URL(response.url()).pathname === "/api/rpc/media/delete" &&
-				response.ok(),
+			(response) => apiResponse("media/delete")(response) && response.ok(),
 		);
 		await deleteDialog
 			.getByRole("button", { name: "削除", exact: true })
@@ -168,9 +168,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 		expect((await searchSource(moveDestination.id)).total).toBe(0);
 	} finally {
 		for (const source of sources) {
-			await page.request.post("/api/rpc/sources/delete", {
-				data: { json: { id: source.id } },
-			});
+			await apiRequest(page.request, "sources/delete", { id: source.id });
 			await rm(source.directory, { recursive: true, force: true });
 		}
 	}

@@ -1,5 +1,5 @@
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/contract";
+import { appContract } from "@solid-imager/core/contract";
 import { useRouter } from "@tanstack/solid-router";
 import { ExternalViewerRoute } from "@solid-imager/ui/external-viewer";
 import { client, getApiOrigin } from "~/infrastructure/api-clients/orpc-client";
@@ -11,7 +11,7 @@ export function PixivPage() {
 			history={history}
 			provider="pixiv"
 			createViewer={(url, fetch) =>
-				createClient<AppContract>({ url, fetch }).viewer
+				createClient(appContract, { url, fetch }).viewer
 			}
 			client={client}
 			apiBase={getApiOrigin}

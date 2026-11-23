@@ -3,18 +3,18 @@ import {
 	authorSchema,
 	authorAccountVerificationSchema,
 } from "@solid-imager/core/authors";
+import { apiPathPattern, apiRequest } from "./support/api";
 import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-async function rpc(page: Page, name: string, input: object = {}) {
-	const response = await page.request.post(`/api/rpc/authors/${name}`, {
-		data: { json: input },
-	});
+async function callAuthorApi(
+	page: Page,
+	name: string,
+	input: Record<string, unknown> = {},
+): Promise<unknown> {
+	const response = await apiRequest(page.request, `authors/${name}`, input);
 	expect(response.ok()).toBe(true);
-	const body: unknown = await response.json();
-	if (!body || typeof body !== "object" || !("json" in body))
-		throw new Error("Invalid RPC result");
-	return body.json;
+	return response.json();
 }
 
 for (const withAccount of [true, false]) {
@@ -28,12 +28,12 @@ for (const withAccount of [true, false]) {
 		const remoteId = `${Date.now()}${Number.parseInt(suffix, 16)}`;
 		const name = `E2E verify ${suffix}`;
 		const author = authorSchema.parse(
-			await rpc(page, "create", {
+			await callAuthorApi(page, "create", {
 				name: `Legacy display ${suffix}`,
 				accountId: withAccount ? oldHandle : undefined,
 			}),
 		);
-		await rpc(page, "updateName", { id: author.id, name });
+		await callAuthorApi(page, "updateName", { id: author.id, name });
 		await page.goto("/manager");
 		await waitForAppHydration(page);
 		await selectManagerCategory(page, "作者・外部アカウント");
@@ -67,7 +67,7 @@ for (const withAccount of [true, false]) {
 		);
 		if (!verificationId) throw new Error("Missing verification token");
 		// Exercise the real xtracter callback API; no live X account or personal database is involved.
-		await rpc(page, "submitAccountVerification", {
+		await callAuthorApi(page, "submitAccountVerification", {
 			verificationId,
 			profile: {
 				username: currentHandle,
@@ -80,10 +80,12 @@ for (const withAccount of [true, false]) {
 		).toBeVisible();
 		await expect(update).toBeDisabled();
 		const pending = authorAccountVerificationSchema.parse(
-			await rpc(page, "getAccountVerification", { verificationId }),
+			await callAuthorApi(page, "getAccountVerification", { verificationId }),
 		);
 		expect(pending.confirmed).toBe(false);
-		const before = authorSchema.array().parse(await rpc(page, "list"));
+		const before = authorSchema
+			.array()
+			.parse(await callAuthorApi(page, "list"));
 		expect(
 			before.find((item) => item.id === author.id)?.accounts?.[0]?.remoteId ??
 				null,
@@ -100,25 +102,26 @@ for (const withAccount of [true, false]) {
 			.press("Space");
 		// A failed save preserves the preview and confirmation so the same operation can be retried.
 		browserHealth.allowResponseFailure(
-			"/api/rpc/authors/confirmAccountVerification",
+			apiPathPattern("authors/confirmAccountVerification"),
 		);
 		browserHealth.allowConsole(/503 \(Service Unavailable\)/);
-		await page.route("**/api/rpc/authors/confirmAccountVerification", (route) =>
-			route.fulfill({
-				status: 503,
-				contentType: "application/json",
-				body: JSON.stringify({
-					json: {
+		await page.route(
+			apiPathPattern("authors/confirmAccountVerification"),
+			(route) =>
+				route.fulfill({
+					status: 503,
+					contentType: "application/json",
+					body: JSON.stringify({
+						defined: false,
 						code: "SERVICE_UNAVAILABLE",
 						message: "E2E temporary failure",
-					},
+					}),
 				}),
-			}),
 		);
 		await update.click();
 		await expect(dialog.getByRole("alert")).toBeVisible();
 		await expect(dialog.getByRole("checkbox")).toBeChecked();
-		await page.unroute("**/api/rpc/authors/confirmAccountVerification");
+		await page.unroute(apiPathPattern("authors/confirmAccountVerification"));
 		// The save can be retried without another profile request.
 		await update.click();
 		await expect(dialog).toHaveCount(0);
@@ -127,7 +130,7 @@ for (const withAccount of [true, false]) {
 				exact: true,
 			}),
 		).toBeVisible();
-		const after = authorSchema.array().parse(await rpc(page, "list"));
+		const after = authorSchema.array().parse(await callAuthorApi(page, "list"));
 		expect(
 			after.find((item) => item.id === author.id)?.accounts?.[0],
 		).toMatchObject({
@@ -136,7 +139,7 @@ for (const withAccount of [true, false]) {
 			platform: "twitter",
 		});
 		const renamed = authorSchema.parse(
-			await rpc(page, "create", {
+			await callAuthorApi(page, "create", {
 				name: "Next display",
 				platform: "twitter",
 				accountId: `next_${suffix}`,

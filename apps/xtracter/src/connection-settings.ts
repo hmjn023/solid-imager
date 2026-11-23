@@ -1,6 +1,6 @@
 import { connectionSettingsSchema, type ConnectionSettings } from "./schema";
 
-export const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
+export const DEFAULT_API_URL = "http://localhost:3000";
 
 /** Read the URL and its saved source from a single storage snapshot. */
 export async function readConnectionSettings(): Promise<ConnectionSettings> {

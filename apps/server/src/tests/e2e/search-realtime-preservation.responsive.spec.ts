@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { copyFile } from "node:fs/promises";
 import path from "node:path";
+import { apiPathPattern } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	getE2eMediaDir,
@@ -10,7 +11,7 @@ import {
 import { syncFixtureSource } from "./support/source-sync";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const sourceEventsEndpoint = /\/api\/rpc\/sources\/events(?:\?|$)/;
+const sourceEventsEndpoint = apiPathPattern("sources/events");
 
 test(
 	"global search preserves the mobile filter dialog, input value, and focus after an SSE refresh",
@@ -20,7 +21,7 @@ test(
 	async ({ context, page, browserHealth }) => {
 		// Source sync events invalidate the list again while its previous refresh is pending.
 		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/sources\/list(?:\?|$)/,
+			apiPathPattern("sources/list"),
 			"net::ERR_ABORTED",
 		);
 		const sourceEventsConnected = page.waitForResponse(

@@ -1,4 +1,5 @@
 import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
+import { mediaContentPath } from "@solid-imager/core/http";
 import type { MediaDetails } from "@solid-imager/core/media";
 import { MediaActions as SharedMediaActions } from "@solid-imager/ui/media-actions";
 import { activateSimilaritySearch } from "@solid-imager/ui/search/state";
@@ -55,7 +56,10 @@ export function MediaActions(props: MediaActionsProps) {
 			}}
 			onDownload={() => {
 				const anchor = document.createElement("a");
-				anchor.href = `/api/sources/${encodeURIComponent(props.media.mediaSourceId)}/${encodeURIComponent(props.media.id)}`;
+				anchor.href = mediaContentPath(
+					props.media.mediaSourceId,
+					props.media.id,
+				);
 				anchor.download = props.media.fileName;
 				anchor.click();
 			}}

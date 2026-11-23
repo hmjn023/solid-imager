@@ -1,4 +1,5 @@
 import type { TagDictionaryStatus } from "@solid-imager/core/tags";
+import { apiPathPattern, apiRequestMatches } from "./support/api";
 import { E2E_SIMILAR_MEDIA_ID, mediaPath } from "./support/fixture";
 import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
@@ -10,22 +11,19 @@ test("shows the import job and individual dictionary sources on a narrow screen"
 	const jobId = crypto.randomUUID();
 	const updatedAt = new Date().toISOString();
 	let status: TagDictionaryStatus = { snapshots: [], job: null };
-	await page.route(/\/api\/rpc\/tags\/dictionaryStatus(?:\?|$)/, (route) =>
-		route.fulfill({ json: { json: status } }),
+	await page.route(apiPathPattern("tags/dictionaryStatus"), (route) =>
+		route.fulfill({ json: status }),
 	);
 	const { promise: responseGate, resolve: finishRequest } =
 		Promise.withResolvers<void>();
-	await page.route(
-		/\/api\/rpc\/tags\/dictionaryRefresh(?:\?|$)/,
-		async (route) => {
-			await responseGate;
-			status = {
-				snapshots: [],
-				job: { id: jobId, status: "pending", error: null, updatedAt },
-			};
-			await route.fulfill({ json: { json: { jobId } } });
-		},
-	);
+	await page.route(apiPathPattern("tags/dictionaryRefresh"), async (route) => {
+		await responseGate;
+		status = {
+			snapshots: [],
+			job: { id: jobId, status: "pending", error: null, updatedAt },
+		};
+		await route.fulfill({ json: { jobId } });
+	});
 
 	await page.goto("/manager");
 	await waitForAppHydration(page);
@@ -188,14 +186,14 @@ test("browses the imported dictionary after reload and assigns a tag from the me
 		).toBeLessThanOrEqual(
 			await editor.evaluate((element) => element.clientWidth),
 		);
-		const save = page.waitForRequest("**/api/rpc/media/updatePositiveTags");
+		const save = page.waitForRequest(
+			apiRequestMatches("media/updatePositiveTags"),
+		);
 		await editor.getByRole("button", { name: "保存", exact: true }).click();
 		expect((await save).postDataJSON()).toMatchObject({
-			json: {
-				entries: expect.arrayContaining([
-					{ name: "wavy_hair", fromDictionary: true },
-				]),
-			},
+			entries: expect.arrayContaining([
+				{ name: "wavy_hair", fromDictionary: true },
+			]),
 		});
 		await expect(editor).toBeHidden();
 		await page.setViewportSize({ width: 1440, height: 900 });
@@ -203,7 +201,7 @@ test("browses the imported dictionary after reload and assigns a tag from the me
 
 		let wikiRequests = 0;
 		page.on("request", (request) => {
-			if (new URL(request.url()).pathname.endsWith("/tags/dictionaryDetail"))
+			if (apiPathPattern("tags/dictionaryDetail").test(request.url()))
 				wikiRequests++;
 		});
 		await page.mouse.move(0, 0);
@@ -216,7 +214,7 @@ test("browses the imported dictionary after reload and assigns a tag from the me
 		const { promise: wikiGate, resolve: allowWiki } =
 			Promise.withResolvers<void>();
 		await page.route(
-			"**/api/rpc/tags/dictionaryDetail",
+			apiPathPattern("tags/dictionaryDetail"),
 			async (route) => {
 				await wikiGate;
 				await route.continue();

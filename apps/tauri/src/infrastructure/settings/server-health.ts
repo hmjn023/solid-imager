@@ -1,11 +1,16 @@
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/contract";
+import { appContract } from "@solid-imager/core/contract";
+import {
+	API_PREFIX,
+	CONFIG_ROUTE,
+	resolveServerUrl,
+} from "@solid-imager/core/http";
 import { t } from "@solid-imager/i18n";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
 const HEALTH_CHECK_TIMEOUT_MS = 5_000;
 
-/** Endpoint probed and elapsed time for a successful configuration RPC. */
+/** Endpoint probed and elapsed time for a successful configuration request. */
 export type ServerHealthResult = {
 	endpoint: string;
 	latencyMs: number;
@@ -19,15 +24,7 @@ function buildHealthEndpoint(baseUrl: string): string {
 	if (parsed.username || parsed.password) {
 		throw new Error(t("serverSettings.noEmbeddedCredentials"));
 	}
-	const basePath = parsed.pathname
-		.replace(/\/+$/, "")
-		.replace(/\/api\/rpc$/, "");
-	// Probe an existing oRPC procedure instead of relying on a separate health
-	// route that may not exist on an older deployed server.
-	parsed.pathname = `${basePath}/api/rpc/config/get`;
-	parsed.search = "";
-	parsed.hash = "";
-	return parsed.toString();
+	return resolveServerUrl(parsed.href, API_PREFIX + CONFIG_ROUTE);
 }
 
 function canUseBrowserFetch(baseUrl: string): boolean {
@@ -38,7 +35,7 @@ function canUseBrowserFetch(baseUrl: string): boolean {
 }
 
 /**
- * Calls the server configuration RPC with a five-second timeout and validates its version.
+ * Fetches the server configuration with a five-second timeout and validates its version.
  *
  * @param baseUrl - HTTP(S) server URL without embedded credentials.
  * @returns The probed endpoint and elapsed time in milliseconds.
@@ -49,7 +46,7 @@ export async function checkServerHealth(
 ): Promise<ServerHealthResult> {
 	const endpoint = buildHealthEndpoint(baseUrl);
 	const startedAt = performance.now();
-	const client = createClient<AppContract>({
+	const client = createClient(appContract, {
 		url: baseUrl,
 		fetch: canUseBrowserFetch(baseUrl) ? fetch : tauriFetch,
 		timeoutMs: HEALTH_CHECK_TIMEOUT_MS,
