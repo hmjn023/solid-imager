@@ -1,5 +1,7 @@
 import type { Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { mediaThumbnailPath } from "@solid-imager/core/http";
+import { apiPathPattern, apiRequest, routeApi } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SIMILAR_FILE_NAME,
@@ -27,7 +29,7 @@ async function openFromFile(page: Page) {
 }
 async function pasteUrl(page: Page) {
 	const url = new URL(
-		`/api/sources/${E2E_SOURCE_ID}/thumbnail/${E2E_PRIMARY_MEDIA_ID}?size=256`,
+		mediaThumbnailPath(E2E_SOURCE_ID, E2E_PRIMARY_MEDIA_ID, { size: 256 }),
 		page.url(),
 	).href;
 	await page.evaluate((value) => {
@@ -48,12 +50,12 @@ test("keeps both dialog-selected files through actual upload submission", async 
 	browserHealth,
 }) => {
 	// Each successful upload refreshes the same query and cancels its superseded read.
-	browserHealth.allowRequestFailure(/\/api\/rpc\/media\/search(?:\?|$)/);
+	browserHealth.allowRequestFailure(apiPathPattern("media/search"));
 	const submissions: string[] = [];
-	await page.route(/\/api\/rpc\/media\/upload(?:\?|$)/, async (route) => {
+	await routeApi(page, "media/upload", async (route) => {
 		submissions.push(route.request().postDataBuffer()?.toString() ?? "");
 		await route.fulfill({
-			json: { json: { success: true, filePath: "uploaded" } },
+			json: { success: true, filePath: "uploaded" },
 		});
 	});
 	await page.goto(sourcePath());
@@ -96,18 +98,13 @@ test("stops sending remaining files when another client cancels the upload batch
 	request,
 	browserHealth,
 }) => {
-	const upload = /\/api\/rpc\/media\/upload(?:\?|$)/;
+	const upload = apiPathPattern("media/upload");
 	browserHealth.allowResponseFailure(upload);
-	// The RPC transport returns HTTP 400 for a declared application error.
-	browserHealth.allowConsole(/400 \(Bad Request\)/);
-	await page.route("**/api/rpc/media/reserveUploads", async (route) => {
+	browserHealth.allowConsole(/410 \(Gone\)/);
+	await routeApi(page, "media/reserveUploads", async (route) => {
 		const response = await route.fetch();
-		const {
-			json: { jobId },
-		} = await response.json();
-		const cancelled = await request.post("/api/rest/jobs/cancel", {
-			data: { id: jobId },
-		});
+		const { jobId } = await response.json();
+		const cancelled = await apiRequest(request, "jobs/cancel", { id: jobId });
 		expect(cancelled.ok()).toBe(true);
 		await route.fulfill({ response });
 	});
@@ -127,8 +124,11 @@ test("stops sending remaining files when another client cancels the upload batch
 	await dialog
 		.getByRole("button", { name: "アップロード", exact: true })
 		.click();
-	expect(await (await rejected).json()).toMatchObject({
-		json: { defined: true, code: "BATCH_CANCELLED" },
+	const rejection = await rejected;
+	expect(rejection.status()).toBe(410);
+	expect(await rejection.json()).toMatchObject({
+		defined: true,
+		code: "BATCH_CANCELLED",
 	});
 	await expect(
 		dialog.getByText("一括操作をキャンセルしました。"),
@@ -142,7 +142,7 @@ for (const discard of [false, true]) {
 	}) => {
 		const requested = gate();
 		const delayed = gate();
-		await page.route(/\/api\/rpc\/utils\/fetchUrl(?:\?|$)/, async (route) => {
+		await routeApi(page, "utils/fetchUrl", async (route) => {
 			requested.release();
 			await delayed.promise;
 			await route.continue();
@@ -181,9 +181,7 @@ for (const discard of [false, true]) {
 		const preview = dialog.getByRole("img", { name: "取得したプレビュー" });
 		await expect(preview).toBeVisible();
 		const originalPreview = await preview.getAttribute("src");
-		const finished = page.waitForResponse(
-			/\/api\/rpc\/utils\/fetchUrl(?:\?|$)/,
-		);
+		const finished = page.waitForResponse(apiPathPattern("utils/fetchUrl"));
 		delayed.release();
 		await (await finished).finished();
 		await expect(dialog.getByLabel("ファイル名", { exact: true })).toHaveValue(

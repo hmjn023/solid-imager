@@ -1,3 +1,4 @@
+import { apiPathPattern, apiRequestMatches, routeApi } from "./support/api";
 import type { JobDto, JobListRequest } from "@solid-imager/core/jobs";
 import type { Page } from "@playwright/test";
 import { expect, test, waitForAppHydration } from "./support/test";
@@ -56,11 +57,13 @@ async function openJobsFromWorkspace(page: Page): Promise<void> {
 test("keeps the active job status visible on a phone", async ({ page }) => {
 	await page.setViewportSize({ width: 430, height: 932 });
 	// Other scenarios can leave cancelled jobs in the shared E2E database.
-	await page.route("**/api/rpc/jobs/list", (route) => {
-		if (route.request().postDataJSON()?.json?.status !== "cancelled") {
+	await routeApi(page, "jobs/list", (route) => {
+		if (
+			new URL(route.request().url()).searchParams.get("status") !== "cancelled"
+		) {
 			return route.continue();
 		}
-		return route.fulfill({ json: { json: { items: [], total: 0 } } });
+		return route.fulfill({ json: { items: [], total: 0 } });
 	});
 	await page.goto("/jobs");
 	await waitForAppHydration(page);
@@ -69,8 +72,8 @@ test("keeps the active job status visible on a phone", async ({ page }) => {
 	await status.click();
 	const updated = page.waitForRequest(
 		(request) =>
-			request.url().endsWith("/api/rpc/jobs/list") &&
-			request.postDataJSON()?.json?.status === "cancelled",
+			apiRequestMatches("jobs/list")(request) &&
+			new URL(request.url()).searchParams.get("status") === "cancelled",
 	);
 	await page
 		.getByRole("option", { name: "キャンセル済み", exact: true })
@@ -94,19 +97,22 @@ test("loads more jobs on scroll and counts all status/type matches beyond the fi
 }) => {
 	const requests: JobListRequest[] = [];
 	let failMore = true;
-	browserHealth.allowResponseFailure("/api/rpc/jobs/list");
+	browserHealth.allowResponseFailure(apiPathPattern("jobs/list"));
 	browserHealth.allowConsole(
 		"Failed to load resource: the server responded with a status of 503",
 	);
-	await page.route("**/api/rpc/jobs/types", (route) =>
+	await routeApi(page, "jobs/types", (route) =>
 		route.fulfill({
-			json: { json: ["processMedia", "source_export", "auto_tagging"] },
+			json: ["processMedia", "source_export", "auto_tagging"],
 		}),
 	);
-	await page.route("**/api/rpc/jobs/list", async (route) => {
-		const { json: input } = route.request().postDataJSON() as {
-			json: JobListRequest;
-		};
+	await routeApi(page, "jobs/list", async (route) => {
+		const query = new URL(route.request().url()).searchParams;
+		const input = {
+			...Object.fromEntries(query),
+			limit: Number(query.get("limit")),
+			offset: Number(query.get("offset")),
+		} as JobListRequest;
 		requests.push(input);
 		if (failMore && input.offset > 0) {
 			await route.fulfill({
@@ -126,10 +132,8 @@ test("loads more jobs on scroll and counts all status/type matches beyond the fi
 		);
 		await route.fulfill({
 			json: {
-				json: {
-					items: filtered.slice(input.offset, input.offset + input.limit),
-					total: filtered.length,
-				},
+				items: filtered.slice(input.offset, input.offset + input.limit),
+				total: filtered.length,
 			},
 		});
 	});
@@ -195,19 +199,23 @@ test("returns to the scrolled job and restores focus on a phone", async ({
 	page,
 }) => {
 	await page.setViewportSize({ width: 390, height: 640 });
-	await page.route("**/api/rpc/jobs/list", (route) =>
-		route.fulfill({ json: { json: { items: jobs.slice(0, 60), total: 60 } } }),
+	await routeApi(page, "jobs/list", (route) =>
+		route.fulfill({ json: { items: jobs.slice(0, 60), total: 60 } }),
 	);
-	await page.route("**/api/rpc/jobs/get", (route) =>
-		route.fulfill({ json: { json: jobs[30] } }),
+	await routeApi(page, "jobs/get", (route) =>
+		route.fulfill({ json: jobs[30] }),
 	);
 	await openJobsFromWorkspace(page);
-	const row = page.getByRole("table").locator("tbody tr").nth(30);
+	const table = page.getByRole("table");
+	const row = table.locator("tbody tr").nth(30);
 	const selected = row.locator("button[aria-pressed]");
-	await selected.click({ trial: true });
-	const scrollArea = page.locator("[data-management-scroll]").first();
-	const offset = await scrollArea.evaluate((element) => element.scrollTop);
-	expect(offset).toBeGreaterThan(100);
+	const scrollArea = page
+		.locator("[data-management-scroll]")
+		.filter({ has: table });
+	await selected.scrollIntoViewIfNeeded();
+	const scrollTop = () => scrollArea.evaluate((element) => element.scrollTop);
+	await expect.poll(scrollTop).toBeGreaterThan(100);
+	const offset = await scrollTop();
 	await selected.click();
 	const detail = page.getByRole("complementary", { name: "ジョブの詳細" });
 	await expect(detail).toBeVisible();

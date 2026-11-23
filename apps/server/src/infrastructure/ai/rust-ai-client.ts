@@ -6,7 +6,7 @@ import { createClient } from "@solid-imager/client";
 import { ORPCError } from "@orpc/server";
 import { logger } from "~/infrastructure/logger";
 import type { AiConfig } from "@solid-imager/core/config";
-import type { AppContract } from "@solid-imager/core/contract";
+import { appContract, type AppContract } from "@solid-imager/core/contract";
 import type { IAiClient } from "@solid-imager/core/ports";
 import {
 	type CcipDifferenceResponse,
@@ -80,7 +80,7 @@ export class RustAiClient implements IAiClient {
 
 	private refreshClient() {
 		if (this.baseUrl) {
-			this.client = createClient<AppContract>({
+			this.client = createClient(appContract, {
 				url: this.baseUrl,
 				timeoutMs: this.timeoutMs,
 			});

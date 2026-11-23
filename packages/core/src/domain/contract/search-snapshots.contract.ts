@@ -11,6 +11,8 @@ export const searchSnapshotsContract = {
 	capture: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/search-snapshots",
 				tags: ["Search Snapshots"],
 				summary: "検索状態を履歴スナップショットとして保存",
 				description:
@@ -22,6 +24,8 @@ export const searchSnapshotsContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/search-snapshots/{id}",
 				tags: ["Search Snapshots"],
 				summary: "検索履歴スナップショット取得",
 				description:

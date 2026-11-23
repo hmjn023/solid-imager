@@ -2,9 +2,10 @@ import { createWriteStream } from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
+import { mediaContentPath, resolveServerUrl } from "@solid-imager/core/http";
 import { Cli, z } from "incur";
 import { getClient } from "../orpc-client";
-import { getErrorMessage, globalOptions } from "../utils";
+import { getErrorMessage, getServerBaseUrl, globalOptions } from "../utils";
 
 /**
  * Validates that a string is a valid CSS-like dimension for iTerm2
@@ -171,10 +172,10 @@ export const viewHandler = async (
 		const rpc = getClient(c.options.remote);
 		const media = await rpc.media.get({ sourceId, mediaId: c.args.id });
 
-		const url = new URL(
-			`/api/sources/${sourceId}/${media.id}`,
-			c.options.remote,
-		).toString();
+		const url = resolveServerUrl(
+			getServerBaseUrl(c.options.remote),
+			mediaContentPath(sourceId, media.id),
+		);
 		const res = await fetch(url);
 		if (!res.ok) {
 			return c.error({
@@ -226,10 +227,10 @@ export const downloadHandler = async (
 		const rpc = getClient(c.options.remote);
 		const media = await rpc.media.get({ sourceId, mediaId: c.args.id });
 
-		const url = new URL(
-			`/api/sources/${sourceId}/${media.id}`,
-			c.options.remote,
-		).toString();
+		const url = resolveServerUrl(
+			getServerBaseUrl(c.options.remote),
+			mediaContentPath(sourceId, media.id),
+		);
 		const res = await fetch(url);
 		if (!res.ok) {
 			return c.error({

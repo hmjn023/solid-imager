@@ -1,0 +1,7 @@
+import { COMMON_ERROR_STATUS_MAP } from "@orpc/openapi";
+
+export const API_ERROR_STATUS = {
+	...COMMON_ERROR_STATUS_MAP,
+	BATCH_CANCELLED: 410,
+	RANGE_NOT_SATISFIABLE: 416,
+};

@@ -2,6 +2,8 @@ import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Page, Request, Response } from "@playwright/test";
+import { mediaContentPath, mediaThumbnailPath } from "@solid-imager/core/http";
+import { apiPathPattern, apiRequest } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -42,7 +44,8 @@ test("Tauri tag recommendations refresh and survive reload", async ({
 			await expect(candidate).toBeVisible();
 			const refreshed = page.waitForResponse(
 				(response) =>
-					response.url().endsWith("/api/rpc/media/getRelated") && response.ok(),
+					apiPathPattern("media/getRelated").test(response.url()) &&
+					response.ok(),
 			);
 			await related
 				.getByRole("button", { name: "関連メディアを再取得", exact: true })
@@ -80,9 +83,7 @@ test("Tauri related media loads thumbnails and follows the selected image", asyn
 			const thumbnail = candidate.getByRole("img");
 			await expect(thumbnail).toHaveAttribute(
 				"src",
-				new RegExp(
-					`/api/sources/${E2E_SOURCE_ID}/thumbnail/${E2E_SIMILAR_MEDIA_ID}`,
-				),
+				new RegExp(mediaThumbnailPath(E2E_SOURCE_ID, E2E_SIMILAR_MEDIA_ID)),
 			);
 			await expect
 				.poll(() =>
@@ -355,7 +356,7 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await expect(inspector).toBeVisible();
 	await expect(inspector).toContainText(E2E_PRIMARY_FILE_NAME);
 	await captureTauriScreenshot(page, "search");
-	for (const path of ["/api/rpc/imports/events", "/api/rpc/sources/events"]) {
+	for (const path of ["/api/imports/events", "/api/sources/*/events"]) {
 		expect(browserHealth.apiRequestCountPathSince(checkpoint, path)).toBe(1);
 	}
 
@@ -366,14 +367,14 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	const popupResponses: Response[] = [];
 	const recordRequest = (request: Request) => {
 		if (
-			new URL(request.url()).pathname.startsWith("/api/rpc/") &&
+			new URL(request.url()).pathname.startsWith("/api/") &&
 			request.frame().page() !== page
 		)
 			popupRequests.push(request);
 	};
 	const recordResponse = (response: Response) => {
 		if (
-			new URL(response.url()).pathname.startsWith("/api/rpc/") &&
+			new URL(response.url()).pathname.startsWith("/api/") &&
 			response.request().frame().page() !== page
 		)
 			popupResponses.push(response);
@@ -392,18 +393,16 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await expect
 		.poll(
 			() =>
-				popupRequests.filter(
-					(request) =>
-						new URL(request.url()).pathname === "/api/rpc/sources/events",
+				popupRequests.filter((request) =>
+					apiPathPattern("sources/events").test(request.url()),
 				).length,
 		)
 		.toBe(2);
 	await expect
 		.poll(
 			() =>
-				popupRequests.filter(
-					(request) =>
-						new URL(request.url()).pathname === "/api/rpc/imports/events",
+				popupRequests.filter((request) =>
+					apiPathPattern("imports/events").test(request.url()),
 				).length,
 		)
 		.toBe(1);
@@ -411,7 +410,7 @@ test("Tauri Library separates preview selection from current media detail", asyn
 		.poll(() =>
 			popupResponses.some(
 				(response) =>
-					new URL(response.url()).pathname === "/api/rpc/media/getDetails" &&
+					apiPathPattern("media/getDetails").test(response.url()) &&
 					response.ok(),
 			),
 		)
@@ -512,30 +511,21 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 	await expect(editDialog).toHaveCount(0);
 
 	const pendingImportUrl = new URL(
-		`/api/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}`,
+		mediaContentPath(E2E_SOURCE_ID, E2E_PRIMARY_MEDIA_ID),
 		page.url(),
 	).toString();
-	const addImportResponse = await page.request.post(
-		"/api/rpc/imports/bulkAdd",
-		{
-			data: {
-				json: {
-					items: [{ targetUrl: pendingImportUrl }],
-				},
-			},
-		},
-	);
+	const addImportResponse = await apiRequest(page.request, "imports/bulkAdd", {
+		items: [{ targetUrl: pendingImportUrl }],
+	});
 	expect(addImportResponse.ok()).toBeTruthy();
-	const listImportResponse = await page.request.post(
-		"/api/rpc/imports/listPending",
-		{ data: { json: null } },
+	const listImportResponse = await apiRequest(
+		page.request,
+		"imports/listPending",
 	);
 	expect(listImportResponse.ok()).toBeTruthy();
-	const listPayload = (await listImportResponse.json()) as {
-		json?: unknown;
-	};
-	const pendingJobs = Array.isArray(listPayload.json)
-		? (listPayload.json as PendingImportJob[])
+	const listPayload: unknown = await listImportResponse.json();
+	const pendingJobs = Array.isArray(listPayload)
+		? (listPayload as PendingImportJob[])
 		: [];
 	const pendingJob = pendingJobs.find(
 		(job) => job.item?.targetUrl === pendingImportUrl,
@@ -563,9 +553,12 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 			.click();
 		await expect(importDialog).toHaveCount(0);
 	} finally {
-		const cancelImportResponse = await page.request.post(
-			"/api/rpc/imports/cancel",
-			{ data: { json: { jobIds: [pendingJob.id] } } },
+		const cancelImportResponse = await apiRequest(
+			page.request,
+			"imports/cancel",
+			{
+				jobIds: [pendingJob.id],
+			},
 		);
 		expect(cancelImportResponse.ok()).toBeTruthy();
 	}
@@ -625,7 +618,7 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 		.poll(() =>
 			browserHealth.apiRequestCountPathSince(
 				healthCheckpoint,
-				"/api/rpc/ai/health",
+				"/api/ai/health",
 			),
 		)
 		.toBe(1);
@@ -659,13 +652,13 @@ test("Tauri opens a linked job inspector on a fresh hash route", async ({
 	page,
 	request,
 }) => {
-	const queued = await request.post("/api/rpc/sources/enqueueExport", {
-		data: {
-			json: { id: E2E_SOURCE_ID, mode: "ndjson", includeImages: false },
-		},
+	const queued = await apiRequest(request, "sources/enqueueExport", {
+		id: E2E_SOURCE_ID,
+		mode: "ndjson",
+		includeImages: false,
 	});
 	expect(queued.ok()).toBe(true);
-	const { id: jobId } = (await queued.json()).json;
+	const { id: jobId } = await queued.json();
 	await openTauriRoute(page, "/jobs?jobId=" + jobId);
 	const inspector = page.locator('[aria-label="ジョブの詳細"]:visible');
 	await expect(inspector).toHaveAttribute("data-job-id", jobId);
@@ -803,19 +796,13 @@ test(
 		).toHaveAttribute("href", `${fixtureOrigin}/docs/scalar`);
 		await expect
 			.poll(() =>
-				browserHealth.apiRequestCountPathSince(
-					checkpoint,
-					"/api/rpc/sources/list",
-				),
+				browserHealth.apiRequestCountPathSince(checkpoint, "/api/sources"),
 			)
 			.toBeGreaterThan(0);
 		await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
 		await expect
 			.poll(() =>
-				browserHealth.apiRequestCountPathSince(
-					checkpoint,
-					"/api/rpc/tags/list",
-				),
+				browserHealth.apiRequestCountPathSince(checkpoint, "/api/tags"),
 			)
 			.toBeGreaterThan(0);
 		await expect(
@@ -854,19 +841,13 @@ test(
 		).toHaveAttribute("href", `${apiOrigin}/docs/scalar`);
 		await expect
 			.poll(() =>
-				browserHealth.apiRequestCountPathSince(
-					checkpoint,
-					"/api/rpc/sources/list",
-				),
+				browserHealth.apiRequestCountPathSince(checkpoint, "/api/sources"),
 			)
 			.toBeGreaterThan(0);
 		await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
 		await expect
 			.poll(() =>
-				browserHealth.apiRequestCountPathSince(
-					checkpoint,
-					"/api/rpc/tags/list",
-				),
+				browserHealth.apiRequestCountPathSince(checkpoint, "/api/tags"),
 			)
 			.toBeGreaterThan(0);
 		await expect(

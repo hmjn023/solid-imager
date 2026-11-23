@@ -35,7 +35,10 @@ import {
 	DialogTrigger,
 } from "./dialog";
 import { sourceTypeLabel } from "./display-labels";
-import { pixivImageHref, viewerImageHref } from "./external-viewer/post-media";
+import {
+	danbooruThumbnailHref,
+	pixivImageHref,
+} from "./external-viewer/post-media";
 import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
@@ -231,7 +234,7 @@ function ImportReviewCard(props: {
 			const danbooruBase = props.danbooruPreview?.apiBase();
 			if (poster)
 				return danbooruBase
-					? viewerImageHref(danbooruBase, "/api/danbooru-thumbnail", poster)
+					? danbooruThumbnailHref(danbooruBase, poster)
 					: poster;
 			if (danbooruVideo()) return;
 		}

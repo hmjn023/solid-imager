@@ -6,6 +6,8 @@ export const utilsContract = {
 	fetchUrl: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/utils/fetch-url",
 				tags: ["Utilities"],
 				summary: "URLの内容取得",
 				description: "指定URLの内容をサーバーから取得し、Blobとして返します。",

@@ -199,7 +199,7 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 						response
 							.headers()
 							["content-type"]?.startsWith("text/event-stream") &&
-						/^\/api\/rpc\/(jobs|sources|imports)\/events$/.test(
+						/^\/api\/(jobs|imports|sources\/[^/]+)\/events$/.test(
 							new URL(response.url()).pathname,
 						)
 					) {

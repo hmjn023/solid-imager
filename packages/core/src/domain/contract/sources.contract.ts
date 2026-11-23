@@ -21,6 +21,8 @@ export const sourcesContract = {
 	list: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources",
 				tags: ["Media Sources"],
 				summary: "メディアソース一覧取得",
 				description:
@@ -32,6 +34,8 @@ export const sourcesContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources/{id}",
 				tags: ["Media Sources"],
 				summary: "メディアソース取得",
 				description:
@@ -44,6 +48,8 @@ export const sourcesContract = {
 	create: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources",
 				tags: ["Media Sources"],
 				summary: "メディアソース作成",
 				description: "ローカル、SFTP、S3などのメディアソースを新規登録します。",
@@ -55,6 +61,8 @@ export const sourcesContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/sources/{id}",
 				tags: ["Media Sources"],
 				summary: "メディアソース更新",
 				description:
@@ -72,6 +80,8 @@ export const sourcesContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/sources/{id}",
 				tags: ["Media Sources"],
 				summary: "メディアソース削除",
 				description:
@@ -84,6 +94,8 @@ export const sourcesContract = {
 	sync: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources/sync",
 				tags: ["Media Sources"],
 				summary: "メディアソース同期",
 				description:
@@ -100,6 +112,8 @@ export const sourcesContract = {
 	enqueueExport: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources/{id}/exports",
 				tags: ["Media Sources"],
 				summary: "メディアソースのエクスポート開始",
 				description:
@@ -118,6 +132,8 @@ export const sourcesContract = {
 	enqueueImport: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources/{id}/imports",
 				tags: ["Media Sources"],
 				summary: "メディアソースのインポート開始",
 				description:
@@ -136,6 +152,8 @@ export const sourcesContract = {
 	status: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources/{id}/status",
 				tags: ["Media Sources"],
 				summary: "メディアソース状態取得",
 				description:
@@ -148,6 +166,8 @@ export const sourcesContract = {
 	events: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources/{id}/events",
 				tags: ["Media Sources"],
 				summary: "メディアソースイベント購読",
 				description:

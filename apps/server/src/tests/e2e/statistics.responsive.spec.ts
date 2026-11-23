@@ -1,3 +1,4 @@
+import { apiPathPattern } from "./support/api";
 import { E2E_SOURCE_ID } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
@@ -57,8 +58,8 @@ test("statistics opens from the sidebar and recovers a failed request @desktop-o
 	page,
 	browserHealth,
 }) => {
-	const endpoint = "**/api/rpc/media/statistics";
-	browserHealth.allowResponseFailure("/api/rpc/media/statistics");
+	const endpoint = "**/api/media/statistics";
+	browserHealth.allowResponseFailure(apiPathPattern("media/statistics"));
 	browserHealth.allowConsole(/503 \(Service Unavailable\)/);
 	await page.route(endpoint, (route) =>
 		route.fulfill({ status: 503, json: { message: "Statistics unavailable" } }),
@@ -106,31 +107,29 @@ test("chart views show composition, cumulative counts and selectable ranking bar
 		["澪", "アリア", "ルカ", "凪"],
 		[131, 98, 76, 54],
 	);
-	await page.route("**/api/rpc/media/statistics", (route) => {
-		const filtered = route.request().postDataJSON().json.ipId === ips[0].id;
+	await page.route(apiPathPattern("media/statistics"), (route) => {
+		const filtered = route.request().postDataJSON().ipId === ips[0].id;
 		return route.fulfill({
 			json: {
-				json: {
-					trend,
-					ips,
-					characters: filtered ? characters.slice(0, 1) : characters,
-					models: filtered
-						? []
-						: [
-								{ name: "Atelier XL", count: 180, favorites: 63 },
-								{ name: "Linea v3", count: 106, favorites: 51 },
-								{ name: "Scene Study", count: 64, favorites: 17 },
-							],
-					mediaTypes: filtered
-						? [{ type: "image", count: 214 }]
-						: [
-								{ type: "image", count: total - 147 },
-								{ type: "video", count: 112 },
-								{ type: "audio", count: 35 },
-							],
-					media: [],
-					hasMore: false,
-				},
+				trend,
+				ips,
+				characters: filtered ? characters.slice(0, 1) : characters,
+				models: filtered
+					? []
+					: [
+							{ name: "Atelier XL", count: 180, favorites: 63 },
+							{ name: "Linea v3", count: 106, favorites: 51 },
+							{ name: "Scene Study", count: 64, favorites: 17 },
+						],
+				mediaTypes: filtered
+					? [{ type: "image", count: 214 }]
+					: [
+							{ type: "image", count: total - 147 },
+							{ type: "video", count: 112 },
+							{ type: "audio", count: 35 },
+						],
+				media: [],
+				hasMore: false,
 			},
 		});
 	});

@@ -21,7 +21,7 @@ function resolveRange(
 
 /** Preserves byte-range streaming when a Bun file passes through Node/Nitro adapters. */
 export function createMediaFileResponse(
-	request: Request,
+	request: Pick<Request, "method" | "headers">,
 	file: Blob,
 	contentType: string,
 ): Response {

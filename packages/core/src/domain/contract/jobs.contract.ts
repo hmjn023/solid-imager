@@ -11,22 +11,48 @@ import {
 	jobListResponseSchema,
 } from "../jobs/schemas";
 import { jobEventSchema } from "../sources/events";
+import { binaryResponseBody } from "./binary-response";
+import { JOB_ARTIFACT_ROUTE } from "./http-paths";
+import { omitFromMcp } from "./publication";
 
 export const jobsContract = {
 	types: oc
-		.meta(openapi({ tags: ["Jobs"], summary: "ジョブ一覧で選択できる種類" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/jobs/types",
+				tags: ["Jobs"],
+				summary: "ジョブ一覧で選択できる種類",
+			}),
+		)
 		.output(z.array(z.string())),
 	targets: oc
-		.meta(openapi({ tags: ["Jobs"], summary: "バッチの処理対象一覧" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/jobs/{id}/targets",
+				tags: ["Jobs"],
+				summary: "バッチの処理対象一覧",
+			}),
+		)
 		.input(batchTargetsInputSchema)
 		.output(batchTargetsSchema),
 	activeBatches: oc
-		.meta(openapi({ tags: ["Jobs"], summary: "Managerの実行中バッチ一覧" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/jobs/batches/active",
+				tags: ["Jobs"],
+				summary: "Managerの実行中バッチ一覧",
+			}),
+		)
 		.input(z.object({}))
 		.output(z.array(jobDtoSchema)),
 	list: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/jobs",
 				tags: ["Jobs"],
 				summary: "ジョブ一覧取得",
 				description:
@@ -38,6 +64,8 @@ export const jobsContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/jobs/{id}",
 				tags: ["Jobs"],
 				summary: "ジョブ詳細取得",
 				description:
@@ -47,8 +75,12 @@ export const jobsContract = {
 		.input(jobIdRequestSchema)
 		.output(jobDtoSchema),
 	downloadArtifact: oc
+		.meta(omitFromMcp)
 		.meta(
 			openapi({
+				method: "GET",
+				path: JOB_ARTIFACT_ROUTE,
+				responseBodyHint: "octet-stream",
 				tags: ["Jobs"],
 				summary: "ジョブ成果物ダウンロード",
 				description:
@@ -56,16 +88,12 @@ export const jobsContract = {
 			}),
 		)
 		.input(jobIdRequestSchema)
-		.output(
-			z.instanceof(ReadableStream).meta({
-				type: "string",
-				format: "binary",
-				contentMediaType: "application/octet-stream",
-			}),
-		),
+		.output(binaryResponseBody("application/octet-stream")),
 	retry: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/jobs/{id}/retry",
 				tags: ["Jobs"],
 				summary: "ジョブ再実行",
 				description:
@@ -77,6 +105,8 @@ export const jobsContract = {
 	cancel: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/jobs/{id}/cancel",
 				tags: ["Jobs"],
 				summary: "ジョブキャンセル",
 				description:
@@ -88,6 +118,8 @@ export const jobsContract = {
 	events: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/jobs/events",
 				tags: ["Jobs"],
 				summary: "ジョブイベント購読",
 				description:

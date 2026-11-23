@@ -1,10 +1,11 @@
+import { apiPathPattern, apiRequest } from "./support/api";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { E2E_SOURCE_NAME } from "./support/fixture";
 import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const entityIdResponse = z.object({ json: z.object({ id: z.uuid() }) });
+const entityIdResponse = z.object({ id: z.uuid() });
 
 test("manager source selectors expose all sources only where supported", async ({
 	page,
@@ -63,20 +64,19 @@ test("manager character form keeps selected IPs and recovers an Enter submission
 
 	try {
 		for (const name of [firstIpName, secondIpName]) {
-			const result = await request.post("/api/rpc/ips/create", {
-				data: { json: { name } },
-			});
+			const result = await apiRequest(request, "ips/create", { name });
 			expect(result.ok()).toBe(true);
-			ipIds.push(entityIdResponse.parse(await result.json()).json.id);
+			ipIds.push(entityIdResponse.parse(await result.json()).id);
 		}
-		const character = await request.post("/api/rpc/characters/create", {
-			data: { json: { name: characterName, ipIds: [ipIds[0]] } },
+		const character = await apiRequest(request, "characters/create", {
+			name: characterName,
+			ipIds: [ipIds[0]],
 		});
 		expect(character.ok()).toBe(true);
-		characterId = entityIdResponse.parse(await character.json()).json.id;
+		characterId = entityIdResponse.parse(await character.json()).id;
 
-		const updateUrl = "**/api/rpc/characters/update";
-		browserHealth.allowResponseFailure("/api/rpc/characters/update");
+		const updateUrl = apiPathPattern("characters/update");
+		browserHealth.allowResponseFailure(apiPathPattern("characters/update"));
 		browserHealth.allowConsole(/Failed to load resource:.*503/);
 		await page.route(updateUrl, async (route) => {
 			submissions++;
@@ -157,12 +157,10 @@ test("manager character form keeps selected IPs and recovers an Enter submission
 	} finally {
 		release.resolve();
 		if (characterId) {
-			await request.post("/api/rpc/characters/delete", {
-				data: { json: { id: characterId } },
-			});
+			await apiRequest(request, "characters/delete", { id: characterId });
 		}
 		for (const id of ipIds) {
-			await request.post("/api/rpc/ips/delete", { data: { json: { id } } });
+			await apiRequest(request, "ips/delete", { id });
 		}
 	}
 });

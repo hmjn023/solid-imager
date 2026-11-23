@@ -14,7 +14,7 @@ vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
 		},
 		jobs: { downloadArtifact: vi.fn(), get: vi.fn() },
 	},
-	getBaseUrl: vi.fn(() => "/api/rpc"),
+	getBaseUrl: vi.fn(() => "/api"),
 }));
 
 import { orpc } from "~/infrastructure/api-clients/orpc-client";

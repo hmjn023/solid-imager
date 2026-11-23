@@ -272,13 +272,7 @@ it("relays only Danbooru thumbnails and identifies the viewer to the CDN", async
 			new Response("thumbnail", { headers: { "content-type": "image/jpeg" } }),
 		);
 	const relay = (value: string) =>
-		serveDanbooruThumbnail(
-			new Request(
-				"http://localhost/api/danbooru-thumbnail?" +
-					new URLSearchParams({ url: value }),
-			),
-			fetchImage,
-		);
+		serveDanbooruThumbnail(value, undefined, fetchImage);
 	for (const invalid of [
 		"not a url",
 		url.replace("cdn.donmai.us", "example.org"),

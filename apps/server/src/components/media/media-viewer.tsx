@@ -1,4 +1,5 @@
 import { t } from "@solid-imager/i18n";
+import { mediaContentPath } from "@solid-imager/core/http";
 import type { MediaDetails } from "@solid-imager/core/media";
 import {
 	type MediaSource,
@@ -42,7 +43,7 @@ class ApiMediaSource implements MediaSource {
 	}
 
 	async getUrl() {
-		const url = `/api/sources/${this.media.mediaSourceId}/${this.media.id}`;
+		const url = mediaContentPath(this.media.mediaSourceId, this.media.id);
 		// Native media loading can request metadata/ranges without downloading the entire file first.
 		if (this.type !== "image") return url;
 		const response = await fetch(url, { cache: "no-store" });

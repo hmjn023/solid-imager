@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/contract";
+import { appContract } from "@solid-imager/core/contract";
 import { logger } from "../src/infrastructure/logger";
 import {
 	downloadsFromLike,
@@ -148,7 +148,7 @@ async function main(): Promise<void> {
 		).authorize(process.env.X_REDIRECT_URI || "http://127.0.0.1:8788/callback");
 		return;
 	}
-	const client = createClient<AppContract>({
+	const client = createClient(appContract, {
 		url: process.env.IMAGER_API_URL || "http://localhost:3000",
 	});
 	if (command === "sources") {

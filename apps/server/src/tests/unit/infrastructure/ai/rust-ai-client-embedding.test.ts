@@ -110,6 +110,7 @@ describe("RustAiClient shared embedding configuration", () => {
 		expect(mocks.remoteImage).toHaveBeenCalledWith({ file: expect.any(File) });
 		expect(mocks.encode).not.toHaveBeenCalled();
 		expect(mocks.createClient).toHaveBeenCalledWith(
+			expect.objectContaining({ ai: expect.any(Object) }),
 			expect.objectContaining({
 				url: "http://ai.example",
 				timeoutMs: 45000,

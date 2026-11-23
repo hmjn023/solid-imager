@@ -11,6 +11,8 @@ export const presetsContract = {
 	list: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/presets",
 				tags: ["Presets"],
 				summary: "検索プリセット一覧取得",
 				description: "保存済みの検索プリセットを一覧で取得します。",
@@ -21,6 +23,8 @@ export const presetsContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/presets/{id}",
 				tags: ["Presets"],
 				summary: "検索プリセット取得",
 				description: "数値IDで指定した検索プリセットを取得します。",
@@ -32,6 +36,8 @@ export const presetsContract = {
 	getByName: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/presets/by-name",
 				tags: ["Presets"],
 				summary: "名前で検索プリセット取得",
 				description:
@@ -44,6 +50,8 @@ export const presetsContract = {
 	create: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/presets",
 				tags: ["Presets"],
 				summary: "検索プリセット作成",
 				description: "検索条件を保存する新しいプリセットを作成します。",
@@ -55,6 +63,8 @@ export const presetsContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/presets/{id}",
 				tags: ["Presets"],
 				summary: "検索プリセット更新",
 				description:
@@ -72,6 +82,8 @@ export const presetsContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/presets/{id}",
 				tags: ["Presets"],
 				summary: "検索プリセット削除",
 				description: "数値IDで指定した検索プリセットを削除します。",

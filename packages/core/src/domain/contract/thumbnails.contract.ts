@@ -10,6 +10,8 @@ export const thumbnailsContract = {
 	generate: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/thumbnails/generation",
 				tags: ["Thumbnails"],
 				summary: "サムネイル生成",
 				description:
@@ -22,6 +24,8 @@ export const thumbnailsContract = {
 	clear: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/sources/{sourceId}/thumbnails",
 				tags: ["Thumbnails"],
 				summary: "サムネイルキャッシュ削除",
 				description:

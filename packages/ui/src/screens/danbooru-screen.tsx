@@ -13,7 +13,7 @@ import { DanbooruPostDetail } from "../external-viewer/danbooru-post-detail";
 import type { createViewerImports } from "../external-viewer/viewer-imports";
 import {
 	danbooruRatingLabel,
-	viewerImageHref,
+	danbooruThumbnailHref,
 } from "../external-viewer/post-media";
 import { createViewerSearch } from "../external-viewer/use-viewer-search";
 import { viewerPostQueryOptions } from "../external-viewer/query-options";
@@ -59,11 +59,7 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 				title: t("danbooruScreen.danbooruValue", { value0: String(post.id) }),
 				thumbnail: post.previewUrl
 					? {
-							url: viewerImageHref(
-								props.apiBase(),
-								"/api/danbooru-thumbnail",
-								post.previewUrl,
-							),
+							url: danbooruThumbnailHref(props.apiBase(), post.previewUrl),
 						}
 					: null,
 				info: `${post.fileExt.toUpperCase()} · ${danbooruRatingLabel(post.rating)}`,

@@ -7,6 +7,8 @@ export const mediaToolsContract = {
 	list_sources: tool
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/tools/sources",
 				description:
 					"List registered media sources and their IDs. Check for an existing local path before creating a source.",
 			}),
@@ -16,6 +18,8 @@ export const mediaToolsContract = {
 	create_local_source: tool
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/tools/sources/local",
 				description:
 					"Register a local directory on the server as a media source. Starts file monitoring and an initial scan. Check list_sources first to avoid duplicate registrations.",
 			}),
@@ -25,6 +29,8 @@ export const mediaToolsContract = {
 	search_media: tool
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/tools/media/search",
 				description:
 					"Search the media library by keyword or tag. Omit the filters to browse the newest media. Use each item's mediaSourceId and id for details or tag edits.",
 			}),
@@ -34,6 +40,8 @@ export const mediaToolsContract = {
 	get_media_details: tool
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/tools/sources/{sourceId}/media/{mediaId}/details",
 				description:
 					"Get a media item's metadata, generation parameters, authors, characters, IPs and assigned tags.",
 			}),
@@ -43,6 +51,8 @@ export const mediaToolsContract = {
 	find_tags: tool
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/tools/tags",
 				description:
 					"Look up existing library tags by name to get their IDs for editing media.",
 			}),
@@ -52,6 +62,8 @@ export const mediaToolsContract = {
 	edit_media_tags: tool
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/tools/sources/{sourceId}/media/{mediaId}/tags",
 				description:
 					"Add existing tags to one media item as positive tags, or remove both positive and negative assignments for the specified tag IDs.",
 			}),

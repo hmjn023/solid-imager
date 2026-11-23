@@ -1,3 +1,4 @@
+import { apiRequest, apiRequestMatches, apiResponse } from "./support/api";
 import {
 	E2E_PRIMARY_MEDIA_ID,
 	E2E_SOURCE_ID,
@@ -10,22 +11,17 @@ test("a detail visit counts once and media preferences persist after reload", as
 	page,
 }) => {
 	const location = { sourceId: E2E_SOURCE_ID, mediaId: E2E_PRIMARY_MEDIA_ID };
-	const details = await page.request.post("/api/rpc/media/getDetails", {
-		data: { json: location },
-	});
+	const details = await apiRequest(page.request, "media/getDetails", location);
 	expect(details.ok()).toBe(true);
-	const original = mediaActivitySchema.parse(
-		(await details.json()).json.activity,
-	);
+	const original = mediaActivitySchema.parse((await details.json()).activity);
 	const rating = original.rating === 4 ? 5 : 4;
 	const visitResponses = () =>
 		page.waitForResponse(
-			(response) =>
-				response.url().endsWith("/api/rpc/media/recordView") && response.ok(),
+			(response) => apiResponse("media/recordView")(response) && response.ok(),
 		);
 	let visits = 0;
 	page.on("request", (request) => {
-		if (request.url().endsWith("/api/rpc/media/recordView")) visits++;
+		if (apiRequestMatches("media/recordView")(request)) visits++;
 	});
 	try {
 		const first = visitResponses();
@@ -45,9 +41,7 @@ test("a detail visit counts once and media preferences persist after reload", as
 		expect(visits).toBe(1);
 		const second = visitResponses();
 		await page.reload();
-		const activity = mediaActivitySchema.parse(
-			(await (await second).json()).json,
-		);
+		const activity = mediaActivitySchema.parse(await (await second).json());
 		await expect(
 			page.getByText(`閲覧数: ${activity.viewCount}`, { exact: true }),
 		).toBeVisible();
@@ -59,17 +53,10 @@ test("a detail visit counts once and media preferences persist after reload", as
 		expect(activity.lastViewedAt).toBeInstanceOf(Date);
 		expect(visits).toBe(2);
 	} finally {
-		const restored = await page.request.post(
-			"/api/rpc/media/updatePreferences",
-			{
-				data: {
-					json: {
-						...location,
-						data: { rating: original.rating, favorite: original.favorite },
-					},
-				},
-			},
-		);
+		const restored = await apiRequest(page.request, "media/updatePreferences", {
+			...location,
+			data: { rating: original.rating, favorite: original.favorite },
+		});
 		expect(restored.ok()).toBe(true);
 	}
 });

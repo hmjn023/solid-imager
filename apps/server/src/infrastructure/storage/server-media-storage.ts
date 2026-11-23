@@ -18,7 +18,7 @@ import { getImageMetadata } from "~/infrastructure/processing/bun-image";
  * Resolves a path safely, ensuring it remains within the base path.
  * Prevents path traversal attacks.
  */
-const resolveSafePath = (basePath: string, targetPath: string): string => {
+export function resolveSafePath(basePath: string, targetPath: string): string {
 	const resolvedPath = path.resolve(basePath, targetPath);
 	const absoluteBase = path.resolve(basePath);
 
@@ -29,7 +29,7 @@ const resolveSafePath = (basePath: string, targetPath: string): string => {
 		throw new Error(`Invalid path: ${targetPath}`);
 	}
 	return resolvedPath;
-};
+}
 
 export const ServerMediaStorage: IMediaStorage = {
 	async saveFile(

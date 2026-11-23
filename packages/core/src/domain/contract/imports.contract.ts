@@ -12,6 +12,8 @@ export const importsContract = {
 	bulkAdd: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/imports",
 				tags: ["Imports"],
 				summary: "インポート項目の一括登録",
 				description:
@@ -38,6 +40,8 @@ export const importsContract = {
 	listPending: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/imports/pending",
 				tags: ["Imports"],
 				summary: "保留中インポート一覧取得",
 				description: "処理待ちになっているインポートジョブを一覧で取得します。",
@@ -48,6 +52,8 @@ export const importsContract = {
 	countPending: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/imports/pending/count",
 				tags: ["Imports"],
 				summary: "保留中インポート件数取得",
 				description: "現在処理待ちになっているインポート項目数を取得します。",
@@ -58,6 +64,8 @@ export const importsContract = {
 	existingRequestIds: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/imports/existing-request-ids",
 				tags: ["Imports"],
 				summary: "インポート受付の確認",
 				description:
@@ -70,6 +78,8 @@ export const importsContract = {
 	process: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/imports/process",
 				tags: ["Imports"],
 				summary: "インポート処理の実行",
 				description:
@@ -93,6 +103,8 @@ export const importsContract = {
 	cancel: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/imports/cancel",
 				tags: ["Imports"],
 				summary: "インポート処理のキャンセル",
 				description:
@@ -105,6 +117,8 @@ export const importsContract = {
 	events: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/imports/events",
 				tags: ["Imports"],
 				summary: "インポートイベント購読",
 				description:

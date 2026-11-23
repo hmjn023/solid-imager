@@ -1,3 +1,4 @@
+import { apiPathPattern, apiRoute } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SIMILAR_FILE_NAME,
@@ -14,11 +15,11 @@ async function waitForSearchSnapshot(
 ): Promise<string> {
 	const response = await page.waitForResponse(
 		(response) =>
-			new URL(response.url()).pathname === "/api/rpc/searchSnapshots/capture" &&
+			apiRoute("searchSnapshots/capture")(new URL(response.url())) &&
 			response.ok() &&
-			response.request().postDataJSON().json.state.searchQuery === query,
+			response.request().postDataJSON().state.searchQuery === query,
 	);
-	const { json } = await response.json();
+	const json = await response.json();
 	await expect(page).toHaveURL(new RegExp(`/search\\?search=${json.id}$`));
 	return page.url();
 }
@@ -51,7 +52,7 @@ test("search results remain traversable across detail navigation", async ({
 }) => {
 	// Leaving detail can dispose its job stream before the response headers arrive.
 	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/jobs\/events$/,
+		apiPathPattern("jobs/events"),
 		"net::ERR_ABORTED",
 	);
 	await page.goto("/search");

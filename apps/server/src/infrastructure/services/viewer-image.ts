@@ -1,19 +1,19 @@
 import type { z } from "zod";
 
 export async function serveViewerImage(
-	request: Request,
+	url: string,
+	signal: AbortSignal | undefined,
 	urlSchema: z.ZodType<string>,
 	headers: Record<string, string>,
 	fetchImage: typeof fetch = fetch,
 ) {
-	const parsed = urlSchema.safeParse(
-		new URL(request.url).searchParams.get("url"),
-	);
+	const parsed = urlSchema.safeParse(url);
 	if (!parsed.success) return new Response(null, { status: 400 });
 	try {
+		const timeout = AbortSignal.timeout(30_000);
 		const response = await fetchImage(parsed.data, {
 			redirect: "error",
-			signal: AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]),
+			signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
 			headers,
 		});
 		const type = response.headers

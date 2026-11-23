@@ -1,6 +1,24 @@
+import { migrateLegacyServerUrl } from "@solid-imager/core/http";
 import { connectionSettingsSchema, type ConnectionSettings } from "./schema";
 
-export const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
+export const DEFAULT_API_URL = "http://localhost:3000";
+
+function migrateConnectionSettings(
+	settings: ConnectionSettings,
+): ConnectionSettings {
+	const selectedSourceIds = { ...settings.selectedSourceIds };
+	for (const [url, sourceId] of Object.entries(settings.selectedSourceIds)) {
+		const baseUrl = migrateLegacyServerUrl(url);
+		if (baseUrl === url) continue;
+		selectedSourceIds[baseUrl] ??= sourceId;
+		delete selectedSourceIds[url];
+	}
+	return {
+		...settings,
+		apiUrl: migrateLegacyServerUrl(settings.apiUrl),
+		selectedSourceIds,
+	};
+}
 
 /** Read the URL and its saved source from a single storage snapshot. */
 export async function readConnectionSettings(): Promise<ConnectionSettings> {
@@ -9,12 +27,15 @@ export async function readConnectionSettings(): Promise<ConnectionSettings> {
 		"apiUrl",
 		"selectedSourceId",
 	]);
-	if (stored.connectionSettings !== undefined)
-		return connectionSettingsSchema.parse(stored.connectionSettings);
+	if (stored.connectionSettings !== undefined) {
+		return migrateConnectionSettings(
+			connectionSettingsSchema.parse(stored.connectionSettings),
+		);
+	}
 	// The old global selection belongs only to the URL saved alongside it.
 	const apiUrl =
 		typeof stored.apiUrl === "string" && stored.apiUrl
-			? stored.apiUrl
+			? migrateLegacyServerUrl(stored.apiUrl)
 			: DEFAULT_API_URL;
 	return connectionSettingsSchema.parse({
 		apiUrl,
@@ -33,8 +54,8 @@ export function updateConnectionSettings(
 	change: (current: ConnectionSettings) => ConnectionSettings,
 ): Promise<ConnectionSettings> {
 	const write = pendingWrite.then(async () => {
-		const next = connectionSettingsSchema.parse(
-			change(await readConnectionSettings()),
+		const next = migrateConnectionSettings(
+			connectionSettingsSchema.parse(change(await readConnectionSettings())),
 		);
 		await chrome.storage.local.set({ connectionSettings: next });
 		return next;

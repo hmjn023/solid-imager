@@ -30,19 +30,15 @@ export const statusHandler = async (
 	c: BasicContext<Record<string, never>, z.infer<typeof globalOptions>>,
 ) => {
 	try {
-		// The bun server proxies /api/ai/health or we can just ping the config
-		const res = await fetch(
-			new URL("/api/ai/health", c.options.remote).toString(),
-		).catch(() => null);
-		if (res?.ok) {
-			const details: unknown = await res.json().catch((): unknown => ({
-				message: "No valid JSON response available",
-			}));
+		const details = await getClient(c.options.remote)
+			.ai.health()
+			.catch(() => null);
+		if (details?.status === "available") {
 			return c.ok({ status: "online", details });
 		}
 		return c.error({
 			code: "OFFLINE",
-			message: "AI service appears offline or unreachable.",
+			message: details?.message ?? "AI service appears offline or unreachable.",
 		});
 	} catch (e) {
 		return c.error({ code: "FETCH_ERROR", message: getErrorMessage(e) });

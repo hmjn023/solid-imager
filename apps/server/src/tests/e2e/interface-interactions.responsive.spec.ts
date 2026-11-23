@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { apiPathPattern } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -144,15 +145,15 @@ for (const collection of [
 	}) => {
 		// Back immediately after opening detail can cancel its initial requests.
 		browserHealth.allowRequestFailure(
-			"/api/rpc/media/getDetails",
+			apiPathPattern("media/getDetails"),
 			"net::ERR_ABORTED",
 		);
 		browserHealth.allowRequestFailure(
-			"/api/rpc/media/getRelated",
+			apiPathPattern("media/getRelated"),
 			"net::ERR_ABORTED",
 		);
 		browserHealth.allowRequestFailure(
-			"/api/rpc/jobs/events",
+			apiPathPattern("jobs/events"),
 			"net::ERR_ABORTED",
 		);
 		const item = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);

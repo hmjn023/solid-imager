@@ -32,7 +32,7 @@ export const Route = createFileRoute("/example")({
 
 SEO・初期表示性能で必要な場合に選ぶ。CSRのJS→API waterfallを改善するためにloaderだけを戻さない。
 
-- loaderより前にservice bootstrapを完了させる。in-process oRPCは通常の `/api/rpc` handlerのbootstrapを通らない。
+- loader から同一プロセスの `createRouterClient` を呼び出す前にサービスを初期化する。ブラウザーの `OpenAPILink` は `/api` の `OpenAPIHandler` を経由し、HTTP 入口で初期化する。
 - `apps/server/src/router.tsx` の既存 `setupRouterSsrQueryIntegration({ router, queryClient })` でcacheを引き継ぐ。手動のdehydrate/hydrateを重ねず、query key・初期status・fallback DOMを一致させる。`ensureQueryData` だけでは不十分。
 
 ## 確認箇所

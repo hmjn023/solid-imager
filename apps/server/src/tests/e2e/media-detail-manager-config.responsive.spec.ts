@@ -1,3 +1,4 @@
+import { apiPathPattern, apiResponse, apiRequest } from "./support/api";
 import type { Page } from "@playwright/test";
 import {
 	captureSearchSnapshotResponseSchema,
@@ -20,7 +21,7 @@ import {
 } from "./support/settings-navigation";
 
 const mobileProjects = ["responsive-320", "responsive-390"];
-const entityResponse = z.object({ json: z.object({ id: z.uuid() }) });
+const entityResponse = z.object({ id: z.uuid() });
 
 test("edits linked IPs and characters without losing the selection across tabs", async ({
 	browserHealth,
@@ -29,23 +30,22 @@ test("edits linked IPs and characters without losing the selection across tabs",
 }, testInfo) => {
 	// The RPC client may cancel the empty response body after reading the 200.
 	browserHealth.allowRequestFailure(
-		"/api/rpc/ips/addToMedia",
+		apiPathPattern("ips/addToMedia"),
 		"net::ERR_ABORTED",
 	);
 	const ipName = `Relation fixture IP ${testInfo.project.name}`;
 	const characterName = `Relation fixture character ${testInfo.project.name}`;
-	const ipResponse = await request.post("/api/rpc/ips/create", {
-		data: { json: { name: ipName } },
-	});
+	const ipResponse = await apiRequest(request, "ips/create", { name: ipName });
 	expect(ipResponse.ok()).toBe(true);
-	const ipId = entityResponse.parse(await ipResponse.json()).json.id;
+	const ipId = entityResponse.parse(await ipResponse.json()).id;
 	let characterId: string | undefined;
 	try {
-		const characterResponse = await request.post("/api/rpc/characters/create", {
-			data: { json: { name: characterName, ipIds: [ipId] } },
+		const characterResponse = await apiRequest(request, "characters/create", {
+			name: characterName,
+			ipIds: [ipId],
 		});
 		expect(characterResponse.ok()).toBe(true);
-		characterId = entityResponse.parse(await characterResponse.json()).json.id;
+		characterId = entityResponse.parse(await characterResponse.json()).id;
 
 		await page.goto(mediaPath());
 		await waitForAppHydration(page);
@@ -124,8 +124,7 @@ test("edits linked IPs and characters without losing the selection across tabs",
 			["ips", "characters"].map((group) =>
 				page.waitForResponse(
 					(response) =>
-						new URL(response.url()).pathname ===
-							`/api/rpc/${group}/addToMedia` && response.ok(),
+						apiResponse(`${group}/addToMedia`)(response) && response.ok(),
 				),
 			),
 		);
@@ -155,14 +154,12 @@ test("edits linked IPs and characters without losing the selection across tabs",
 		await expect(relations.getByText(ipName, { exact: true })).toBeVisible();
 	} finally {
 		if (characterId) {
-			const response = await request.post("/api/rpc/characters/delete", {
-				data: { json: { id: characterId } },
+			const response = await apiRequest(request, "characters/delete", {
+				id: characterId,
 			});
 			expect(response.ok()).toBe(true);
 		}
-		const response = await request.post("/api/rpc/ips/delete", {
-			data: { json: { id: ipId } },
-		});
+		const response = await apiRequest(request, "ips/delete", { id: ipId });
 		expect(response.ok()).toBe(true);
 	}
 });
@@ -280,16 +277,12 @@ test(
 		tag: "@desktop-only",
 	},
 	async ({ page, request }) => {
-		const captured = await request.post("/api/rpc/searchSnapshots/capture", {
-			data: {
-				json: {
-					state: { ...defaultState, searchQuery: E2E_PRIMARY_FILE_NAME },
-				},
-			},
+		const captured = await apiRequest(request, "searchSnapshots/capture", {
+			state: { ...defaultState, searchQuery: E2E_PRIMARY_FILE_NAME },
 		});
 		await expect(captured).toBeOK();
 		const { id } = captureSearchSnapshotResponseSchema.parse(
-			(await captured.json()).json,
+			await captured.json(),
 		);
 		await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
 		await waitForAppHydration(page);

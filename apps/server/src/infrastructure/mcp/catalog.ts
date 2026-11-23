@@ -14,7 +14,10 @@ import {
 } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
 import { viewToolTitles, type WebToolInfo } from "@solid-imager/core/config";
-import { appContract, isRestProcedure } from "@solid-imager/core/contract";
+import {
+	appContract,
+	isMcpEligibleProcedure,
+} from "@solid-imager/core/contract";
 import { featureRouters } from "~/infrastructure/api/feature-routers";
 
 const converter = new ZodToJsonSchemaConverter({ cache: true });
@@ -28,7 +31,7 @@ function buildCatalog() {
 	walkProcedureContractsSync(appContract, (contract, path) => {
 		const group = path[0];
 		// Settings must not be able to publish themselves through a tool call.
-		if (group === "config" || !isRestProcedure(contract)) return;
+		if (group === "config" || !isMcpEligibleProcedure(contract)) return;
 		const { inputSchemas = [], outputSchemas = [] } = contract["~orpc"];
 		if (getAsyncIteratorObjectSchemasDetails(outputSchemas)) return;
 		// Both surfaces accept JSON object arguments and finite JSON results.

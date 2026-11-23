@@ -1,6 +1,6 @@
 import { t } from "../i18n";
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/contract";
+import { appContract } from "@solid-imager/core/contract";
 import { canTransferPixivSession } from "@solid-imager/core/external-viewer";
 import { createSignal, Show } from "solid-js";
 
@@ -24,7 +24,7 @@ export function PixivConnection(props: { apiUrl: string }) {
 			});
 			if (!cookie)
 				throw new Error(t("pixivConnection.logInToPixivInYourBrowser"));
-			const client = createClient<AppContract>({
+			const client = createClient(appContract, {
 				url: server.href,
 				fetch: (url, init) =>
 					fetch(url, { ...init, redirect: "error", cache: "no-store" }),

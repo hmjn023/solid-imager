@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { z } from "zod";
+import { apiPathPattern, apiRequestInput, apiRoute } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -14,7 +15,7 @@ import {
 import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const relatedEndpoint = "**/api/rpc/media/getRelated";
+const relatedEndpoint = apiPathPattern("media/getRelated");
 const relatedSection = (page: Page) =>
 	page.getByRole("region", { name: "関連メディア", exact: true });
 
@@ -22,11 +23,9 @@ async function mockEmptyRelatedMedia(page: Page): Promise<void> {
 	await page.route(relatedEndpoint, (route) =>
 		route.fulfill({
 			json: {
-				json: {
-					items: [],
-					recommendations: [],
-					similarityStatus: "available",
-				},
+				items: [],
+				recommendations: [],
+				similarityStatus: "available",
 			},
 		}),
 	);
@@ -87,12 +86,15 @@ test("tag recommendations retain their seed on Back and reload, and refresh with
 }) => {
 	await withRelatedMediaTag(page.request, async () => {
 		const requestSchema = z.object({
-			json: z.object({ mediaId: z.string(), seed: z.string().min(1) }),
+			mediaId: z.string(),
+			seed: z.string().min(1),
 		});
 		const seeds: string[] = [];
 		page.on("request", (request) => {
-			if (!request.url().endsWith("/api/rpc/media/getRelated")) return;
-			const payload = requestSchema.parse(request.postDataJSON()).json;
+			if (!apiRoute("media/getRelated")(new URL(request.url()))) return;
+			const payload = requestSchema.parse(
+				apiRequestInput(request, "media/getRelated"),
+			);
 			if (payload.mediaId === E2E_PRIMARY_MEDIA_ID) seeds.push(payload.seed);
 		});
 		await page.goto(mediaPath());
@@ -172,25 +174,22 @@ test(
 				`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
 			);
 			await expect(candidate).toBeVisible();
-			browserHealth.allowResponseFailure("/api/rpc/media/getRelated");
+			browserHealth.allowResponseFailure(apiPathPattern("media/getRelated"));
 			browserHealth.allowConsole(/503/);
 			const seeds: string[] = [];
 			let failing = true;
 			await page.route(relatedEndpoint, async (route) => {
-				const {
-					json: { seed },
-				} = z
-					.object({ json: z.object({ seed: z.string() }) })
-					.parse(route.request().postDataJSON());
+				const { seed } = z
+					.object({ seed: z.string() })
+					.parse(apiRequestInput(route.request(), "media/getRelated"));
 				seeds.push(seed);
 				if (!failing) return route.continue();
 				await route.fulfill({
 					status: 503,
 					json: {
-						json: {
-							code: "SERVICE_UNAVAILABLE",
-							message: "temporarily unavailable",
-						},
+						defined: false,
+						code: "SERVICE_UNAVAILABLE",
+						message: "temporarily unavailable",
 					},
 				});
 			});
@@ -324,10 +323,16 @@ test(
 	async ({ page, browserHealth }) => {
 		// This scenario deliberately leaves details while supplemental queries
 		// and the job event connection may still be pending.
-		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/(?:projects\/listForMedia|media\/getRelated|jobs\/events)(?:\?|$)/,
-			"net::ERR_ABORTED",
-		);
+		for (const operation of [
+			"projects/listForMedia",
+			"media/getRelated",
+			"jobs/events",
+		]) {
+			browserHealth.allowRequestFailure(
+				apiPathPattern(operation),
+				"net::ERR_ABORTED",
+			);
+		}
 		await withRelatedMedia(page.request, async () => {
 			await page.goto("/about");
 			await waitForAppHydration(page);
@@ -358,7 +363,7 @@ test(
 					page.waitForResponse(
 						(response) =>
 							response.ok() &&
-							new URL(response.url()).pathname === `/api/rpc/jobs/${procedure}`,
+							apiRoute(`jobs/${procedure}`)(new URL(response.url())),
 					),
 				),
 			);
@@ -431,9 +436,9 @@ for (const failure of ["503", "connectionrefused"] as const) {
 		{ tag: "@desktop-only" },
 		async ({ page, browserHealth }) => {
 			await withRelatedMedia(page.request, async () => {
-				browserHealth.allowResponseFailure("/api/rpc/media/getRelated");
+				browserHealth.allowResponseFailure(apiPathPattern("media/getRelated"));
 				browserHealth.allowRequestFailure(
-					"/api/rpc/media/getRelated",
+					apiPathPattern("media/getRelated"),
 					"ERR_CONNECTION_REFUSED",
 				);
 				browserHealth.allowConsole(/503|ERR_CONNECTION_REFUSED/);
@@ -446,10 +451,9 @@ for (const failure of ["503", "connectionrefused"] as const) {
 						status: 503,
 						contentType: "application/json",
 						body: JSON.stringify({
-							json: {
-								code: "SERVICE_UNAVAILABLE",
-								message: "temporarily unavailable",
-							},
+							defined: false,
+							code: "SERVICE_UNAVAILABLE",
+							message: "temporarily unavailable",
 						}),
 					});
 				});

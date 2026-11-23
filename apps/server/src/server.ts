@@ -4,6 +4,7 @@ import {
 	type Locale,
 	readLocaleCookie,
 } from "@solid-imager/i18n";
+import { API_PREFIX } from "@solid-imager/core/http";
 import type { Register } from "@tanstack/solid-router";
 import {
 	createServerEntry,
@@ -19,6 +20,17 @@ export default createServerEntry<Register>({
 	fetch: (request, options) =>
 		locale.run(
 			readLocaleCookie(request.headers.get("cookie") ?? "") ?? "ja",
-			() => handleRequest(request, options ?? {}),
+			async () => {
+				const { pathname } = new URL(request.url);
+				if (pathname === API_PREFIX || pathname.startsWith(`${API_PREFIX}/`)) {
+					const [{ handleApiRequest }, { startBackgroundWorker }] =
+						await Promise.all([
+							import("./infrastructure/api/http-handler"),
+							import("./infrastructure/bootstrap"),
+						]);
+					return handleApiRequest(request, startBackgroundWorker);
+				}
+				return handleRequest(request, options ?? {});
+			},
 		),
 });

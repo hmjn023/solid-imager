@@ -6,6 +6,8 @@ export const directoriesContract = {
 	list: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/sources/{sourceId}/directories",
 				tags: ["Directories"],
 				summary: "ディレクトリ一覧取得",
 				description:
@@ -22,6 +24,8 @@ export const directoriesContract = {
 	create: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/sources/{sourceId}/directories",
 				tags: ["Directories"],
 				summary: "ディレクトリ作成",
 				description:
@@ -39,6 +43,8 @@ export const directoriesContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/sources/{sourceId}/directories",
 				tags: ["Directories"],
 				summary: "ディレクトリ削除",
 				description:
@@ -56,6 +62,8 @@ export const directoriesContract = {
 	rename: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/sources/{sourceId}/directories",
 				tags: ["Directories"],
 				summary: "ディレクトリ移動または名前変更",
 				description:

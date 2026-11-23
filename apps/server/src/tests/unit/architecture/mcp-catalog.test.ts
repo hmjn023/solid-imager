@@ -14,4 +14,7 @@ it("builds the catalog from feature procedures without loading the settings rout
 	expect(
 		[...toolCatalog.values()].some(({ info }) => info.group === "config"),
 	).toBe(false);
+	expect(toolCatalog.has("viewer_loginPixiv")).toBe(false);
+	expect(toolCatalog.has("viewer_setPixivBookmark")).toBe(false);
+	expect(toolCatalog.has("media_getContent")).toBe(false);
 });

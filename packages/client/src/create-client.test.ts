@@ -1,6 +1,34 @@
+import { oc } from "@orpc/contract";
+import { openapi } from "@orpc/openapi";
 import { describe, expect, it } from "vitest";
 import { APIError } from "./api-error";
-import { createTimedFetch } from "./create-client";
+import { createClient, createTimedFetch } from "./create-client";
+
+describe("createClient", () => {
+	it("uses the method from the contract and resolves the current server mount", async () => {
+		const sources = [{ id: "source-1" }];
+		const requests: { method?: string; url: string }[] = [];
+		const contract = {
+			list: oc.meta(openapi({ method: "GET", path: "/sources" })),
+		};
+		let base = "http://localhost:3000/";
+		const client = createClient(contract, {
+			url: () => base,
+			fetch: async (url, init) => {
+				requests.push({ method: init?.method, url });
+				return Response.json(sources);
+			},
+		});
+
+		await expect(client.list()).resolves.toEqual(sources);
+		base = "https://example.com/imager/";
+		await expect(client.list()).resolves.toEqual(sources);
+		expect(requests).toEqual([
+			{ method: "GET", url: "http://localhost:3000/api/sources" },
+			{ method: "GET", url: "https://example.com/imager/api/sources" },
+		]);
+	});
+});
 
 describe("createTimedFetch", () => {
 	it("propagates an upstream abort signal to fetch", async () => {

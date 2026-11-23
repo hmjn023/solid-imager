@@ -47,7 +47,7 @@ mise daemons stop
 
 mise で `NGINX_CONFIG` を省略すると `nginx.conf.example` のループバック HTTP 設定を使います。公開用や Compose 用には `nginx.conf.example` を `nginx.conf` にコピーし、接続先・待ち受け・TLS の該当箇所を切り替えます。mise でコピーを使う場合は `.env` に `NGINX_CONFIG=./nginx.conf` を設定します。相対パスはリポジトリルートが基準です。指定ファイルはコンテナに読み取り専用で渡し、起動時にポート変数を展開します。
 
-nginx の設定ファイルだけを差し替える場合は `mise daemons stop nginx` に続けて `mise daemons start nginx` を実行します。TLS では `~/.config/letsencrypt` をコンテナの `/etc/letsencrypt` から参照できます。公開先に合わせて `.env` の `REST_PUBLIC_ORIGIN` や `MCP_ALLOWED_HOSTS` を設定します。mise の DB データは `.data/mise-postgres` に保存します。Compose から切り替える場合は既存 DB を論理ダンプから復元します。
+nginx の設定ファイルだけを差し替える場合は `mise daemons stop nginx` に続けて `mise daemons start nginx` を実行します。TLS では `~/.config/letsencrypt` をコンテナの `/etc/letsencrypt` から参照できます。公開先に合わせて `.env` の `API_PUBLIC_ORIGIN` や `MCP_ALLOWED_HOSTS` を設定します。mise の DB データは `.data/mise-postgres` に保存します。Compose から切り替える場合は既存 DB を論理ダンプから復元します。
 
 ## Modern Web Guidance
 

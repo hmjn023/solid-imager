@@ -15,7 +15,7 @@ export type JobArtifactClient = {
 	downloadArtifact: (
 		input: { id: string },
 		options?: { signal?: AbortSignal },
-	) => Promise<Blob | ReadableStream<unknown>>;
+	) => Promise<Blob | ReadableStream<Uint8Array>>;
 };
 
 const DEFAULT_EXPORT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -52,7 +52,7 @@ export async function downloadCompletedJobArtifact(
 					throw new Error("Export completed without an artifact");
 				}
 				const stream = await jobs.downloadArtifact({ id: jobId }, { signal });
-				return new Response(stream as ReadableStream<Uint8Array>, {
+				return new Response(stream, {
 					headers: { "content-type": job.artifact.contentType },
 				}).blob();
 			}
