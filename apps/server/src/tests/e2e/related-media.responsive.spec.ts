@@ -9,6 +9,7 @@ import {
 	mediaPath,
 } from "./support/fixture";
 import {
+	openRelatedMedia,
 	withRelatedMedia,
 	withRelatedMediaTag,
 } from "./support/related-media-fixture";
@@ -42,6 +43,98 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 test(
+	"mobile detail switches between media information and related media by swipe and keyboard",
+	{ tag: "@mobile-only" },
+	async ({ page }) => {
+		await withRelatedMediaTag(page.request, async () => {
+			await page.goto(mediaPath());
+			await waitForAppHydration(page);
+			const related = relatedSection(page);
+			const tabs = page.getByRole("tablist", { name: "詳細の表示内容" });
+			const infoTab = tabs.getByRole("tab", { name: "メディア情報" });
+			const relatedTab = tabs.getByRole("tab", { name: "関連メディア" });
+			const candidate = related.locator(
+				`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
+			);
+			await expect(infoTab).toHaveAttribute("aria-selected", "true");
+			await expect(related).toBeHidden();
+			const metadata = page.getByRole("region", { name: "メディア情報" });
+			await expect(
+				metadata.getByRole("heading", { name: "タグ", exact: true }),
+			).toBeVisible();
+			await tabs.evaluate((element) =>
+				element.scrollIntoView({ block: "center" }),
+			);
+			const panels = page.locator("[data-media-detail-panels]");
+			const bounds = await panels.boundingBox();
+			if (!bounds) throw new Error("Missing mobile detail panels");
+			const x = Math.round(bounds.x + bounds.width - 24);
+			const y = Math.round(bounds.y + 32);
+			const session = await page.context().newCDPSession(page);
+			try {
+				await session.send("Input.dispatchTouchEvent", {
+					type: "touchStart",
+					touchPoints: [{ x, y }],
+				});
+				for (let step = 1; step <= 6; step++) {
+					await session.send("Input.dispatchTouchEvent", {
+						type: "touchMove",
+						touchPoints: [{ x: x - (bounds.width * step) / 8, y }],
+					});
+				}
+				await session.send("Input.dispatchTouchEvent", {
+					type: "touchEnd",
+					touchPoints: [],
+				});
+			} finally {
+				await session.detach();
+			}
+			await expect(relatedTab).toHaveAttribute("aria-selected", "true");
+			await expect(candidate).toBeVisible();
+			await expect(metadata).toBeHidden();
+			expect(
+				await panels.evaluate(
+					(element) => element.scrollHeight - element.clientHeight,
+				),
+			).toBeLessThanOrEqual(1);
+			await relatedTab.focus();
+			await relatedTab.press("ArrowLeft");
+			await expect(infoTab).toBeFocused();
+			await infoTab.press("Enter");
+			await expect(infoTab).toHaveAttribute("aria-selected", "true");
+			await expect(metadata).toBeVisible();
+			await expect(related).toBeHidden();
+			await expectNoHorizontalOverflow(page);
+		});
+	},
+);
+
+test(
+	"mobile detail keeps the requested vertical scroll position around media information",
+	{ tag: "@mobile-only" },
+	async ({ page }) => {
+		await page.goto(mediaPath());
+		await waitForAppHydration(page);
+		const metadata = page.getByRole("tabpanel", { name: "メディア情報" });
+		await expect(page.locator('[data-media-scroll="detail"]')).toBeVisible();
+		const errors = await metadata.evaluate((section) => {
+			const scroller = section.closest('[data-media-scroll="detail"]');
+			if (!scroller) throw new Error("Missing detail scroll container");
+			const metadataTop =
+				scroller.scrollTop +
+				section.getBoundingClientRect().top -
+				scroller.getBoundingClientRect().top;
+			return [-32, 32].map((offset) => {
+				const requested = Math.round(metadataTop + offset);
+				scroller.scrollTo({ top: requested, behavior: "instant" });
+				return Math.abs(scroller.scrollTop - requested);
+			});
+		});
+		expect(errors).toEqual([0, 0]);
+	},
+);
+
+test(
 	"mobile detail reaches editing without an empty related-media scroll screen",
 	{ tag: "@mobile-only" },
 	async ({ page }, testInfo) => {
@@ -50,6 +143,7 @@ test(
 		await page.goto(mediaPath());
 		await waitForAppHydration(page);
 		const related = relatedSection(page);
+		await openRelatedMedia(page);
 		await expect(
 			related.getByText("関連メディアがまだありません"),
 		).toBeVisible();
@@ -60,13 +154,6 @@ test(
 				exact: true,
 			})
 			.first();
-		const relatedBottom = await related.evaluate(
-			(element) => element.getBoundingClientRect().bottom,
-		);
-		const metadataTop = await metadata.evaluate(
-			(element) => element.getBoundingClientRect().top,
-		);
-		expect(metadataTop - relatedBottom).toBeLessThanOrEqual(1);
 		await page.getByRole("button", { name: "編集欄へ", exact: true }).click();
 		await expect(metadata).toBeFocused();
 		await expect(descriptionEdit).toBeInViewport();
@@ -100,7 +187,7 @@ test("tag recommendations retain their seed on Back and reload, and refresh with
 		await page.goto(mediaPath());
 		await waitForAppHydration(page);
 		const related = relatedSection(page);
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		const candidate = related.locator(
 			`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
 		);
@@ -142,18 +229,18 @@ test("tag recommendations retain their seed on Back and reload, and refresh with
 		await page.unroute(relatedEndpoint);
 		await candidate.click();
 		await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(
 			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
 		).toBeVisible();
 		await page.goBack();
 		await expect(page).toHaveURL(mediaPath());
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(candidate).toBeVisible();
 		const beforeReload = seeds.length;
 		await page.reload();
 		await waitForAppHydration(page);
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(candidate).toBeVisible();
 		await expect.poll(() => seeds.length).toBeGreaterThan(beforeReload);
 		expect(seeds.at(-1)).toBe(refreshedSeed);
@@ -228,7 +315,7 @@ test("related media filters real relations and follows navigation, reload, and b
 		await page.goto(mediaPath());
 		await waitForAppHydration(page);
 		const related = relatedSection(page);
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		const candidate = related.locator(
 			`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
 		);
@@ -262,7 +349,7 @@ test("related media filters real relations and follows navigation, reload, and b
 		await expect(
 			page.getByRole("heading", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
 		).toBeVisible();
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(
 			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
 		).toBeVisible();
@@ -271,7 +358,7 @@ test("related media filters real relations and follows navigation, reload, and b
 		).toHaveCount(0);
 		await page.reload();
 		await waitForAppHydration(page);
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(
 			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
 		).toBeVisible();
@@ -280,7 +367,7 @@ test("related media filters real relations and follows navigation, reload, and b
 		await expect(
 			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
 		).toBeVisible();
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(candidate).toBeVisible();
 		await expectNoHorizontalOverflow(page);
 	});

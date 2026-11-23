@@ -1190,6 +1190,7 @@ export const ja = defineLocale({
 	"mediaChrome.volume": "音量",
 	"mediaDetail.defaultSourceName": "メディアソース",
 	"mediaDetailLayout.backToList": "一覧に戻る",
+	"mediaDetailLayout.detailPanels": "詳細の表示内容",
 	"mediaDetailLayout.editMetadata": "編集欄へ",
 	"mediaDetailLayout.metadata": "メディア情報",
 	"mediaDetailLayout.navigateToPreviousOrNextMediaInTheList":

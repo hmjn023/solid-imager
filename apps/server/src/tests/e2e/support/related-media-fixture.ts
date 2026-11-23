@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { z } from "zod";
 import { apiRequest } from "./api";
 import {
@@ -10,6 +10,15 @@ import {
 import { expect } from "./test";
 
 const createdEntitySchema = z.object({ id: z.uuid() });
+
+export async function openRelatedMedia(page: Page): Promise<void> {
+	if (await page.evaluate(() => !matchMedia("(min-width: 1024px)").matches)) {
+		await page.getByRole("tab", { name: "関連メディア", exact: true }).click();
+	}
+	await page
+		.getByRole("region", { name: "関連メディア", exact: true })
+		.scrollIntoViewIfNeeded();
+}
 
 /** Add only a shared positive tag, proving recommendations need no relation/vector. */
 export async function withRelatedMediaTag(

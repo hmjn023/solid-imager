@@ -1192,6 +1192,7 @@ export const en = defineMessages({
 	"mediaChrome.volume": "volume",
 	"mediaDetail.defaultSourceName": "Media source",
 	"mediaDetailLayout.backToList": "Back to list",
+	"mediaDetailLayout.detailPanels": "Media detail sections",
 	"mediaDetailLayout.editMetadata": "Edit details",
 	"mediaDetailLayout.metadata": "Media details",
 	"mediaDetailLayout.navigateToPreviousOrNextMediaInTheList":

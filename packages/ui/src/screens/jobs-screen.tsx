@@ -519,11 +519,11 @@ function JobsBulkActions(props: {
 	selectedCount: number;
 }) {
 	return (
-		<div class="mb-3 flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
-			<div class="flex flex-wrap items-center gap-3">
+		<div class="mb-3 flex flex-col gap-3 rounded-md border border-border bg-card p-3 @2xl/jobs-list:flex-row @2xl/jobs-list:items-center @2xl/jobs-list:justify-between">
+			<div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
 				<Checkbox
 					checked={props.allSelected}
-					class="flex min-h-11 items-center gap-2 sm:min-h-9"
+					class="flex min-h-11 min-w-0 items-center gap-2 sm:min-h-9"
 					indeterminate={props.hasSelection && !props.allSelected}
 					onChange={props.onToggleAll}
 				>
@@ -541,8 +541,9 @@ function JobsBulkActions(props: {
 					})}
 				</span>
 			</div>
-			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+			<div class="flex flex-col gap-2 @2xs/jobs-list:flex-row @2xs/jobs-list:items-center @2xl/jobs-list:shrink-0">
 				<Select<JobBulkAction>
+					class="min-w-0 @2xs/jobs-list:flex-1 @2xl/jobs-list:w-52 @2xl/jobs-list:flex-none"
 					itemComponent={(selectProps) => (
 						<SelectItem item={selectProps.item}>
 							{jobBulkActionLabel(selectProps.item.rawValue)}
@@ -555,7 +556,7 @@ function JobsBulkActions(props: {
 				>
 					<SelectTrigger
 						aria-label={t("jobsScreen.bulkJobAction")}
-						class="w-full bg-card sm:min-h-9 sm:w-52"
+						class="gap-2 bg-card text-start sm:min-h-9"
 						disabled={props.isApplying || !props.hasSelection}
 					>
 						<SelectValue<JobBulkAction>>
@@ -571,7 +572,7 @@ function JobsBulkActions(props: {
 				</Select>
 				<Button
 					aria-busy={props.isApplying}
-					class="min-h-11 sm:min-h-9"
+					class="min-h-11 shrink-0 sm:min-h-9"
 					disabled={
 						props.isApplying || !props.hasSelection || props.action === null
 					}
@@ -1451,7 +1452,10 @@ export function JobsScreen(props: JobsScreenProps) {
 							<div class="min-w-0">
 								<For each={JOB_FILTERS}>
 									{(filter) => (
-										<TabsContent class="mt-0" value={filter.value}>
+										<TabsContent
+											class="@container/jobs-list mt-0"
+											value={filter.value}
+										>
 											<Switch>
 												<Match when={props.state().phase === "pending"}>
 													<LoadingRegion label={t("jobsScreen.loadingJobs")}>
