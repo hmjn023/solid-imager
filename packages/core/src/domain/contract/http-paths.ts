@@ -11,6 +11,18 @@ export const PIXIV_IMAGE_ROUTE = "/viewer/pixiv/image";
 export const PIXIV_ANIMATION_ROUTE = "/viewer/pixiv/animations/{id}";
 export const DANBOORU_THUMBNAIL_ROUTE = "/viewer/danbooru/thumbnail";
 
+/** Converts a saved RPC endpoint to its server base, retaining any proxy mount. */
+export function migrateLegacyServerUrl(value: string): string {
+	try {
+		const url = new URL(value);
+		if (url.protocol !== "http:" && url.protocol !== "https:") return value;
+		const pathname = url.pathname.replace(/\/api\/rpc\/*$/, "");
+		return pathname === url.pathname ? value : url.origin + pathname;
+	} catch {
+		return value;
+	}
+}
+
 /** Resolves a server path while retaining a reverse-proxy mount in the base URL. */
 export function resolveServerUrl(base: string, serverPath: string): string {
 	const url = new URL(base);

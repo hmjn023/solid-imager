@@ -155,6 +155,17 @@ const edited = (name = "Updated") => ({
 });
 
 describe("server configuration transactions", () => {
+	it("migrates saved RPC URLs while retaining the server cache identity", async () => {
+		fixture.memory.servers[0].baseUrl = "https://a.example/imager/api/rpc/";
+		const { settings } = await setup();
+		expect(settings.getActiveServer()).toMatchObject({
+			id: "server-a",
+			baseUrl: "https://a.example/imager",
+		});
+		expect(fixture.saved).toEqual(settings.getServerSettings());
+		expect(fixture.handles[0].path).toContain("server-a");
+	});
+
 	it.each([
 		{ ...edited(), name: "a".repeat(101) },
 		{ ...edited(), baseUrl: "not-a-url" },

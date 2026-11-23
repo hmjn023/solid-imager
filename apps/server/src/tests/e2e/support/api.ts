@@ -7,11 +7,16 @@ import type {
 } from "@playwright/test";
 import { getProcedureContractOrThrow } from "@orpc/contract";
 import { getOpenAPIMeta, OpenAPISerializer } from "@orpc/openapi";
+import { OpenAPILinkCodec } from "@orpc/openapi/standard";
 import { walkProcedureContractsSync } from "@orpc/server";
 import { appContract } from "@solid-imager/core/contract";
 import { API_PREFIX } from "@solid-imager/core/http";
 
 const serializer = new OpenAPISerializer();
+const codec = new OpenAPILinkCodec(appContract, {
+	url: API_PREFIX,
+	serializer,
+});
 const literalPaths = new Map<string, Set<string>>();
 walkProcedureContractsSync(appContract, (procedure) => {
 	const meta = getOpenAPIMeta(procedure);
@@ -112,32 +117,28 @@ export function apiRequestInput<T = Record<string, unknown>>(
 	return { ...body, ...params } as T;
 }
 
-export function apiRequest(
-	request: APIRequestContext,
+export async function apiRequest(
+	request: Pick<APIRequestContext, "fetch">,
 	operation: string,
 	input: Record<string, unknown> = {},
 	baseUrl = "",
 	options: { timeout?: number } = {},
 ) {
-	const { method, path } = apiOperation(operation);
-	const rest = { ...input };
-	const pathname = path.replace(/\{(\w+)\}/g, (_, key: string) => {
-		const value = rest[key];
-		if (typeof value !== "string" && typeof value !== "number") {
-			throw new Error(`Missing path parameter ${key} for ${operation}`);
-		}
-		delete rest[key];
-		return encodeURIComponent(String(value));
+	const encoded = await codec.encodeInput(input, operation.split("/"), {
+		context: {},
 	});
-	return request.fetch(baseUrl + pathname, {
+	const headers: Record<string, string> = {};
+	for (const [name, value] of Object.entries(encoded.headers)) {
+		if (value !== undefined) {
+			headers[name] = Array.isArray(value) ? value.join(", ") : value;
+		}
+	}
+	return request.fetch(baseUrl + encoded.url, {
 		...options,
-		method,
-		...(method === "GET" || method === "HEAD"
-			? {
-					params: Object.fromEntries(
-						Object.entries(rest).map(([key, value]) => [key, String(value)]),
-					),
-				}
-			: { data: rest }),
+		method: encoded.method,
+		headers,
+		...(encoded.body instanceof FormData
+			? { multipart: encoded.body }
+			: { data: encoded.body }),
 	});
 }

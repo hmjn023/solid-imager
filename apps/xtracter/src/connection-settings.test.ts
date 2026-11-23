@@ -24,7 +24,7 @@ function storage(initial: Record<string, unknown>) {
 describe("server scoped extension settings", () => {
 	it("adopts the legacy selection only for its saved server and preserves it across URL edits", async () => {
 		const apiUrl = "https://old.example";
-		storage({ apiUrl, selectedSourceId: "legacy-source" });
+		storage({ apiUrl: `${apiUrl}/api/rpc`, selectedSourceId: "legacy-source" });
 		const { readConnectionSettings, updateConnectionSettings } =
 			await import("./connection-settings");
 		expect(await readConnectionSettings()).toEqual({
@@ -40,6 +40,38 @@ describe("server scoped extension settings", () => {
 		const next = await readConnectionSettings();
 		expect(next.selectedSourceIds[next.apiUrl]).toBeUndefined();
 		expect(next.selectedSourceIds[apiUrl]).toBe("legacy-source");
+	});
+
+	it("migrates stored endpoint URLs and selections together", async () => {
+		const apiUrl = "https://old.example/imager";
+		const other = "https://other.example";
+		const { set } = storage({
+			connectionSettings: {
+				apiUrl: `${apiUrl}/api/rpc/`,
+				generation: 4,
+				selectedSourceIds: {
+					[`${apiUrl}/api/rpc/`]: "active-source",
+					[`${other}/api/rpc`]: "older-source",
+					[other]: "saved-source",
+					"https://separate.example/api/rpc/path": "separate-source",
+				},
+			},
+		});
+		const { readConnectionSettings, updateConnectionSettings } =
+			await import("./connection-settings");
+		const expected = {
+			apiUrl,
+			generation: 4,
+			selectedSourceIds: {
+				[apiUrl]: "active-source",
+				[other]: "saved-source",
+				"https://separate.example/api/rpc/path": "separate-source",
+			},
+		};
+		expect(await readConnectionSettings()).toEqual(expected);
+		expect(set).not.toHaveBeenCalled();
+		await updateConnectionSettings((current) => current);
+		expect(set).toHaveBeenCalledWith({ connectionSettings: expected });
 	});
 
 	it("serializes rapid updates and resumes after a failed storage write", async () => {

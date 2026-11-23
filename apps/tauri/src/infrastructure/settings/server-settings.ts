@@ -1,5 +1,9 @@
 import { t } from "@solid-imager/i18n";
-import { resolveServerUrl, SCALAR_DOCS_PATH } from "@solid-imager/core/http";
+import {
+	migrateLegacyServerUrl,
+	resolveServerUrl,
+	SCALAR_DOCS_PATH,
+} from "@solid-imager/core/http";
 import { Store } from "@tauri-apps/plugin-store";
 import { z } from "zod";
 import { getBuildTimeServerUrl } from "~/infrastructure/api-base";
@@ -96,7 +100,7 @@ function normalizeUrl(value: string): string {
 	parsed.hash = "";
 	parsed.search = "";
 	parsed.pathname = parsed.pathname.replace(/\/+$/, "") || "/";
-	return parsed.toString().replace(/\/$/, "");
+	return migrateLegacyServerUrl(parsed.toString().replace(/\/$/, ""));
 }
 
 function normalizeSettings(value: ServerSettings): ServerSettings {
@@ -150,6 +154,9 @@ export async function initializeServerSettings(): Promise<ServerSettings> {
 	if (parsed.success) {
 		try {
 			settings = normalizeSettings(parsed.data);
+			shouldPersist = parsed.data.servers.some(
+				({ baseUrl }) => migrateLegacyServerUrl(baseUrl) !== baseUrl,
+			);
 		} catch {
 			settings = createInitialSettings();
 			shouldPersist = true;
