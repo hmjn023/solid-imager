@@ -280,7 +280,7 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 						/>
 					</Show>
 					<Tabs defaultValue="all">
-						<div class="overflow-x-auto pb-1">
+						<div class="overflow-x-auto overscroll-x-contain pb-1">
 							<TabsList
 								aria-label={t("relatedMedia.relatedMediaCategories")}
 								class="max-w-none"

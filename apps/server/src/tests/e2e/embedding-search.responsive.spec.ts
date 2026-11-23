@@ -9,6 +9,7 @@ import {
 	getFixtureMediaPath,
 } from "./support/fixture";
 import { selectManagerCategory } from "./support/manager-navigation";
+import { openRelatedMedia } from "./support/related-media-fixture";
 import { expect, test as base, waitForAppHydration } from "./support/test";
 
 const test = base.extend<{
@@ -248,7 +249,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		name: "関連メディア",
 		exact: true,
 	});
-	await relatedMedia.scrollIntoViewIfNeeded();
+	await openRelatedMedia(page);
 	await relatedMedia
 		.getByRole("tab", { name: "似た画像", exact: true })
 		.click();
