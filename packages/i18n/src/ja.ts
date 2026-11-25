@@ -1484,6 +1484,7 @@ export const ja = defineLocale({
 	"pixivScreen.pixivValue": "pixiv #{value0}",
 	"pixivScreen.searchDestinationDoesNotMatch": "検索先が一致しません",
 	"presetManager.couldNotDeletePreset": "プリセットの削除に失敗しました",
+	"presetManager.couldNotLoadPresets": "プリセットを取得できませんでした",
 	"presetManager.couldNotSavePreset": "プリセットの保存に失敗しました",
 	"presetManager.deleteThisPresetThisActionCannotBeUndone":
 		"本当にこのプリセットを削除しますか？この操作は取り消せません。",

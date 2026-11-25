@@ -1484,6 +1484,7 @@ export const en = defineMessages({
 	"pixivScreen.searchDestinationDoesNotMatch":
 		"Search destination does not match",
 	"presetManager.couldNotDeletePreset": "Could not delete preset",
+	"presetManager.couldNotLoadPresets": "Could not load presets",
 	"presetManager.couldNotSavePreset": "Could not save preset",
 	"presetManager.deleteThisPresetThisActionCannotBeUndone":
 		"Delete this preset? This action cannot be undone.",

@@ -11,7 +11,14 @@ import {
 } from "@solid-imager/core/search";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { TagResponse } from "@solid-imager/core/tags";
-import { Show, Suspense } from "solid-js";
+import {
+	createSignal,
+	ErrorBoundary,
+	onCleanup,
+	onMount,
+	Show,
+	Suspense,
+} from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Button } from "./button";
 import { EmbeddingSearchControls } from "./embedding-search-controls";
@@ -63,6 +70,7 @@ export type SearchControlPanelProps = {
 };
 
 export function SearchControlPanel(props: SearchControlPanelProps) {
+	const [presetLoadFailed, setPresetLoadFailed] = createSignal(false);
 	const renderedState = useRenderedSearchState();
 	const currentState = () => props.state ?? renderedState();
 	const updateState = props.setState ?? setSearchState;
@@ -147,15 +155,38 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			</Show>
 
 			<Show when={isOrdinarySearch()}>
-				<div class="mt-4">
-					<Suspense fallback={<p>{t("status.loading")}</p>}>
-						<PresetManager
-							class="w-full flex-col items-stretch"
-							presetClient={props.presetClient}
-							setState={props.setState}
-							state={props.state}
-						/>
-					</Suspense>
+				<div class="mt-4 flex flex-wrap items-center gap-2">
+					<output
+						aria-live="polite"
+						class="text-sm text-muted-foreground empty:sr-only"
+					>
+						{presetLoadFailed() ? t("presetManager.couldNotLoadPresets") : ""}
+					</output>
+					<ErrorBoundary
+						fallback={(error, retry) => {
+							onMount(() => setPresetLoadFailed(true));
+							onCleanup(() => setPresetLoadFailed(false));
+							return (
+								<Button
+									class="min-h-11 sm:min-h-9"
+									onClick={retry}
+									type="button"
+									variant="outline"
+								>
+									{t("actions.retry")}
+								</Button>
+							);
+						}}
+					>
+						<Suspense fallback={<p>{t("status.loading")}</p>}>
+							<PresetManager
+								class="w-full flex-col items-stretch"
+								presetClient={props.presetClient}
+								setState={props.setState}
+								state={props.state}
+							/>
+						</Suspense>
+					</ErrorBoundary>
 				</div>
 			</Show>
 
