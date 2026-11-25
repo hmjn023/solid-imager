@@ -1,3 +1,4 @@
+import { apiPathPattern, apiRequest, apiRoute } from "./support/api";
 import {
 	E2E_PRIMARY_MEDIA_ID,
 	E2E_PRIMARY_FILE_NAME,
@@ -14,47 +15,40 @@ import { expect, test, waitForAppHydration } from "./support/test";
 test("source similarity stays scoped and Find Similar hands off one global request without a transient source request", async ({
 	page,
 }) => {
-	// Preserve oRPC's date metadata by using complete one-result wire responses.
+	// Reuse the real HTTP payload for each one-result page.
 	const [primaryResult, similarResult] = await Promise.all(
 		[E2E_PRIMARY_FILE_NAME, E2E_SIMILAR_FILE_NAME].map(async (fileName) => {
-			const response = await page.request.post("/api/rpc/media/search", {
-				data: {
-					json: {
-						sourceId: E2E_SOURCE_ID,
-						params: {
-							condition: {
-								type: "group",
-								operator: "and",
-								children: [
-									{
-										type: "criterion",
-										target: "fileName",
-										operator: "equals",
-										value: fileName,
-									},
-								],
+			const response = await apiRequest(page.request, "media/search", {
+				sourceId: E2E_SOURCE_ID,
+				params: {
+					condition: {
+						type: "group",
+						operator: "and",
+						children: [
+							{
+								type: "criterion",
+								target: "fileName",
+								operator: "equals",
+								value: fileName,
 							},
-							limit: 20,
-							offset: 0,
-						},
+						],
 					},
+					limit: 20,
+					offset: 0,
 				},
 			});
 			expect(response.ok()).toBe(true);
 			const payload = await response.json();
-			expect(payload.json.total).toBe(1);
+			expect(payload.total).toBe(1);
 			return {
 				...payload,
-				json: {
-					...payload.json,
-					scores: [{ mediaId: payload.json.media[0].id, cosineDistance: 0.1 }],
-				},
+				scores: [{ mediaId: payload.media[0].id, cosineDistance: 0.1 }],
 			};
 		}),
 	);
 	const requests: Array<{ anchorMediaId: string; mediaSourceId?: string }> = [];
-	await page.route("**/api/rpc/media/searchSimilar", async (route) => {
-		const { json: input } = route.request().postDataJSON();
+	await page.route(apiPathPattern("media/searchSimilar"), async (route) => {
+		const input = route.request().postDataJSON();
 		requests.push(input);
 		await route.fulfill({
 			status: 200,
@@ -73,7 +67,7 @@ test("source similarity stays scoped and Find Similar hands off one global reque
 	).toBeVisible();
 	const sourceResponse = page.waitForResponse(
 		(response) =>
-			response.url().endsWith("/api/rpc/media/searchSimilar") && response.ok(),
+			apiRoute("media/searchSimilar")(new URL(response.url())) && response.ok(),
 	);
 	await page
 		.locator("#search-composer")
@@ -96,7 +90,7 @@ test("source similarity stays scoped and Find Similar hands off one global reque
 		.click({ button: "right" });
 	const globalResponse = page.waitForResponse(
 		(response) =>
-			response.url().endsWith("/api/rpc/media/searchSimilar") && response.ok(),
+			apiRoute("media/searchSimilar")(new URL(response.url())) && response.ok(),
 	);
 	await page.getByRole("menuitem", { name: "類似度検索", exact: true }).click();
 	await globalResponse;

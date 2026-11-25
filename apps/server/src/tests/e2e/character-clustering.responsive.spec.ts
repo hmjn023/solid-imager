@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { apiPathPattern } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SIMILAR_FILE_NAME,
@@ -36,19 +37,23 @@ test("manager submits clustering conditions and prevents duplicate pending submi
 		release = resolve;
 	});
 	let requests = 0;
-	await page.route("**/api/rpc/characters/startClustering", async (route) => {
-		requests++;
-		expect(route.request().postDataJSON().json).toEqual({
-			neighbors: 32,
-			minClusterSize: 8,
-			minSamples: 2,
-			selectionMethod: "leaf",
-		});
-		await held;
-		await route.fulfill({
-			json: { json: { jobId: "11111111-1111-4111-8111-111111111111" } },
-		});
-	});
+	await page.route(
+		apiPathPattern("characters/startClustering"),
+		async (route) => {
+			if (route.request().method() !== "POST") return route.fallback();
+			requests++;
+			expect(route.request().postDataJSON()).toEqual({
+				neighbors: 32,
+				minClusterSize: 8,
+				minSamples: 2,
+				selectionMethod: "leaf",
+			});
+			await held;
+			await route.fulfill({
+				json: { jobId: "11111111-1111-4111-8111-111111111111" },
+			});
+		},
+	);
 	await start.click();
 	await expect(
 		page.getByRole("button", { name: "開始中...", exact: true }),
@@ -63,13 +68,17 @@ test("manager submits clustering conditions and prevents duplicate pending submi
 		.getByRole("button", { name: "結果を再読み込み", exact: true })
 		.click();
 	await expect(page.getByLabel("近傍数", { exact: true })).toHaveValue("32");
-	await page.unroute("**/api/rpc/characters/startClustering");
-	browserHealth.allowResponseFailure("/characters/startClustering");
+	await page.unroute(apiPathPattern("characters/startClustering"));
+	browserHealth.allowResponseFailure(
+		apiPathPattern("characters/startClustering"),
+	);
 	browserHealth.allowConsole(
 		"Failed to load resource: the server responded with a status of 503",
 	);
-	await page.route("**/api/rpc/characters/startClustering", (route) =>
-		route.fulfill({ status: 503, body: "Temporarily unavailable" }),
+	await page.route(apiPathPattern("characters/startClustering"), (route) =>
+		route.request().method() === "POST"
+			? route.fulfill({ status: 503, body: "Temporarily unavailable" })
+			: route.fallback(),
 	);
 	await start.click();
 	await expect(page.getByRole("alert")).toContainText(
@@ -352,10 +361,13 @@ test("initial loading, next-page failure and offline recovery preserve the curre
 	const delayed = new Promise<void>((resolve) => {
 		release = resolve;
 	});
-	await page.route("**/api/rpc/characters/clusteringGroups", async (route) => {
-		await delayed;
-		await route.continue();
-	});
+	await page.route(
+		apiPathPattern("characters/clusteringGroups"),
+		async (route) => {
+			await delayed;
+			await route.continue();
+		},
+	);
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 	await selectManagerCategory(page, "キャラクタークラスタリング");
@@ -372,17 +384,19 @@ test("initial loading, next-page failure and offline recovery preserve the curre
 	await expect(
 		page.getByRole("heading", { name: "グループ #0", exact: true }),
 	).toBeVisible();
-	await page.unroute("**/api/rpc/characters/clusteringGroups");
-	browserHealth.allowResponseFailure("/characters/clusteringMedia");
+	await page.unroute(apiPathPattern("characters/clusteringGroups"));
+	browserHealth.allowResponseFailure(
+		apiPathPattern("characters/clusteringMedia"),
+	);
 	browserHealth.allowConsole("503");
-	await page.route("**/api/rpc/characters/clusteringMedia", (route) =>
+	await page.route(apiPathPattern("characters/clusteringMedia"), (route) =>
 		route.fulfill({ status: 503, body: "Temporarily unavailable" }),
 	);
 	await page.getByRole("button", { name: "ノイズを見る", exact: true }).click();
 	await expect(
 		page.getByText("画像一覧を取得できませんでした", { exact: true }),
 	).toBeVisible({ timeout: 30_000 });
-	await page.unroute("**/api/rpc/characters/clusteringMedia");
+	await page.unroute(apiPathPattern("characters/clusteringMedia"));
 	await page
 		.getByRole("button", { name: "結果を再読み込み", exact: true })
 		.click();
@@ -393,9 +407,9 @@ test("initial loading, next-page failure and offline recovery preserve the curre
 	const noise = page.getByRole("list", { name: "ノイズ画像", exact: true });
 	await expect(noise).toHaveAttribute("data-loaded", "48");
 	await expect(filter).toBeFocused();
-	await page.route("**/api/rpc/characters/clusteringMedia", (route) => {
-		const body = route.request().postDataJSON();
-		return body?.json?.offset >= 48
+	await page.route(apiPathPattern("characters/clusteringMedia"), (route) => {
+		const offset = new URL(route.request().url()).searchParams.get("offset");
+		return Number(offset) >= 48
 			? route.fulfill({ status: 503, body: "Temporarily unavailable" })
 			: route.continue();
 	});
@@ -405,7 +419,7 @@ test("initial loading, next-page failure and offline recovery preserve the curre
 	).toBeVisible({ timeout: 30_000 });
 	await expect(noise).toHaveAttribute("data-loaded", "48");
 	await expect(filter).toHaveValue("draft filter");
-	await page.unroute("**/api/rpc/characters/clusteringMedia");
+	await page.unroute(apiPathPattern("characters/clusteringMedia"));
 	await page.getByRole("button", { name: "再試行", exact: true }).click();
 	await expect
 		.poll(async () => Number(await noise.getAttribute("data-loaded")))

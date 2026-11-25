@@ -1,3 +1,4 @@
+import { expectDomPreserved } from "./support/dom";
 import { expect, test } from "./support/test";
 
 for (const width of [375, 1024, 1440]) {
@@ -94,6 +95,62 @@ test("background updates preserve job rows, focus, and filter controls", async (
 	await expect(jobButton).toBeFocused();
 	await expect(jobButton).toHaveAttribute("data-preserved", "true");
 	await expect(types).toBeEnabled();
+});
+
+test(
+	"changing the job status filter reuses the results panel and rows",
+	{ tag: "@dom-stability" },
+	async ({ page }) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.goto(`http://127.0.0.1:${process.env.E2E_GALLERY_PORT}/?jobs=1`);
+		const panel = page.getByRole("tabpanel");
+		const rows = panel.locator("tbody tr");
+		await expect(rows).toHaveCount(3);
+		await expectDomPreserved({ panel, firstRow: rows.first() }, async () => {
+			const activeTab = page.getByRole("tab", { name: /^実行中・待機中/ });
+			await activeTab.click();
+			await expect(activeTab).toHaveAttribute("aria-selected", "true");
+			await expect(activeTab).toBeFocused();
+			await expect(panel).toHaveAccessibleName(/^実行中・待機中/);
+			await expect(activeTab).toHaveAttribute(
+				"aria-controls",
+				(await panel.getAttribute("id")) ?? "",
+			);
+			await expect(rows).toHaveCount(3);
+		});
+
+		await expectDomPreserved({ panel }, async () => {
+			await page.getByRole("tab", { name: /^失敗/ }).click();
+			await expect(
+				panel.getByText("条件に一致するジョブがありません"),
+			).toBeVisible();
+		});
+	},
+);
+
+test("bulk retry controls fit next to the batch detail", async ({ page }) => {
+	await page.setViewportSize({ width: 1024, height: 768 });
+	await page.goto(
+		`http://127.0.0.1:${process.env.E2E_GALLERY_PORT}/?jobs=1&jobDetails=1`,
+	);
+	await expect(
+		page.getByRole("complementary", { name: "ジョブの詳細" }),
+	).toBeVisible();
+	const selectAll = page.getByText("失敗したジョブをすべて選択", {
+		exact: true,
+	});
+	const apply = page.getByRole("button", { name: "適用", exact: true });
+	await expect(apply).toBeDisabled();
+	await expect(apply).toBeInViewport({ ratio: 1 });
+	expect((await selectAll.boundingBox())?.height).toBeLessThan(32);
+	await selectAll.click();
+	await expect(page.getByText("失敗した1件中1件を選択")).toBeVisible();
+	await page.getByRole("button", { name: "ジョブの一括操作" }).click();
+	await page.getByRole("option", { name: "失敗したジョブを再試行" }).click();
+	await expect(apply).toBeEnabled();
+	await expect(apply).toBeInViewport({ ratio: 1 });
+	await apply.click();
+	await expect(apply).toBeDisabled();
 });
 
 for (const width of [390, 1440]) {

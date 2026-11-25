@@ -1,5 +1,5 @@
 import { expect, test, waitForAppHydration } from "./support/test";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator, Page, Route } from "@playwright/test";
 import {
 	viewerRequestSchema,
 	pixivArtworkSchema,
@@ -9,6 +9,46 @@ import {
 } from "@solid-imager/core/external-viewer";
 import { pendingImportJobSchema } from "@solid-imager/core/media";
 import { z } from "zod";
+import {
+	apiPathPattern,
+	apiRequest,
+	apiRequestInput,
+	apiRequestMatches,
+	apiResponse,
+	apiRoute,
+	routeApi,
+} from "./support/api";
+
+const VIEWER_PROCEDURES = [
+	"issuePixivCode",
+	"loginPixiv",
+	"checkPixivSession",
+	"logoutPixiv",
+	"pixivBookmarks",
+	"pixivBookmarkTags",
+	"pixivBookmarkState",
+	"setPixivBookmark",
+	"search",
+	"suggestTags",
+	"pixivRelatedPage",
+	"pixivArtwork",
+] as const;
+
+async function routeViewer(
+	page: Page,
+	handler: (
+		route: Route,
+		procedure: (typeof VIEWER_PROCEDURES)[number],
+	) => void | Promise<void>,
+) {
+	await Promise.all(
+		VIEWER_PROCEDURES.map((procedure) =>
+			routeApi(page, `viewer/${procedure}`, (route) =>
+				handler(route, procedure),
+			),
+		),
+	);
+}
 
 async function navigateTo(page: Page, name: string) {
 	const menu = page.getByRole("button", {
@@ -50,10 +90,10 @@ const artwork = pixivArtworkSchema.parse({
 	})),
 });
 async function mockPixivImage(page: Page) {
-	await page.route("**/api/rpc/viewer/pixivRelatedPage", (route) =>
-		route.fulfill({ json: { json: { posts: [], nextIds: [] } } }),
+	await routeApi(page, "viewer/pixivRelatedPage", (route) =>
+		route.fulfill({ json: { posts: [], nextIds: [] } }),
 	);
-	await page.route("**/api/pixiv-image?*", (route) =>
+	await page.route(apiRoute("viewer/pixivImage"), (route) =>
 		route.fulfill({
 			contentType: "image/png",
 			body: Buffer.from(
@@ -66,30 +106,26 @@ async function mockPixivImage(page: Page) {
 
 async function mockPixivDetail(page: Page, work: PixivArtwork) {
 	await mockPixivImage(page);
-	await page.route("**/api/rpc/viewer/search", (route) =>
+	await routeApi(page, "viewer/search", (route) =>
 		route.fulfill({
 			json: {
-				json: {
-					provider: "pixiv",
-					posts: [work],
-					hasNextPage: false,
-					word: "",
-					mappings: [],
-				},
+				provider: "pixiv",
+				posts: [work],
+				hasNextPage: false,
+				word: "",
+				mappings: [],
 			},
 		}),
 	);
-	await page.route("**/api/rpc/viewer/pixivArtwork", (route) =>
-		route.fulfill({ json: { json: work } }),
+	await routeApi(page, "viewer/pixivArtwork", (route) =>
+		route.fulfill({ json: work }),
 	);
 }
 
 async function pendingImports(page: Page) {
-	const response = await page.request.post("/api/rpc/imports/listPending", {
-		data: { json: {} },
-	});
+	const response = await apiRequest(page.request, "imports/listPending");
 	expect(response.ok()).toBe(true);
-	return z.array(pendingImportJobSchema).parse((await response.json()).json);
+	return z.array(pendingImportJobSchema).parse(await response.json());
 }
 
 test("switches the same canonical tag between viewers, chooses a pixiv name and imports the selected page", async ({
@@ -98,20 +134,17 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 	const path = (s: string) => (info.project.name === "tauri" ? "/#" + s : s);
 	await mockPixivImage(page);
 	const requests: z.infer<typeof viewerRequestSchema>[] = [];
-	await page.route("**/api/rpc/viewer/**", async (route) => {
-		if (route.request().url().endsWith("/pixivRelatedPage")) {
-			await route.fulfill({ json: { json: { posts: [], nextIds: [] } } });
+	await routeViewer(page, async (route, procedure) => {
+		if (procedure === "pixivRelatedPage") {
+			await route.fulfill({ json: { posts: [], nextIds: [] } });
 			return;
 		}
-		const procedure = new URL(route.request().url()).pathname.split("/").at(-1);
 		let result: unknown;
 		if (procedure === "pixivArtwork") result = artwork;
 		else if (procedure === "suggestTags")
 			result = [{ name: "landscape", category: 0, postCount: 20 }];
 		else {
-			const input = viewerRequestSchema.parse(
-				route.request().postDataJSON().json,
-			);
+			const input = viewerRequestSchema.parse(route.request().postDataJSON());
 			requests.push(input);
 			const word = input.choices?.landscape ?? "風景";
 			result =
@@ -132,7 +165,7 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 							],
 						};
 		}
-		await route.fulfill({ json: { json: result } });
+		await route.fulfill({ json: result });
 	});
 	await page.goto(path("/danbooru"));
 	if (info.project.name !== "tauri") await waitForAppHydration(page);
@@ -171,9 +204,7 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 		"https://www.pixiv.net/artworks/123",
 	);
 	if (job)
-		await page.request.post("/api/rpc/imports/cancel", {
-			data: { json: { jobIds: [job.id] } },
-		});
+		await apiRequest(page.request, "imports/cancel", { jobIds: [job.id] });
 	await page.keyboard.press("Escape");
 	await expect(page).toHaveURL(/\/pixiv$/);
 	await navigateTo(page, "Danbooru");
@@ -185,24 +216,20 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 test("keeps Pixiv browsing controls on one row and describes empty results by collection", async ({
 	page,
 }, info) => {
-	await page.route("**/api/rpc/viewer/search", (route) => {
-		const input = viewerRequestSchema.parse(
-			route.request().postDataJSON().json,
-		);
+	await routeApi(page, "viewer/search", (route) => {
+		const input = viewerRequestSchema.parse(route.request().postDataJSON());
 		return route.fulfill({
 			json: {
-				json: {
-					provider: "pixiv",
-					posts: [],
-					hasNextPage: false,
-					word: input.tags,
-					mappings: [],
-				},
+				provider: "pixiv",
+				posts: [],
+				hasNextPage: false,
+				word: input.tags,
+				mappings: [],
 			},
 		});
 	});
-	await page.route("**/api/rpc/viewer/suggestTags", (route) =>
-		route.fulfill({ json: { json: [] } }),
+	await routeApi(page, "viewer/suggestTags", (route) =>
+		route.fulfill({ json: [] }),
 	);
 	await page
 		.context()
@@ -275,16 +302,13 @@ test("switches Pixiv rankings and followed works and removes search badges with 
 	const inputs: z.infer<typeof viewerRequestSchema>[] = [];
 	const code = "C".repeat(22);
 	const token = "D".repeat(43);
-	await page.route("**/api/rpc/viewer/**", async (route) => {
-		const method = route.request().url().split("/").at(-1);
+	await routeViewer(page, async (route, method) => {
 		let result: unknown;
 		if (method === "loginPixiv")
 			result = { token, userId: "23", expiresAt: Date.now() + 3600000 };
 		else if (method === "checkPixivSession") result = { userId: "23" };
 		else if (method === "search") {
-			const input = viewerRequestSchema.parse(
-				route.request().postDataJSON().json,
-			);
+			const input = viewerRequestSchema.parse(route.request().postDataJSON());
 			inputs.push(input);
 			if (input.pixivFeed === "follow")
 				expect(route.request().headers().authorization).toBe("Bearer " + token);
@@ -307,7 +331,7 @@ test("switches Pixiv rankings and followed works and removes search badges with 
 		} else if (method === "pixivRelatedPage")
 			result = { posts: [], nextIds: [] };
 		else result = [];
-		await route.fulfill({ json: { json: result } });
+		await route.fulfill({ json: result });
 	});
 	const path = info.project.name === "tauri" ? "/#/pixiv" : "/pixiv";
 	await page.goto(path);
@@ -386,8 +410,7 @@ test("browses private Pixiv bookmarks by tag, opens a work and restores the sele
 	await mockPixivImage(page);
 	const token = "D".repeat(43);
 	const code = "C".repeat(22);
-	await page.route("**/api/rpc/viewer/**", async (route) => {
-		const method = route.request().url().split("/").at(-1);
+	await routeViewer(page, async (route, method) => {
 		let result: unknown;
 		switch (method) {
 			case "loginPixiv":
@@ -397,11 +420,13 @@ test("browses private Pixiv bookmarks by tag, opens a work and restores the sele
 				result = { userId: "23" };
 				break;
 			case "logoutPixiv":
-				result = null;
-				break;
+				return route.fulfill({ contentType: "application/json", body: "null" });
 			case "pixivBookmarkTags": {
 				expect(route.request().headers().authorization).toBe("Bearer " + token);
-				const { visibility } = route.request().postDataJSON().json;
+				const { visibility } = apiRequestInput(
+					route.request(),
+					"viewer/pixivBookmarkTags",
+				);
 				result = visibility === "private" ? ["夜 景"] : ["公開タグ"];
 				break;
 			}
@@ -410,8 +435,9 @@ test("browses private Pixiv bookmarks by tag, opens a work and restores the sele
 				const {
 					visibility,
 					tag,
-					page: number,
-				} = route.request().postDataJSON().json;
+					page: rawPage,
+				} = apiRequestInput(route.request(), "viewer/pixivBookmarks");
+				const number = Number(rawPage);
 				result = {
 					provider: "pixiv",
 					word: "",
@@ -450,7 +476,7 @@ test("browses private Pixiv bookmarks by tag, opens a work and restores the sele
 					hasNextPage: false,
 				};
 		}
-		await route.fulfill({ json: { json: result } });
+		await route.fulfill({ json: result });
 	});
 	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
 	const feed = page.getByRole("button", { name: /^表示する作品/ });
@@ -516,8 +542,7 @@ test("adds and removes a Pixiv bookmark from the artwork and refreshes the list"
 	const token = "D".repeat(43);
 	let visibility: PixivBookmarkChange["visibility"] = null;
 	const changes: PixivBookmarkChange["visibility"][] = [];
-	await page.route("**/api/rpc/viewer/**", (route) => {
-		const method = route.request().url().split("/").at(-1);
+	await routeViewer(page, (route, method) => {
 		let result: unknown;
 		switch (method) {
 			case "loginPixiv":
@@ -528,9 +553,14 @@ test("adds and removes a Pixiv bookmark from the artwork and refreshes the list"
 				break;
 			case "setPixivBookmark": {
 				expect(route.request().headers().authorization).toBe("Bearer " + token);
-				const input = pixivBookmarkChangeSchema.parse(
-					route.request().postDataJSON().json,
+				const update = apiRequestInput(
+					route.request(),
+					"viewer/setPixivBookmark",
 				);
+				const input = pixivBookmarkChangeSchema.parse({
+					...update,
+					id: Number(update.id),
+				});
 				expect(input.id).toBe(artwork.id);
 				visibility = input.visibility;
 				changes.push(visibility);
@@ -557,13 +587,15 @@ test("adds and removes a Pixiv bookmark from the artwork and refreshes the list"
 					mappings: [],
 					posts:
 						method === "pixivBookmarks" &&
-						visibility !== route.request().postDataJSON().json.visibility
+						visibility !==
+							apiRequestInput(route.request(), "viewer/pixivBookmarks")
+								.visibility
 							? []
 							: [artwork],
 					hasNextPage: false,
 				};
 		}
-		return route.fulfill({ json: { json: result } });
+		return route.fulfill({ json: result });
 	});
 	const path = info.project.name === "tauri" ? "/#/pixiv" : "/pixiv";
 	const artworkLink = page.getByRole("link", { name: "海の風景 を開く" });
@@ -615,32 +647,34 @@ test("restores expanded related works and scroll position on Back and Forward", 
 	page,
 }, info) => {
 	await mockPixivDetail(page, artwork);
-	await page.route("**/api/rpc/viewer/pixivArtwork", (route) =>
+	await routeApi(page, "viewer/pixivArtwork", (route) =>
 		route.fulfill({
 			json: {
-				json: { ...artwork, id: route.request().postDataJSON().json.id },
+				...artwork,
+				id: Number(apiRequestInput(route.request(), "viewer/pixivArtwork").id),
 			},
 		}),
 	);
 	let calls = 0;
 	const card = (id: number) => ({ ...artwork, id, title: "関連" + id });
-	await page.route("**/api/rpc/viewer/pixivRelatedPage", (route) => {
+	await routeApi(page, "viewer/pixivRelatedPage", (route) => {
 		calls++;
-		const { id, ids } = route.request().postDataJSON().json;
+		const input = apiRequestInput<{ id: string; ids?: string[] }>(
+			route.request(),
+			"viewer/pixivRelatedPage",
+		);
+		const id = Number(input.id);
+		const ids = input.ids?.map(Number);
 		return route.fulfill({
 			json: {
-				json: {
-					posts:
-						id !== 123
-							? []
-							: (ids ?? Array.from({ length: 18 }, (_, i) => 500 + i)).map(
-									card,
-								),
-					nextIds:
-						id === 123 && !ids
-							? Array.from({ length: 19 }, (_, i) => 600 + i)
-							: [],
-				},
+				posts:
+					id !== 123
+						? []
+						: (ids ?? Array.from({ length: 18 }, (_, i) => 500 + i)).map(card),
+				nextIds:
+					id === 123 && !ids
+						? Array.from({ length: 19 }, (_, i) => 600 + i)
+						: [],
 			},
 		});
 	});
@@ -738,17 +772,17 @@ test("shows Pixiv related works offline before the first load and retains cached
 	page,
 }, info) => {
 	await mockPixivDetail(page, artwork);
-	await page.route("**/api/rpc/viewer/pixivArtwork", async (route) => {
+	await routeApi(page, "viewer/pixivArtwork", async (route) => {
 		// Deliver the detail already in flight while the next query sees the disconnect.
 		await page.evaluate(() => window.dispatchEvent(new Event("offline")));
-		await route.fulfill({ json: { json: artwork } });
+		await route.fulfill({ json: artwork });
 	});
 	const relatedCard = { ...artwork, id: 456, title: "保存済みの関連作品" };
 	let relatedRequests = 0;
-	await page.route("**/api/rpc/viewer/pixivRelatedPage", (route) => {
+	await routeApi(page, "viewer/pixivRelatedPage", (route) => {
 		relatedRequests += 1;
 		return route.fulfill({
-			json: { json: { posts: [relatedCard], nextIds: [457] } },
+			json: { posts: [relatedCard], nextIds: [457] },
 		});
 	});
 	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
@@ -784,7 +818,7 @@ test("loads more related works in batches and retries the same cursor", async ({
 	browserHealth,
 }, info) => {
 	await mockPixivDetail(page, artwork);
-	browserHealth.allowResponseFailure("/api/rpc/viewer/pixivRelatedPage");
+	browserHealth.allowResponseFailure(apiPathPattern("viewer/pixivRelatedPage"));
 	browserHealth.allowConsole(
 		"Failed to load resource: the server responded with a status of 503",
 	);
@@ -797,13 +831,15 @@ test("loads more related works in batches and retries the same cursor", async ({
 		releaseFailure = resolve;
 	});
 	const batches: number[][] = [];
-	await page.route("**/api/rpc/viewer/pixivRelatedPage", async (route) => {
-		const ids: number[] | undefined = route.request().postDataJSON().json.ids;
+	await routeApi(page, "viewer/pixivRelatedPage", async (route) => {
+		const { ids: inputIds } = apiRequestInput<{ ids?: string[] }>(
+			route.request(),
+			"viewer/pixivRelatedPage",
+		);
+		const ids = inputIds?.map(Number);
 		if (!ids) {
 			await route.fulfill({
-				json: {
-					json: { posts: first.map(card), nextIds: [123, 500, ...next, 600] },
-				},
+				json: { posts: first.map(card), nextIds: [123, 500, ...next, 600] },
 			});
 			return;
 		}
@@ -813,12 +849,16 @@ test("loads more related works in batches and retries the same cursor", async ({
 			await holdFailure;
 			await route.fulfill({
 				status: 503,
-				json: { json: { code: "SERVICE_UNAVAILABLE", message: "unavailable" } },
+				json: {
+					defined: false,
+					code: "SERVICE_UNAVAILABLE",
+					message: "unavailable",
+				},
 			});
 			return;
 		}
 		await route.fulfill({
-			json: { json: { posts: [card(500), ...ids.map(card)], nextIds: [] } },
+			json: { posts: [card(500), ...ids.map(card)], nextIds: [] },
 		});
 	});
 	const path = (s: string) => (info.project.name === "tauri" ? "/#" + s : s);
@@ -859,40 +899,43 @@ test("opens related Pixiv works, reloads, retries recommendations and returns to
 	browserHealth,
 }, info) => {
 	await mockPixivDetail(page, artwork);
-	await page.route("**/api/rpc/viewer/pixivArtwork", (route) => {
-		const id = route.request().postDataJSON().json.id;
+	await routeApi(page, "viewer/pixivArtwork", (route) => {
+		const id = Number(
+			apiRequestInput(route.request(), "viewer/pixivArtwork").id,
+		);
 		return route.fulfill({
 			json: {
-				json: {
-					...artwork,
-					id,
-					title: id === 123 ? artwork.title : "関連作品の詳細",
-				},
+				...artwork,
+				id,
+				title: id === 123 ? artwork.title : "関連作品の詳細",
 			},
 		});
 	});
 	let fail = true;
-	browserHealth.allowResponseFailure("/api/rpc/viewer/pixivRelatedPage");
+	browserHealth.allowResponseFailure(apiPathPattern("viewer/pixivRelatedPage"));
 	browserHealth.allowConsole(
 		"Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
 	);
-	await page.route("**/api/rpc/viewer/pixivRelatedPage", async (route) => {
-		const id = route.request().postDataJSON().json.id;
+	await routeApi(page, "viewer/pixivRelatedPage", async (route) => {
+		const id = Number(
+			apiRequestInput(route.request(), "viewer/pixivRelatedPage").id,
+		);
 		if (fail) {
 			fail = false;
 			await route.fulfill({
 				status: 503,
-				json: { json: { code: "SERVICE_UNAVAILABLE", message: "unavailable" } },
+				json: {
+					defined: false,
+					code: "SERVICE_UNAVAILABLE",
+					message: "unavailable",
+				},
 			});
 			return;
 		}
 		await route.fulfill({
 			json: {
-				json: {
-					posts:
-						id === 123 ? [{ ...artwork, id: 456, title: "関連の風景" }] : [],
-					nextIds: [],
-				},
+				posts: id === 123 ? [{ ...artwork, id: 456, title: "関連の風景" }] : [],
+				nextIds: [],
 			},
 		});
 	});
@@ -937,22 +980,18 @@ test("opens the author's works inside Pixiv and restores them after reload", asy
 	page,
 }, info) => {
 	await mockPixivDetail(page, artwork);
-	await page.route("**/api/rpc/viewer/search", (route) => {
-		const input = viewerRequestSchema.parse(
-			route.request().postDataJSON().json,
-		);
+	await routeApi(page, "viewer/search", (route) => {
+		const input = viewerRequestSchema.parse(route.request().postDataJSON());
 		return route.fulfill({
 			json: {
-				json: {
-					provider: "pixiv",
-					word: "",
-					mappings: [],
-					posts:
-						input.pixivUserId === "23"
-							? [{ ...artwork, title: "作者の別作品" }]
-							: [artwork],
-					hasNextPage: false,
-				},
+				provider: "pixiv",
+				word: "",
+				mappings: [],
+				posts:
+					input.pixivUserId === "23"
+						? [{ ...artwork, title: "作者の別作品" }]
+						: [artwork],
+				hasNextPage: false,
 			},
 		});
 	});
@@ -1003,7 +1042,7 @@ test("loads the Pixiv preview until original quality is requested", async ({
 	page.on("request", (request) => {
 		const url = new URL(request.url());
 		if (
-			url.pathname === "/api/pixiv-image" &&
+			apiRoute("viewer/pixivImage")(url) &&
 			url.searchParams.get("url")?.includes("/img-original/")
 		)
 			originals.push(request.url());
@@ -1034,24 +1073,22 @@ test("searches for the exact artwork tag from Pixiv detail", async ({
 	page,
 }, info) => {
 	const tag = "Re:ゼロ";
+	const requests: z.infer<typeof viewerRequestSchema>[] = [];
 	await mockPixivDetail(page, { ...artwork, tags: [tag] });
-	await page.route("**/api/rpc/viewer/search", (route) => {
-		const input = viewerRequestSchema.parse(
-			route.request().postDataJSON().json,
-		);
+	await routeApi(page, "viewer/search", (route) => {
+		const input = viewerRequestSchema.parse(route.request().postDataJSON());
+		requests.push(input);
 		const posts =
 			input.literalPixivTag && input.tags === tag && input.page === 1
 				? [{ ...artwork, title: "タグの検索結果" }]
 				: [];
 		return route.fulfill({
 			json: {
-				json: {
-					provider: "pixiv",
-					word: input.tags,
-					mappings: [],
-					posts,
-					hasNextPage: false,
-				},
+				provider: "pixiv",
+				word: input.tags,
+				mappings: [],
+				posts,
+				hasNextPage: false,
 			},
 		});
 	});
@@ -1068,6 +1105,14 @@ test("searches for the exact artwork tag from Pixiv detail", async ({
 	await expect(
 		page.getByRole("button", { name: "「" + tag + "」を検索条件から削除" }),
 	).toBeVisible();
+	await expect(
+		page.getByRole("link", { name: "タグの検索結果 を開く" }),
+	).toBeVisible();
+	const beforeSubmit = requests.length;
+	await page.getByRole("button", { name: "検索", exact: true }).click();
+	await expect
+		.poll(() => requests.slice(beforeSubmit))
+		.toMatchObject([{ tags: tag, literalPixivTag: true, page: 1 }]);
 	await expect(
 		page.getByRole("link", { name: "タグの検索結果 を開く" }),
 	).toBeVisible();
@@ -1090,20 +1135,16 @@ for (const action of ["author", "tag"] as const) {
 			})),
 			artwork,
 		];
-		await page.route("**/api/rpc/viewer/search", (route) => {
-			const input = viewerRequestSchema.parse(
-				route.request().postDataJSON().json,
-			);
+		await routeApi(page, "viewer/search", (route) => {
+			const input = viewerRequestSchema.parse(route.request().postDataJSON());
 			const filtered = !!(input.pixivUserId || input.literalPixivTag);
 			return route.fulfill({
 				json: {
-					json: {
-						provider: "pixiv",
-						word: input.tags,
-						mappings: [],
-						posts: filtered ? posts : [artwork],
-						hasNextPage: false,
-					},
+					provider: "pixiv",
+					word: input.tags,
+					mappings: [],
+					posts: filtered ? posts : [artwork],
+					hasNextPage: false,
 				},
 			});
 		});
@@ -1134,35 +1175,31 @@ test("reapplies Pixiv search history with operators and exact tags after reload"
 }, info) => {
 	await mockPixivDetail(page, { ...artwork, tags: ["Re:ゼロ"] });
 	const searches: z.infer<typeof viewerRequestSchema>[] = [];
-	await page.route("**/api/rpc/viewer/search", (route) => {
-		const input = viewerRequestSchema.parse(
-			route.request().postDataJSON().json,
-		);
+	await routeApi(page, "viewer/search", (route) => {
+		const input = viewerRequestSchema.parse(route.request().postDataJSON());
 		searches.push(input);
 		return route.fulfill({
 			json: {
-				json: {
-					provider: "pixiv",
-					posts: [artwork],
-					hasNextPage: false,
-					word: input.tags,
-					mappings:
-						input.tags.startsWith("landscape") && !input.literalPixivTag
-							? [
-									{
-										tag: "landscape",
-										names: ["風景", "景色"],
-										selected: input.choices?.landscape ?? "風景",
-										source: "wiki",
-									},
-								]
-							: [],
-				},
+				provider: "pixiv",
+				posts: [artwork],
+				hasNextPage: false,
+				word: input.tags,
+				mappings:
+					input.tags.startsWith("landscape") && !input.literalPixivTag
+						? [
+								{
+									tag: "landscape",
+									names: ["風景", "景色"],
+									selected: input.choices?.landscape ?? "風景",
+									source: "wiki",
+								},
+							]
+						: [],
 			},
 		});
 	});
-	await page.route("**/api/rpc/viewer/suggestTags", (route) =>
-		route.fulfill({ json: { json: [] } }),
+	await routeApi(page, "viewer/suggestTags", (route) =>
+		route.fulfill({ json: [] }),
 	);
 	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
 	const open = () => openPixivAction(page, "検索履歴");
@@ -1238,18 +1275,20 @@ test("reopens recent Pixiv works in order and clears the saved viewing history",
 }, info) => {
 	const related = { ...artwork, id: 456, title: "森の風景" };
 	await mockPixivDetail(page, artwork);
-	await page.route("**/api/rpc/viewer/pixivArtwork", (route) => {
-		const id = route.request().postDataJSON().json.id;
+	await routeApi(page, "viewer/pixivArtwork", (route) => {
+		const id = Number(
+			apiRequestInput(route.request(), "viewer/pixivArtwork").id,
+		);
 		return route.fulfill({
-			json: { json: id === related.id ? related : artwork },
+			json: id === related.id ? related : artwork,
 		});
 	});
-	await page.route("**/api/rpc/viewer/pixivRelatedPage", (route) => {
-		const id = route.request().postDataJSON().json.id;
+	await routeApi(page, "viewer/pixivRelatedPage", (route) => {
+		const id = Number(
+			apiRequestInput(route.request(), "viewer/pixivRelatedPage").id,
+		);
 		return route.fulfill({
-			json: {
-				json: { posts: id === artwork.id ? [related] : [], nextIds: [] },
-			},
+			json: { posts: id === artwork.id ? [related] : [], nextIds: [] },
 		});
 	});
 	const path = info.project.name === "tauri" ? "/#/pixiv" : "/pixiv";
@@ -1391,11 +1430,11 @@ test("queues selected pixiv pages then all remaining originals in the import inb
 
 	const submit = async (button: Locator, indices: number[]) => {
 		const [response] = await Promise.all([
-			page.waitForResponse("**/api/rpc/imports/bulkAdd"),
+			page.waitForResponse(apiResponse("imports/bulkAdd")),
 			button.click(),
 		]);
 		expect(response.ok()).toBe(true);
-		expect(response.request().postDataJSON().json.items).toMatchObject(
+		expect(response.request().postDataJSON().items).toMatchObject(
 			indices.map((index) => ({ targetUrl: original(index) })),
 		);
 	};
@@ -1416,7 +1455,9 @@ test("queues selected pixiv pages then all remaining originals in the import inb
 			detail.getByRole("button", { name: "全ページを取り込み待ちへ" }),
 			[1, 4],
 		);
-		expect(browserHealth.apiRequestCount("/api/rpc/imports/bulkAdd")).toBe(2);
+		expect(
+			browserHealth.apiRequestCount(apiPathPattern("imports/bulkAdd")),
+		).toBe(2);
 		const jobs = await workJobs();
 		expect(jobs).toHaveLength(4);
 		expect(jobs.map((job) => job.item.targetUrl)).toEqual(
@@ -1428,8 +1469,8 @@ test("queues selected pixiv pages then all remaining originals in the import inb
 	} finally {
 		const jobs = await workJobs();
 		if (jobs.length > 0) {
-			const cancel = await page.request.post("/api/rpc/imports/cancel", {
-				data: { json: { jobIds: jobs.map((job) => job.id) } },
+			const cancel = await apiRequest(page.request, "imports/cancel", {
+				jobIds: jobs.map((job) => job.id),
 			});
 			expect(cancel.ok()).toBe(true);
 		}
@@ -1455,34 +1496,37 @@ test("connects a pixiv account, restores it on reload and removes private result
 			);
 		});
 	}
-	await page.route("**/api/rpc/viewer/**", async (route) => {
-		if (route.request().url().endsWith("/pixivRelatedPage")) {
-			await route.fulfill({ json: { json: { posts: [], nextIds: [] } } });
+	await routeViewer(page, async (route, procedure) => {
+		if (procedure === "pixivRelatedPage") {
+			await route.fulfill({ json: { posts: [], nextIds: [] } });
 			return;
 		}
-		const rpc = route.request().url().split("/").at(-1);
 		const bearer = route.request().headers().authorization;
 		let result: unknown;
-		if (rpc === "issuePixivCode") {
-			expect(route.request().postDataJSON().json.sessionId).toBe(
-				fixtureSession,
-			);
+		if (procedure === "issuePixivCode") {
+			expect(route.request().postDataJSON().sessionId).toBe(fixtureSession);
 			result = { code };
-		} else if (rpc === "loginPixiv") {
-			expect(route.request().postDataJSON().json.code).toBe(code);
+		} else if (procedure === "loginPixiv") {
+			expect(route.request().postDataJSON().code).toBe(code);
 			expect(bearer).toBeUndefined();
 			active = true;
 			result = { token, userId: "123", expiresAt: Date.now() + 3_600_000 };
-		} else if (rpc === "logoutPixiv" || rpc === "checkPixivSession") {
+		} else if (
+			procedure === "logoutPixiv" ||
+			procedure === "checkPixivSession"
+		) {
 			expect(bearer).toBe("Bearer " + token);
-			if (rpc === "logoutPixiv") active = false;
-			else if (countRestoredChecks && ++checkCount === 1)
+			if (procedure === "logoutPixiv") {
+				active = false;
+				return route.fulfill({ contentType: "application/json", body: "null" });
+			}
+			if (countRestoredChecks && ++checkCount === 1)
 				await restoredCheck.promise;
-			result = rpc === "logoutPixiv" ? null : { userId: "123" };
-		} else if (rpc === "pixivBookmarkState") {
+			result = { userId: "123" };
+		} else if (procedure === "pixivBookmarkState") {
 			expect(bearer).toBe("Bearer " + token);
 			result = { visibility: null, canAdd: true };
-		} else if (rpc === "pixivArtwork") {
+		} else if (procedure === "pixivArtwork") {
 			expect(bearer).toBe("Bearer " + token);
 			result = { ...artwork, title: "会員作品", thumbnail: null };
 		} else {
@@ -1503,7 +1547,7 @@ test("connects a pixiv account, restores it on reload and removes private result
 				mappings: [],
 			};
 		}
-		await route.fulfill({ json: { json: result } });
+		await route.fulfill({ json: result });
 	});
 	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
 	await expect(
@@ -1549,7 +1593,7 @@ test("connects a pixiv account, restores it on reload and removes private result
 	await page.clock.setFixedTime(started);
 	countRestoredChecks = true;
 	const checked = () =>
-		page.waitForResponse("**/api/rpc/viewer/checkPixivSession");
+		page.waitForResponse(apiResponse("viewer/checkPixivSession"));
 	const firstCheck = checked();
 	await page.reload();
 	await expect(
@@ -1611,7 +1655,7 @@ test("pixiv ugoira switches between the preview and shared video player", async 
 		},
 	});
 	await mockPixivDetail(page, animation);
-	await page.route("**/api/pixiv-animation/123", (route) =>
+	await page.route(apiRoute("viewer/pixivAnimation"), (route) =>
 		route.fulfill({
 			path: "src/tests/e2e/ui-gallery/video-player.webm",
 			contentType: "video/webm",
@@ -1640,19 +1684,18 @@ test("pixiv keeps the ranking on a failed append, retries the same page and star
 	page,
 	browserHealth,
 }, info) => {
+	const viewport = page.viewportSize();
 	const requests: z.infer<typeof viewerRequestSchema>[] = [];
 	let failAppend = true;
-	browserHealth.allowResponseFailure("/api/rpc/viewer/search");
+	browserHealth.allowResponseFailure(apiPathPattern("viewer/search"));
 	browserHealth.allowConsole(
 		"Failed to load resource: the server responded with a status of 503",
 	);
-	await page.route("**/api/rpc/viewer/suggestTags", (route) =>
-		route.fulfill({ json: { json: [] } }),
+	await routeApi(page, "viewer/suggestTags", (route) =>
+		route.fulfill({ json: [] }),
 	);
-	await page.route("**/api/rpc/viewer/search", async (route) => {
-		const query = viewerRequestSchema.parse(
-			route.request().postDataJSON().json,
-		);
+	await routeApi(page, "viewer/search", async (route) => {
+		const query = viewerRequestSchema.parse(route.request().postDataJSON());
 		requests.push(query);
 		if (query.page === 2 && failAppend) {
 			await route.fulfill({
@@ -1675,13 +1718,11 @@ test("pixiv keeps the ranking on a failed append, retries the same page and star
 		}));
 		await route.fulfill({
 			json: {
-				json: {
-					provider: "pixiv",
-					posts,
-					hasNextPage: ranking && query.page === 1,
-					word: query.tags,
-					mappings: [],
-				},
+				provider: "pixiv",
+				posts,
+				hasNextPage: ranking && query.page === 1,
+				word: query.tags,
+				mappings: [],
 			},
 		});
 	});
@@ -1697,7 +1738,22 @@ test("pixiv keeps the ranking on a failed append, retries the same page and star
 	const next = grid.getByRole("link", { name: "作品 201 を開く", exact: true });
 	const scroller = page.locator('[data-media-scroll="pixiv"]');
 	await expect(first).toBeVisible();
-	await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	if (info.project.name !== "tauri") await waitForAppHydration(page);
+	await scroller.evaluate(
+		() =>
+			new Promise<void>((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+			),
+	);
+	expect(requests.map(({ page }) => page)).toEqual([1]);
+	if (viewport && viewport.width >= 1120)
+		await page.setViewportSize({ ...viewport, height: 560 });
+	expect(
+		await scroller.evaluate((el) => {
+			el.scrollTo(0, el.scrollHeight);
+			return el.scrollTop;
+		}),
+	).toBeGreaterThan(0);
 	const retry = scroller.getByRole("button", { name: /再試行/ });
 	await expect(retry).toBeVisible();
 	await expect(first).toHaveCount(1);
@@ -1736,7 +1792,9 @@ test("a late 401 from a closed pixiv viewer preserves its replacement session", 
 	page,
 	browserHealth,
 }, info) => {
-	browserHealth.allowResponseFailure("/api/rpc/viewer/checkPixivSession");
+	browserHealth.allowResponseFailure(
+		apiPathPattern("viewer/checkPixivSession"),
+	);
 	browserHealth.allowConsole(
 		"Failed to load resource: the server responded with a status of 401",
 	);
@@ -1746,20 +1804,17 @@ test("a late 401 from a closed pixiv viewer preserves its replacement session", 
 	const oldCheckStarted = Promise.withResolvers<void>();
 	let logins = 0;
 	let checks = 0;
-	await page.route("**/api/rpc/viewer/**", async (route) => {
-		if (route.request().url().endsWith("/pixivRelatedPage")) {
-			await route.fulfill({ json: { json: { posts: [], nextIds: [] } } });
+	await routeViewer(page, async (route, method) => {
+		if (method === "pixivRelatedPage") {
+			await route.fulfill({ json: { posts: [], nextIds: [] } });
 			return;
 		}
-		const method = new URL(route.request().url()).pathname.split("/").at(-1);
 		if (method === "loginPixiv") {
 			await route.fulfill({
 				json: {
-					json: {
-						token: ++logins === 1 ? oldToken : newToken,
-						userId: "123",
-						expiresAt: Date.now() + 3600000,
-					},
+					token: ++logins === 1 ? oldToken : newToken,
+					userId: "123",
+					expiresAt: Date.now() + 3600000,
 				},
 			});
 		} else if (method === "checkPixivSession") {
@@ -1770,22 +1825,20 @@ test("a late 401 from a closed pixiv viewer preserves its replacement session", 
 				}
 				await route.fulfill({
 					status: 401,
-					json: { json: { code: "UNAUTHORIZED", message: "expired" } },
+					json: { defined: false, code: "UNAUTHORIZED", message: "expired" },
 				});
 			} else {
-				await route.fulfill({ json: { json: { userId: "123" } } });
+				await route.fulfill({ json: { userId: "123" } });
 			}
 		} else {
-			const provider = route.request().postDataJSON().json.provider;
+			const provider = route.request().postDataJSON().provider;
 			await route.fulfill({
 				json: {
-					json: {
-						provider,
-						posts: [],
-						hasNextPage: false,
-						word: "",
-						mappings: [],
-					},
+					provider,
+					posts: [],
+					hasNextPage: false,
+					word: "",
+					mappings: [],
 				},
 			});
 		}
@@ -1812,13 +1865,13 @@ test("a late 401 from a closed pixiv viewer preserves its replacement session", 
 	await navigateTo(page, "pixiv");
 	await login();
 	const oldResponse = page.waitForResponse(
-		"**/api/rpc/viewer/checkPixivSession",
+		apiResponse("viewer/checkPixivSession"),
 	);
 	releaseOldCheck.resolve();
 	await (await oldResponse).finished();
 	const restored = page.waitForRequest(
 		(request) =>
-			new URL(request.url()).pathname.endsWith("/viewer/checkPixivSession") &&
+			apiRequestMatches("viewer/checkPixivSession")(request) &&
 			request.headers().authorization === "Bearer " + newToken,
 	);
 	await page.reload();

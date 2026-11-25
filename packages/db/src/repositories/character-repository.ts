@@ -13,17 +13,6 @@ import { and, eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import { characterIps, characters, ips, mediaCharacters } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
-function mapCharacter(
-	r: typeof characters.$inferSelect & {
-		ips: Array<{ ip: typeof ips.$inferSelect }>;
-	},
-): Character {
-	return {
-		...r,
-		ips: r.ips.map((i) => i.ip),
-	};
-}
-
 export function createCharacterRepository(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
 ): CharacterRepository {
@@ -32,14 +21,10 @@ export function createCharacterRepository(
 			try {
 				const results = await getExecutor().query.characters.findMany({
 					with: {
-						ips: {
-							with: {
-								ip: true,
-							},
-						},
+						ips: true,
 					},
 				});
-				return results.map(mapCharacter);
+				return results;
 			} catch (error) {
 				throw new UnexpectedError("Failed to select characters", error);
 			}
@@ -50,17 +35,10 @@ export function createCharacterRepository(
 				const result = await getExecutor(tx).query.characters.findFirst({
 					where: { id },
 					with: {
-						ips: {
-							with: {
-								ip: true,
-							},
-						},
+						ips: true,
 					},
 				});
-				if (!result) {
-					return null;
-				}
-				return mapCharacter(result);
+				return result ?? null;
 			} catch (error) {
 				throw new UnexpectedError(
 					`Failed to select character by ID: ${id}`,
@@ -74,17 +52,10 @@ export function createCharacterRepository(
 				const result = await getExecutor(tx).query.characters.findFirst({
 					where: { name },
 					with: {
-						ips: {
-							with: {
-								ip: true,
-							},
-						},
+						ips: true,
 					},
 				});
-				if (!result) {
-					return null;
-				}
-				return mapCharacter(result);
+				return result ?? null;
 			} catch (error) {
 				throw new UnexpectedError(
 					`Failed to select character by name: ${name}`,
@@ -101,14 +72,10 @@ export function createCharacterRepository(
 				const results = await getExecutor(tx).query.characters.findMany({
 					where: { name: { in: names } },
 					with: {
-						ips: {
-							with: {
-								ip: true,
-							},
-						},
+						ips: true,
 					},
 				});
-				return results.map(mapCharacter);
+				return results;
 			} catch (error) {
 				throw new UnexpectedError(
 					"Failed to select characters by names",
@@ -323,20 +290,13 @@ export function createCharacterRepository(
 					with: {
 						character: {
 							with: {
-								ips: {
-									with: {
-										ip: true,
-									},
-								},
+								ips: true,
 							},
 						},
 					},
 				});
 
-				return results.map((r) => ({
-					...r.character,
-					ips: r.character.ips.map((i) => i.ip),
-				}));
+				return results.map((r) => r.character);
 			} catch (error) {
 				throw new UnexpectedError(
 					`Failed to find characters for media: ${mediaId}`,
@@ -358,11 +318,7 @@ export function createCharacterRepository(
 					with: {
 						character: {
 							with: {
-								ips: {
-									with: {
-										ip: true,
-									},
-								},
+								ips: true,
 							},
 						},
 					},
@@ -370,7 +326,6 @@ export function createCharacterRepository(
 
 				return results.map((r) => ({
 					...r.character,
-					ips: r.character.ips.map((i) => i.ip),
 					confidence: r.confidence,
 					associationSource: r.source,
 				}));
@@ -537,11 +492,7 @@ export function createCharacterRepository(
 			const results = await client.query.characters.findMany({
 				where: { id: { in: characterIds } },
 				with: {
-					ips: {
-						with: {
-							ip: true,
-						},
-					},
+					ips: true,
 				},
 			});
 
@@ -571,7 +522,7 @@ export function createCharacterRepository(
 				await client.insert(characterIps).values(ipLinks).onConflictDoNothing();
 			}
 
-			return results.map(mapCharacter);
+			return results;
 		},
 	};
 }

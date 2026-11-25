@@ -1,6 +1,6 @@
 import type { Media } from "@solid-imager/core/media";
 import { Link, type RouterHistory } from "@tanstack/solid-router";
-import { createComputed, createEffect, Show } from "solid-js";
+import { children, createComputed, createEffect, Show } from "solid-js";
 import type { MediaGridLinkProps } from "./media-grid-item";
 import {
 	createRelatedMediaReturnMarker,
@@ -30,7 +30,13 @@ export type MediaGridItemLinkProps = {
 
 /** Shared link, preview, keyboard, and bulk-selection behavior for media tiles. */
 export function MediaGridItemLink(props: MediaGridItemLinkProps) {
-	let hostRef: HTMLDivElement | undefined;
+	// The control changes between a link and a button. Keep the tile content owned
+	// by the item so the same thumbnail survives either branch.
+	const tileContent = children(() => props.children);
+	let tileRef: HTMLAnchorElement | HTMLButtonElement | undefined;
+	const setTileRef = (element: HTMLAnchorElement | HTMLButtonElement) => {
+		tileRef = element;
+	};
 	let pendingFocusRestore = false;
 
 	createComputed((previous?: boolean) => {
@@ -40,13 +46,7 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 			previous !== current &&
 			typeof document !== "undefined"
 		) {
-			const active = document.activeElement;
-			if (
-				active instanceof HTMLElement &&
-				active.dataset.mediaId === props.media.id
-			) {
-				pendingFocusRestore = true;
-			}
+			pendingFocusRestore = document.activeElement === tileRef;
 		}
 		return current;
 	});
@@ -55,8 +55,7 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 		void props.isBulkSelectMode;
 		if (!pendingFocusRestore) return;
 		pendingFocusRestore = false;
-		const nextControl = hostRef?.querySelector<HTMLElement>("[data-media-id]");
-		nextControl?.focus({ preventScroll: true });
+		tileRef?.focus({ preventScroll: true });
 	});
 
 	const detailLink = () => (
@@ -137,6 +136,7 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 				mediaId: props.media.id,
 				mediaSourceId: props.media.mediaSourceId,
 			}}
+			ref={setTileRef}
 			state={
 				props.relatedFrom
 					? (state: RouterHistory["location"]["state"]) => ({
@@ -153,36 +153,30 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 			}
 			to="/sources/$mediaSourceId/$mediaId"
 		>
-			{props.children}
+			{tileContent()}
 		</Link>
 	);
 
 	return (
-		<div
-			class="contents"
-			ref={(element) => {
-				hostRef = element;
-			}}
-		>
-			<Show fallback={detailLink()} when={props.isBulkSelectMode}>
-				<button
-					aria-pressed={props.isSelected}
-					class={props.linkProps.class}
-					data-media-id={props.linkProps["data-media-id"]}
-					onClick={(event) => {
-						event.preventDefault();
-						if (props.onSelectGesture && isModifiedSelectionClick(event)) {
-							props.onSelectGesture(event);
-							return;
-						}
-						props.onToggleSelect?.();
-					}}
-					onContextMenu={props.linkProps.onContextMenu}
-					type="button"
-				>
-					{props.children}
-				</button>
-			</Show>
-		</div>
+		<Show fallback={detailLink()} when={props.isBulkSelectMode}>
+			<button
+				aria-pressed={props.isSelected}
+				class={props.linkProps.class}
+				data-media-id={props.linkProps["data-media-id"]}
+				onClick={(event) => {
+					event.preventDefault();
+					if (props.onSelectGesture && isModifiedSelectionClick(event)) {
+						props.onSelectGesture(event);
+						return;
+					}
+					props.onToggleSelect?.();
+				}}
+				onContextMenu={props.linkProps.onContextMenu}
+				ref={setTileRef}
+				type="button"
+			>
+				{tileContent()}
+			</button>
+		</Show>
 	);
 }

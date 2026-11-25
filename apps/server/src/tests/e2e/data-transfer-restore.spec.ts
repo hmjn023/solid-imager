@@ -9,6 +9,7 @@ import {
 	mediaSearchResponseSchema,
 } from "@solid-imager/core/media";
 import { z } from "zod";
+import { apiPathPattern, apiRequest } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	getE2eRuntimeDir,
@@ -59,21 +60,17 @@ test("restores an archive's original media and metadata into the selected source
 		await writeFile(path.join(images, fileName), original);
 		await run("tar", ["-cf", archive, "-C", contents, "dump.ndjson", "images"]);
 
-		const created = await request.post("/api/rpc/sources/create", {
-			data: {
-				json: {
-					id: sourceId,
-					name: sourceName,
-					description: null,
-					type: "local",
-					connectionInfo: { path: destination },
-				},
-			},
+		const created = await apiRequest(request, "sources/create", {
+			id: sourceId,
+			name: sourceName,
+			description: null,
+			type: "local",
+			connectionInfo: { path: destination },
 		});
 		await expect(created).toBeOK();
 		sourceCreated = true;
 
-		await page.goto("/manager");
+		await page.goto("/manager", { waitUntil: "domcontentloaded" });
 		await waitForAppHydration(page);
 		await page
 			.locator('nav[aria-label="管理カテゴリ"]:visible')
@@ -88,8 +85,7 @@ test("restores an archive's original media and metadata into the selected source
 			.click();
 
 		const queued = page.waitForResponse(
-			(response) =>
-				new URL(response.url()).pathname === "/api/rpc/sources/enqueueImport",
+			apiPathPattern("sources/enqueueImport"),
 		);
 		const chooser = page.waitForEvent("filechooser");
 		await page
@@ -102,9 +98,7 @@ test("restores an archive's original media and metadata into the selected source
 			.click();
 		const response = await queued;
 		expect(response.ok(), await response.text()).toBe(true);
-		const job = z
-			.object({ json: restoreJobSchema })
-			.parse(await response.json()).json;
+		const job = restoreJobSchema.parse(await response.json());
 		expect(job.mediaSourceId).toBe(sourceId);
 		await expect(
 			page.getByText(
@@ -113,9 +107,7 @@ test("restores an archive's original media and metadata into the selected source
 		).toBeVisible();
 
 		const getJob = async () => {
-			const result = await request.post("/api/rest/jobs/get", {
-				data: { id: job.id },
-			});
+			const result = await apiRequest(request, "jobs/get", { id: job.id });
 			await expect(result).toBeOK();
 			return restoreJobSchema.parse(await result.json());
 		};
@@ -128,13 +120,12 @@ test("restores an archive's original media and metadata into the selected source
 		);
 
 		expect(await readFile(path.join(destination, fileName))).toEqual(original);
-		const listing = await request.post("/api/rpc/media/search", {
-			data: { json: { sourceId, params: { limit: 20, offset: 0 } } },
+		const listing = await apiRequest(request, "media/search", {
+			sourceId,
+			params: { limit: 20, offset: 0 },
 		});
 		await expect(listing).toBeOK();
-		const restored = mediaSearchResponseSchema.parse(
-			(await listing.json()).json,
-		);
+		const restored = mediaSearchResponseSchema.parse(await listing.json());
 		expect(restored.total).toBe(1);
 		expect(restored.media[0]).toMatchObject({
 			fileName,
@@ -144,8 +135,8 @@ test("restores an archive's original media and metadata into the selected source
 		});
 	} finally {
 		if (sourceCreated) {
-			const deleted = await request.post("/api/rpc/sources/delete", {
-				data: { json: { id: sourceId } },
+			const deleted = await apiRequest(request, "sources/delete", {
+				id: sourceId,
 			});
 			await expect(deleted).toBeOK();
 		}

@@ -17,14 +17,16 @@ Web と Tauri の **Settings → MCP** で、接続先サーバーの公開候�
 
 | ツール | 操作 |
 | --- | --- |
-| `list_sources` | ソース一覧を取得します。登録前にローカルパスの重複を確認できます。 |
-| `create_local_source` | サーバー上のディレクトリを `name`、`path`、任意の `description` で登録し、初回スキャンと監視を開始します。 |
-| `search_media` | キーワード・タグ・ソースで検索します。`limit` と `offset` でページを取得できます。 |
-| `get_media_details` | 検索結果の `mediaSourceId` を `sourceId`、`id` を `mediaId` に渡すと、メディアの基本情報、生成パラメーター、作者、キャラクター、作品（IP）、タグを取得できます。 |
+| `list_sources` | ソースの `id`、名前、種類と、ローカルソースの場合は `directory` を返します。`path` を指定すると登録済みのローカルディレクトリを確認できます。`limit` と `offset` でページを取得し、続きがあれば `nextOffset` が返ります。 |
+| `create_local_source` | サーバー上のディレクトリを `name`、`path`、任意の `description` で登録します。登録したソースの `id`、名前、種類と、初回スキャンの予約を示す `scan: "scheduled"` を返します。 |
+| `search_media` | キーワード・タグ・ソースで検索します。結果には `id`、`mediaSourceId`、ファイル名、種類、寸法、`thumbnailUrl` が含まれます。`limit` と `offset` でページを取得できます。 |
+| `get_media_details` | 検索結果の `mediaSourceId` を `sourceId`、`id` を `mediaId` に渡すと、原本の `contentUrl`、`thumbnailUrl`、メディアの基本情報、生成パラメーター、作者、キャラクター、作品（IP）、タグを取得できます。 |
 | `find_tags` | 既存タグを名前で部分一致検索し、編集に必要なタグ ID を取得します。 |
 | `edit_media_tags` | 1件のメディアに対して `action`（`add` または `remove`）と `tagIds` を指定します。追加は positive タグ、解除は指定 ID のすべての割り当てが対象です。 |
 
 **HTTP MCP** — MCP クライアントの接続方式に Streamable HTTP を選び、起動中の Web サーバーの URL に `/api/mcp` を付けます。本番サーバーをローカルのポート 3000 で起動した場合は `http://localhost:3000/api/mcp` です。既定ではループバックのホスト名を許可します。リバースプロキシ経由で使う場合は、サーバーの環境変数 `MCP_ALLOWED_HOSTS` に公開ホスト名を設定し、Web UI と同じアクセス制御を適用してください。
+
+メディアの配信用 URL は `API_PUBLIC_ORIGIN` を優先し、省略時はリクエストのオリジンを使います。TLS をリバースプロキシで終端する場合は、クライアントがアクセスできる HTTPS オリジンを設定してください。
 
 **WebMCP** — 対応ブラウザで HTTPS または localhost の Web UI を開くと、ツールがそのタブに登録されます。Chrome で試すには `chrome://flags/#enable-webmcp-testing` を有効にして再起動してください。[Chrome の WebMCP ガイド](https://developer.chrome.com/docs/ai/webmcp)
 
@@ -36,7 +38,9 @@ Web と Tauri の **Settings → MCP** で、接続先サーバーの公開候�
 
 既存の画面随伴ツールは操作の開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
 
-追加の候補は oRPC の契約から生成します。たとえば `tags.list` は `tags_list` として両方で公開でき、WebMCP ではタブを移動せずにデータを返します。設定 API、イベント購読、ファイルやバイナリを扱う API、旧 `media.getContent` は対象外です。新しい候補は初期状態で非公開です。
+追加の候補は oRPC の契約から生成します。たとえば `tags.list` は `tags_list` として両方で公開でき、WebMCP ではタブを移動せずにデータを返します。設定 API、イベント購読、ファイルやバイナリを扱う API は対象外です。新しい候補は初期状態で非公開です。
+
+類似検索の `media_searchSimilar` と自然言語検索の `media_searchSemantic` も公開できます。結果は `search_media` と同じ一覧項目を含み、各メディアに `cosineDistance` が加わります。距離が小さい順に返ります。
 
 WebMCP で `ai_startCcipExtraction` を公開すると、`showJob: true` を指定して CCIP 特徴抽出を登録し、返された `jobId` の詳細を Jobs 画面で開けます。省略時はジョブを登録したタブに留まります。登録後に別画面へ移った場合もジョブは有効で、結果の `presentation: "unconfirmed"` は表示を確認できなかったことを示します。受け取った ID でジョブを確認できます。
 
@@ -90,7 +94,7 @@ Tooling: Vite / Oxlint / Oxfmt
 - `packages/ui/`: 共通UIコンポーネントライブラリ。
 - `packages/client/`: oRPC client factory などの共有クライアント基盤。
 
-oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定しています。[v1 と v2 の RPC 通信形式は非互換](https://orpc.dev/docs/migrations/from-v1)です。更新時は Web とサーバー、Tauri、CLI、xtracter、およびリモート推論先の Solid Imager を同じリリースに揃えてください。
+oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定しています。更新時は Web とサーバー、Tauri、CLI、xtracter、およびリモート推論先の Solid Imager を同じリリースに揃えてください。
 
 ## セットアップ
 
@@ -125,7 +129,7 @@ importerが削除され、依存関係を解決できなくなります。通常
 
 PGliteとPostgreSQLは同じ `db:migrate` コマンドを使います。接続先は `apps/server/.env` で設定します。[DBのセットアップ](docs/development.md#セットアップ)
 
-PostgreSQL接続はBun.SQLを既定で使用します。`COPY`、`LISTEN/NOTIFY`、PostGISなどBun.SQLで未対応の機能が必要な環境では、`DB_POSTGRES_DRIVER=node-postgres` を設定すると従来の `pg` 経路へ切り替えられます。
+PostgreSQL 接続は Bun.SQL を既定で使用します。Bun.SQL は `COPY` のストリーミングと `LISTEN/NOTIFY` に対応しており、バックアップ復元ではメディアとタグの関連行の一括取り込みに `COPY` を使います。`DB_POSTGRES_DRIVER=node-postgres` を設定すると `pg` に切り替えられます。
 
 画像処理はサムネイル変換と寸法取得を Bun.Image に寄せ、EXIF/コメント抽出と AI 用 crop は互換性のため sharp を継続利用します。
 
@@ -221,7 +225,7 @@ mise Daemons で PostgreSQL・Bun・nginx を起動する場合は、[開発環�
 ## 詳細
 
 - **テストの棚卸し・実行方針**: [テスト棚卸し](./docs/testing-audit.md)
-- **API 仕様と実行**: 起動中のサーバーの `/docs/scalar`（Web・Tauri の「API Docs」）で操作を選び、**Test Request → Send** から実行できます。[OpenAPI 仕様](./apps/server/public/openapi.json) は `/openapi.json` で配信し、REST の接続先は `/api/rest` です。たとえば `curl -X POST http://localhost:3000/api/rest/sources/list` でソース一覧を取得できます。アプリ・CLI・拡張機能の型付きクライアントは `/api/rpc` を使用します。メディア本体は `GET /api/sources/{sourceId}/{mediaId}` で取得します。
+- **API 仕様と実行**: 起動中のサーバーの `/docs/scalar`（Web・Tauri の「API Docs」）で操作を選び、**Test Request → Send** から実行できます。[OpenAPI 仕様](./apps/server/public/openapi.json) は `/openapi.json` で配信します。アプリ・CLI・拡張機能は `OpenAPILink` で同じ `/api` を呼びます。`curl http://localhost:3000/api/sources` でソース一覧、`GET /api/sources/{sourceId}/media/{mediaId}/content` で原本を取得できます。
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面）
 - **DBスキーマ**: `packages/db/src/schema.ts`
@@ -230,6 +234,6 @@ mise Daemons で PostgreSQL・Bun・nginx を起動する場合は、[開発環�
 
 ### リバースプロキシ経由での API 公開
 
-リバースプロキシが `/imager/` を取り除いて転送する場合、Scalar は `/imager/docs/scalar` から `/imager/openapi.json` を読み、`/imager/api/rest` に送信します。TLS をプロキシで終端する場合は、サーバーに `REST_PUBLIC_ORIGIN=https://imager.example.com` のように公開 Origin を設定してください。設定値にはパスを含めません。
+リバースプロキシが `/imager/` を取り除いて転送する場合、Scalar は `/imager/docs/scalar` から `/imager/openapi.json` を読み、`/imager/api` に送信します。TLS をプロキシで終端する場合は、サーバーに `API_PUBLIC_ORIGIN=https://imager.example.com` のように公開 Origin を設定してください。設定値にはパスを含めません。
 
-`/api/rest` と `/api/rpc` は削除や設定変更も実行できます。外部公開時は両方をリバースプロキシなどの認証・アクセス制御で保護してください。REST の Origin 検証はブラウザーのクロスサイト送信を防ぐためのもので、利用者の認証は行いません。
+`/api` は削除や設定変更も実行できます。Origin 検証はブラウザーからのクロスサイト送信を防ぎます。外部公開時はリバースプロキシなどで利用者の認証・アクセス制御を設定してください。

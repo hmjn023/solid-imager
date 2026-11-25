@@ -6,6 +6,8 @@ import { newCategorySchema, updateCategorySchema } from "../categories/schemas";
 export const categoriesContract = {
 	list: oc.meta(
 		openapi({
+			method: "GET",
+			path: "/categories",
 			tags: ["Categories"],
 			summary: "カテゴリ一覧取得",
 			description: "登録済みのカテゴリを一覧で取得します。",
@@ -15,6 +17,8 @@ export const categoriesContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/categories/{id}",
 				tags: ["Categories"],
 				summary: "カテゴリ取得",
 				description: "UUIDで指定したカテゴリの情報を取得します。",
@@ -25,6 +29,8 @@ export const categoriesContract = {
 	create: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/categories",
 				tags: ["Categories"],
 				summary: "カテゴリ作成",
 				description: "新しいカテゴリを登録します。",
@@ -35,6 +41,8 @@ export const categoriesContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/categories/{id}",
 				tags: ["Categories"],
 				summary: "カテゴリ更新",
 				description: "UUIDで指定したカテゴリの情報を更新します。",
@@ -50,6 +58,8 @@ export const categoriesContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/categories/{id}",
 				tags: ["Categories"],
 				summary: "カテゴリ削除",
 				description: "UUIDで指定したカテゴリを削除します。",

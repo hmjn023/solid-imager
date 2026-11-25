@@ -5,6 +5,7 @@ import {
 } from "~/infrastructure/services/import-submission-retry";
 import { implement, ORPCError } from "@orpc/server";
 import { mediaContract } from "@solid-imager/core/contract";
+import type { ResponseHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import type { MediaPreferencesPatch } from "@solid-imager/core/media";
 import {
 	ResourceConflictError,
@@ -13,16 +14,36 @@ import {
 import { asyncPool } from "@solid-imager/core/utils";
 import { services } from "~/infrastructure/service-registry";
 import { logger } from "~/infrastructure/logger";
+import { createMediaFileResponse } from "~/infrastructure/http/media-file-response";
 import { BulkOperationService } from "~/infrastructure/services/bulk-operation-service";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { MediaService } from "~/infrastructure/services/media-service";
 import { getEmbeddingSearchService } from "~/infrastructure/services/embedding-search-service";
 import { getRelatedMediaService } from "~/infrastructure/services/related-media-service";
+import {
+	readMediaThumbnail,
+	readOriginalMediaFile,
+} from "~/infrastructure/services/media-files";
 
 /**
  * Media Router Implementation
  */
-const os = implement(mediaContract);
+const os =
+	implement(mediaContract).$context<ResponseHeadersHandlerPluginContext>();
+
+async function mediaFileResponse(
+	location: { sourceId: string; mediaId: string },
+	request: Pick<Request, "method" | "headers">,
+) {
+	const media = await readOriginalMediaFile(
+		location.sourceId,
+		location.mediaId,
+	);
+	if (media.error) {
+		throw new ORPCError(media.error, { message: media.message });
+	}
+	return createMediaFileResponse(request, media.file, media.contentType);
+}
 
 async function updateActivity(
 	sourceId: string,
@@ -147,12 +168,50 @@ export const mediaRouter = os.router({
 		async ({ input }) => await MediaService.findDuplicates(input ?? {}),
 	),
 
-	getContent: os.getContent.handler(() => {
-		throw new ORPCError("BAD_REQUEST", {
-			message:
-				"Use GET /api/sources/{sourceId}/{mediaId} to download the media file.",
+	getContent: os.getContent.handler(async ({ input, context, errors }) => {
+		const headers = new Headers();
+		if (input.headers?.range) headers.set("range", input.headers.range);
+		if (input.headers?.["if-range"] !== undefined) {
+			headers.set("if-range", input.headers["if-range"]);
+		}
+		const response = await mediaFileResponse(input.params, {
+			method: "GET",
+			headers,
 		});
+		const { status, body } = response;
+		if (status === 416) {
+			for (const name of ["content-range", "accept-ranges", "cache-control"]) {
+				const value = response.headers.get(name);
+				if (value !== null) context.resHeaders?.set(name, value);
+			}
+			throw errors.RANGE_NOT_SATISFIABLE();
+		}
+		if ((status !== 200 && status !== 206) || !body) {
+			throw new TypeError("Expected a binary media response");
+		}
+		return { status, headers: Object.fromEntries(response.headers), body };
 	}),
+
+	headContent: os.headContent.handler(async ({ input }) => {
+		const response = await mediaFileResponse(input, {
+			method: "HEAD",
+			headers: new Headers(),
+		});
+		return {
+			headers: Object.fromEntries(response.headers),
+			// The fetch adapter drops representation headers for undefined bodies.
+			// The HTTP entry point discards this empty stream before sending HEAD.
+			body: new ReadableStream<Uint8Array>({
+				start(controller) {
+					controller.close();
+				},
+			}),
+		};
+	}),
+
+	getThumbnail: os.getThumbnail.handler(({ input }) =>
+		readMediaThumbnail(input.sourceId, input.mediaId, input.size, input.t),
+	),
 
 	/**
 	 * Get tags for a media file

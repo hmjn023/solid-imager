@@ -81,6 +81,8 @@ describe("JobRepository", () => {
 		expect(query).not.toContain("DISTINCT ON");
 		expect(query).not.toContain("active.status = 'in_progress'");
 		expect(query).toContain("FOR UPDATE SKIP LOCKED");
+		expect(query).toContain(`created_at AT TIME ZONE 'UTC' AS "createdAt"`);
+		expect(query).toContain(`started_at AT TIME ZONE 'UTC' AS "startedAt"`);
 	});
 
 	it("keeps the JIT setting and claim on the same transaction connection", async () => {

@@ -1,6 +1,7 @@
 import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
 import type { RouterContract, RouterContractClient } from "@orpc/contract";
+import { ResponseValidationLinkPlugin } from "@orpc/contract/plugins";
+import { OpenAPILink } from "@orpc/openapi/fetch";
 import { APIError } from "./api-error";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -10,11 +11,11 @@ type FetchInit = RequestInit & {
 	priority?: "high" | "low" | "auto";
 };
 
-/** Configuration for an RPC client. The URL may be resolved for each request. */
+/** Configuration for the API client. The URL may be resolved for each request. */
 export type ClientOptions = {
-	/** Absolute server base URL or RPC endpoint; defaults to http://localhost:3000. A function resolves it for each request. */
+	/** Absolute server base URL, including any proxy mount. Defaults to http://localhost:3000. */
 	url?: string | (() => string);
-	/** Fetch implementation used for RPC requests; defaults to the global fetch. */
+	/** Fetch implementation used for API requests; defaults to the global fetch. */
 	fetch?: (url: string, init?: FetchInit) => Promise<Response>;
 	/** Per-request timeout in milliseconds; defaults to 30,000. */
 	timeoutMs?: number;
@@ -82,38 +83,39 @@ export function createTimedFetch(
 	};
 }
 
-// Accept a server base (including a reverse-proxy prefix) or an existing /api/rpc endpoint.
-function rpcBaseUrl(url: string): string {
+function serverBaseUrl(url: string): string {
 	const endpoint = new URL(url);
-	const path = endpoint.pathname.replace(/\/+$/, "").replace(/\/api\/rpc$/, "");
-	return endpoint.origin + path;
+	return endpoint.origin + endpoint.pathname.replace(/\/+$/, "");
 }
 
 /**
- * Create a typed RPC client from a server base URL or an existing /api/rpc URL.
+ * Create a typed HTTP client from a server base URL and its API contract.
  * Requests time out after 30 seconds unless configured otherwise.
  *
+ * @param contract - Contract containing the endpoint methods, paths, and schemas.
  * @param options - Server URL, optional transport and request timeout.
- * @returns A client typed against the supplied router contract.
  * @throws If a static URL is invalid. A URL callback is evaluated when used.
  */
 export function createClient<C extends RouterContract>(
+	contract: C,
 	options: ClientOptions = {},
 ): RouterContractClient<C> {
 	const url = options.url;
 	const origin =
 		typeof url === "function"
-			? () => rpcBaseUrl(url())
-			: rpcBaseUrl(url || "http://localhost:3000");
+			? () => serverBaseUrl(url())
+			: serverBaseUrl(url || "http://localhost:3000");
 	const fetchImpl = createTimedFetch(
 		options.fetch ?? ((request, init) => fetch(request, init)),
 		options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 	);
 
-	const link = new RPCLink({
+	const link = new OpenAPILink(contract, {
 		origin,
-		url: "/api/rpc",
+		url: "/api",
 		fetch: fetchImpl,
+		// Restore contract types such as dates after decoding the HTTP response.
+		plugins: [new ResponseValidationLinkPlugin(contract)],
 	});
 
 	return createORPCClient(link);

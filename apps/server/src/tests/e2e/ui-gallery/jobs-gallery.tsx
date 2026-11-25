@@ -36,12 +36,10 @@ export function JobsGallery() {
 	);
 	const demoJobs: JobDto[] = initialJobs.map((job, index) => ({
 		...job,
-		type: [
-			"import_batch_parent",
-			"batch_embedding_parent",
-			"thumbnail_generation_parent",
-		][index],
-		status: index === 1 ? "completed" : "in_progress",
+		type: ["import_batch_parent", "batch_embedding_parent", "auto_tagging"][
+			index
+		],
+		status: index === 2 ? "failed" : index === 1 ? "completed" : "in_progress",
 		progress: {
 			processed: index === 0 ? 68 : 100,
 			failed: index === 0 ? 2 : 0,

@@ -6,6 +6,14 @@ import {
 } from "@solid-imager/core/danbooru";
 import { pendingImportJobSchema } from "@solid-imager/core/media";
 import { z } from "zod";
+import {
+	apiPathPattern,
+	apiRequest,
+	apiRequestInput,
+	apiResponse,
+	apiRoute,
+	routeApi,
+} from "./support/api";
 import { E2E_PRIMARY_MEDIA_ID } from "./support/fixture";
 import { expect, test } from "./support/test";
 
@@ -45,34 +53,44 @@ async function mockDanbooru(
 			contentType: "image/svg+xml",
 			body: '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900"><rect width="1200" height="900" fill="#dae6e8"/><path d="M0 900 480 250 1200 900" fill="#608080"/></svg>',
 		});
-	await page.route("**/api/danbooru-thumbnail?*", fulfillImage);
+	await page.route(apiRoute("viewer/danbooruThumbnail"), fulfillImage);
 	await page.route("https://cdn.donmai.us/original/**", fulfillImage);
-	await page.route(/\/api\/rpc\/(?:viewer|danbooru)\//, async (route) => {
-		const method = new URL(route.request().url()).pathname.split("/").at(-1);
-		const { json: input } = route.request().postDataJSON();
-		let result: unknown;
-		if (method === "search") {
-			const query = danbooruSearchSchema.parse(input);
+	for (const operation of ["viewer/search", "danbooru/search"]) {
+		await routeApi(page, operation, (route) => {
+			const query = danbooruSearchSchema.parse(route.request().postDataJSON());
 			searches.push(query);
 			const start = query.page * 100 + 1;
-			result = {
-				provider: "danbooru",
-				posts: Array.from({ length: pageSizes[query.page - 1] ?? 0 }, (_, i) =>
-					createPost(
-						overlap && query.page > 1 && i === 0
-							? (query.page - 1) * 100 + pageSizes[query.page - 2]
-							: start + i,
+			return route.fulfill({
+				json: {
+					provider: "danbooru",
+					posts: Array.from(
+						{ length: pageSizes[query.page - 1] ?? 0 },
+						(_, i) =>
+							createPost(
+								overlap && query.page > 1 && i === 0
+									? (query.page - 1) * 100 + pageSizes[query.page - 2]
+									: start + i,
+							),
 					),
-				),
-				hasNextPage: query.page < pageSizes.length,
-			};
-		} else if (method === "getPost") result = createPost(input.id);
-		else result = [{ name: "landscape", category: 0, postCount: 1234 }];
-		await route.fulfill({
-			contentType: "application/json",
-			body: JSON.stringify({ json: result }),
+					hasNextPage: query.page < pageSizes.length,
+				},
+			});
 		});
-	});
+	}
+	await routeApi(page, "danbooru/getPost", (route) =>
+		route.fulfill({
+			json: createPost(
+				Number(apiRequestInput(route.request(), "danbooru/getPost").id),
+			),
+		}),
+	);
+	for (const operation of ["viewer/suggestTags", "danbooru/suggestTags"]) {
+		await routeApi(page, operation, (route) =>
+			route.fulfill({
+				json: [{ name: "landscape", category: 0, postCount: 1234 }],
+			}),
+		);
+	}
 	return searches;
 }
 
@@ -89,7 +107,7 @@ test("Danbooru video imports preserve the original and metadata after navigation
 	browserHealth,
 }, info) => {
 	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/sources\/list(?:\?|$)/,
+		apiPathPattern("sources/list"),
 		"net::ERR_ABORTED",
 	);
 	const videoPost = {
@@ -136,23 +154,19 @@ test("Danbooru video imports preserve the original and metadata after navigation
 	);
 	// Importing uses the original URL independently of the player's reload/preload state.
 	const added = page.waitForResponse(
-		(response) =>
-			new URL(response.url()).pathname === "/api/rpc/imports/bulkAdd" &&
-			response.ok(),
+		(response) => apiResponse("imports/bulkAdd")(response) && response.ok(),
 	);
 	await add.click();
 	await added;
 	await expect(
 		detail.getByRole("button", { name: "取り込み待ちに追加済み", exact: true }),
 	).toBeDisabled();
-	const pending = await page.request.post("/api/rpc/imports/listPending", {
-		data: { json: {} },
-	});
-	const jobs = z
-		.array(pendingImportJobSchema)
-		.parse((await pending.json()).json);
+	await page.getByRole("button", { name: "通知を閉じる" }).click();
+	const pending = await apiRequest(page.request, "imports/listPending");
+	const jobs = z.array(pendingImportJobSchema).parse(await pending.json());
 	const job = jobs.find((entry) => entry.item.targetUrl === videoPost.fileUrl);
 	expect(job).toBeDefined();
+	expect(job?.item.previewUrl).toBe(videoPost.previewUrl);
 	expect(job?.item.sourceUrls).toEqual([
 		videoPost.fileUrl,
 		videoPost.source,
@@ -167,11 +181,85 @@ test("Danbooru video imports preserve the original and metadata after navigation
 		"highres",
 	]);
 	if (job) {
-		const cancelled = await page.request.post("/api/rpc/imports/cancel", {
-			data: { json: { jobIds: [job.id] } },
+		const cancelled = await apiRequest(page.request, "imports/cancel", {
+			jobIds: [job.id],
 		});
 		expect(cancelled.ok()).toBe(true);
 	}
+	await expect(add).toBeEnabled();
+	await expect(detail).toBeVisible();
+	const readded = page.waitForResponse(
+		(response) => apiResponse("imports/bulkAdd")(response) && response.ok(),
+	);
+	await add.click();
+	await readded;
+	const list = await apiRequest(page.request, "imports/listPending");
+	const readdedJobs = z
+		.array(pendingImportJobSchema)
+		.parse(await list.json())
+		.filter((entry) => entry.item.targetUrl === videoPost.fileUrl);
+	expect(readdedJobs).toHaveLength(1);
+	expect(readdedJobs[0]?.id).not.toBe(job?.id);
+	const cleanup = await apiRequest(page.request, "imports/cancel", {
+		jobIds: readdedJobs.map((entry) => entry.id),
+	});
+	expect(cleanup.ok()).toBe(true);
+});
+
+test("Danbooru can re-add a receipt cancelled while the import event connection is down", async ({
+	page,
+}, info) => {
+	const reconnect = Promise.withResolvers<void>();
+	let attempts = 0;
+	await routeApi(page, "imports/events", async (route) => {
+		if (++attempts === 1) {
+			await route.fulfill({
+				contentType: "text/event-stream",
+				body: ": closed\n\n",
+			});
+			return;
+		}
+		await reconnect.promise;
+		await route.continue();
+	});
+	await mockDanbooru(page, [1]);
+	await page.goto(
+		info.project.name === "tauri" ? "/#/danbooru/1420" : "/danbooru/1420",
+	);
+	await expect.poll(() => attempts).toBe(2);
+	const detail = page.getByRole("region", {
+		name: "Danbooru #1420",
+		exact: true,
+	});
+	const add = detail.getByRole("button", {
+		name: "画像を取り込み待ちへ",
+		exact: true,
+	});
+	const submitted = page.waitForResponse(
+		(response) => apiResponse("imports/bulkAdd")(response) && response.ok(),
+	);
+	await add.click();
+	const { createdRequests } = await (await submitted).json();
+	const jobIds = z
+		.array(z.object({ id: z.uuid() }))
+		.parse(createdRequests)
+		.map(({ id }) => id);
+	expect(jobIds).toHaveLength(1);
+	const queued = detail.getByRole("button", {
+		name: "取り込み待ちに追加済み",
+		exact: true,
+	});
+	await expect(queued).toBeDisabled();
+	try {
+		const cancelled = await apiRequest(page.request, "imports/cancel", {
+			jobIds,
+		});
+		expect(cancelled.ok()).toBe(true);
+		await expect(queued).toBeDisabled();
+	} finally {
+		reconnect.resolve();
+	}
+	await expect(add).toBeEnabled();
 });
 
 test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", async ({
@@ -180,7 +268,7 @@ test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", asyn
 }, testInfo) => {
 	// Import invalidation and the deliberate reload can cancel a pending source refresh.
 	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/sources\/list(?:\?|$)/,
+		apiPathPattern("sources/list"),
 		"net::ERR_ABORTED",
 	);
 	const searches = await mockDanbooru(page);
@@ -296,9 +384,7 @@ test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", asyn
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 	await expect(page).toHaveURL(/\/danbooru\/201$/);
 	const added = page.waitForResponse(
-		(response) =>
-			new URL(response.url()).pathname === "/api/rpc/imports/bulkAdd" &&
-			response.ok(),
+		(response) => apiResponse("imports/bulkAdd")(response) && response.ok(),
 	);
 	await detail
 		.getByRole("button", { name: "画像を取り込み待ちへ", exact: true })
@@ -308,19 +394,15 @@ test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", asyn
 		detail.getByRole("button", { name: "取り込み待ちに追加済み", exact: true }),
 	).toBeDisabled();
 	await page.getByRole("button", { name: "通知を閉じる" }).click();
-	const pending = await page.request.post("/api/rpc/imports/listPending", {
-		data: { json: {} },
-	});
-	const jobs = z
-		.array(pendingImportJobSchema)
-		.parse((await pending.json()).json);
+	const pending = await apiRequest(page.request, "imports/listPending");
+	const jobs = z.array(pendingImportJobSchema).parse(await pending.json());
 	const item = jobs.find((job) => job.item.targetUrl === post(201).fileUrl);
 	expect(item?.item.authors?.[0].accountId).toBe("test_artist");
 	expect(item?.item.characters?.[0].name).toBe("test_character");
 	expect(item?.item.ips?.[0].name).toBe("test_series");
 	if (item) {
-		const cancelled = await page.request.post("/api/rpc/imports/cancel", {
-			data: { json: { jobIds: [item.id] } },
+		const cancelled = await apiRequest(page.request, "imports/cancel", {
+			jobIds: [item.id],
 		});
 		expect(cancelled.ok()).toBe(true);
 	}
@@ -488,12 +570,12 @@ test("Danbooru recovers failed requests without losing search input", async ({
 	browserHealth,
 }, testInfo) => {
 	await mockDanbooru(page);
-	browserHealth.allowResponseFailure("/api/rpc/viewer/search");
+	browserHealth.allowResponseFailure(apiPathPattern("viewer/search"));
 	browserHealth.allowConsole(
 		"Failed to load resource: the server responded with a status of 503",
 	);
 	let fail = true;
-	await page.route("**/api/rpc/viewer/search", async (route) => {
+	await routeApi(page, "viewer/search", async (route) => {
 		if (fail)
 			await route.fulfill({
 				status: 503,

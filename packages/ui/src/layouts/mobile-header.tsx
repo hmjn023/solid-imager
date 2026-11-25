@@ -1,12 +1,12 @@
 import { t } from "@solid-imager/i18n";
-import { createSignal, onMount, type JSX } from "solid-js";
+import { createSignal, onMount, type Accessor, type JSX } from "solid-js";
 import { Button } from "../button";
 import { Menu, Search } from "../workspace/icons";
 
 export function MobileHeader(props: {
 	onOpenCommandPalette?: () => void;
 	onOpenMenu: () => void;
-	renderPendingDownloadsIndicator?: (compact: boolean) => JSX.Element;
+	renderPendingDownloadsIndicator?: (compact: Accessor<boolean>) => JSX.Element;
 	triggerRef?: (element: HTMLButtonElement) => void;
 }) {
 	const [menuReady, setMenuReady] = createSignal(false);
@@ -39,7 +39,7 @@ export function MobileHeader(props: {
 					<Search aria-hidden="true" size={18} />
 				</Button>
 			) : null}
-			{props.renderPendingDownloadsIndicator?.(true)}
+			{props.renderPendingDownloadsIndicator?.(() => true)}
 		</header>
 	);
 }

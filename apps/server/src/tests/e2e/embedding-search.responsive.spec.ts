@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
+import { apiPathPattern, apiRequest, apiRoute } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SIMILAR_FILE_NAME,
@@ -8,51 +9,46 @@ import {
 	getFixtureMediaPath,
 } from "./support/fixture";
 import { selectManagerCategory } from "./support/manager-navigation";
+import { openRelatedMedia } from "./support/related-media-fixture";
 import { expect, test as base, waitForAppHydration } from "./support/test";
 
 const test = base.extend<{
 	embeddingSource: { sourceId: string; sourceName: string };
 }>({
 	embeddingSource: async ({ request }, use) => {
-		const configResponse = await request.post("/api/rpc/config/get", {
-			data: { json: {} },
-		});
+		const configResponse = await apiRequest(request, "config/get", {});
 		await expect(configResponse).toBeOK();
-		const { json: config } = await configResponse.json();
+		const config = await configResponse.json();
 		const sourceId = randomUUID();
 		const sourceName = `Embedding test ${sourceId}`;
 		const directory = path.join(getE2eRuntimeDir(), sourceId);
 		try {
 			// Run real inference on the portable CPU provider.
-			const configured = await request.post("/api/rpc/config/update", {
-				data: { json: { ai: { ...config.ai, provider: "cpu", device: "" } } },
+			const configured = await apiRequest(request, "config/update", {
+				ai: { ...config.ai, provider: "cpu", device: "" },
 			});
 			await expect(configured).toBeOK();
 			await mkdir(directory);
 			try {
 				for (const name of [E2E_PRIMARY_FILE_NAME, E2E_SIMILAR_FILE_NAME])
 					await copyFile(getFixtureMediaPath(name), path.join(directory, name));
-				const created = await request.post("/api/rpc/sources/create", {
-					data: {
-						json: {
-							id: sourceId,
-							name: sourceName,
-							description: null,
-							type: "local",
-							connectionInfo: { path: directory },
-						},
-					},
+				const created = await apiRequest(request, "sources/create", {
+					id: sourceId,
+					name: sourceName,
+					description: null,
+					type: "local",
+					connectionInfo: { path: directory },
 				});
 				await expect(created).toBeOK();
 				try {
-					const synced = await request.post("/api/rpc/sources/sync", {
-						data: { json: { ids: [sourceId] } },
+					const synced = await apiRequest(request, "sources/sync", {
+						ids: [sourceId],
 					});
 					await expect(synced).toBeOK();
 					await use({ sourceId, sourceName });
 				} finally {
-					const removed = await request.post("/api/rpc/sources/delete", {
-						data: { json: { id: sourceId } },
+					const removed = await apiRequest(request, "sources/delete", {
+						id: sourceId,
 					});
 					await expect(removed).toBeOK();
 				}
@@ -60,8 +56,8 @@ const test = base.extend<{
 				await rm(directory, { recursive: true, force: true });
 			}
 		} finally {
-			const restored = await request.post("/api/rpc/config/update", {
-				data: { json: { ai: config.ai } },
+			const restored = await apiRequest(request, "config/update", {
+				ai: config.ai,
 			});
 			await expect(restored).toBeOK();
 		}
@@ -76,26 +72,27 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	test.setTimeout(240_000);
 	// Leaving Manager and reloading detail intentionally close its job stream;
 	// Chromium can report the final abort after the next document has loaded.
-	browserHealth.allowRequestFailure(/\/api\/rpc\/jobs\/events(?:\?|$)/);
+	browserHealth.allowRequestFailure(apiPathPattern("jobs/events"));
 	// Starting a similarity search can dispose a pending detail query.
 	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/media\/getDetails$/,
+		apiPathPattern("media/getDetails"),
 		"net::ERR_ABORTED",
 	);
 	const { sourceId, sourceName } = embeddingSource;
 	let primaryId = "";
 	await expect
 		.poll(async () => {
-			const response = await page.request.post("/api/rpc/media/search", {
-				data: { json: { sourceId, params: { limit: 20, offset: 0 } } },
+			const response = await apiRequest(page.request, "media/search", {
+				sourceId,
+				params: { limit: 20, offset: 0 },
 			});
 			const data = await response.json();
 			primaryId =
-				data.json.media.find(
+				data.media.find(
 					(item: { fileName: string }) =>
 						item.fileName === E2E_PRIMARY_FILE_NAME,
 				)?.id ?? "";
-			return data.json.total;
+			return data.total;
 		})
 		.toBe(2);
 	await page.goto(`/sources/${sourceId}/${primaryId}`);
@@ -103,7 +100,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
 	const extractionResponse = page.waitForResponse(
 		(response) =>
-			response.url().includes("/api/rpc/ai/startEmbeddingExtraction") &&
+			apiRoute("ai/startEmbeddingExtraction")(new URL(response.url())) &&
 			response.status() === 200,
 	);
 	await page
@@ -112,18 +109,18 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			exact: true,
 		})
 		.click();
-	const { json: extraction } = await (await extractionResponse).json();
+	const extraction = await (await extractionResponse).json();
 	await expect(
 		page.getByText("EmbeddingGemma 2の抽出を登録しました", { exact: true }),
 	).toBeVisible();
 	await expect
 		.poll(
 			async () => {
-				const response = await page.request.post("/api/rpc/jobs/get", {
-					data: { json: { id: extraction.jobId } },
+				const response = await apiRequest(page.request, "jobs/get", {
+					id: extraction.jobId,
 				});
 				expect(response.ok()).toBe(true);
-				const { json: job } = await response.json();
+				const job = await response.json();
 				expect(job.type).toBe("extract_embedding_vector");
 				return job.status;
 			},
@@ -164,7 +161,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	await sourceSearch.fill("text:アニメの キャラクター");
 	const sourceSearchResponse = page.waitForResponse(
 		(response) =>
-			response.url().includes("/api/rpc/media/searchSemantic") &&
+			apiRoute("media/searchSemantic")(new URL(response.url())) &&
 			response.status() === 200,
 	);
 	await sourceSearch.press("Enter");
@@ -233,7 +230,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	expect(
 		browserHealth.apiRequestCountPathSince(
 			semanticReload,
-			"/api/rpc/media/searchSemantic",
+			"/api/media/search/semantic",
 		),
 	).toBe(0);
 	await expect
@@ -252,7 +249,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		name: "関連メディア",
 		exact: true,
 	});
-	await relatedMedia.scrollIntoViewIfNeeded();
+	await openRelatedMedia(page);
 	await relatedMedia
 		.getByRole("tab", { name: "似た画像", exact: true })
 		.click();
@@ -294,7 +291,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	expect(
 		browserHealth.apiRequestCountPathSince(
 			similarityReload,
-			"/api/rpc/media/searchSimilar",
+			"/api/media/search/similar",
 		),
 	).toBe(0);
 	await filters.click();

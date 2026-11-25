@@ -181,7 +181,7 @@ describe("media handlers", () => {
 			});
 			expect(mockFetch).toHaveBeenCalledWith(
 				new URL(
-					"/api/sources/source-1/media-uuid",
+					"/api/sources/source-1/media/media-uuid/content",
 					"http://test.local",
 				).toString(),
 			);
@@ -229,7 +229,7 @@ describe("media handlers", () => {
 			});
 			expect(mockFetch).toHaveBeenCalledWith(
 				new URL(
-					"/api/sources/source-1/media-uuid",
+					"/api/sources/source-1/media/media-uuid/content",
 					"http://test.local",
 				).toString(),
 			);
@@ -275,7 +275,7 @@ describe("media handlers", () => {
 			});
 			expect(mockFetch).toHaveBeenCalledWith(
 				new URL(
-					"/api/sources/source-1/media-uuid",
+					"/api/sources/source-1/media/media-uuid/content",
 					"http://test.local",
 				).toString(),
 			);

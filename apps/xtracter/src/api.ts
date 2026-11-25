@@ -1,7 +1,7 @@
 import { t } from "./i18n";
 import { readConnectionSettings } from "./connection-settings";
 import { APIError, createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/contract";
+import { appContract } from "@solid-imager/core/contract";
 
 export { APIError };
 
@@ -16,16 +16,18 @@ export const getClient = async (apiUrl?: string) => {
 
 /** Bind a client to an immutable connection URL for the whole operation and its retries. */
 export const createApiClient = (url: string) => {
-	return createClient<AppContract>({
+	return createClient(appContract, {
 		url,
 		fetch: async (input, init) => {
+			const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+			const signal = init?.signal
+				? AbortSignal.any([init.signal, timeout])
+				: timeout;
 			try {
-				const response = await fetch(input, {
-					...init,
-					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-				});
-				return response;
+				return await fetch(input, { ...init, signal });
 			} catch (error) {
+				if (init?.signal?.aborted && signal.reason === init.signal.reason)
+					throw error;
 				throw handleFetchError(error, url);
 			}
 		},

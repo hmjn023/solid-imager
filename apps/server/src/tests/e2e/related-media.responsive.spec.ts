@@ -1,5 +1,7 @@
 import type { Page } from "@playwright/test";
 import { z } from "zod";
+import { apiPathPattern, apiRequestInput, apiRoute } from "./support/api";
+import { expectDomPreserved } from "./support/dom";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -8,13 +10,14 @@ import {
 	mediaPath,
 } from "./support/fixture";
 import {
+	openRelatedMedia,
 	withRelatedMedia,
 	withRelatedMediaTag,
 } from "./support/related-media-fixture";
 import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const relatedEndpoint = "**/api/rpc/media/getRelated";
+const relatedEndpoint = apiPathPattern("media/getRelated");
 const relatedSection = (page: Page) =>
 	page.getByRole("region", { name: "関連メディア", exact: true });
 
@@ -22,11 +25,9 @@ async function mockEmptyRelatedMedia(page: Page): Promise<void> {
 	await page.route(relatedEndpoint, (route) =>
 		route.fulfill({
 			json: {
-				json: {
-					items: [],
-					recommendations: [],
-					similarityStatus: "available",
-				},
+				items: [],
+				recommendations: [],
+				similarityStatus: "available",
 			},
 		}),
 	);
@@ -43,6 +44,98 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 test(
+	"mobile detail switches between media information and related media by swipe and keyboard",
+	{ tag: "@mobile-only" },
+	async ({ page }) => {
+		await withRelatedMediaTag(page.request, async () => {
+			await page.goto(mediaPath());
+			await waitForAppHydration(page);
+			const related = relatedSection(page);
+			const tabs = page.getByRole("tablist", { name: "詳細の表示内容" });
+			const infoTab = tabs.getByRole("tab", { name: "メディア情報" });
+			const relatedTab = tabs.getByRole("tab", { name: "関連メディア" });
+			const candidate = related.locator(
+				`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
+			);
+			await expect(infoTab).toHaveAttribute("aria-selected", "true");
+			await expect(related).toBeHidden();
+			const metadata = page.getByRole("region", { name: "メディア情報" });
+			await expect(
+				metadata.getByRole("heading", { name: "タグ", exact: true }),
+			).toBeVisible();
+			await tabs.evaluate((element) =>
+				element.scrollIntoView({ block: "center" }),
+			);
+			const panels = page.locator("[data-media-detail-panels]");
+			const bounds = await panels.boundingBox();
+			if (!bounds) throw new Error("Missing mobile detail panels");
+			const x = Math.round(bounds.x + bounds.width - 24);
+			const y = Math.round(bounds.y + 32);
+			const session = await page.context().newCDPSession(page);
+			try {
+				await session.send("Input.dispatchTouchEvent", {
+					type: "touchStart",
+					touchPoints: [{ x, y }],
+				});
+				for (let step = 1; step <= 6; step++) {
+					await session.send("Input.dispatchTouchEvent", {
+						type: "touchMove",
+						touchPoints: [{ x: x - (bounds.width * step) / 8, y }],
+					});
+				}
+				await session.send("Input.dispatchTouchEvent", {
+					type: "touchEnd",
+					touchPoints: [],
+				});
+			} finally {
+				await session.detach();
+			}
+			await expect(relatedTab).toHaveAttribute("aria-selected", "true");
+			await expect(candidate).toBeVisible();
+			await expect(metadata).toBeHidden();
+			expect(
+				await panels.evaluate(
+					(element) => element.scrollHeight - element.clientHeight,
+				),
+			).toBeLessThanOrEqual(1);
+			await relatedTab.focus();
+			await relatedTab.press("ArrowLeft");
+			await expect(infoTab).toBeFocused();
+			await infoTab.press("Enter");
+			await expect(infoTab).toHaveAttribute("aria-selected", "true");
+			await expect(metadata).toBeVisible();
+			await expect(related).toBeHidden();
+			await expectNoHorizontalOverflow(page);
+		});
+	},
+);
+
+test(
+	"mobile detail keeps the requested vertical scroll position around media information",
+	{ tag: "@mobile-only" },
+	async ({ page }) => {
+		await page.goto(mediaPath());
+		await waitForAppHydration(page);
+		const metadata = page.getByRole("tabpanel", { name: "メディア情報" });
+		await expect(page.locator('[data-media-scroll="detail"]')).toBeVisible();
+		const errors = await metadata.evaluate((section) => {
+			const scroller = section.closest('[data-media-scroll="detail"]');
+			if (!scroller) throw new Error("Missing detail scroll container");
+			const metadataTop =
+				scroller.scrollTop +
+				section.getBoundingClientRect().top -
+				scroller.getBoundingClientRect().top;
+			return [-32, 32].map((offset) => {
+				const requested = Math.round(metadataTop + offset);
+				scroller.scrollTo({ top: requested, behavior: "instant" });
+				return Math.abs(scroller.scrollTop - requested);
+			});
+		});
+		expect(errors).toEqual([0, 0]);
+	},
+);
+
+test(
 	"mobile detail reaches editing without an empty related-media scroll screen",
 	{ tag: "@mobile-only" },
 	async ({ page }, testInfo) => {
@@ -51,6 +144,7 @@ test(
 		await page.goto(mediaPath());
 		await waitForAppHydration(page);
 		const related = relatedSection(page);
+		await openRelatedMedia(page);
 		await expect(
 			related.getByText("関連メディアがまだありません"),
 		).toBeVisible();
@@ -61,13 +155,6 @@ test(
 				exact: true,
 			})
 			.first();
-		const relatedBottom = await related.evaluate(
-			(element) => element.getBoundingClientRect().bottom,
-		);
-		const metadataTop = await metadata.evaluate(
-			(element) => element.getBoundingClientRect().top,
-		);
-		expect(metadataTop - relatedBottom).toBeLessThanOrEqual(1);
 		await page.getByRole("button", { name: "編集欄へ", exact: true }).click();
 		await expect(metadata).toBeFocused();
 		await expect(descriptionEdit).toBeInViewport();
@@ -87,18 +174,21 @@ test("tag recommendations retain their seed on Back and reload, and refresh with
 }) => {
 	await withRelatedMediaTag(page.request, async () => {
 		const requestSchema = z.object({
-			json: z.object({ mediaId: z.string(), seed: z.string().min(1) }),
+			mediaId: z.string(),
+			seed: z.string().min(1),
 		});
 		const seeds: string[] = [];
 		page.on("request", (request) => {
-			if (!request.url().endsWith("/api/rpc/media/getRelated")) return;
-			const payload = requestSchema.parse(request.postDataJSON()).json;
+			if (!apiRoute("media/getRelated")(new URL(request.url()))) return;
+			const payload = requestSchema.parse(
+				apiRequestInput(request, "media/getRelated"),
+			);
 			if (payload.mediaId === E2E_PRIMARY_MEDIA_ID) seeds.push(payload.seed);
 		});
 		await page.goto(mediaPath());
 		await waitForAppHydration(page);
 		const related = relatedSection(page);
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		const candidate = related.locator(
 			`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
 		);
@@ -140,18 +230,18 @@ test("tag recommendations retain their seed on Back and reload, and refresh with
 		await page.unroute(relatedEndpoint);
 		await candidate.click();
 		await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(
 			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
 		).toBeVisible();
 		await page.goBack();
 		await expect(page).toHaveURL(mediaPath());
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(candidate).toBeVisible();
 		const beforeReload = seeds.length;
 		await page.reload();
 		await waitForAppHydration(page);
-		await related.scrollIntoViewIfNeeded();
+		await openRelatedMedia(page);
 		await expect(candidate).toBeVisible();
 		await expect.poll(() => seeds.length).toBeGreaterThan(beforeReload);
 		expect(seeds.at(-1)).toBe(refreshedSeed);
@@ -172,25 +262,22 @@ test(
 				`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
 			);
 			await expect(candidate).toBeVisible();
-			browserHealth.allowResponseFailure("/api/rpc/media/getRelated");
+			browserHealth.allowResponseFailure(apiPathPattern("media/getRelated"));
 			browserHealth.allowConsole(/503/);
 			const seeds: string[] = [];
 			let failing = true;
 			await page.route(relatedEndpoint, async (route) => {
-				const {
-					json: { seed },
-				} = z
-					.object({ json: z.object({ seed: z.string() }) })
-					.parse(route.request().postDataJSON());
+				const { seed } = z
+					.object({ seed: z.string() })
+					.parse(apiRequestInput(route.request(), "media/getRelated"));
 				seeds.push(seed);
 				if (!failing) return route.continue();
 				await route.fulfill({
 					status: 503,
 					json: {
-						json: {
-							code: "SERVICE_UNAVAILABLE",
-							message: "temporarily unavailable",
-						},
+						defined: false,
+						code: "SERVICE_UNAVAILABLE",
+						message: "temporarily unavailable",
 					},
 				});
 			});
@@ -222,70 +309,75 @@ test(
 	},
 );
 
-test("related media filters real relations and follows navigation, reload, and browser Back", async ({
-	page,
-}, testInfo) => {
-	await withRelatedMedia(page.request, async () => {
-		await page.goto(mediaPath());
-		await waitForAppHydration(page);
-		const related = relatedSection(page);
-		await related.scrollIntoViewIfNeeded();
-		const candidate = related.locator(
-			`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
-		);
-		await expect(candidate).toBeVisible();
-		await expect(candidate).toHaveCount(1);
-		await expect(
-			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
-		).toHaveCount(0);
-		for (const name of ["同じキャラ", "同じIP"]) {
-			await related.getByRole("tab", { name, exact: true }).click();
+test(
+	"related media filters real relations and follows navigation, reload, and browser Back",
+	{ tag: "@dom-stability" },
+	async ({ page }, testInfo) => {
+		await withRelatedMedia(page.request, async () => {
+			await page.goto(mediaPath());
+			await waitForAppHydration(page);
+			const related = relatedSection(page);
+			await openRelatedMedia(page);
+			const candidate = related.locator(
+				`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
+			);
 			await expect(candidate).toBeVisible();
 			await expect(candidate).toHaveCount(1);
-		}
-		await related.getByRole("tab", { name: "おすすめ", exact: true }).click();
-		const thumbnail = candidate.getByRole("img");
-		await expect
-			.poll(() =>
-				thumbnail.evaluate(
-					(image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
-				),
-			)
-			.toBe(true);
-		await expectNoHorizontalOverflow(page);
-		await page.screenshot({
-			path: testInfo.outputPath("related-media.png"),
-			animations: "disabled",
-		});
+			await expect(
+				related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+			).toHaveCount(0);
+			for (const name of ["同じキャラ", "同じIP", "おすすめ"]) {
+				await expectDomPreserved({ candidate }, async () => {
+					const tab = related.getByRole("tab", { name, exact: true });
+					await tab.click();
+					await expect(tab).toHaveAttribute("aria-selected", "true");
+					await expect(candidate).toBeVisible();
+				});
+			}
+			const thumbnail = candidate.getByRole("img");
+			await expect
+				.poll(() =>
+					thumbnail.evaluate(
+						(image: HTMLImageElement) =>
+							image.complete && image.naturalWidth > 0,
+					),
+				)
+				.toBe(true);
+			await expectNoHorizontalOverflow(page);
+			await page.screenshot({
+				path: testInfo.outputPath("related-media.png"),
+				animations: "disabled",
+			});
 
-		await candidate.click();
-		await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
-		await expect(
-			page.getByRole("heading", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
-		).toBeVisible();
-		await related.scrollIntoViewIfNeeded();
-		await expect(
-			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
-		).toBeVisible();
-		await expect(
-			related.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`),
-		).toHaveCount(0);
-		await page.reload();
-		await waitForAppHydration(page);
-		await related.scrollIntoViewIfNeeded();
-		await expect(
-			related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
-		).toBeVisible();
-		await page.goBack();
-		await expect(page).toHaveURL(mediaPath());
-		await expect(
-			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
-		).toBeVisible();
-		await related.scrollIntoViewIfNeeded();
-		await expect(candidate).toBeVisible();
-		await expectNoHorizontalOverflow(page);
-	});
-});
+			await candidate.click();
+			await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
+			await expect(
+				page.getByRole("heading", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
+			).toBeVisible();
+			await openRelatedMedia(page);
+			await expect(
+				related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+			).toBeVisible();
+			await expect(
+				related.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`),
+			).toHaveCount(0);
+			await page.reload();
+			await waitForAppHydration(page);
+			await openRelatedMedia(page);
+			await expect(
+				related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+			).toBeVisible();
+			await page.goBack();
+			await expect(page).toHaveURL(mediaPath());
+			await expect(
+				page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+			).toBeVisible();
+			await openRelatedMedia(page);
+			await expect(candidate).toBeVisible();
+			await expectNoHorizontalOverflow(page);
+		});
+	},
+);
 
 test(
 	"related navigation preserves the original collection return history",
@@ -324,10 +416,16 @@ test(
 	async ({ page, browserHealth }) => {
 		// This scenario deliberately leaves details while supplemental queries
 		// and the job event connection may still be pending.
-		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/(?:projects\/listForMedia|media\/getRelated|jobs\/events)(?:\?|$)/,
-			"net::ERR_ABORTED",
-		);
+		for (const operation of [
+			"projects/listForMedia",
+			"media/getRelated",
+			"jobs/events",
+		]) {
+			browserHealth.allowRequestFailure(
+				apiPathPattern(operation),
+				"net::ERR_ABORTED",
+			);
+		}
 		await withRelatedMedia(page.request, async () => {
 			await page.goto("/about");
 			await waitForAppHydration(page);
@@ -358,7 +456,7 @@ test(
 					page.waitForResponse(
 						(response) =>
 							response.ok() &&
-							new URL(response.url()).pathname === `/api/rpc/jobs/${procedure}`,
+							apiRoute(`jobs/${procedure}`)(new URL(response.url())),
 					),
 				),
 			);
@@ -431,9 +529,9 @@ for (const failure of ["503", "connectionrefused"] as const) {
 		{ tag: "@desktop-only" },
 		async ({ page, browserHealth }) => {
 			await withRelatedMedia(page.request, async () => {
-				browserHealth.allowResponseFailure("/api/rpc/media/getRelated");
+				browserHealth.allowResponseFailure(apiPathPattern("media/getRelated"));
 				browserHealth.allowRequestFailure(
-					"/api/rpc/media/getRelated",
+					apiPathPattern("media/getRelated"),
 					"ERR_CONNECTION_REFUSED",
 				);
 				browserHealth.allowConsole(/503|ERR_CONNECTION_REFUSED/);
@@ -446,10 +544,9 @@ for (const failure of ["503", "connectionrefused"] as const) {
 						status: 503,
 						contentType: "application/json",
 						body: JSON.stringify({
-							json: {
-								code: "SERVICE_UNAVAILABLE",
-								message: "temporarily unavailable",
-							},
+							defined: false,
+							code: "SERVICE_UNAVAILABLE",
+							message: "temporarily unavailable",
 						}),
 					});
 				});

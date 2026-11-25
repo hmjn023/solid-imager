@@ -49,6 +49,11 @@ describe("CharacterRepository Multi-IP Support", () => {
 		expect(char.ips.map((i) => i.name).sort()).toEqual(
 			["Fate/Zero", "Fate/stay night"].sort(),
 		);
+		const loaded = await repo.findById(char.id);
+		expect(loaded?.ips.map((ip) => ip.name).sort()).toEqual([
+			"Fate/Zero",
+			"Fate/stay night",
+		]);
 
 		// Verify DB directly
 		const links = await db

@@ -2,6 +2,7 @@ import { implement } from "@orpc/server";
 import { appContract } from "@solid-imager/core/contract";
 import { featureRouters } from "./feature-routers";
 import { configRouter } from "./routers/config-router";
+import { healthRouter } from "./routers/health-router";
 
 /**
  * Server implementation of the shared API contract.
@@ -12,4 +13,5 @@ import { configRouter } from "./routers/config-router";
 export const appRouter = implement(appContract).router({
 	...featureRouters,
 	config: configRouter,
+	health: healthRouter,
 });

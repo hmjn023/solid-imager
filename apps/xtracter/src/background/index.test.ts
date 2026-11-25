@@ -90,8 +90,8 @@ describe("account verification message handler", () => {
 });
 
 describe("operation destination snapshot", () => {
-	const urlA = "https://a.example/api/rpc";
-	const urlB = "https://b.example/api/rpc";
+	const urlA = "https://a.example";
+	const urlB = "https://b.example";
 	const a = { id: "source-a", name: "twitter", type: "local" };
 	const b = { id: "source-b", name: "twitter", type: "local" };
 	const post = {

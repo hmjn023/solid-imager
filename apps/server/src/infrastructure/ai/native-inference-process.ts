@@ -1,6 +1,6 @@
-import { spawn, type ChildProcessByStdio } from "node:child_process";
-import type { Readable, Writable } from "node:stream";
+import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
+import { Readable } from "node:stream";
 import { z } from "zod";
 import {
 	resolveDghsImgutilsPath,
@@ -9,8 +9,10 @@ import {
 
 // Keep the entry point self-contained when Nitro bundles the server.
 const childSource = `
+const {createReadStream,createWriteStream} = require("node:fs");
+const replies = createWriteStream(null, {fd: 3});
 const native = require(process.argv[1]);
-const lines = require("node:readline").createInterface({input:process.stdin});
+const lines = require("node:readline").createInterface({input:createReadStream(null, {fd: 0})});
 lines.on("close", () => process.exit(0));
 lines.on("line", async line => {
 	const {id,method,args} = JSON.parse(line);
@@ -19,9 +21,9 @@ lines.on("line", async line => {
 		const value = method === "segmentPngBase64"
 			? Buffer.from(await native.segmentRgbaWithIsnetis(...args)).toString("base64")
 			: await native[method](...args);
-		process.stdout.write(JSON.stringify({id,value}) + "\\n");
+		replies.write(JSON.stringify({id,value}) + "\\n");
 	} catch (error) {
-		process.stdout.write(JSON.stringify({id,error:error instanceof Error ? error.message : String(error)}) + "\\n");
+		replies.write(JSON.stringify({id,error:error instanceof Error ? error.message : String(error)}) + "\\n");
 	}
 });
 `;
@@ -50,8 +52,7 @@ type NativeMethods = DghsImgutilsModule & {
 };
 
 export class NativeInferenceProcess {
-	private child?: ChildProcessByStdio<Writable, Readable, null>;
-	private exited: Promise<void> = Promise.resolve();
+	private child?: ReturnType<NativeInferenceProcess["start"]>;
 	private nextId = 0;
 	private readonly pending = new Map<
 		number,
@@ -63,38 +64,52 @@ export class NativeInferenceProcess {
 			process.execPath,
 			["-e", childSource, resolveDghsImgutilsPath()],
 			{
-				stdio: ["pipe", "pipe", "inherit"],
+				// Reserve fd 3 for replies. Native libraries can write logs directly to stdout.
+				stdio: ["pipe", 2, "inherit", "pipe"],
 			},
 		);
-		this.child = child;
+		const stdin = child.stdin;
+		const replies = child.stdio[3];
+		if (!stdin || !(replies instanceof Readable)) {
+			child.kill();
+			throw new Error("Inference process pipes are unavailable");
+		}
 		const closed = Promise.withResolvers<void>();
-		this.exited = closed.promise;
+		let stopReason: string | undefined;
+		const worker = {
+			child,
+			stdin,
+			exited: closed.promise,
+			kill(reason: string) {
+				if (!child.killed && child.kill("SIGKILL")) stopReason = reason;
+			},
+		};
+		this.child = worker;
 		const rejectPending = (error: Error) => {
 			for (const request of this.pending.values()) request.reject(error);
 			this.pending.clear();
 		};
 		child.on("error", rejectPending);
 		child.once("close", (code, signal) => {
-			if (this.child === child) {
+			if (this.child === worker) {
 				this.child = undefined;
-				rejectPending(
-					new Error(`Inference process exited (${signal ?? code})`),
-				);
+				const exit = `Inference process exited (${signal ?? code})`;
+				rejectPending(new Error(stopReason ? `${exit}: ${stopReason}` : exit));
 			}
 			closed.resolve();
 		});
-		child.stdin.on("error", rejectPending);
-		createInterface({ input: child.stdout }).on("line", (line) => {
+		stdin.on("error", rejectPending);
+		createInterface({ input: replies }).on("line", (line) => {
 			let message: unknown;
 			try {
 				message = JSON.parse(line);
 			} catch {
-				child.kill("SIGKILL");
+				worker.kill("invalid JSON on the reply pipe");
 				return;
 			}
 			const result = responseSchema.safeParse(message);
 			if (!result.success) {
-				child.kill("SIGKILL");
+				worker.kill("invalid message on the reply pipe");
 				return;
 			}
 			const { id, error, value } = result.data;
@@ -104,26 +119,27 @@ export class NativeInferenceProcess {
 		});
 		child.unref();
 
-		return child;
+		return worker;
 	}
 
 	async call<K extends Method>(
 		method: K,
 		...args: Parameters<NativeMethods[K]>
 	): Promise<Awaited<ReturnType<NativeMethods[K]>>> {
-		const child = this.child ?? this.start();
+		const worker = this.child ?? this.start();
+		const { child, stdin } = worker;
 		const id = ++this.nextId;
 		const request = Promise.withResolvers<unknown>();
 		this.pending.set(id, request);
 		child.ref();
-		const timeout = setTimeout(() => child.kill("SIGKILL"), 10 * 60 * 1000);
+		const timeout = setTimeout(
+			() => worker.kill(`request timed out (${method})`),
+			10 * 60 * 1000,
+		);
 		try {
-			child.stdin.write(
-				JSON.stringify({ id, method, args }) + "\n",
-				(error) => {
-					if (error) request.reject(error);
-				},
-			);
+			stdin.write(JSON.stringify({ id, method, args }) + "\n", (error) => {
+				if (error) request.reject(error);
+			});
 			// The child serializes the result for the requested method before replying with this ID.
 			return (await request.promise) as Awaited<ReturnType<NativeMethods[K]>>;
 		} finally {
@@ -134,16 +150,19 @@ export class NativeInferenceProcess {
 	}
 
 	async offload() {
-		const child = this.child;
-		if (!child) return;
-		const exited = this.exited;
+		const worker = this.child;
+		if (!worker) return;
+		const { child, stdin, exited } = worker;
 		try {
 			await this.call("offloadInferenceSessions");
 		} finally {
 			// Providers and the allocator can retain large arenas after session eviction.
 			child.ref();
-			child.stdin.end();
-			const fallback = setTimeout(() => child.kill("SIGKILL"), 2000);
+			stdin.end();
+			const fallback = setTimeout(
+				() => worker.kill("process did not exit after offload"),
+				2000,
+			);
 			try {
 				await exited;
 			} finally {

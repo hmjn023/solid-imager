@@ -492,6 +492,7 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 	// Optional because restore items (from backup) might not have it,
 	// but required for actual download jobs (validated in handler).
 	targetUrl: z.url("Invalid target URL").optional(),
+	previewUrl: z.url({ protocol: /^https?$/ }).optional(),
 
 	// Restore fields
 	filePath: z.string().optional(),

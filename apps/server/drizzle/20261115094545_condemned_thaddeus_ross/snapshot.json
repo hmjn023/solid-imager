@@ -1,6 +1,6 @@
 {
   "type": "diff",
-  "version": "9",
+  "version": "10",
   "dialect": "postgres",
   "id": "546b5e6c-1f9c-4af5-a383-0664145c284d",
   "prevIds": [
@@ -77,7 +77,6 @@
         "where": "\"status\" IN ('pending','in_progress') AND \"payload\"->>'importBatchId' IS NOT NULL",
         "with": "",
         "method": "btree",
-        "concurrently": false,
         "entityType": "indexes"
       }
     },
@@ -115,7 +114,6 @@
         "where": "\"parent_id\" IS NOT NULL AND \"payload\"->>'importBatchId' IS NOT NULL AND \"payload\"->>'mediaId' IS NOT NULL",
         "with": "",
         "method": "btree",
-        "concurrently": false,
         "entityType": "indexes"
       }
     }

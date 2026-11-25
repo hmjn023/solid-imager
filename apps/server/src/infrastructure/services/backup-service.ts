@@ -11,9 +11,14 @@ import {
 import { localConnectionSchema } from "@solid-imager/core/sources";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { lockTagNames, resolveTagNameRedirects } from "@solid-imager/db";
+import { SQL, type TransactionSQL } from "bun";
 import { inArray, sql } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
-import { db } from "~/infrastructure/db";
+import { createBunSqlDatabase, db } from "~/infrastructure/db";
+import {
+	copyBackupMediaTags,
+	type BackupMediaTagRow,
+} from "~/infrastructure/db/backup-media-tags";
 import { getExecutor } from "~/infrastructure/db/executor";
 import {
 	characterIps,
@@ -100,24 +105,21 @@ interface MediaListQueryItem {
 		source: string;
 	}[];
 	authors: {
-		author: {
-			name: string;
-			accountId?: string | null;
-			accounts?: {
-				platform: AuthorPlatform | null;
-				accountId: string;
-				remoteId?: string | null;
-				displayName?: string | null;
-				profileUrl?: string | null;
-				observedAt?: Date | null;
-			}[];
-		};
+		name: string;
+		accounts?: {
+			platform: AuthorPlatform | null;
+			accountId: string;
+			remoteId?: string | null;
+			displayName?: string | null;
+			profileUrl?: string | null;
+			observedAt?: Date | null;
+		}[];
 	}[];
 	characters: {
 		character: {
 			name: string;
 			description: string | null;
-			ips?: { ip: { name: string } }[] | null;
+			ips?: { name: string }[] | null;
 		};
 		confidence: number | null;
 		source: string;
@@ -222,11 +224,11 @@ async function* iterateMediaDumpItems(
 				urls: true,
 				tags: { with: { tag: true } },
 				authors: {
-					with: { author: { with: { accounts: true } } },
+					with: { accounts: { orderBy: { createdAt: "asc", id: "asc" } } },
 				},
 				characters: {
 					with: {
-						character: { with: { ips: { with: { ip: true } } } },
+						character: { with: { ips: { columns: { name: true } } } },
 					},
 				},
 				ips: { with: { ip: true } },
@@ -416,18 +418,14 @@ export const BackupService = {
 			};
 		}
 
-		// Execute all data operations atomically
-		let mediaPathToId = new Map<string, string>();
-
-		await db.transaction(async (tx) => {
-			const c: BackupDbClient = tx;
+		const restore = async (tx: BackupDbClient, nativeTx?: TransactionSQL) => {
 			const { tagMap, authorMap, projectMap, ipMap, charMap } =
-				await this._restoreMasterData(validItems, c);
+				await this._restoreMasterData(validItems, tx);
 
-			mediaPathToId = await this._restoreMediaRecords(
+			const mediaPathToId = await this._restoreMediaRecords(
 				mediaSourceId,
 				validItems,
-				c,
+				tx,
 			);
 
 			await this._restoreRelations(
@@ -440,9 +438,19 @@ export const BackupService = {
 					ipMap,
 					charMap,
 				},
-				c,
+				tx,
+				nativeTx,
 			);
-		});
+		};
+
+		const client = db.$client;
+		if (client instanceof SQL) {
+			// Bind Drizzle to the native transaction so COPY and all other writes
+			// share the same connection and roll back together.
+			await client.begin((tx) => restore(createBunSqlDatabase(tx), tx));
+		} else {
+			await db.transaction(restore);
+		}
 
 		// Thumbnail generation is intentionally not part of restore. Restoring a
 		// large dump must not start one processMedia job per item while the import
@@ -703,9 +711,10 @@ export const BackupService = {
 			charMap: Map<string, string>;
 		},
 		_tx?: BackupDbClient,
+		nativeTx?: TransactionSQL,
 	) {
 		const d = _tx ?? db;
-		const mediaTagsData: (typeof mediaTags.$inferInsert)[] = [];
+		const mediaTagsData: BackupMediaTagRow[] = [];
 		const mediaAuthorsData: (typeof mediaAuthors.$inferInsert)[] = [];
 		const mediaProjectsData: (typeof mediaProjects.$inferInsert)[] = [];
 		const mediaCharsData: (typeof mediaCharacters.$inferInsert)[] = [];
@@ -732,9 +741,7 @@ export const BackupService = {
 						mediaTagsData.push({
 							mediaId,
 							tagId,
-							tagType: (t.type === "positive" || t.type === "negative"
-								? t.type
-								: "positive") as "positive" | "negative",
+							tagType: t.type === "negative" ? "negative" : "positive",
 							confidence: t.confidence ?? null,
 							source: t.source || "restored",
 						});
@@ -869,40 +876,39 @@ export const BackupService = {
 			}
 		}
 
-		// Insert new relations in chunks
-		const insertChunked = async <T>(table: PgTable, data: T[]) => {
-			const BatchSize = 1_000;
-			for (let i = 0; i < data.length; i += BatchSize) {
-				await d
+		function* insertChunks<T>(table: PgTable, data: T[]) {
+			const batchSize = 1_000;
+			for (let i = 0; i < data.length; i += batchSize) {
+				yield d
 					.insert(table)
-					.values(data.slice(i, i + BatchSize))
+					.values(data.slice(i, i + batchSize))
 					.onConflictDoNothing();
 			}
-		};
+		}
 
-		if (mediaTagsData.length) {
-			await insertChunked(mediaTags, mediaTagsData);
+		function* relationInserts() {
+			if (!nativeTx) {
+				yield* insertChunks(mediaTags, mediaTagsData);
+			}
+			yield* insertChunks(mediaAuthors, mediaAuthorsData);
+			yield* insertChunks(mediaProjects, mediaProjectsData);
+			yield* insertChunks(mediaCharacters, mediaCharsData);
+			yield* insertChunks(characterIps, characterIpsData);
+			yield* insertChunks(mediaIps, mediaIpsData);
+			yield* insertChunks(mediaUrls, mediaUrlsData);
+			yield* insertChunks(mediaGenerationInfo, mediaGenInfoData);
 		}
-		if (mediaAuthorsData.length) {
-			await insertChunked(mediaAuthors, mediaAuthorsData);
-		}
-		if (mediaProjectsData.length) {
-			await insertChunked(mediaProjects, mediaProjectsData);
-		}
-		if (mediaCharsData.length) {
-			await insertChunked(mediaCharacters, mediaCharsData);
-		}
-		if (characterIpsData.length) {
-			await insertChunked(characterIps, characterIpsData);
-		}
-		if (mediaIpsData.length) {
-			await insertChunked(mediaIps, mediaIpsData);
-		}
-		if (mediaUrlsData.length) {
-			await insertChunked(mediaUrls, mediaUrlsData);
-		}
-		if (mediaGenInfoData.length) {
-			await insertChunked(mediaGenerationInfo, mediaGenInfoData);
+
+		if (nativeTx) {
+			if (mediaTagsData.length) {
+				await copyBackupMediaTags(nativeTx, mediaTagsData);
+			}
+			// Await the lazy Drizzle queries together on this transaction's connection.
+			await Promise.all(relationInserts());
+		} else {
+			for (const insert of relationInserts()) {
+				await insert;
+			}
 		}
 	},
 
@@ -1220,11 +1226,11 @@ export const BackupService = {
 			}));
 
 			// Extract authors
-			const simpleAuthors = (media.authors || []).map((ma) => {
-				const accounts = ma.author?.accounts ?? [];
+			const simpleAuthors = (media.authors || []).map((author) => {
+				const accounts = author.accounts ?? [];
 				const account = accounts[0];
 				return {
-					name: ma.author?.name || "",
+					name: author.name,
 					accountId: account?.accountId ?? null,
 					platform: account?.platform ?? undefined,
 					remoteId: account?.remoteId,
@@ -1247,8 +1253,7 @@ export const BackupService = {
 				description: mc.character?.description ?? null,
 				confidence: mc.confidence ?? null,
 				linkedIps:
-					mc.character?.ips?.map((ci) => ci.ip?.name || "").filter(Boolean) ??
-					[],
+					mc.character?.ips?.map((ip) => ip.name).filter(Boolean) ?? [],
 				source: mc.source || "",
 			}));
 

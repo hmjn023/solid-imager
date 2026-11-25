@@ -1,5 +1,11 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./support/test";
+import { expectDomPreserved } from "./support/dom";
+import {
+	E2E_PRIMARY_MEDIA_ID,
+	E2E_SOURCE_NAME,
+	sourcePath,
+} from "./support/fixture";
+import { expect, test, waitForAppHydration } from "./support/test";
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	const overflow = await page.evaluate(
@@ -112,3 +118,66 @@ test("app navigation is responsive and accessible", async ({
 	await expect(dialog).toBeHidden();
 	await expectNoHorizontalOverflow(page);
 });
+
+test(
+	"sidebar collapse preserves navigation and the current screen @desktop-only",
+	{ tag: "@dom-stability" },
+	async ({ page }) => {
+		await page.goto(sourcePath());
+		await waitForAppHydration(page);
+
+		const main = page.getByRole("main");
+		const sidebar = page.getByRole("complementary", {
+			name: "アプリケーションサイドバー",
+		});
+		const toggle = sidebar.getByRole("button", { name: /サイドバーを/ });
+		const sources = sidebar.getByRole("button", {
+			name: "ソース",
+			exact: true,
+		});
+		const library = sidebar.getByRole("link", {
+			name: "ライブラリ",
+			exact: true,
+		});
+		const source = sidebar.getByRole("link", {
+			name: new RegExp(E2E_SOURCE_NAME),
+		});
+		const inbox = sidebar.getByRole("button", { name: /^取り込み待ち/ });
+		const quickActions = sidebar.getByRole("button", { name: "クイック操作" });
+		const media = main.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
+		await expect(source).toBeVisible();
+		await expect(media).toBeVisible();
+		const stableNodes = {
+			main,
+			media,
+			toggle,
+			sources,
+			library,
+			inbox,
+			quickActions,
+		};
+		await expectDomPreserved(stableNodes, async () => {
+			await toggle.focus();
+			await page.keyboard.press("Enter");
+			await expect(sidebar).toHaveAttribute("data-state", "collapsed");
+			await expect(source).toBeHidden();
+			await expect(toggle).toBeFocused();
+		});
+
+		await library.hover();
+		await expect(page.getByRole("tooltip")).toHaveText("ライブラリ");
+		await expectDomPreserved(stableNodes, async () => {
+			await page.keyboard.press("Control+b");
+			await expect(sidebar).toHaveAttribute("data-state", "expanded");
+			await expect(page.getByRole("tooltip")).toBeHidden();
+			await expect(source).toBeVisible();
+			await expect(toggle).toBeFocused();
+		});
+
+		await toggle.click();
+		await sources.press("Enter");
+		await expect(sidebar).toHaveAttribute("data-state", "expanded");
+		await expect(sources).toBeFocused();
+		await expect(source).toBeVisible();
+	},
+);

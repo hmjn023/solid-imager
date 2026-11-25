@@ -1,5 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { AppContractClient } from "@solid-imager/core/contract";
+import { pixivAnimationPath, resolveServerUrl } from "@solid-imager/core/http";
 import {
 	canTransferPixivSession,
 	pixivCodeSchema,
@@ -74,7 +75,7 @@ export function createPixivAccount(
 			viewer: createViewer(base, request),
 			async animation(id: number) {
 				const res = await request(
-					new URL("/api/pixiv-animation/" + id, base).href,
+					resolveServerUrl(base, pixivAnimationPath(id)),
 				);
 				if (!res.ok) throw new Error(t("pixivAccount.couldNotLoadUgoira"));
 				return URL.createObjectURL(await res.blob());

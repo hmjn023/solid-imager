@@ -18,36 +18,80 @@ import {
 
 export const tagsContract = {
 	dictionarySearch: oc
-		.meta(openapi({ tags: ["Tags"], summary: "Danbooruタグ辞書の検索" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/tags/dictionary/search",
+				tags: ["Tags"],
+				summary: "Danbooruタグ辞書の検索",
+			}),
+		)
 		.input(tagDictionarySearchSchema)
 		.output(tagDictionarySearchResultSchema),
 
 	dictionaryDetail: oc
-		.meta(openapi({ tags: ["Tags"], summary: "Danbooruタグ辞書の詳細" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/tags/dictionary/detail",
+				tags: ["Tags"],
+				summary: "Danbooruタグ辞書の詳細",
+			}),
+		)
 		.input(z.object({ name: z.string().trim().min(1).max(200) }))
 		.output(tagDictionaryDetailSchema.nullable()),
 
 	dictionaryStatus: oc
-		.meta(openapi({ tags: ["Tags"], summary: "タグ辞書の取り込み状況" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/tags/dictionary/status",
+				tags: ["Tags"],
+				summary: "タグ辞書の取り込み状況",
+			}),
+		)
 		.output(tagDictionaryStatusSchema),
 
 	dictionaryRefresh: oc
-		.meta(openapi({ tags: ["Tags"], summary: "タグ辞書の更新を予約" }))
+		.meta(
+			openapi({
+				method: "POST",
+				path: "/tags/dictionary/refresh",
+				tags: ["Tags"],
+				summary: "タグ辞書の更新を予約",
+			}),
+		)
 		.output(z.object({ jobId: z.uuid().nullable() })),
 
 	dictionaryLegacy: oc
-		.meta(openapi({ tags: ["Tags"], summary: "タグ辞書への移行候補を取得" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/tags/dictionary/legacy",
+				tags: ["Tags"],
+				summary: "タグ辞書への移行候補を取得",
+			}),
+		)
 		.input(tagDictionaryLegacySearchSchema)
 		.output(tagDictionaryLegacyResultSchema),
 
 	dictionaryMigrate: oc
-		.meta(openapi({ tags: ["Tags"], summary: "旧タグを辞書の正式名に統合" }))
+		.meta(
+			openapi({
+				method: "POST",
+				path: "/tags/dictionary/migrate",
+				tags: ["Tags"],
+				summary: "旧タグを辞書の正式名に統合",
+			}),
+		)
 		.input(tagDictionaryMigrationSchema)
 		.output(z.object({ success: z.literal(true) })),
 
 	list: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/tags",
 				tags: ["Tags"],
 				summary: "タグ一覧取得",
 				description: "登録済みのタグを一覧で取得します。",
@@ -58,6 +102,8 @@ export const tagsContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/tags/{id}",
 				tags: ["Tags"],
 				summary: "タグ取得",
 				description: "UUIDで指定したタグの情報を取得します。",
@@ -69,6 +115,8 @@ export const tagsContract = {
 	create: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/tags",
 				tags: ["Tags"],
 				summary: "タグ作成",
 				description: "新しいタグを登録します。",
@@ -80,6 +128,8 @@ export const tagsContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/tags/{id}",
 				tags: ["Tags"],
 				summary: "タグ更新",
 				description: "UUIDで指定したタグの情報を更新します。",
@@ -96,6 +146,8 @@ export const tagsContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/tags/{id}",
 				tags: ["Tags"],
 				summary: "タグ削除",
 				description: "UUIDで指定したタグを削除します。",

@@ -26,6 +26,8 @@ export const authorsContract = {
 	beginAccountVerification: authorProcedure
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/authors/account-verifications",
 				tags: ["Authors"],
 				summary: "現在のXユーザー名でプロフィール確認を開始",
 			}),
@@ -34,13 +36,20 @@ export const authorsContract = {
 		.output(authorAccountVerificationSchema),
 	getAccountVerification: authorProcedure
 		.meta(
-			openapi({ tags: ["Authors"], summary: "Xプロフィールの取得結果を確認" }),
+			openapi({
+				method: "GET",
+				path: "/authors/account-verifications/{verificationId}",
+				tags: ["Authors"],
+				summary: "Xプロフィールの取得結果を確認",
+			}),
 		)
 		.input(authorAccountVerificationIdSchema)
 		.output(authorAccountVerificationSchema),
 	submitAccountVerification: authorProcedure
 		.meta(
 			openapi({
+				method: "PUT",
+				path: "/authors/account-verifications/{verificationId}/profile",
 				tags: ["Authors"],
 				summary: "xtracterからプロフィール確認結果を送信",
 				description: "取得結果を仮保存します。作者情報は変更しません。",
@@ -51,6 +60,8 @@ export const authorsContract = {
 	confirmAccountVerification: authorProcedure
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/authors/account-verifications/{verificationId}/confirm",
 				tags: ["Authors"],
 				summary: "同じアカウントと手動確認して固定IDを登録",
 				description:
@@ -62,6 +73,8 @@ export const authorsContract = {
 	list: authorProcedure
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/authors",
 				tags: ["Authors"],
 				summary: "作者一覧取得",
 				description: "外部アカウントを含む作者一覧を取得します。",
@@ -69,20 +82,43 @@ export const authorsContract = {
 		)
 		.output(authorSchema.array()),
 	create: authorProcedure
-		.meta(openapi({ tags: ["Authors"], summary: "作者登録" }))
+		.meta(
+			openapi({
+				method: "POST",
+				path: "/authors",
+				tags: ["Authors"],
+				summary: "作者登録",
+			}),
+		)
 		.input(newAuthorSchema)
 		.output(authorSchema),
 	updateName: authorProcedure
-		.meta(openapi({ tags: ["Authors"], summary: "作者の管理名を更新" }))
+		.meta(
+			openapi({
+				method: "PATCH",
+				path: "/authors/{id}",
+				tags: ["Authors"],
+				summary: "作者の管理名を更新",
+			}),
+		)
 		.input(updateAuthorNameSchema)
 		.output(authorSchema),
 	listMedia: authorProcedure
-		.meta(openapi({ tags: ["Authors"], summary: "作者に紐づくメディアを確認" }))
+		.meta(
+			openapi({
+				method: "GET",
+				path: "/authors/{authorId}/media",
+				tags: ["Authors"],
+				summary: "作者に紐づくメディアを確認",
+			}),
+		)
 		.input(authorMediaListInputSchema)
 		.output(authorMediaPageSchema),
 	correctMedia: authorProcedure
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/media/authors",
 				tags: ["Authors"],
 				summary: "選択したメディアの作者を修正",
 				description: "指定した作者だけを付け替え、他の作者は維持します。",
@@ -93,6 +129,8 @@ export const authorsContract = {
 	merge: authorProcedure
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/authors/merge",
 				tags: ["Authors"],
 				summary: "同一人物と確認した作者を統合",
 				description:

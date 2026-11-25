@@ -1,3 +1,4 @@
+import { mediaThumbnailPath } from "@solid-imager/core/http";
 import type { ThumbnailSize } from "@solid-imager/core/thumbnails";
 import type { IThumbnailService } from "../ports/thumbnail-service";
 
@@ -15,11 +16,7 @@ export function createThumbnailService(
 ): IThumbnailService {
 	return {
 		getMediaThumbnailUrl(mediaSourceId, mediaId, size) {
-			let url = `/api/sources/${mediaSourceId}/thumbnail/${mediaId}`;
-			if (size) {
-				url += `?size=${size}`;
-			}
-			return url;
+			return mediaThumbnailPath(mediaSourceId, mediaId, { size });
 		},
 
 		async startThumbnailGeneration(mediaSourceId, options) {

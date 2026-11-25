@@ -56,8 +56,22 @@ const pageSchema = z.strictObject({
 });
 
 function pageOf<T>(items: T[], offset = 0, limit = 5, total = items.length) {
+	return formatPage(
+		items.slice(offset, offset + limit),
+		offset,
+		total,
+		items.length,
+	);
+}
+
+function formatPage<T>(
+	items: T[],
+	offset: number,
+	total: number,
+	endOffset = total,
+) {
 	const page: T[] = [];
-	for (const item of items.slice(offset, offset + limit)) {
+	for (const item of items) {
 		if (JSON.stringify([...page, item]).length > 1000) break;
 		page.push(item);
 	}
@@ -66,7 +80,7 @@ function pageOf<T>(items: T[], offset = 0, limit = 5, total = items.length) {
 		total_count: total,
 		page_size: page.length,
 		next_offset:
-			page.length > 0 && offset + page.length < items.length
+			page.length > 0 && offset + page.length < endOffset
 				? offset + page.length
 				: null,
 	};
@@ -263,30 +277,32 @@ export async function registerWebTools(
 		),
 		defineTool(
 			"list_sources",
-			"List registered sources. Use to choose a source before searching or check for an existing directory before registering one.",
+			"List registered sources to choose one for searching. Use path to check whether a local directory is already registered.",
 			true,
-			pageSchema,
-			async ({ offset, limit }, execution) => {
+			pageSchema.extend(
+				mediaToolInputs.list_sources.pick({ path: true }).shape,
+			),
+			async (input, execution) => {
 				const result = mediaToolOutputs.list_sources.parse(
 					await orpc.config.callWebTool(
-						{ name: "list_sources", arguments: {} },
+						{ name: "list_sources", arguments: input },
 						{ signal: execution },
 					),
 				);
-				return pageOf(
-					result.sources.map(({ id, name, type, connectionInfo }) => ({
+				return formatPage(
+					result.sources.map(({ id, name, type, directory }) => ({
 						id,
 						name: name.slice(0, 80),
 						type,
-						...(type === "local" && "path" in connectionInfo
+						...(directory !== undefined
 							? {
-									directory: connectionInfo.path.slice(0, 180),
-									directory_truncated: connectionInfo.path.length > 180,
+									directory: directory.slice(0, 180),
+									directory_truncated: directory.length > 180,
 								}
 							: {}),
 					})),
-					offset,
-					limit,
+					input.offset,
+					result.total,
 				);
 			},
 		),
@@ -296,7 +312,7 @@ export async function registerWebTools(
 			false,
 			mediaToolInputs.create_local_source,
 			async (input, execution) => {
-				const { source } = mediaToolOutputs.create_local_source.parse(
+				const { source, scan } = mediaToolOutputs.create_local_source.parse(
 					await orpc.config.callWebTool(
 						{ name: "create_local_source", arguments: input },
 						{ signal: execution },
@@ -312,7 +328,7 @@ export async function registerWebTools(
 						name: source.name.slice(0, 120),
 						type: source.type,
 					},
-					scan: "started",
+					scan,
 				};
 			},
 		),

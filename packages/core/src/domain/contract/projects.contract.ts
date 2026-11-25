@@ -11,6 +11,8 @@ export const projectsContract = {
 	list: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/projects",
 				tags: ["Projects"],
 				summary: "プロジェクト一覧取得",
 				description: "登録済みのプロジェクトを一覧で取得します。",
@@ -21,6 +23,8 @@ export const projectsContract = {
 	get: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/projects/{id}",
 				tags: ["Projects"],
 				summary: "プロジェクト取得",
 				description: "UUIDで指定したプロジェクトの情報を取得します。",
@@ -32,6 +36,8 @@ export const projectsContract = {
 	create: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/projects",
 				tags: ["Projects"],
 				summary: "プロジェクト作成",
 				description: "新しいプロジェクトを登録します。",
@@ -43,6 +49,8 @@ export const projectsContract = {
 	update: oc
 		.meta(
 			openapi({
+				method: "PATCH",
+				path: "/projects/{id}",
 				tags: ["Projects"],
 				summary: "プロジェクト更新",
 				description: "UUIDで指定したプロジェクトの情報を更新します。",
@@ -59,6 +67,8 @@ export const projectsContract = {
 	delete: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/projects/{id}",
 				tags: ["Projects"],
 				summary: "プロジェクト削除",
 				description: "UUIDで指定したプロジェクトを削除します。",
@@ -69,6 +79,8 @@ export const projectsContract = {
 	listForMedia: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/media/{mediaId}/projects",
 				tags: ["Projects"],
 				summary: "メディアのプロジェクト一覧取得",
 				description:
@@ -81,6 +93,8 @@ export const projectsContract = {
 	addToMedia: oc
 		.meta(
 			openapi({
+				method: "PUT",
+				path: "/media/{mediaId}/projects/{projectId}",
 				tags: ["Projects"],
 				summary: "メディアにプロジェクトを追加",
 				description: "指定したプロジェクトをメディアに関連付けます。",
@@ -96,6 +110,8 @@ export const projectsContract = {
 	removeFromMedia: oc
 		.meta(
 			openapi({
+				method: "DELETE",
+				path: "/media/{mediaId}/projects/{projectId}",
 				tags: ["Projects"],
 				summary: "メディアからプロジェクトを削除",
 				description: "指定したプロジェクトとメディアの関連付けを解除します。",

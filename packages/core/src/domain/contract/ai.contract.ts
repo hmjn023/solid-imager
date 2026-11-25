@@ -27,13 +27,20 @@ import {
 export const aiContract = {
 	offload: oc
 		.meta(
-			openapi({ tags: ["AI"], summary: "実行中の推論終了後にモデルを解放" }),
+			openapi({
+				method: "POST",
+				path: "/ai/offload",
+				tags: ["AI"],
+				summary: "実行中の推論終了後にモデルを解放",
+			}),
 		)
 		.input(z.object({}))
 		.output(z.object({})),
 	startEmbeddingExtraction: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/embedding-extractions",
 				tags: ["AI"],
 				summary: "単一メディアのEmbeddingGemma 2索引作成ジョブを開始",
 				description:
@@ -43,22 +50,43 @@ export const aiContract = {
 		.input(ccipExtractionRequestSchema)
 		.output(startCcipExtractionResponseSchema),
 	embeddingImage: oc
-		.meta(openapi({ tags: ["AI"], summary: "EmbeddingGemma 2 画像特徴抽出" }))
+		.meta(
+			openapi({
+				method: "POST",
+				path: "/ai/embeddings/image",
+				tags: ["AI"],
+				summary: "EmbeddingGemma 2 画像特徴抽出",
+			}),
+		)
 		.input(z.object({ file: z.file() }))
 		.output(embeddingResponseSchema),
 	embeddingText: oc
-		.meta(openapi({ tags: ["AI"], summary: "EmbeddingGemma 2 検索文特徴抽出" }))
+		.meta(
+			openapi({
+				method: "POST",
+				path: "/ai/embeddings/text",
+				tags: ["AI"],
+				summary: "EmbeddingGemma 2 検索文特徴抽出",
+			}),
+		)
 		.input(embeddingTextRequestSchema)
 		.output(embeddingResponseSchema),
 	scanBatchEmbeddingTargets: oc
 		.meta(
-			openapi({ tags: ["AI"], summary: "EmbeddingGemma 2 索引の作成対象数" }),
+			openapi({
+				method: "POST",
+				path: "/ai/embedding-batches/targets",
+				tags: ["AI"],
+				summary: "EmbeddingGemma 2 索引の作成対象数",
+			}),
 		)
 		.input(batchCcipExtractionRequestSchema)
 		.output(batchTargetCountResponseSchema),
 	startBatchEmbeddingExtraction: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/embedding-batches",
 				tags: ["AI"],
 				summary: "EmbeddingGemma 2 画像・動画索引作成ジョブを開始",
 				description:
@@ -70,6 +98,8 @@ export const aiContract = {
 	health: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/ai/health",
 				tags: ["AI"],
 				summary: "AIサービス状態確認",
 				description:
@@ -80,6 +110,8 @@ export const aiContract = {
 	tag: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/tag",
 				tags: ["AI"],
 				summary: "画像・動画サムネイルの自動タグ付け",
 				description:
@@ -93,6 +125,8 @@ export const aiContract = {
 	tagOppaiOracle: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/tag/oppai-oracle",
 				tags: ["AI"],
 				summary: "OppaiOracleで画像・動画サムネイルをタグ付け",
 				description:
@@ -106,6 +140,8 @@ export const aiContract = {
 	ccipFeature: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/ccip/features",
 				tags: ["AI"],
 				summary: "CCIP特徴量の抽出",
 				description:
@@ -117,6 +153,8 @@ export const aiContract = {
 	ccipDifference: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/ccip/difference",
 				tags: ["AI"],
 				summary: "画像のCCIP差分計算",
 				description:
@@ -128,6 +166,8 @@ export const aiContract = {
 	ccipDistances: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/ccip/distances",
 				tags: ["AI"],
 				summary: "CCIP距離の計算",
 				description:
@@ -141,6 +181,8 @@ export const aiContract = {
 	ccipVectorStatus: oc
 		.meta(
 			openapi({
+				method: "GET",
+				path: "/ai/ccip/vector-status",
 				tags: ["AI"],
 				summary: "メディアのCCIP登録状態取得",
 				description:
@@ -156,6 +198,8 @@ export const aiContract = {
 	startCcipExtraction: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/ccip/extractions",
 				tags: ["AI"],
 				summary: "CCIP特徴量抽出の開始",
 				description:
@@ -169,6 +213,8 @@ export const aiContract = {
 	scanBatchCcipTargets: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/ccip/batches/targets",
 				tags: ["AI"],
 				summary: "CCIP一括処理対象の確認",
 				description:
@@ -182,6 +228,8 @@ export const aiContract = {
 	startBatchCcipExtraction: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/ccip/batches",
 				tags: ["AI"],
 				summary: "CCIP一括抽出の開始",
 				description:
@@ -195,6 +243,8 @@ export const aiContract = {
 	scanBatchTaggingTargets: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/tagging-batches/targets",
 				tags: ["AI"],
 				summary: "一括タグ付け対象の確認",
 				description:
@@ -208,6 +258,8 @@ export const aiContract = {
 	startBatchTagging: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/tagging-batches",
 				tags: ["AI"],
 				summary: "一括タグ付けの開始",
 				description:
@@ -221,6 +273,8 @@ export const aiContract = {
 	detectAndCropCharacters: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/ai/character-crops",
 				tags: ["AI"],
 				summary: "キャラクター領域の検出と切り抜き",
 				description:

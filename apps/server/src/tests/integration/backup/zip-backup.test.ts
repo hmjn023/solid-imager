@@ -161,7 +161,7 @@ describe("BackupService ZIP Integration", () => {
 			where: { mediaSourceId: sourceId2 },
 			with: {
 				tags: { with: { tag: true } },
-				authors: { with: { author: true } },
+				authors: true,
 				characters: { with: { character: true } },
 				ips: { with: { ip: true } },
 				projects: { with: { project: true } },
@@ -172,7 +172,7 @@ describe("BackupService ZIP Integration", () => {
 		expect(restoredMedia?.filePath).toBe(testFileName);
 		expect(restoredMedia?.indexedAt).toEqual(media.indexedAt);
 		expect(restoredMedia?.tags[0].tag.name).toBe("Zip Tag");
-		expect(restoredMedia?.authors[0].author.name).toBe("Zip Author");
+		expect(restoredMedia?.authors[0].name).toBe("Zip Author");
 		expect(restoredMedia?.characters[0].character.name).toBe("Zip Character");
 		expect(restoredMedia?.characters[0].confidence).toBe(CHARACTER_CONFIDENCE);
 		expect(restoredMedia?.ips[0].ip.name).toBe("Zip IP");

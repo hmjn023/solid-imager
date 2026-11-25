@@ -14,6 +14,19 @@ export const danbooruMediaUrlSchema = z.url().refine((value) => {
 	);
 });
 
+/** Only CDN derivatives may be served through the thumbnail relay. */
+export const danbooruThumbnailUrlSchema = danbooruMediaUrlSchema.refine(
+	(value) => {
+		const url = URL.parse(value);
+		return (
+			url?.hostname === "cdn.donmai.us" &&
+			/^\/(?:[0-9]+x[0-9]+|preview)\/[a-f0-9/]+\.(?:jpg|png|webp)$/i.test(
+				url.pathname,
+			)
+		);
+	},
+);
+
 export const danbooruPostSchema = z.object({
 	id: z.number().int().positive(),
 	previewUrl: danbooruMediaUrlSchema.nullable(),

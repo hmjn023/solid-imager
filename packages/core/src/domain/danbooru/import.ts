@@ -22,6 +22,7 @@ export function danbooruPostToDownloadItem(
 	}
 	return {
 		targetUrl: post.fileUrl,
+		previewUrl: post.previewUrl ?? undefined,
 		sourceUrls: [
 			...new Set([post.fileUrl, ...(sourceUrl ? [sourceUrl] : []), postUrl]),
 		],

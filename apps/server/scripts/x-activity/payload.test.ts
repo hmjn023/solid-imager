@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { implement } from "@orpc/server";
-import { RPCHandler } from "@orpc/server/fetch";
+import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { appContract } from "@solid-imager/core/contract";
 import { downloadItemSchema } from "@solid-imager/core/media";
 import { downloadsFromLike, likeEventSchema, readLines } from "./payload";
@@ -148,7 +148,7 @@ describe("X activity photos", () => {
 	});
 });
 
-it("replays through the real CLI and RPC codec, retries failed submissions and suppresses queued events", async () => {
+it("replays through the real CLI and HTTP codec, retries failed submissions and suppresses queued events", async () => {
 	const directory = await mkdtemp(join(tmpdir(), "x-activity-replay-"));
 	const sourceId = "11111111-1111-4111-8111-111111111111";
 	const queued: string[] = [];
@@ -157,7 +157,7 @@ it("replays through the real CLI and RPC codec, retries failed submissions and s
 		sources: { list: appContract.sources.list },
 		downloads: appContract.downloads,
 	});
-	const handler = new RPCHandler(
+	const handler = new OpenAPIHandler(
 		os.router({
 			sources: {
 				list: os.sources.list.handler(() => [
@@ -188,7 +188,7 @@ it("replays through the real CLI and RPC codec, retries failed submissions and s
 		hostname: "127.0.0.1",
 		port: 0,
 		async fetch(request) {
-			const result = await handler.handle(request, { prefix: "/api/rpc" });
+			const result = await handler.handle(request, { prefix: "/api" });
 			return result.response ?? new Response("Not found", { status: 404 });
 		},
 	});

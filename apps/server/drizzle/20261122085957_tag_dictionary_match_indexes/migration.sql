@@ -1,0 +1,2 @@
+CREATE INDEX "idx_tag_dictionary_japanese" ON "tag_dictionary_tags" ("japanese");--> statement-breakpoint
+CREATE INDEX "idx_tag_dictionary_wiki_other_names" ON "tag_dictionary_wiki" USING gin ("other_names");

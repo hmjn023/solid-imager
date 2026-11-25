@@ -1,3 +1,4 @@
+import { apiPathPattern, apiRoute } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -8,10 +9,9 @@ import {
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const startCcipExtractionEndpoint =
-	/\/api\/rpc\/ai\/startCcipExtraction(?:\?|$)/;
-const ccipVectorStatusEndpoint = /\/api\/rpc\/ai\/ccipVectorStatus(?:\?|$)/;
-const jobEventsEndpoint = /\/api\/rpc\/jobs\/events(?:\?|$)/;
+const startCcipExtractionEndpoint = apiPathPattern("ai/startCcipExtraction");
+const ccipVectorStatusEndpoint = apiPathPattern("ai/ccipVectorStatus");
+const jobEventsEndpoint = apiPathPattern("jobs/events");
 
 test(
 	"extracts real CCIP vectors and finds a similar seeded image",
@@ -129,7 +129,7 @@ test(
 
 		const similarityResponse = page.waitForResponse(
 			(response) =>
-				new URL(response.url()).pathname === "/api/rpc/media/searchSimilar" &&
+				apiRoute("media/searchSimilar")(new URL(response.url())) &&
 				response.status() === 200,
 		);
 		await page.getByRole("button", { name: "類似検索", exact: true }).click();
@@ -155,7 +155,7 @@ test(
 		await primaryMedia.click({ button: "right" });
 		const directSearchResponse = page.waitForResponse(
 			(response) =>
-				new URL(response.url()).pathname === "/api/rpc/media/searchSimilar" &&
+				apiRoute("media/searchSimilar")(new URL(response.url())) &&
 				response.status() === 200,
 			{ timeout: 30_000 },
 		);

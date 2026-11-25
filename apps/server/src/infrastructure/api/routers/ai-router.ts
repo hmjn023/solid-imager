@@ -5,7 +5,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import { implement, ORPCError } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
-import { type AppContract, aiContract } from "@solid-imager/core/contract";
+import { aiContract, appContract } from "@solid-imager/core/contract";
 import {
 	detectAndCropResponseSchema,
 	type NapiBBox,
@@ -66,7 +66,7 @@ async function callRemoteCrop(
 	timeoutMs: number,
 ): Promise<unknown> {
 	const file = new File([new Uint8Array(fileBuffer)], fileName);
-	const remoteOrpc = createClient<AppContract>({ url: remoteUrl, timeoutMs });
+	const remoteOrpc = createClient(appContract, { url: remoteUrl, timeoutMs });
 	return remoteOrpc.ai.detectAndCropCharacters({ file });
 }
 

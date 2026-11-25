@@ -1,5 +1,6 @@
 import { rm, writeFile } from "node:fs/promises";
 import { statisticsResponseSchema } from "@solid-imager/core/statistics";
+import { apiRequest } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	externalViewerFixturePath,
@@ -11,12 +12,22 @@ const postId = 76241001;
 const pixivTitle = "SSR fixture illustration";
 const danbooruTag = "ssr_fixture_tag";
 const preview = `https://i.pximg.net/img-master/img/e2e-ssr/${postId}_p0_master1200.png`;
+const pixivLargeThumbnail = preview.replace(
+	"/img-master/",
+	"/c/480x960/img-master/",
+);
+const pixivSmallThumbnail = pixivLargeThumbnail.replace(
+	"/c/480x960/",
+	"/c/240x480/",
+);
+const danbooruThumbnail = "https://cdn.donmai.us/180x180/ab/cd/abcd.jpg";
 const danbooruPost = {
 	id: postId,
 	rating: "g",
 	created_at: "2026-01-01T00:00:00Z",
 	tag_string_general: danbooruTag,
 	file_ext: "png",
+	preview_file_url: danbooruThumbnail,
 };
 
 test.describe("public viewer SSR", () => {
@@ -32,7 +43,7 @@ test.describe("public viewer SSR", () => {
 							illust_id: postId,
 							title: pixivTitle,
 							user_name: "SSR fixture artist",
-							url: preview,
+							url: pixivLargeThumbnail,
 							illust_page_count: 1,
 						},
 					],
@@ -72,18 +83,24 @@ test.describe("public viewer SSR", () => {
 		{
 			path: "/danbooru",
 			text: `Danbooru #${postId}`,
-			endpoint: "/api/rpc/viewer/search",
+			endpoint: "/api/viewer/search",
+			thumbnail: danbooruThumbnail,
 		},
 		{
 			path: `/danbooru/${postId}`,
 			text: danbooruTag,
-			endpoint: "/api/rpc/danbooru/getPost",
+			endpoint: `/api/danbooru/posts/${postId}`,
 		},
-		{ path: "/pixiv", text: pixivTitle, endpoint: "/api/rpc/viewer/search" },
+		{
+			path: "/pixiv",
+			text: pixivTitle,
+			endpoint: "/api/viewer/search",
+			thumbnail: pixivSmallThumbnail,
+		},
 		{
 			path: `/pixiv/${postId}`,
 			text: "SSR fixture metadata",
-			endpoint: "/api/rpc/viewer/pixivArtwork",
+			endpoint: `/api/viewer/pixiv/posts/${postId}`,
 		},
 	]) {
 		test(`${route.path} renders provider data and reuses it after hydration`, async ({
@@ -96,7 +113,7 @@ test.describe("public viewer SSR", () => {
 				baseURL,
 				javaScriptEnabled: false,
 			});
-			const image = "**/api/pixiv-image?*";
+			const image = /\/api\/viewer\/(?:pixiv\/image|danbooru\/thumbnail)\?/;
 			const path = getFixtureMediaPath(E2E_PRIMARY_FILE_NAME);
 			await Promise.all([
 				context.route(image, (request) => request.fulfill({ path })),
@@ -111,6 +128,20 @@ test.describe("public viewer SSR", () => {
 						.getByText(route.text, { exact: true })
 						.first(),
 				).toBeVisible();
+				if (route.thumbnail) {
+					const img = document.locator(`[data-media-id="${postId}"] img`);
+					const src = await img.getAttribute("src");
+					expect(new URL(src ?? "", baseURL).searchParams.get("url")).toBe(
+						route.thumbnail,
+					);
+					await expect(img).toHaveAttribute("loading", "eager");
+					await expect(img).toHaveAttribute("fetchpriority", "high");
+					await expect
+						.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
+						.toBeGreaterThan(0);
+					if (route.path === "/pixiv")
+						await expect(img).toHaveAttribute("srcset", / 1x, .* 2x$/);
+				}
 				if (route.path === `/danbooru/${postId}`) {
 					await context.addCookies([
 						{ name: "solid-imager.locale", value: "en", url: document.url() },
@@ -143,6 +174,32 @@ test.describe("public viewer SSR", () => {
 			}
 		});
 	}
+
+	test("Pixiv retries a missing 240px thumbnail with the upstream variant", async ({
+		browserHealth,
+		page,
+	}) => {
+		const urlOfImage = (url: URL) => url.searchParams.get("url");
+		const missing = (url: URL) => urlOfImage(url) === pixivSmallThumbnail;
+		browserHealth.allowResponseFailure(
+			/\/api\/viewer\/pixiv\/image\?.*240x480/,
+		);
+		browserHealth.allowConsole(
+			"Failed to load resource: the server responded with a status of 404",
+		);
+		await page.route(missing, (request) => request.fulfill({ status: 404 }));
+		await page.route(
+			(url) => urlOfImage(url) === pixivLargeThumbnail,
+			(request) =>
+				request.fulfill({ path: getFixtureMediaPath(E2E_PRIMARY_FILE_NAME) }),
+		);
+		await page.goto("/pixiv");
+		const img = page.locator(`[data-media-id="${postId}"] img`);
+		await expect(img).toHaveAttribute("src", /480x960/);
+		await expect
+			.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
+			.toBeGreaterThan(0);
+	});
 });
 
 test("statistics renders charts with the reporting time zone and reuses the query on reload", async ({
@@ -155,12 +212,13 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 	const zone = await page.evaluate(
 		() => Intl.DateTimeFormat().resolvedOptions().timeZone,
 	);
-	const statistics = await page.request.post("/api/rpc/media/statistics", {
-		data: { json: { period: "all", timeZone: zone } },
+	const statistics = await apiRequest(page.request, "media/statistics", {
+		period: "all",
+		timeZone: zone,
 	});
 	await expect(statistics).toBeOK();
 	const { mediaTypes } = statisticsResponseSchema.parse(
-		(await statistics.json()).json,
+		await statistics.json(),
 	);
 	const imageCount =
 		mediaTypes.find((entry) => entry.type === "image")?.count ?? 0;
@@ -196,7 +254,7 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 	} finally {
 		await documentContext.close();
 	}
-	const endpoint = "/api/rpc/media/statistics";
+	const endpoint = "/api/media/statistics";
 	const firstVisit = browserHealth.requestCheckpoint();
 	const [firstQuery] = await Promise.all([
 		page.waitForRequest(
@@ -204,7 +262,7 @@ test("statistics renders charts with the reporting time zone and reuses the quer
 		),
 		page.goto("/statistics?period=all"),
 	]);
-	expect(firstQuery.postDataJSON()).toMatchObject({ json: { timeZone: zone } });
+	expect(firstQuery.postDataJSON()).toMatchObject({ timeZone: zone });
 	await waitForAppHydration(page);
 	await expect(
 		page.getByRole("heading", { name: "メディアの内訳", exact: true }),

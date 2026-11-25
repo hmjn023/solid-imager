@@ -2,6 +2,7 @@ import {
 	captureSearchSnapshotResponseSchema,
 	defaultState,
 } from "@solid-imager/core/search";
+import { apiRequest } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -10,8 +11,8 @@ import {
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const searchEndpoint = "/api/rpc/media/search";
-const snapshotEndpoint = "/api/rpc/searchSnapshots";
+const searchEndpoint = "/api/media/search";
+const snapshotEndpoint = "/api/search-snapshots";
 
 for (const [name, path] of [
 	["library", "/search"],
@@ -23,16 +24,12 @@ for (const [name, path] of [
 		browserHealth,
 		page,
 	}) => {
-		const response = await page.request.post(`${snapshotEndpoint}/capture`, {
-			data: {
-				json: {
-					state: { ...defaultState, searchQuery: E2E_PRIMARY_FILE_NAME },
-				},
-			},
+		const response = await apiRequest(page.request, "searchSnapshots/capture", {
+			state: { ...defaultState, searchQuery: E2E_PRIMARY_FILE_NAME },
 		});
 		await expect(response).toBeOK();
 		const { id } = captureSearchSnapshotResponseSchema.parse(
-			(await response.json()).json,
+			await response.json(),
 		);
 		const savedPath = `${path}?search=${id}`;
 		const primary = `#main-content [data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`;
@@ -84,7 +81,7 @@ for (const [name, path] of [
 			expect(
 				browserHealth.apiRequestCountPathSince(
 					checkpoint,
-					`${snapshotEndpoint}/get`,
+					`${snapshotEndpoint}/${id}`,
 				),
 			).toBe(0);
 		}

@@ -101,9 +101,9 @@ export const relations = defineRelations(schema, (r) => ({
 			to: r.mediaUrls.mediaId,
 		}),
 		/** メディアのAuthorリスト */
-		authors: r.many.mediaAuthors({
-			from: r.medias.id,
-			to: r.mediaAuthors.mediaId,
+		authors: r.many.authors({
+			from: r.medias.id.through(r.mediaAuthors.mediaId),
+			to: r.authors.id.through(r.mediaAuthors.authorId),
 		}),
 	},
 	tags: {
@@ -172,9 +172,9 @@ export const relations = defineRelations(schema, (r) => ({
 	},
 	characters: {
 		/** キャラクターが属するIP (中間テーブル経由) */
-		ips: r.many.characterIps({
-			from: r.characters.id,
-			to: r.characterIps.characterId,
+		ips: r.many.ips({
+			from: r.characters.id.through(r.characterIps.characterId),
+			to: r.ips.id.through(r.characterIps.ipId),
 		}),
 		/** キャラクターが含まれるメディア */
 		media: r.many.mediaCharacters({

@@ -53,7 +53,7 @@ http {
         # add_header Alt-Svc 'h3=":${NGINX_TLS_PORT}"; ma=86400';
 
         # Flush oRPC SSE events as soon as the app sends them.
-        location ~ ^/api/rpc/(sources|imports|jobs)/events$ {
+        location ~ ^/api/(sources/[^/]+|imports|jobs)/events$ {
             proxy_pass http://solid_imager;
             proxy_buffering off;
             proxy_cache off;

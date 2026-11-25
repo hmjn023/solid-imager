@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import { constants } from "node:fs";
 import { createHash } from "node:crypto";
 import type { Transaction } from "@solid-imager/core/ports";
+import { ResourceConflictError } from "@solid-imager/core/errors";
 import { getExecutor } from "~/infrastructure/db/executor";
 import path from "node:path";
 import {
@@ -25,7 +26,7 @@ import {
 	type Job,
 	type ImportWorkOwner,
 } from "@solid-imager/core/jobs";
-import { createImportBatch } from "@solid-imager/db";
+import { createImportBatch, lockActiveDownloadUrls } from "@solid-imager/db";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -35,6 +36,7 @@ import {
 	MediaRepository,
 	JobRepository,
 	DrizzleSourceRepository,
+	TagDictionaryRepository,
 } from "~/infrastructure/db/repositories";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 import { downloadUgoiraArchive } from "~/infrastructure/services/ugoira-download";
@@ -637,9 +639,22 @@ async function handleUgoiraDownload(
 	}
 }
 
-/** Extracts a DownloadItem from a job payload. */
-function getDownloadItemFromJob(job: Job): DownloadItem {
-	return downloadItemSchema.parse(job.payload);
+async function resolvePixivTags(item: DownloadItem): Promise<DownloadItem> {
+	const tags = item.tags;
+	if (!tags?.length) return item;
+	const pixivNames = tags
+		.filter((tag) => tag.source === "pixiv")
+		.map((tag) => tag.name);
+	if (!pixivNames.length) return item;
+
+	const matches = await TagDictionaryRepository.matchNames(pixivNames);
+	return {
+		...item,
+		tags: tags.map((tag) => {
+			const name = tag.source === "pixiv" ? matches.get(tag.name) : undefined;
+			return name ? { ...tag, name } : tag;
+		}),
+	};
 }
 
 export async function processDownloadJob(job: Job): Promise<void> {
@@ -648,15 +663,14 @@ export async function processDownloadJob(job: Job): Promise<void> {
 		logger.error({ jobId: job.id }, "Missing mediaSourceId in download job");
 		return;
 	}
-	// Extract the normalized item from the job payload.
-	const item = getDownloadItemFromJob(job);
+	const input = downloadItemSchema.parse(job.payload);
 
-	if (!item.targetUrl) {
+	if (!input.targetUrl) {
 		logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
 		throw new Error("Download job payload missing targetUrl");
 	}
 
-	logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
+	logger.info({ url: input.targetUrl }, "[DownloadJob] Starting download job");
 
 	const sourceRepo = DrizzleSourceRepository;
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
@@ -664,7 +678,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 		const error = "Media source not found or not a local source";
 		logger.error({ mediaSourceId }, `[DownloadJob] ${error}`);
 		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
+			url: input.targetUrl,
 			error,
 		});
 		throw new Error(error);
@@ -673,9 +687,10 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	const connectionInfo = mediaSource.connectionInfo as { path: string };
 	const basePath = connectionInfo.path;
 
-	const postReference = getTwitterPostReference(item.targetUrl);
+	const postReference = getTwitterPostReference(input.targetUrl);
 
 	try {
+		const item = await resolvePixivTags(input);
 		const owner = importWorkOwner(job);
 		if (owner && isRecord(job.payload) && job.payload.savedDownload) {
 			const saved = savedDownloadRegistration.parse(job.payload.savedDownload);
@@ -707,12 +722,12 @@ export async function processDownloadJob(job: Job): Promise<void> {
 		}
 	} catch (error) {
 		logger.error(
-			{ err: error, url: item.targetUrl },
+			{ err: error, url: input.targetUrl },
 			"[DownloadJob] Job execution failed",
 		);
 		// Notify frontend through the typed event bus.
 		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
+			url: input.targetUrl,
 			error: error instanceof Error ? error.message : String(error),
 		});
 		throw error;
@@ -842,10 +857,6 @@ async function registerMedia(
 	}
 }
 
-/**
- * Queues multiple download jobs from a list of download items.
- * Filters out items whose source URLs already exist in the database.
- */
 /** A stable queue identity for a submitted import; retained even after the download finishes. */
 export function importDownloadJobId(requestId: string): string {
 	const bytes = createHash("sha1")
@@ -859,6 +870,7 @@ export function importDownloadJobId(requestId: string): string {
 	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** Queue one target per distinct approved URL, or skip it if it is already saved. */
 export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
@@ -866,6 +878,11 @@ export async function queueDownloadJobs(
 ): Promise<{ jobCount: number; skippedCount: number; batchId?: string }> {
 	if (options.requestIds && options.requestIds.length !== items.length)
 		throw new Error("Import queue identities must match the items");
+	if (options.requestIds && !options.transaction) {
+		return DrizzleTransactionManager.transaction((transaction) =>
+			queueDownloadJobs(mediaSourceId, items, { ...options, transaction }),
+		);
+	}
 	const sourceRepo = DrizzleSourceRepository;
 	const mediaSource = await sourceRepo.findById(
 		mediaSourceId,
@@ -875,8 +892,29 @@ export async function queueDownloadJobs(
 		throw new Error("Media source not found or not a local source");
 	}
 
-	// Filter out items whose complete source URL set already exists (parallel)
-	const poolResults = await asyncPool(items, 5, async (item) => {
+	const seenUrls = new Set<string>();
+	const entries = items
+		.map((item, index) => ({ item, requestId: options.requestIds?.[index] }))
+		.filter(({ item, requestId }) => {
+			if (!requestId || !item.targetUrl) return true;
+			if (seenUrls.has(item.targetUrl)) return false;
+			seenUrls.add(item.targetUrl);
+			return true;
+		});
+	if (options.requestIds) {
+		const active = await lockActiveDownloadUrls(
+			getExecutor(options.transaction),
+			mediaSourceId,
+			[...seenUrls],
+		);
+		if (active.size) {
+			throw new ResourceConflictError(
+				"Some selected files are already being downloaded to this destination. Wait for those downloads to finish or deselect the matching requests.",
+			);
+		}
+	}
+	// Look for saved media after checking active downloads.
+	const poolResults = await asyncPool(entries, 5, async ({ item }) => {
 		const urls = item.sourceUrls || [];
 		if (urls.length < 2) return { item, skip: false };
 		const existingMediaId = await MediaRepository.findMediaIdWithMatchingUrlSet(
@@ -894,7 +932,7 @@ export async function queueDownloadJobs(
 	});
 
 	if (items.length > 1) {
-		const targets = items.map((item, index) => {
+		const targets = entries.map(({ item, requestId }, index) => {
 			const result = poolResults[index];
 			return {
 				label: path.win32.basename(
@@ -904,9 +942,7 @@ export async function queueDownloadJobs(
 					result.status === "fulfilled" ? result.value.mediaId : undefined,
 				skipped: result.status === "fulfilled" && result.value.skip,
 				work: {
-					...(options.requestIds
-						? { id: importDownloadJobId(options.requestIds[index]) }
-						: {}),
+					...(requestId ? { id: importDownloadJobId(requestId) } : {}),
 					type: "downloadImage",
 					payload: {
 						...item,

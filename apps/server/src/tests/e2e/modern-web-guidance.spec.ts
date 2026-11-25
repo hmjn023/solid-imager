@@ -1,3 +1,4 @@
+import { routeApi } from "./support/api";
 import type { Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
@@ -250,26 +251,23 @@ for (const mediaType of ["audio", "video"] as const) {
 		page,
 		browserHealth,
 	}) => {
-		const contentPath = `/api/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}`;
+		const contentPath = `/api/sources/${E2E_SOURCE_ID}/media/${E2E_PRIMARY_MEDIA_ID}/content`;
 		let release: () => void = () => {};
 		const gate = new Promise<void>((resolve) => {
 			release = resolve;
 		});
 		let requested = false;
 		browserHealth.allowRequestFailure(contentPath, "net::ERR_ABORTED");
-		await page.route("**/api/rpc/media/getDetails", async (route) => {
+		await routeApi(page, "media/getDetails", async (route) => {
 			const response = await route.fetch();
 			const payload = await response.json();
 			await route.fulfill({
 				response,
 				json: {
 					...payload,
-					json: {
-						...payload.json,
-						mediaType,
-						fileName:
-							mediaType === "audio" ? "e2e-stream.wav" : "e2e-stream.webm",
-					},
+					mediaType,
+					fileName:
+						mediaType === "audio" ? "e2e-stream.wav" : "e2e-stream.webm",
 				},
 			});
 		});

@@ -33,6 +33,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 					{...props}
 					renderData={({ details, isUpdating, onUpdate, sourceRootPath }) => (
 						<MediaDetailLayout
+							switchDetailsOnMobile
 							header={props.renderHeader?.(
 								details,
 								isUpdating,

@@ -7,6 +7,8 @@ export const downloadsContract = {
 	start: oc
 		.meta(
 			openapi({
+				method: "POST",
+				path: "/downloads",
 				tags: ["Downloads"],
 				summary: "一括ダウンロードの開始",
 				description:
