@@ -3,6 +3,7 @@ import type { APIRequestContext } from "@playwright/test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import type { McpConfig, McpToolInfo } from "@solid-imager/core/config";
+import { mediaContentPath, mediaThumbnailPath } from "@solid-imager/core/http";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -92,14 +93,37 @@ test("HTTP MCP and visible WebMCP tools edit the same media tags", async ({
 	);
 	const call = (name: string, args: object) =>
 		rpc(request, "tools/call", { name, arguments: args });
-	const search = await call("search_media", { query: E2E_PRIMARY_FILE_NAME });
-	expect(search.structuredContent.media).toEqual([
-		expect.objectContaining({
-			id: E2E_PRIMARY_MEDIA_ID,
-			mediaSourceId: E2E_SOURCE_ID,
-		}),
-	]);
-	expect(search.structuredContent.media[0]).not.toHaveProperty("filePath");
+	const query = { query: E2E_PRIMARY_FILE_NAME };
+	const publicOrigin = "https://imager.example.test";
+	const thumbnailPath = mediaThumbnailPath(location.sourceId, location.mediaId);
+	const contentPath = mediaContentPath(location.sourceId, location.mediaId);
+	const thumbnailUrl = publicOrigin + thumbnailPath;
+	const contentUrl = publicOrigin + contentPath;
+	const search = await call("search_media", query);
+	expect(search.structuredContent).toEqual({
+		total: 1,
+		media: [
+			{
+				id: E2E_PRIMARY_MEDIA_ID,
+				mediaSourceId: E2E_SOURCE_ID,
+				fileName: E2E_PRIMARY_FILE_NAME,
+				mediaType: "image",
+				width: 256,
+				height: 256,
+				thumbnailUrl,
+			},
+		],
+	});
+	const restSearch = await apiRequest(request, "tools/search_media", query);
+	expect(restSearch.ok()).toBe(true);
+	expect(await restSearch.json()).toEqual(search.structuredContent);
+	// The harness serves files locally and advertises a separate public origin.
+	const thumbnail = await request.get(thumbnailPath);
+	expect(thumbnail.status()).toBe(200);
+	expect(thumbnail.headers()["content-type"]).toBe("image/webp");
+	const original = await request.get(contentPath);
+	expect(original.status()).toBe(200);
+	expect(original.headers()["content-type"]).toBe("image/png");
 	expect(
 		(await call("edit_media_tags", { ...location, action: "add", tagIds: [] }))
 			.isError,
@@ -140,6 +164,10 @@ test("HTTP MCP and visible WebMCP tools edit the same media tags", async ({
 			page.getByText("AI: 画像のタグを編集しました", { exact: true }),
 		).toBeVisible();
 		const details = await call("get_media_details", location);
+		expect(details.structuredContent).toMatchObject({
+			thumbnailUrl,
+			contentUrl,
+		});
 		expect(
 			details.structuredContent.tags.filter(
 				(tag: { id: string }) => tag.id === id,
@@ -189,11 +217,66 @@ test("sources created through HTTP MCP and WebMCP are persisted and discoverable
 		expect(created.isError).toBeUndefined();
 		const source = created.structuredContent.source;
 		sourceIds.push(source.id);
-		expect(source).toMatchObject({
+		const sourceSummary = {
+			id: source.id,
 			name: "MCP HTTP source",
 			type: "local",
-			connectionInfo: { path: directory },
+		};
+		expect(created.structuredContent).toEqual({
+			source: sourceSummary,
+			scan: "scheduled",
 		});
+		const directoryLookup = await call("list_sources", {
+			path: `${directory}/`,
+		});
+		expect(directoryLookup.structuredContent).toEqual({
+			sources: [{ ...sourceSummary, directory }],
+			total: 1,
+			nextOffset: null,
+		});
+		const firstPage = await call("list_sources", { limit: 1 });
+		expect(firstPage.structuredContent).toMatchObject({
+			total: 2,
+			nextOffset: 1,
+		});
+		expect(firstPage.structuredContent.sources).toHaveLength(1);
+		const lastPage = await call("list_sources", { limit: 1, offset: 1 });
+		expect(lastPage.structuredContent).toMatchObject({
+			total: 2,
+			nextOffset: null,
+		});
+		expect(lastPage.structuredContent.sources).toHaveLength(1);
+		expect(lastPage.structuredContent.sources[0].id).not.toBe(
+			firstPage.structuredContent.sources[0].id,
+		);
+		const remoteResponse = await apiRequest(request, "sources/create", {
+			name: "MCP Remote source",
+			type: "sftp",
+			description: "Remote connection fixture",
+			connectionInfo: {
+				host: "files.example.test",
+				port: 22,
+				username: "tester",
+				remotePath: "/fixture",
+			},
+		});
+		expect(remoteResponse.ok()).toBe(true);
+		const remote = await remoteResponse.json();
+		sourceIds.push(remote.id);
+		const withRemote = await call("list_sources", {});
+		expect(
+			withRemote.structuredContent.sources.find(
+				({ id }: { id: string }) => id === remote.id,
+			),
+		).toEqual({
+			id: remote.id,
+			name: "MCP Remote source",
+			type: "sftp",
+		});
+		expect(
+			(await apiRequest(request, "sources/delete", { id: remote.id })).ok(),
+		).toBe(true);
+		sourceIds.pop();
 		await page.goto("/sources");
 		await waitForAppHydration(page);
 		await expect
@@ -208,6 +291,13 @@ test("sources created through HTTP MCP and WebMCP are persisted and discoverable
 				expect.objectContaining({ id: source.id }),
 			]),
 		});
+		expect(
+			await page.webmcp.callTool("list_sources", { path: directory }),
+		).toMatchObject({
+			items: [{ ...sourceSummary, directory }],
+			total_count: 1,
+			next_offset: null,
+		});
 		await expect(
 			page.getByText("MCP HTTP source", { exact: true }),
 		).toBeVisible();
@@ -217,6 +307,7 @@ test("sources created through HTTP MCP and WebMCP are persisted and discoverable
 			path: webDirectory,
 		});
 		sourceIds.push(web.source.id);
+		expect(web.scan).toBe("scheduled");
 		await expect(
 			page.getByText("MCP Web source", { exact: true }),
 		).toBeVisible();

@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
+import { mediaToolsRouter } from "~/infrastructure/api/routers/media-tools-router";
 
 vi.mock("~/infrastructure/api/app-router", () => {
 	throw new Error(
@@ -17,4 +18,17 @@ it("builds the catalog from feature procedures without loading the settings rout
 	expect(toolCatalog.has("viewer_loginPixiv")).toBe(false);
 	expect(toolCatalog.has("viewer_setPixivBookmark")).toBe(false);
 	expect(toolCatalog.has("media_getContent")).toBe(false);
+});
+
+it("uses the compact ranked search procedures under the existing publishable tool names", async () => {
+	const { toolCatalog } = await import("~/infrastructure/mcp/catalog");
+
+	expect(toolCatalog.get("media_searchSimilar")?.procedure).toBe(
+		mediaToolsRouter.search_similar_media,
+	);
+	expect(toolCatalog.get("media_searchSemantic")?.procedure).toBe(
+		mediaToolsRouter.search_semantic_media,
+	);
+	expect(toolCatalog.has("search_similar_media")).toBe(false);
+	expect(toolCatalog.has("search_semantic_media")).toBe(false);
 });

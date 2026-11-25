@@ -10,33 +10,15 @@ import { API_PREFIX } from "@solid-imager/core/http";
 import { handleMcpRequest } from "../mcp/http-handler";
 import { appRouter } from "./app-router";
 import { API_ERROR_STATUS } from "./http-errors";
+import { API_PUBLIC_ORIGIN, resolvePublicOrigin } from "./public-origin";
 
 interface ApiContext extends ResponseHeadersHandlerPluginContext {
 	initialize: () => void;
 	allowWrite: boolean;
 	headers: Headers;
+	mediaOrigin: string;
 	pixivAuthorization?: string;
 }
-
-function readPublicOrigin(value: string | undefined): string | undefined {
-	if (!value) return undefined;
-	const url = new URL(value);
-	if (
-		!["https:", "http:"].includes(url.protocol) ||
-		url.username ||
-		url.password ||
-		url.pathname !== "/" ||
-		url.search ||
-		url.hash
-	) {
-		throw new Error(
-			"API_PUBLIC_ORIGIN must be an HTTP(S) origin without credentials, path, query or fragment",
-		);
-	}
-	return url.origin;
-}
-
-const publicOrigin = readPublicOrigin(process.env.API_PUBLIC_ORIGIN);
 
 function canSendWriteRequest(request: Request): boolean {
 	const origin = request.headers.get("origin");
@@ -47,7 +29,7 @@ function canSendWriteRequest(request: Request): boolean {
 	return (
 		site === "same-origin" ||
 		origin === null ||
-		origin === publicOrigin ||
+		origin === API_PUBLIC_ORIGIN ||
 		origin === new URL(request.url).origin
 	);
 }
@@ -92,6 +74,7 @@ export async function handleApiRequest(
 			initialize,
 			allowWrite: canSendWriteRequest(request),
 			headers: request.headers,
+			mediaOrigin: resolvePublicOrigin(request),
 			pixivAuthorization: request.headers.get("authorization") ?? undefined,
 		},
 	});

@@ -106,6 +106,7 @@ export const mediaContract = {
 		.input(mediaLocationSchema.extend({ viewId: z.uuid() }))
 		.output(mediaActivitySchema),
 	searchSemantic: oc
+		.meta(omitFromMcp)
 		.meta(
 			openapi({
 				method: "POST",
@@ -138,6 +139,7 @@ export const mediaContract = {
 		.output(mediaSearchResponseSchema),
 
 	searchSimilar: oc
+		.meta(omitFromMcp)
 		.meta(
 			openapi({
 				method: "POST",
