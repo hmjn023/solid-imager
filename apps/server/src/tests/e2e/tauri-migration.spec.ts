@@ -12,6 +12,7 @@ import {
 	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 } from "./support/fixture";
+import { readClipboardImage } from "./support/image-clipboard";
 import {
 	withRelatedMedia,
 	withRelatedMediaTag,
@@ -20,6 +21,44 @@ import { expect, expectRouteHealthy, test } from "./support/test";
 
 const sourcePath = `/sources/${E2E_SOURCE_ID}`;
 const mediaPath = `${sourcePath}/${E2E_PRIMARY_MEDIA_ID}`;
+
+test("Tauri copies the original image and opens the original file in a new tab", async ({
+	page,
+}) => {
+	await openTauriRoute(page, mediaPath);
+	await expectTauriMediaDetail(page);
+	await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
+		origin: new URL(page.url()).origin,
+	});
+	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
+	await page
+		.getByRole("menuitem", { name: "画像をコピー", exact: true })
+		.click();
+	await expect
+		.poll(() => readClipboardImage(page))
+		.toEqual({
+			width: 256,
+			height: 256,
+			pixel: [224, 231, 255, 255],
+		});
+	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
+	const [tab] = await Promise.all([
+		page.context().waitForEvent("page", { timeout: 15_000 }),
+		page
+			.getByRole("menuitem", { name: "原本を新しいタブで開く", exact: true })
+			.click(),
+	]);
+	try {
+		await expect(tab).toHaveURL(
+			(url) =>
+				url.pathname === mediaContentPath(E2E_SOURCE_ID, E2E_PRIMARY_MEDIA_ID),
+		);
+		await expect(tab.locator("img")).toBeVisible();
+		expect(await tab.evaluate(() => document.contentType)).toBe("image/png");
+	} finally {
+		await tab.close();
+	}
+});
 
 test("Tauri tag recommendations refresh and survive reload", async ({
 	page,
@@ -384,7 +423,7 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	const popupPromise = page.context().waitForEvent("page", { timeout: 15_000 });
 	await media.click({ button: "right" });
 	await page
-		.getByRole("menuitem", { name: "新しいタブで開く", exact: true })
+		.getByRole("menuitem", { name: "詳細を新しいタブで開く", exact: true })
 		.click();
 	const popup = await popupPromise;
 	await waitForTauriWorkspace(popup);

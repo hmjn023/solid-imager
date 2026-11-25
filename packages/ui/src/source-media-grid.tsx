@@ -45,7 +45,9 @@ import {
 	DropdownMenuTrigger,
 } from "./dropdown-menu";
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
+import { useOpenOriginalMedia } from "./media-content-access";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
+import { useCopyMediaImage } from "./media-image-clipboard";
 import { MediaTileGrid } from "./media-tile-grid";
 import {
 	createMediaPreviewSelectHandler,
@@ -140,7 +142,7 @@ type SourceMediaGridProps = {
 	showEmptyState?: boolean;
 	emptyState?: JSX.Element;
 	onClearSearch?: () => void;
-	/** Show "Open in New Tab" context menu item. Default: true. */
+	/** Show the actions that open details or the original in a new tab. Default: true. */
 	showOpenInNewTab?: boolean;
 	/** Total result count. If omitted, uses mediaResults().length (may not reflect total). */
 	totalCount?: number;
@@ -155,6 +157,8 @@ type SourceMediaGridProps = {
 };
 
 export function SourceMediaGrid(props: SourceMediaGridProps) {
+	const copyMediaImage = useCopyMediaImage();
+	const openOriginalMedia = useOpenOriginalMedia();
 	const showResultCount = () => props.showResultCount ?? true;
 	const showEmptyState = () => props.showEmptyState ?? true;
 	const showOpenInNewTab = () => props.showOpenInNewTab ?? true;
@@ -191,9 +195,14 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		if (props.onToggleSelect) props.onToggleSelect(media.id);
 		else props.onSelectMedia?.(media.id, "toggle");
 	};
-	const isRowControl = (target: EventTarget | null) =>
+	// Solid also delegates events from the row's portaled menu to the row.
+	const isRowClickTarget = (
+		row: HTMLTableRowElement,
+		target: EventTarget | null,
+	) =>
 		target instanceof Element &&
-		target.closest("[data-collection-row-control]");
+		row.contains(target) &&
+		!target.closest("[data-collection-row-control]");
 	const viewMode = () => props.viewMode?.() ?? "grid";
 	const errorMessage = () => {
 		const error = props.state().error;
@@ -349,6 +358,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const hasContextMenuActions = (media: Media) =>
 		Boolean(
 			props.onOpenMediaDetail ||
+			showOpenInNewTab() ||
+			media.mediaType === "image" ||
 			canFindSimilar(media) ||
 			props.onToggleSelect ||
 			props.onBulkAction ||
@@ -502,6 +513,18 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					<Item onSelect={() => openMediaInNewTab(media)}>
 						<ExternalLink aria-hidden="true" class="mr-2 shrink-0" size={14} />
 						{t("sourceMediaGrid.openInANewTab")}
+					</Item>
+				</Show>
+				<Show when={showOpenInNewTab()}>
+					<Item onSelect={() => openOriginalMedia(media)}>
+						<ExternalLink aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("actions.openOriginalInNewTab")}
+					</Item>
+				</Show>
+				<Show when={media.mediaType === "image"}>
+					<Item onSelect={() => void copyMediaImage(media)}>
+						<Copy aria-hidden="true" class="mr-2 shrink-0" size={14} />
+						{t("actions.copyImage")}
 					</Item>
 				</Show>
 				<Show when={canFindSimilar(media)}>
@@ -732,7 +755,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								}
 								data-media-id={media.id}
 								onClick={(event) => {
-									if (isRowControl(event.target)) return;
+									if (!isRowClickTarget(event.currentTarget, event.target))
+										return;
 									const bulk = props.isBulkSelectMode?.();
 									if (
 										props.onSelectMedia &&
@@ -759,7 +783,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								onContextMenu={onContextMenuHandler(media)}
 								onDblClick={(event) => {
 									if (
-										isRowControl(event.target) ||
+										!isRowClickTarget(event.currentTarget, event.target) ||
 										props.isBulkSelectMode?.() ||
 										!props.onPreviewSelect ||
 										!isPlainPrimaryClick(event) ||
