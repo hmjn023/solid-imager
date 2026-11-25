@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { apiPathPattern } from "./support/api";
+import { expectDomPreserved } from "./support/dom";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -195,6 +196,49 @@ for (const collection of [
 		await expect(bulkBar).toContainText("0件選択中");
 	});
 }
+
+test(
+	"Workspace grid preserves thumbnails when entering and leaving selection mode",
+	{ tag: ["@desktop-only", "@dom-stability"] },
+	async ({ page }) => {
+		await openSearch(page);
+		const media = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
+		const thumbnail = media.getByRole("img", { name: E2E_PRIMARY_FILE_NAME });
+		await expectDomPreserved({ thumbnail }, async () => {
+			await media.press("Space");
+			await expect(media).toHaveAttribute("aria-pressed", "true");
+			await expect(media).toBeFocused();
+		});
+
+		await expectDomPreserved({ thumbnail }, async () => {
+			await page.getByRole("button", { name: "複数選択", exact: true }).click();
+			await expect(media).toHaveRole("link");
+		});
+	},
+);
+
+test(
+	"Workspace preview keeps its metadata fields mounted when the selected media changes",
+	{ tag: ["@desktop-only", "@dom-stability"] },
+	async ({ page }) => {
+		await page.setViewportSize({ width: 1600, height: 900 });
+		await openSearch(page);
+		const card = (id: string) => page.locator(`[data-media-id="${id}"]`);
+		const inspector = page.getByRole("complementary", {
+			name: "選択中のメディア",
+		});
+		await card(E2E_PRIMARY_MEDIA_ID).click();
+		const heading = inspector.getByRole("heading", { level: 3 });
+		await expect(heading).toHaveText(E2E_PRIMARY_FILE_NAME);
+		await expectDomPreserved({ heading }, async () => {
+			await card(E2E_SIMILAR_MEDIA_ID).click();
+			await expect(heading).toHaveText(E2E_SIMILAR_FILE_NAME);
+			await expect(
+				inspector.getByRole("img", { name: E2E_SIMILAR_FILE_NAME }),
+			).toBeVisible();
+		});
+	},
+);
 
 test(
 	"Workspace global search keeps collection selection independent from preview",

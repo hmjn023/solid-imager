@@ -141,19 +141,17 @@ export function MediaGridTile(
 			onContextMenu={(event) => props.onContextMenu?.(event)}
 		>
 			<Show when={props.isBulkSelectMode || Boolean(props.isSelected)}>
-				<div class="absolute top-2 right-2 z-10 flex size-6 items-center justify-center">
-					<span
-						aria-hidden="true"
-						class={cn(
-							"flex size-6 items-center justify-center rounded-full border font-bold text-xs shadow-sm",
-							props.isSelected
-								? "border-primary bg-primary text-primary-foreground"
-								: "border-border bg-background/80 text-foreground",
-						)}
-					>
-						{props.isSelected ? "✓" : ""}
-					</span>
-				</div>
+				<span
+					aria-hidden="true"
+					class={cn(
+						"absolute top-2 right-2 z-10 flex size-6 items-center justify-center rounded-full border font-bold text-xs shadow-sm",
+						props.isSelected
+							? "border-primary bg-primary text-primary-foreground"
+							: "border-border bg-background/80 text-foreground",
+					)}
+				>
+					{props.isSelected ? "✓" : ""}
+				</span>
 			</Show>
 
 			<Show

@@ -77,17 +77,15 @@ function MediaContent(props: {
 			)}
 			renderMediaViewer={(media) => <ObservedMediaViewer media={media} />}
 			renderRelatedMedia={(media) => (
-				<div class="contents">
-					<ClientOnly>
-						<RelatedMedia
-							media={media}
-							queryOptions={relatedMediaQueryOptions}
-							renderThumbnail={(thumbnailProps) => (
-								<ThumbnailImage {...thumbnailProps} />
-							)}
-						/>
-					</ClientOnly>
-				</div>
+				<ClientOnly>
+					<RelatedMedia
+						media={media}
+						queryOptions={relatedMediaQueryOptions}
+						renderThumbnail={(thumbnailProps) => (
+							<ThumbnailImage {...thumbnailProps} />
+						)}
+					/>
+				</ClientOnly>
 			)}
 			transport={createServerTransport(props.mediaSourceId)}
 		/>

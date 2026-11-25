@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import type { Page } from "@playwright/test";
+import { expectDomPreserved } from "./support/dom";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -283,77 +284,83 @@ test(
 	},
 );
 
-test("Workspace search filter opens without remounting media results", async ({
-	page,
-}) => {
-	await page.goto("/search");
-	await waitForAppHydration(page);
+test(
+	"Workspace search filter opens and switches modes without remounting media results",
+	{ tag: "@dom-stability" },
+	async ({ page }) => {
+		await page.goto("/search");
+		await waitForAppHydration(page);
 
-	const firstMedia = page.locator("[data-media-id]").first();
-	await expect(firstMedia).toBeVisible();
-	await page.evaluate(() => {
-		const state = window as Window & {
-			__workspaceFirstMedia?: Element;
-			__workspaceSawLoadingFallback?: boolean;
-			__workspaceLoadingObserver?: MutationObserver;
-		};
-		state.__workspaceFirstMedia =
-			document.querySelector("[data-media-id]") ?? undefined;
-		state.__workspaceSawLoadingFallback = false;
-		state.__workspaceLoadingObserver = new MutationObserver(() => {
-			if (
-				document.body.textContent?.includes("画面を読み込んでいます") ||
-				document.body.textContent?.includes("検索結果を読み込んでいます")
-			) {
-				state.__workspaceSawLoadingFallback = true;
-			}
+		const firstMedia = page.locator("[data-media-id]").first();
+		await expect(firstMedia).toBeVisible();
+		await page.evaluate(() => {
+			const state = window as Window & {
+				__workspaceSawLoadingFallback?: boolean;
+				__workspaceLoadingObserver?: MutationObserver;
+			};
+			state.__workspaceSawLoadingFallback = false;
+			state.__workspaceLoadingObserver = new MutationObserver(() => {
+				if (
+					document.body.textContent?.includes("画面を読み込んでいます") ||
+					document.body.textContent?.includes("検索結果を読み込んでいます")
+				) {
+					state.__workspaceSawLoadingFallback = true;
+				}
+			});
+			state.__workspaceLoadingObserver.observe(document.body, {
+				childList: true,
+				subtree: true,
+			});
 		});
-		state.__workspaceLoadingObserver.observe(document.body, {
-			childList: true,
-			subtree: true,
-		});
-	});
 
-	const filterButton = page.getByRole("button", {
-		name: /検索フィルター、\d+件の条件/,
-	});
-	await filterButton.click();
-	const filterDialog = page.getByRole("dialog", { name: "検索フィルター" });
-	await expect(filterDialog).toBeVisible();
+		await expectDomPreserved({ firstMedia }, async () => {
+			const filterButton = page.getByRole("button", {
+				name: /検索フィルター、\d+件の条件/,
+			});
+			await filterButton.click();
+			const filterDialog = page.getByRole("dialog", { name: "検索フィルター" });
+			await expect(filterDialog).toBeVisible();
 
-	const comboboxNames = await filterDialog
-		.getByRole("combobox")
-		.evaluateAll((elements) =>
-			elements.map((element) => {
-				const labelledBy = element.getAttribute("aria-labelledby");
-				return (
-					element.getAttribute("aria-label") ??
-					(labelledBy
-						? document.getElementById(labelledBy)?.textContent?.trim()
-						: "")
+			const comboboxNames = await filterDialog
+				.getByRole("combobox")
+				.evaluateAll((elements) =>
+					elements.map((element) => {
+						const labelledBy = element.getAttribute("aria-labelledby");
+						return (
+							element.getAttribute("aria-label") ??
+							(labelledBy
+								? document.getElementById(labelledBy)?.textContent?.trim()
+								: "")
+						);
+					}),
 				);
-			}),
-		);
-	expect(comboboxNames.length).toBeGreaterThan(0);
-	expect(comboboxNames.every(Boolean)).toBe(true);
+			expect(comboboxNames.length).toBeGreaterThan(0);
+			expect(comboboxNames.every(Boolean)).toBe(true);
+			const advanced = filterDialog.getByRole("button", {
+				name: "詳細",
+				exact: true,
+			});
+			await advanced.click();
+			await expect(advanced).toHaveAttribute("aria-pressed", "true");
+			const simple = filterDialog.getByRole("button", {
+				name: "簡易",
+				exact: true,
+			});
+			await simple.click();
+			await expect(simple).toHaveAttribute("aria-pressed", "true");
 
-	await filterDialog.getByRole("button", { name: "閉じる" }).click();
-	await filterButton.click();
-	await expect(filterDialog).toBeVisible();
-	const renderState = await page.evaluate(() => {
-		const state = window as Window & {
-			__workspaceFirstMedia?: Element;
-			__workspaceSawLoadingFallback?: boolean;
-			__workspaceLoadingObserver?: MutationObserver;
-		};
-		state.__workspaceLoadingObserver?.disconnect();
-		return {
-			mediaNodeWasPreserved:
-				state.__workspaceFirstMedia ===
-				document.querySelector("[data-media-id]"),
-			sawLoadingFallback: state.__workspaceSawLoadingFallback,
-		};
-	});
-	expect(renderState.mediaNodeWasPreserved).toBe(true);
-	expect(renderState.sawLoadingFallback).toBe(false);
-});
+			await filterDialog.getByRole("button", { name: "閉じる" }).click();
+			await filterButton.click();
+			await expect(filterDialog).toBeVisible();
+		});
+		const sawLoadingFallback = await page.evaluate(() => {
+			const state = window as Window & {
+				__workspaceSawLoadingFallback?: boolean;
+				__workspaceLoadingObserver?: MutationObserver;
+			};
+			state.__workspaceLoadingObserver?.disconnect();
+			return state.__workspaceSawLoadingFallback;
+		});
+		expect(sawLoadingFallback).toBe(false);
+	},
+);

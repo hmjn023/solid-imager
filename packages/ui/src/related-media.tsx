@@ -14,6 +14,7 @@ import {
 	createMemo,
 	createEffect,
 	createSignal,
+	createUniqueId,
 	For,
 	Match,
 	onCleanup,
@@ -84,6 +85,111 @@ export type RelatedMediaProps = {
 	) => QueryOptions<RelatedMediaResponse> & { initialData?: undefined };
 	renderThumbnail: (props: MediaGridThumbnailProps<MediaSafe>) => JSX.Element;
 };
+
+function RelatedMediaTabs(props: {
+	response: RelatedMediaResponse | undefined;
+	media: RelatedMediaProps["media"];
+	renderThumbnail: RelatedMediaProps["renderThumbnail"];
+	similarityMessage?: string;
+}) {
+	const [category, setCategory] = createSignal<(typeof categories)[number]>(
+		categories[0],
+	);
+	const panelId = `related-media-results-${createUniqueId()}`;
+	const itemsById = createMemo(() => {
+		const reason = category().value;
+		const items =
+			reason === "all"
+				? props.response?.recommendations
+				: props.response?.items.filter((item) => item.reasons.includes(reason));
+		return new Map(items?.map((item) => [item.media.id, item] as const));
+	});
+
+	return (
+		<Tabs
+			onChange={(value) => {
+				const next = categories.find((option) => option.value === value);
+				if (next) setCategory(next);
+			}}
+			value={category().value}
+		>
+			<div class="overflow-x-auto overscroll-x-contain pb-1">
+				<TabsList
+					aria-label={t("relatedMedia.relatedMediaCategories")}
+					class="max-w-none"
+				>
+					<For each={categories}>
+						{(option) => (
+							<TabsTrigger
+								aria-controls={panelId}
+								class="min-h-11 sm:min-h-9"
+								value={option.value}
+							>
+								{option.label}
+							</TabsTrigger>
+						)}
+					</For>
+				</TabsList>
+			</div>
+			<TabsContent
+				class="space-y-3"
+				forceMount
+				id={panelId}
+				value={category().value}
+			>
+				<Show
+					when={
+						(category().value === "all" || category().value === "similar") &&
+						props.similarityMessage
+					}
+				>
+					{(message) => (
+						<p class="text-muted-foreground text-xs">{message()}</p>
+					)}
+				</Show>
+				<Show
+					fallback={
+						<p class="py-2 text-muted-foreground text-sm lg:py-6">
+							{category().empty}
+						</p>
+					}
+					when={itemsById().size > 0}
+				>
+					<div class={mediaGridClassName}>
+						<For each={[...itemsById().keys()]}>
+							{(id) => (
+								<Show when={itemsById().get(id)}>
+									{(item) => (
+										<div class="min-w-0 space-y-1">
+											<MediaGridItem
+												media={item().media}
+												linkComponent={(linkProps) => (
+													<MediaGridItemLink
+														linkProps={linkProps}
+														media={item().media}
+														relatedFrom={props.media}
+													>
+														{linkProps.children}
+													</MediaGridItemLink>
+												)}
+												renderThumbnail={props.renderThumbnail}
+											/>
+											<p class="text-muted-foreground text-xs">
+												{item()
+													.reasons.map((reason) => reasonLabels[reason])
+													.join("・")}
+											</p>
+										</div>
+									)}
+								</Show>
+							)}
+						</For>
+					</div>
+				</Show>
+			</TabsContent>
+		</Tabs>
+	);
+}
 
 function RelatedMediaPending() {
 	return (
@@ -279,85 +385,12 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 							retryLabel={t("relatedMedia.reloadRelatedMedia")}
 						/>
 					</Show>
-					<Tabs defaultValue="all">
-						<div class="overflow-x-auto overscroll-x-contain pb-1">
-							<TabsList
-								aria-label={t("relatedMedia.relatedMediaCategories")}
-								class="max-w-none"
-							>
-								<For each={categories}>
-									{(category) => (
-										<TabsTrigger
-											class="min-h-11 sm:min-h-9"
-											value={category.value}
-										>
-											{category.label}
-										</TabsTrigger>
-									)}
-								</For>
-							</TabsList>
-						</div>
-						<For each={categories}>
-							{(category) => {
-								const items = () =>
-									category.value === "all"
-										? (query.data?.recommendations ?? [])
-										: (query.data?.items.filter((item) =>
-												item.reasons.includes(category.value),
-											) ?? []);
-								return (
-									<TabsContent class="space-y-3" value={category.value}>
-										<Show
-											when={
-												(category.value === "all" ||
-													category.value === "similar") &&
-												similarityMessage()
-											}
-										>
-											{(message) => (
-												<p class="text-muted-foreground text-xs">{message()}</p>
-											)}
-										</Show>
-										<Show
-											fallback={
-												<p class="py-2 text-muted-foreground text-sm lg:py-6">
-													{category.empty}
-												</p>
-											}
-											when={items().length > 0}
-										>
-											<div class={mediaGridClassName}>
-												<For each={items()}>
-													{(item) => (
-														<div class="min-w-0 space-y-1">
-															<MediaGridItem
-																media={item.media}
-																linkComponent={(linkProps) => (
-																	<MediaGridItemLink
-																		linkProps={linkProps}
-																		media={item.media}
-																		relatedFrom={props.media}
-																	>
-																		{linkProps.children}
-																	</MediaGridItemLink>
-																)}
-																renderThumbnail={props.renderThumbnail}
-															/>
-															<p class="text-muted-foreground text-xs">
-																{item.reasons
-																	.map((reason) => reasonLabels[reason])
-																	.join("・")}
-															</p>
-														</div>
-													)}
-												</For>
-											</div>
-										</Show>
-									</TabsContent>
-								);
-							}}
-						</For>
-					</Tabs>
+					<RelatedMediaTabs
+						media={props.media}
+						renderThumbnail={props.renderThumbnail}
+						response={query.data}
+						similarityMessage={similarityMessage()}
+					/>
 				</div>
 			</Match>
 		</Switch>

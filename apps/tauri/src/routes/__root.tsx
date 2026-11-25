@@ -86,7 +86,7 @@ function RootRouteComponent() {
 				mediaSources={sourceData}
 				onNavigate={(to) => void navigate({ to })}
 				renderPendingDownloadsIndicator={(compact) => (
-					<PendingDownloadsIndicator compact={compact} />
+					<PendingDownloadsIndicator compact={compact()} />
 				)}
 				sourcePage={sourcePage}
 				statusIndicator={<RouteTransitionIndicator />}

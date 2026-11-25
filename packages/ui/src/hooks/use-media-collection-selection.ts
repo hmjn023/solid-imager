@@ -1,4 +1,9 @@
-import { type Accessor, createEffect, createSignal } from "solid-js";
+import {
+	type Accessor,
+	createEffect,
+	createSelector,
+	createSignal,
+} from "solid-js";
 
 /** Selection and navigation cursors for an ordered media collection. The anchor starts range selections; focus can differ from the active item. */
 export type MediaCollectionSelectionState<Id extends string = string> = {
@@ -312,6 +317,8 @@ export function useMediaCollectionSelection<Id extends string>(
 		reducerOptions,
 	);
 	const [state, setState] = createSignal(initialState);
+	const selectedIds = () => state().selectedIds;
+	const isSelected = createSelector(selectedIds, (id: Id, ids) => ids.has(id));
 
 	const dispatch = (action: MediaCollectionSelectionAction<Id>): void => {
 		setState((current) =>
@@ -338,11 +345,11 @@ export function useMediaCollectionSelection<Id extends string>(
 
 	return {
 		state,
-		selectedIds: () => state().selectedIds,
+		selectedIds,
 		activeId: () => state().activeId,
 		anchorId: () => state().anchorId,
 		focusedId: () => state().focusedId,
-		isSelected: (id) => state().selectedIds.has(id),
+		isSelected,
 		select: (id, mode = "replace") => dispatch({ type: "select", id, mode }),
 		selectAll: () => dispatch({ type: "select-all" }),
 		clear: () => dispatch({ type: "clear" }),
