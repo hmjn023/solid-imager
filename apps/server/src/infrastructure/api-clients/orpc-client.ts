@@ -2,8 +2,13 @@ import { createRouterClient } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
 import { appContract } from "@solid-imager/core/contract";
 import { createIsomorphicFn } from "@tanstack/solid-start";
-import { getRequestHeaders, getRequestUrl } from "@tanstack/solid-start/server";
+import {
+	getRequest,
+	getRequestHeaders,
+	getRequestUrl,
+} from "@tanstack/solid-start/server";
 import { appRouter } from "~/infrastructure/api/app-router";
+import { resolvePublicOrigin } from "~/infrastructure/api/public-origin";
 
 const getORPCClient = createIsomorphicFn()
 	.server(() => {
@@ -23,6 +28,7 @@ const getORPCClient = createIsomorphicFn()
 				const headers = getRequestHeaders();
 				return {
 					headers,
+					mediaOrigin: resolvePublicOrigin(getRequest()),
 					pixivAuthorization: headers.get("authorization") ?? undefined,
 				};
 			},

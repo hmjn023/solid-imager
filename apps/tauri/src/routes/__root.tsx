@@ -2,6 +2,7 @@ import { mediaSourceInfoSchema } from "@solid-imager/core/sources";
 import { subscribeAllSourceEvents } from "~/hooks/use-media-source-events";
 import { useSourcesPage } from "@solid-imager/ui/sources";
 import { AppShell } from "@solid-imager/ui/app-shell";
+import { MediaContentAccessContext } from "@solid-imager/ui/media-actions";
 import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
 import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts";
 import { Toaster } from "@solid-imager/ui/toast";
@@ -16,6 +17,8 @@ import { getCollections, refetchCollection } from "~/collections";
 import { collectionQueryKeys } from "~/collections/query-keys";
 import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
 import { getApiDocsUrl } from "~/infrastructure/settings/server-settings";
+import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
+import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 import {
 	createMediaSource,
 	deleteMediaSource,
@@ -92,7 +95,14 @@ function RootRouteComponent() {
 				statusIndicator={<RouteTransitionIndicator />}
 				serverConnectionsHref="/servers"
 			>
-				<Outlet />
+				<MediaContentAccessContext.Provider
+					value={{
+						getUrl: buildMediaContentUrl,
+						fetchContent: (url) => getApiFetch()(url),
+					}}
+				>
+					<Outlet />
+				</MediaContentAccessContext.Provider>
 			</AppShell>
 		</ShortcutPreferencesProvider>
 	);

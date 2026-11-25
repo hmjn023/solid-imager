@@ -8,6 +8,7 @@ import {
 import { McpRegistrar } from "@orpc/mcp";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
 import { services } from "~/infrastructure/service-registry";
+import { resolvePublicOrigin } from "../api/public-origin";
 import { toolCatalog } from "./catalog";
 import type { AnyProcedure } from "@orpc/server";
 
@@ -32,6 +33,7 @@ let cached:
 	| { names: string[]; registrar: ReturnType<typeof makeRegistrar> }
 	| undefined;
 const handler = createMcpHandler(async ({ requestInfo }) => {
+	if (!requestInfo) throw new Error("HTTP MCP requires request information");
 	const server = new McpServer(
 		{ name: "solid-imager", version: "0.0.0" },
 		{ capabilities: { tools: {} } },
@@ -40,7 +42,10 @@ const handler = createMcpHandler(async ({ requestInfo }) => {
 	if (cached?.names !== names)
 		cached = { names, registrar: makeRegistrar(names) };
 	await cached.registrar.register(server, {
-		context: { headers: requestInfo?.headers },
+		context: {
+			headers: requestInfo.headers,
+			mediaOrigin: resolvePublicOrigin(requestInfo),
+		},
 	});
 	return server;
 });

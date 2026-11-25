@@ -9327,9 +9327,45 @@
     "/tools/sources": {
       "get": {
         "operationId": "tools.list_sources",
-        "description": "List registered media sources and their IDs. Check for an existing local path before creating a source.",
+        "description": "List registered media sources and their IDs. Use path to check whether a local directory is already registered. Use nextOffset to fetch the next page.",
         "tags": [
           "Media Tools"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          }
         ],
         "responses": {
           "200": {
@@ -9344,19 +9380,8 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          },
                           "name": {
                             "type": "string"
-                          },
-                          "description": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
                           },
                           "type": {
                             "type": "string",
@@ -9366,124 +9391,46 @@
                               "s3"
                             ]
                           },
-                          "connectionInfo": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "path": {
-                                    "type": "string",
-                                    "minLength": 1
-                                  }
-                                },
-                                "required": [
-                                  "path"
-                                ],
-                                "additionalProperties": false
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "host": {
-                                    "type": "string"
-                                  },
-                                  "port": {
-                                    "type": "integer",
-                                    "exclusiveMinimum": 0,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "username": {
-                                    "type": "string"
-                                  },
-                                  "remotePath": {
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "host",
-                                  "port",
-                                  "username",
-                                  "remotePath"
-                                ],
-                                "additionalProperties": false
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "region": {
-                                    "type": "string"
-                                  },
-                                  "bucket": {
-                                    "type": "string"
-                                  },
-                                  "prefix": {
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "region",
-                                  "bucket"
-                                ],
-                                "additionalProperties": false
-                              }
-                            ]
-                          },
-                          "mediaCount": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "maximum": 9007199254740991
-                          },
-                          "syncStatus": {
+                          "id": {
                             "type": "string",
-                            "enum": [
-                              "idle",
-                              "syncing",
-                              "error"
-                            ]
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           },
-                          "lastSyncStartedAt": {
-                            "anyOf": [
-                              {
-                                "type": "string",
-                                "format": "date-time",
-                                "x-native-type": "date"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "lastSyncCompletedAt": {
-                            "anyOf": [
-                              {
-                                "type": "string",
-                                "format": "date-time",
-                                "x-native-type": "date"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "lastSyncError": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
+                          "directory": {
+                            "type": "string",
+                            "minLength": 1
                           }
                         },
                         "required": [
                           "name",
-                          "description",
                           "type",
-                          "connectionInfo"
+                          "id"
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "nextOffset": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
-                    "sources"
+                    "sources",
+                    "total",
+                    "nextOffset"
                   ],
                   "additionalProperties": false
                 }
@@ -9496,7 +9443,7 @@
     "/tools/sources/local": {
       "post": {
         "operationId": "tools.create_local_source",
-        "description": "Register a local directory on the server as a media source. Starts file monitoring and an initial scan. Check list_sources first to avoid duplicate registrations.",
+        "description": "Register a local directory on the server as a media source and schedule file monitoring and the initial scan. Check the path with list_sources first to avoid duplicate registrations.",
         "tags": [
           "Media Tools"
         ],
@@ -9543,145 +9490,34 @@
                     "source": {
                       "type": "object",
                       "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "const": "local"
+                        },
                         "id": {
                           "type": "string",
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                        },
-                        "name": {
-                          "type": "string"
-                        },
-                        "description": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
-                        "type": {
-                          "type": "string",
-                          "enum": [
-                            "local",
-                            "sftp",
-                            "s3"
-                          ]
-                        },
-                        "connectionInfo": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "path": {
-                                  "type": "string",
-                                  "minLength": 1
-                                }
-                              },
-                              "required": [
-                                "path"
-                              ],
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "host": {
-                                  "type": "string"
-                                },
-                                "port": {
-                                  "type": "integer",
-                                  "exclusiveMinimum": 0,
-                                  "maximum": 9007199254740991
-                                },
-                                "username": {
-                                  "type": "string"
-                                },
-                                "remotePath": {
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "host",
-                                "port",
-                                "username",
-                                "remotePath"
-                              ],
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "region": {
-                                  "type": "string"
-                                },
-                                "bucket": {
-                                  "type": "string"
-                                },
-                                "prefix": {
-                                  "type": "string"
-                                }
-                              },
-                              "required": [
-                                "region",
-                                "bucket"
-                              ],
-                              "additionalProperties": false
-                            }
-                          ]
-                        },
-                        "mediaCount": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
-                        },
-                        "syncStatus": {
-                          "type": "string",
-                          "enum": [
-                            "idle",
-                            "syncing",
-                            "error"
-                          ]
-                        },
-                        "lastSyncStartedAt": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "format": "date-time",
-                              "x-native-type": "date"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        },
-                        "lastSyncCompletedAt": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "format": "date-time",
-                              "x-native-type": "date"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        },
-                        "lastSyncError": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
                         }
                       },
                       "required": [
                         "name",
-                        "description",
                         "type",
-                        "connectionInfo"
+                        "id"
                       ],
                       "additionalProperties": false
+                    },
+                    "scan": {
+                      "type": "string",
+                      "const": "scheduled"
                     }
                   },
                   "required": [
-                    "source"
+                    "source",
+                    "scan"
                   ],
                   "additionalProperties": false
                 }
@@ -9694,7 +9530,7 @@
     "/tools/media/search": {
       "post": {
         "operationId": "tools.search_media",
-        "description": "Search the media library by keyword or tag. Omit the filters to browse the newest media. Use each item's mediaSourceId and id for details or tag edits.",
+        "description": "Search the media library by keyword or tag. Omit the filters to browse the newest media. Each result includes a thumbnail URL. Pass mediaSourceId as sourceId and id as mediaId to get details or edit tags.",
         "tags": [
           "Media Tools"
         ],
@@ -9785,40 +9621,9 @@
                           "height": {
                             "type": "number"
                           },
-                          "fileSize": {
-                            "type": [
-                              "number",
-                              "null"
-                            ]
-                          },
-                          "description": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "createdAt": {
+                          "thumbnailUrl": {
                             "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
-                          },
-                          "modifiedAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
-                          },
-                          "indexedAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "x-native-type": "date"
-                          },
-                          "status": {
-                            "type": "string",
-                            "enum": [
-                              "active",
-                              "archived",
-                              "deleted"
-                            ]
+                            "format": "uri"
                           }
                         },
                         "required": [
@@ -9828,12 +9633,269 @@
                           "mediaType",
                           "width",
                           "height",
-                          "fileSize",
-                          "description",
-                          "createdAt",
-                          "modifiedAt",
-                          "indexedAt",
-                          "status"
+                          "thumbnailUrl"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "media"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/media/search/similar": {
+      "post": {
+        "operationId": "tools.search_similar_media",
+        "description": "Find visually similar media using anchorMediaId. CCIP matches character identity; EmbeddingGemma 2 matches general visual similarity. Returns thumbnail URLs and cosine distances, with the closest matches first.",
+        "tags": [
+          "Media Tools"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "default": "ccip",
+                    "type": "string",
+                    "enum": [
+                      "ccip",
+                      "embeddinggemma2"
+                    ]
+                  },
+                  "anchorMediaId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "topK": {
+                    "default": 1000,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "limit": {
+                    "default": 20,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200
+                  },
+                  "offset": {
+                    "default": 0,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "anchorMediaId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "mediaSourceId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mediaType": {
+                            "type": "string",
+                            "enum": [
+                              "image",
+                              "video",
+                              "audio"
+                            ]
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          },
+                          "thumbnailUrl": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "cosineDistance": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "mediaSourceId",
+                          "fileName",
+                          "mediaType",
+                          "width",
+                          "height",
+                          "thumbnailUrl",
+                          "cosineDistance"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "media"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/media/search/semantic": {
+      "post": {
+        "operationId": "tools.search_semantic_media",
+        "description": "Find indexed images and videos from a natural-language description using EmbeddingGemma 2. Returns thumbnail URLs and cosine distances, with the closest matches first.",
+        "tags": [
+          "Media Tools"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "topK": {
+                    "default": 1000,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "limit": {
+                    "default": 20,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200
+                  },
+                  "offset": {
+                    "default": 0,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "mediaSourceId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mediaType": {
+                            "type": "string",
+                            "enum": [
+                              "image",
+                              "video",
+                              "audio"
+                            ]
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          },
+                          "thumbnailUrl": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "cosineDistance": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "mediaSourceId",
+                          "fileName",
+                          "mediaType",
+                          "width",
+                          "height",
+                          "thumbnailUrl",
+                          "cosineDistance"
                         ],
                         "additionalProperties": false
                       }
@@ -9854,7 +9916,7 @@
     "/tools/sources/{sourceId}/media/{mediaId}/details": {
       "get": {
         "operationId": "tools.get_media_details",
-        "description": "Get a media item's metadata, generation parameters, authors, characters, IPs and assigned tags.",
+        "description": "Get a media item's thumbnail and original content URLs, metadata, generation parameters, authors, characters, IPs and assigned tags.",
         "tags": [
           "Media Tools"
         ],
@@ -9949,6 +10011,14 @@
                         "archived",
                         "deleted"
                       ]
+                    },
+                    "thumbnailUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "contentUrl": {
+                      "type": "string",
+                      "format": "uri"
                     },
                     "generationInfo": {
                       "anyOf": [
@@ -10105,6 +10175,8 @@
                     "modifiedAt",
                     "indexedAt",
                     "status",
+                    "thumbnailUrl",
+                    "contentUrl",
                     "generationInfo",
                     "tags",
                     "authors",

@@ -17,14 +17,16 @@ Web と Tauri の **Settings → MCP** で、接続先サーバーの公開候�
 
 | ツール | 操作 |
 | --- | --- |
-| `list_sources` | ソース一覧を取得します。登録前にローカルパスの重複を確認できます。 |
-| `create_local_source` | サーバー上のディレクトリを `name`、`path`、任意の `description` で登録し、初回スキャンと監視を開始します。 |
-| `search_media` | キーワード・タグ・ソースで検索します。`limit` と `offset` でページを取得できます。 |
-| `get_media_details` | 検索結果の `mediaSourceId` を `sourceId`、`id` を `mediaId` に渡すと、メディアの基本情報、生成パラメーター、作者、キャラクター、作品（IP）、タグを取得できます。 |
+| `list_sources` | ソースの `id`、名前、種類と、ローカルソースの場合は `directory` を返します。`path` を指定すると登録済みのローカルディレクトリを確認できます。`limit` と `offset` でページを取得し、続きがあれば `nextOffset` が返ります。 |
+| `create_local_source` | サーバー上のディレクトリを `name`、`path`、任意の `description` で登録します。登録したソースの `id`、名前、種類と、初回スキャンの予約を示す `scan: "scheduled"` を返します。 |
+| `search_media` | キーワード・タグ・ソースで検索します。結果には `id`、`mediaSourceId`、ファイル名、種類、寸法、`thumbnailUrl` が含まれます。`limit` と `offset` でページを取得できます。 |
+| `get_media_details` | 検索結果の `mediaSourceId` を `sourceId`、`id` を `mediaId` に渡すと、原本の `contentUrl`、`thumbnailUrl`、メディアの基本情報、生成パラメーター、作者、キャラクター、作品（IP）、タグを取得できます。 |
 | `find_tags` | 既存タグを名前で部分一致検索し、編集に必要なタグ ID を取得します。 |
 | `edit_media_tags` | 1件のメディアに対して `action`（`add` または `remove`）と `tagIds` を指定します。追加は positive タグ、解除は指定 ID のすべての割り当てが対象です。 |
 
 **HTTP MCP** — MCP クライアントの接続方式に Streamable HTTP を選び、起動中の Web サーバーの URL に `/api/mcp` を付けます。本番サーバーをローカルのポート 3000 で起動した場合は `http://localhost:3000/api/mcp` です。既定ではループバックのホスト名を許可します。リバースプロキシ経由で使う場合は、サーバーの環境変数 `MCP_ALLOWED_HOSTS` に公開ホスト名を設定し、Web UI と同じアクセス制御を適用してください。
+
+メディアの配信用 URL は `API_PUBLIC_ORIGIN` を優先し、省略時はリクエストのオリジンを使います。TLS をリバースプロキシで終端する場合は、クライアントがアクセスできる HTTPS オリジンを設定してください。
 
 **WebMCP** — 対応ブラウザで HTTPS または localhost の Web UI を開くと、ツールがそのタブに登録されます。Chrome で試すには `chrome://flags/#enable-webmcp-testing` を有効にして再起動してください。[Chrome の WebMCP ガイド](https://developer.chrome.com/docs/ai/webmcp)
 
@@ -37,6 +39,8 @@ Web と Tauri の **Settings → MCP** で、接続先サーバーの公開候�
 既存の画面随伴ツールは操作の開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
 
 追加の候補は oRPC の契約から生成します。たとえば `tags.list` は `tags_list` として両方で公開でき、WebMCP ではタブを移動せずにデータを返します。設定 API、イベント購読、ファイルやバイナリを扱う API は対象外です。新しい候補は初期状態で非公開です。
+
+類似検索の `media_searchSimilar` と自然言語検索の `media_searchSemantic` も公開できます。結果は `search_media` と同じ一覧項目を含み、各メディアに `cosineDistance` が加わります。距離が小さい順に返ります。
 
 WebMCP で `ai_startCcipExtraction` を公開すると、`showJob: true` を指定して CCIP 特徴抽出を登録し、返された `jobId` の詳細を Jobs 画面で開けます。省略時はジョブを登録したタブに留まります。登録後に別画面へ移った場合もジョブは有効で、結果の `presentation: "unconfirmed"` は表示を確認できなかったことを示します。受け取った ID でジョブを確認できます。
 

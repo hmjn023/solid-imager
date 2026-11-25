@@ -6,6 +6,8 @@ import type {
 	StartCcipExtractionResponse,
 } from "@solid-imager/core/tagging";
 import { getErrorMessage } from "@solid-imager/core/utils";
+import Copy from "lucide-solid/icons/copy";
+import ExternalLink from "lucide-solid/icons/external-link";
 import {
 	type Accessor,
 	createEffect,
@@ -22,7 +24,9 @@ import {
 	DropdownMenuTrigger,
 } from "./dropdown-menu";
 import type { ManagerJobHandlers } from "./hooks/batch-job-events.types";
+import { useOpenOriginalMedia } from "./media-content-access";
 import { MediaDeleteDialog } from "./media-delete-dialog";
+import { useCopyMediaImage } from "./media-image-clipboard";
 import { toast } from "./toast";
 import {
 	Binary,
@@ -33,6 +37,8 @@ import {
 	Sparkles,
 	Trash2,
 } from "./workspace/icons";
+
+export { MediaContentAccessContext } from "./media-content-access";
 
 export type MediaActionModalProps = {
 	isOpen: boolean;
@@ -73,6 +79,8 @@ const CCIP_STATUS_REFRESH_INTERVAL_MS = 1_000;
 const CCIP_MISSING_STATUS_LIMIT = 5;
 
 export function MediaActions(props: MediaActionsProps) {
+	const copyMediaImage = useCopyMediaImage();
+	const openOriginalMedia = useOpenOriginalMedia();
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
 	const [isOppaiOracleModalOpen, setIsOppaiOracleModalOpen] =
 		createSignal(false);
@@ -93,9 +101,9 @@ export function MediaActions(props: MediaActionsProps) {
 	const [deleteError, setDeleteError] = createSignal<string | undefined>();
 	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
 	let ccipStatusRequestId = 0;
+	const isImage = () => props.media.mediaType === "image";
 	const supportsVisualAnalysis = () =>
-		props.media.mediaType === "image" || props.media.mediaType === "video";
-	const supportsCropping = () => props.media.mediaType === "image";
+		isImage() || props.media.mediaType === "video";
 
 	const refreshCcipStatus = async () => {
 		const requestId = ccipStatusRequestId + 1;
@@ -359,8 +367,8 @@ export function MediaActions(props: MediaActionsProps) {
 							(props.oppaiOracleModal ||
 								props.startEmbeddingExtraction ||
 								props.onFindSimilar)) ||
-						(supportsCropping() && props.characterCropModal) ||
 						hasCcipActions() ||
+						isImage() ||
 						props.onDownload ||
 						props.onDelete
 					}
@@ -418,7 +426,7 @@ export function MediaActions(props: MediaActionsProps) {
 									{t("mediaActions.extractTagsOppaiOracle")}
 								</DropdownMenuItem>
 							</ShowAction>
-							<ShowAction when={supportsCropping() && props.characterCropModal}>
+							<ShowAction when={isImage() && props.characterCropModal}>
 								<DropdownMenuItem
 									class="min-h-9"
 									onSelect={() =>
@@ -449,10 +457,28 @@ export function MediaActions(props: MediaActionsProps) {
 									})}
 								</p>
 							</ShowAction>
-							<ShowAction when={props.onDownload || props.onDelete}>
+							<ShowAction
+								when={isImage() || props.onDownload || props.onDelete}
+							>
 								<DropdownMenuSeparator />
 							</ShowAction>
+							<ShowAction when={isImage()}>
+								<DropdownMenuItem
+									class="min-h-9"
+									onSelect={() => void copyMediaImage(props.media)}
+								>
+									<Copy aria-hidden="true" size={14} />
+									{t("actions.copyImage")}
+								</DropdownMenuItem>
+							</ShowAction>
 							<ShowAction when={props.onDownload}>
+								<DropdownMenuItem
+									class="min-h-9"
+									onSelect={() => openOriginalMedia(props.media)}
+								>
+									<ExternalLink aria-hidden="true" size={14} />
+									{t("actions.openOriginalInNewTab")}
+								</DropdownMenuItem>
 								<DropdownMenuItem
 									class="min-h-9"
 									onSelect={() => void handleDownload()}
@@ -506,7 +532,7 @@ export function MediaActions(props: MediaActionsProps) {
 					onClose: () => setIsOppaiOracleModalOpen(false),
 				})}
 			</ShowAction>
-			<ShowAction when={supportsCropping() && props.characterCropModal}>
+			<ShowAction when={isImage() && props.characterCropModal}>
 				{props.characterCropModal?.({
 					isOpen: isCharacterCropModalOpen(),
 					onClose: () => setIsCharacterCropModalOpen(false),

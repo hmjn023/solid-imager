@@ -7,11 +7,67 @@ import { apiRequest } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
+	E2E_SIMILAR_FILE_NAME,
+	E2E_SIMILAR_MEDIA_ID,
 	E2E_SOURCE_ID,
 	getE2eRuntimeDir,
 	getFixtureMediaPath,
+	mediaPath,
+	sourcePath,
 } from "./support/fixture";
-import { expect, test } from "./support/test";
+import { expect, test, waitForAppHydration } from "./support/test";
+
+test("opens the original file in a new tab from collection and detail menus", async ({
+	page,
+}) => {
+	await page.goto(sourcePath());
+	await waitForAppHydration(page);
+	const openOriginal = async (mediaId: string) => {
+		const [tab] = await Promise.all([
+			page.context().waitForEvent("page", { timeout: 15_000 }),
+			page
+				.getByRole("menuitem", { name: "原本を新しいタブで開く", exact: true })
+				.click(),
+		]);
+		try {
+			await expect(tab).toHaveURL(
+				(url) => url.pathname === mediaContentPath(E2E_SOURCE_ID, mediaId),
+			);
+			await expect(tab.locator("img")).toBeVisible();
+			expect(
+				await tab.evaluate(() => ({
+					contentType: document.contentType,
+					hasOpener: window.opener !== null,
+				})),
+			).toEqual({
+				contentType: "image/png",
+				hasOpener: false,
+			});
+		} finally {
+			await tab.close();
+		}
+	};
+
+	await page
+		.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`)
+		.click({ button: "right" });
+	await openOriginal(E2E_PRIMARY_MEDIA_ID);
+	await page.getByRole("button", { name: "リスト表示", exact: true }).click();
+	await page
+		.getByRole("button", {
+			name: `${E2E_SIMILAR_FILE_NAME}の操作`,
+			exact: true,
+		})
+		.click();
+	await openOriginal(E2E_SIMILAR_MEDIA_ID);
+	await expect(page).toHaveURL((url) => url.pathname === sourcePath());
+
+	await page.goto(mediaPath());
+	await waitForAppHydration(page);
+	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
+	await openOriginal(E2E_PRIMARY_MEDIA_ID);
+	await expect(page).toHaveURL((url) => url.pathname === mediaPath());
+});
 
 test("the oRPC media endpoint serves byte ranges and a bodyless HEAD @dev-smoke", async ({
 	request,
