@@ -9,7 +9,7 @@ vi.mock("~/infrastructure/ai/dghs-imgutils-loader", () => ({
 	resolveDghsImgutilsPath: () => fixture.modulePath,
 }));
 
-it("returns segmented PNG bytes in the API's base64 encoding from the child process", async () => {
+it("returns segmented PNG bytes even when the native module writes to stdout", async () => {
 	const directory = await mkdtemp(path.join(tmpdir(), "segmentation-worker-"));
 	const worker = new NativeInferenceProcess();
 	try {
@@ -17,6 +17,7 @@ it("returns segmented PNG bytes in the API's base64 encoding from the child proc
 		await writeFile(
 			fixture.modulePath,
 			[
+				'require("node:fs").writeSync(1, "native startup log\\n");',
 				"exports.segmentRgbaWithIsnetis = () => [137, 80, 78, 71, 0, 128, 255];",
 				"exports.offloadInferenceSessions = () => {};",
 			].join("\n"),
