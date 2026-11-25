@@ -1,6 +1,6 @@
 {
   "type": "diff",
-  "version": "9",
+  "version": "10",
   "dialect": "postgres",
   "id": "71a8a78f-771f-437e-8f44-5542ccef8de0",
   "prevIds": [
@@ -454,7 +454,6 @@
         "where": "\"type\" = 'tag_dictionary_refresh' AND \"status\" IN ('pending', 'in_progress')",
         "with": "",
         "method": "btree",
-        "concurrently": false,
         "entityType": "indexes"
       }
     },
@@ -485,7 +484,6 @@
         "where": null,
         "with": "",
         "method": "btree",
-        "concurrently": false,
         "entityType": "indexes"
       }
     },

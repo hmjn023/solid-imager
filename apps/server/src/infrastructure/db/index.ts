@@ -40,6 +40,10 @@ function setSharedDbState(state: SharedDbState): void {
 	sharedDbProcess.__SOLID_IMAGER_DB__ = state;
 }
 
+export function createBunSqlDatabase(client: SQL) {
+	return drizzleBunSql({ client, relations, jit: true });
+}
+
 /**
  * Initializes and returns the Drizzle ORM database instance.
  * This function ensures that the database connection is established only once.
@@ -113,7 +117,7 @@ function initializeDb() {
 			database: dbName,
 		});
 		queryClient = client;
-		database = drizzleBunSql({ client, relations });
+		database = createBunSqlDatabase(client);
 	} else {
 		const client = new Pool({
 			host: dbHost,

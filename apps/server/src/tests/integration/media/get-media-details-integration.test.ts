@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { DrizzleExecutor } from "@solid-imager/db";
 // This import is hoisted, so we need to be careful
 import {
 	afterEach,
@@ -168,6 +169,35 @@ describe("getMediaDetails", () => {
 		expect(details.tags).toHaveLength(1);
 		expect(details.tags[0].name).toBe("positive prompt");
 		expect(details.tags[0].type).toBe("positive");
+	});
+
+	it("binds each media ID and reads through the supplied transaction", async () => {
+		expect((await MediaRepository.getDetails(media.id))?.id).toBe(media.id);
+
+		const rollback = new Error("Roll back the new media");
+		const newMediaId = crypto.randomUUID();
+		await expect(
+			db.transaction(async (tx: DrizzleExecutor) => {
+				await tx.insert(schema.medias).values({
+					id: newMediaId,
+					mediaSourceId: mediaSource.id,
+					filePath: "inside-transaction.png",
+					fileName: "inside-transaction.png",
+					mediaType: "image",
+					width: 1,
+					height: 1,
+				});
+
+				expect((await MediaRepository.getDetails(media.id, tx))?.id).toBe(
+					media.id,
+				);
+				expect((await MediaRepository.getDetails(newMediaId, tx))?.id).toBe(
+					newMediaId,
+				);
+				throw rollback;
+			}),
+		).rejects.toBe(rollback);
+		await expect(MediaRepository.getDetails(newMediaId)).resolves.toBeNull();
 	});
 
 	it("records distinct visits once and keeps preferences independent from the view count", async () => {

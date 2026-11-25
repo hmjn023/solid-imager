@@ -5,9 +5,8 @@ export type PostgresDriver = "bun-sql" | "node-postgres";
 /**
  * Resolves the PostgreSQL implementation used by the server.
  *
- * Bun.SQL is the default. The node-postgres path remains available as an
- * explicit escape hatch for deployments that still depend on pg-specific
- * behavior (for example COPY, LISTEN/NOTIFY, or PostGIS extensions).
+ * Bun.SQL is the default. Deployments that depend on pg-specific behavior
+ * can select node-postgres explicitly.
  */
 export function resolvePostgresDriver(
 	value: string | undefined = process.env.DB_POSTGRES_DRIVER,
