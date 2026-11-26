@@ -1,6 +1,7 @@
 import type { SimilarityModel } from "@solid-imager/core/search";
 import type { Media } from "@solid-imager/core/media";
-import type { Component, JSX } from "solid-js";
+import type { Component } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
 import type {
 	UploadOptions,

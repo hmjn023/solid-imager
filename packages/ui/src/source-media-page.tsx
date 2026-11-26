@@ -6,12 +6,13 @@ import type { Project } from "@solid-imager/core/projects";
 import type { SimilarityModel } from "@solid-imager/core/search";
 import type { TagResponse } from "@solid-imager/core/tags";
 import {
-	createQuery,
+	useQuery,
 	useQueryClient,
 	type QueryOptions,
 } from "@tanstack/solid-query";
-import { type Accessor, createEffect, type JSX } from "solid-js";
-import { isServer } from "solid-js/web";
+import { type Accessor } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { isServer } from "@solidjs/web";
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaSourceEventTransport } from "./hooks/use-media-source-events";
 import { useSearchHistoryPersistence } from "./hooks/use-search-history-persistence";
@@ -82,30 +83,28 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	});
 	const isSearchStateRestored = searchHistory.isRestored;
 
-	const tags = createQuery<TagResponse[]>(
+	const tags = useQuery<TagResponse[]>(
 		clientOnlyQueryOptions(props.tagsQueryOptions),
 	);
-	const allProjects = createQuery<Project[]>(
+	const allProjects = useQuery<Project[]>(
 		clientOnlyQueryOptions(props.projectsQueryOptions),
 	);
-	const allIps = createQuery<Ip[]>(
-		clientOnlyQueryOptions(props.ipsQueryOptions),
-	);
-	const allCharacters = createQuery<Character[]>(
+	const allIps = useQuery<Ip[]>(clientOnlyQueryOptions(props.ipsQueryOptions));
+	const allCharacters = useQuery<Character[]>(
 		clientOnlyQueryOptions(props.charactersQueryOptions),
 	);
-	const allAuthors = createQuery<Author[]>(
+	const allAuthors = useQuery<Author[]>(
 		clientOnlyQueryOptions(props.authorsQueryOptions),
 	);
 
 	const page = useSourceMediaPage({
 		mediaSourceId: props.mediaSourceId,
 		queries: {
-			tags: () => tags.data,
-			projects: () => allProjects.data,
-			ips: () => allIps.data,
-			characters: () => allCharacters.data,
-			authors: () => allAuthors.data,
+			tags: () => readQueryData(tags),
+			projects: () => readQueryData(allProjects),
+			ips: () => readQueryData(allIps),
+			characters: () => readQueryData(allCharacters),
+			authors: () => readQueryData(allAuthors),
 		},
 		queryStates: () => ({
 			tags: toQueryUiState(tags, {
@@ -135,11 +134,13 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		isSearchStateRestored,
 		commitSearchHistory: searchHistory.commitNow,
 		enableVirtualization: props.enableVirtualization,
-		scrollContainerSelector: props.scrollContainerSelector,
+		get scrollContainerSelector() {
+			return props.scrollContainerSelector;
+		},
 		historyEntryKey: searchHistory.historyEntryKey,
 	});
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		props.onVisibleMediaIdsChange?.(
 			page.mediaResults().map((media) => media.id),
 		);
@@ -180,3 +181,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		/>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";
+
+import { readQueryData } from "./query-state";

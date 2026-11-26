@@ -4,9 +4,9 @@ import type {
 	StatisticsRequest,
 	StatisticsSelection,
 } from "@solid-imager/core/statistics";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { Link, useLocation } from "@tanstack/solid-router";
-import { createSignal, For, Match, onMount, Show, Switch } from "solid-js";
+import { createSignal, For, Match, onSettled, Show, Switch } from "solid-js";
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Button } from "../button";
 import { Card } from "../card";
@@ -43,7 +43,7 @@ export function StatisticsScreen(props: {
 	const location = useLocation();
 	const [cumulative, setCumulative] = createSignal(false);
 	const [timeZone, setTimeZone] = createSignal(props.initialTimeZone);
-	onMount(() => {
+	onSettled(() => {
 		const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		if (browserTimeZone !== props.initialTimeZone)
 			props.onTimeZoneResolved?.(browserTimeZone);
@@ -56,7 +56,7 @@ export function StatisticsScreen(props: {
 			props.selection.characterId,
 		);
 	const period = () => statisticsPeriod(props.selection);
-	const query = createQuery(() => ({
+	const query = useQuery(() => ({
 		...statisticsQueryOptions(props.selection, timeZone() ?? "UTC", props.load),
 		enabled: timeZone() !== undefined,
 	}));
@@ -126,7 +126,7 @@ export function StatisticsScreen(props: {
 			/>
 			<div class="@container min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-background p-3 scrollbar-stable sm:p-5">
 				<Switch>
-					<Match when={query.data}>
+					<Match when={readQueryData(query)}>
 						{(data) => (
 							<>
 								<div class="grid items-stretch gap-4 @3xl:grid-cols-3">
@@ -299,3 +299,5 @@ export function StatisticsScreen(props: {
 		</section>
 	);
 }
+
+import { readQueryData } from "../query-state";

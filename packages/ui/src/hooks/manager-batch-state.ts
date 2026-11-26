@@ -1,7 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import type { JobEvent } from "@solid-imager/core/events";
 import type { JobDto, JobStatus } from "@solid-imager/core/jobs";
-import { createSignal } from "solid-js";
+import { createSynchronousState } from "../utils/synchronous-state";
 import type { ManagerBatchRun } from "./manager-batch-run";
 
 export type ManagerBatchContext = Omit<ManagerBatchRun, "jobId">;
@@ -44,20 +44,16 @@ export function createManagerBatchState(
 	let nextRequestId = 0;
 	let selectedRequestId = 0;
 	let scanEpoch = 0;
-	const [requests, setRequests] = createSignal<Request[]>([]);
-	const [views, setViews] = createSignal<
+	const requests = createSynchronousState<Request[]>([]);
+	const views = createSynchronousState<
 		Partial<Record<ManagerBatchTab, ToolView>>
 	>({});
-	const [observations, setObservations] = createSignal<
-		Record<string, Observation>
-	>({});
-	const [trackedRun, setTrackedRun] = createSignal<ManagerBatchRun | null>(
-		null,
-	);
+	const observations = createSynchronousState<Record<string, Observation>>({});
+	const trackedRun = createSynchronousState<ManagerBatchRun | null>(null);
 
 	function rememberRun(run: ManagerBatchRun) {
-		if (observations()[run.jobId]) return;
-		setObservations((previous) => ({
+		if (observations.current()[run.jobId]) return;
+		observations.update((previous) => ({
 			...previous,
 			[run.jobId]: {
 				status: "pending",
@@ -72,8 +68,8 @@ export function createManagerBatchState(
 	}
 	function selectRun(run: ManagerBatchRun) {
 		rememberRun(run);
-		setTrackedRun(run);
-		setViews((previous) => ({
+		trackedRun.set(run);
+		views.update((previous) => ({
 			...previous,
 			[run.tab]: { kind: "run", jobId: run.jobId },
 		}));
@@ -83,7 +79,9 @@ export function createManagerBatchState(
 		kind: Request["kind"],
 		context: ManagerBatchContext,
 	): Request | null {
-		if (requests().some((request) => request.context.tab === context.tab))
+		if (
+			requests.current().some((request) => request.context.tab === context.tab)
+		)
 			return null;
 		const request = {
 			id: ++nextRequestId,
@@ -91,8 +89,8 @@ export function createManagerBatchState(
 			context: { ...context },
 			scanEpoch,
 		};
-		setRequests((previous) => [...previous, request]);
-		setViews((previous) => ({
+		requests.update((previous) => [...previous, request]);
+		views.update((previous) => ({
 			...previous,
 			[context.tab]: {
 				kind,
@@ -105,15 +103,15 @@ export function createManagerBatchState(
 		return request;
 	}
 	function finish(request: Request) {
-		setRequests((previous) =>
+		requests.update((previous) =>
 			previous.filter((pending) => pending.id !== request.id),
 		);
 	}
 	function setRequestMessage(request: Request, message: string) {
-		const view = views()[request.context.tab];
+		const view = views.current()[request.context.tab];
 		if (!view || view.kind === "run" || view.requestId !== request.id) return;
 		if (request.kind === "scan" && request.scanEpoch !== scanEpoch) return;
-		setViews((previous) => ({
+		views.update((previous) => ({
 			...previous,
 			[request.context.tab]: { ...view, message },
 		}));
@@ -121,9 +119,9 @@ export function createManagerBatchState(
 	function acceptStart(request: Request, jobId: string) {
 		const run = { ...request.context, jobId };
 		rememberRun(run);
-		const view = views()[run.tab];
+		const view = views.current()[run.tab];
 		if (view && view.kind !== "run" && view.requestId === request.id)
-			setViews((previous) => ({
+			views.update((previous) => ({
 				...previous,
 				[run.tab]: { kind: "run", jobId },
 			}));
@@ -133,7 +131,7 @@ export function createManagerBatchState(
 	function observe(event: JobEvent) {
 		const id = event.data.jobId;
 		if (!id) return;
-		const previous = observations()[id];
+		const previous = observations.current()[id];
 		if (!previous) return;
 		let next = { ...previous, version: previous.version + 1 };
 		switch (event.event) {
@@ -173,10 +171,10 @@ export function createManagerBatchState(
 				);
 			}
 		}
-		setObservations((all) => ({ ...all, [id]: next }));
+		observations.update((all) => ({ ...all, [id]: next }));
 	}
 	function acceptSnapshot(job: JobDto, version: number): boolean {
-		const previous = observations()[job.id];
+		const previous = observations.current()[job.id];
 		if (!previous || previous.version !== version) return false;
 		if (
 			job.attemptCount < previous.attempt ||
@@ -189,7 +187,7 @@ export function createManagerBatchState(
 			job.attemptCount <= previous.attempt
 		)
 			return false;
-		setObservations((all) => ({
+		observations.update((all) => ({
 			...all,
 			[job.id]: {
 				status: job.status,
@@ -204,7 +202,7 @@ export function createManagerBatchState(
 		return true;
 	}
 	function display(tab: ManagerBatchTab): ToolDisplay | null {
-		const view = views()[tab];
+		const view = views.read()[tab];
 		if (!view) return null;
 		if (view.kind !== "run")
 			return {
@@ -214,7 +212,7 @@ export function createManagerBatchState(
 				progress: null,
 				jobId: null,
 			};
-		const snapshot = observations()[view.jobId];
+		const snapshot = observations.read()[view.jobId];
 		if (!snapshot) return null;
 		const message =
 			snapshot.status === "completed"
@@ -248,28 +246,30 @@ export function createManagerBatchState(
 		observe,
 		acceptSnapshot,
 		display,
-		trackedRun,
+		trackedRun: trackedRun.read,
 		pending: (tab: ManagerBatchTab) =>
-			requests().find((request) => request.context.tab === tab)?.kind ?? null,
-		version: (id: string) => observations()[id]?.version ?? 0,
+			requests.read().find((request) => request.context.tab === tab)?.kind ??
+			null,
+		version: (id: string) => observations.current()[id]?.version ?? 0,
 		failRead: (id: string, message: string) => {
-			const previous = observations()[id];
+			const previous = observations.current()[id];
 			if (previous)
-				setObservations((all) => ({
+				observations.update((all) => ({
 					...all,
 					[id]: { ...previous, readError: message },
 				}));
 		},
 		readVersions: () =>
 			Object.fromEntries(
-				Object.entries(observations()).map(([id, observation]) => [
+				Object.entries(observations.current()).map(([id, observation]) => [
 					id,
 					observation.version,
 				]),
 			),
 		activeJobId: () => {
-			const run = trackedRun();
-			return run && !terminal(observations()[run.jobId]?.status ?? "pending")
+			const run = trackedRun.read();
+			return run &&
+				!terminal(observations.read()[run.jobId]?.status ?? "pending")
 				? run.jobId
 				: null;
 		},
@@ -279,10 +279,10 @@ export function createManagerBatchState(
 			selectRun(run);
 		},
 		forget: (jobId: string) => {
-			const run = trackedRun();
+			const run = trackedRun.current();
 			if (!run || run.jobId !== jobId) return false;
 			if (run)
-				setViews((previous) => ({
+				views.update((previous) => ({
 					...previous,
 					[run.tab]: {
 						kind: "start",
@@ -290,12 +290,12 @@ export function createManagerBatchState(
 						message: t("managerBatchState.theTrackedBatchNoLongerExists"),
 					},
 				}));
-			setTrackedRun(null);
+			trackedRun.set(null);
 			return true;
 		},
 		invalidateScans: () => {
 			scanEpoch++;
-			setViews((previous) =>
+			views.update((previous) =>
 				Object.fromEntries(
 					Object.entries(previous).filter(([, view]) => view.kind !== "scan"),
 				),

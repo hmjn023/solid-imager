@@ -5,19 +5,18 @@ import type {
 	MediaDeletedEvent,
 	ThumbnailGeneratedEvent,
 } from "@solid-imager/core/events";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
 import {
-	createComputed,
-	getOwner,
+	createMemo,
+	createProjection,
 	Match,
-	runWithOwner,
 	Show,
 	Switch,
+	untrack,
 } from "solid-js";
-import { createStore, reconcile } from "solid-js/store";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { useMediaSourceEvents } from "../hooks/use-media-source-events";
-import { toQueryUiState } from "../query-state";
+import { readQueryData, toQueryUiState } from "../query-state";
 import { relatedMediaQueryKeys } from "../query-options/media-query";
 import type {
 	MediaDetailDataRenderProps,
@@ -27,29 +26,22 @@ import type {
 export type MediaDetailScreenControllerProps = MediaDetailScreenProps & {
 	renderData: (
 		props: MediaDetailDataRenderProps,
-	) => import("solid-js").JSX.Element;
-	renderPending: () => import("solid-js").JSX.Element;
+	) => import("@solidjs/web").JSX.Element;
+	renderPending: () => import("@solidjs/web").JSX.Element;
 };
 
 function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 	const queryClient = useQueryClient();
-	const owner = getOwner();
-	const renderOwned = (render: () => import("solid-js").JSX.Element) =>
-		owner ? runWithOwner(owner, render) : render();
-
-	const mediaDetails = createQuery<MediaDetails>(() =>
+	const mediaDetails = useQuery<MediaDetails>(() =>
 		props.mediaDetailsQueryOptions(props.mediaSourceId(), props.mediaId()),
 	);
-	const state = () => toQueryUiState(mediaDetails);
-	const [detailState, setDetailState] = createStore<{
-		details?: MediaDetails;
-	}>({});
-	createComputed(() => {
-		const details = state().data;
-		if (details) {
-			setDetailState("details", reconcile(details));
-		}
-	});
+	const state = createMemo(() => toQueryUiState(mediaDetails));
+	const detailState = createProjection<{ details?: MediaDetails }>(
+		() => ({
+			details: state().data,
+		}),
+		{},
+	);
 	const errorMessage = () => {
 		const error = state().error;
 		return error instanceof Error
@@ -80,7 +72,7 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 		onMediaDeleted: (data: MediaDeletedEvent) => {
 			if (
 				data.mediaId === props.mediaId() ||
-				data.filePath === mediaDetails.data?.filePath
+				data.filePath === readQueryData(mediaDetails)?.filePath
 			) {
 				void handleUpdate();
 			}
@@ -88,7 +80,7 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 		onMediaChanged: (data: MediaChangedEvent) => {
 			if (
 				data.mediaId === props.mediaId() ||
-				data.filePath === mediaDetails.data?.filePath
+				data.filePath === readQueryData(mediaDetails)?.filePath
 			) {
 				void handleUpdate();
 			}
@@ -116,17 +108,22 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 				<Match when={state().phase === "data"}>
 					<Show keyed when={detailState.details?.id}>
 						{(mediaId) => {
-							const details = detailState.details;
-							return details?.id === mediaId
-								? renderOwned(() =>
-										props.renderData({
-											details,
-											isUpdating: () => mediaDetails.isRefetching,
-											onUpdate: handleUpdate,
-											sourceRootPath: props.sourceRootPath,
-										}),
-									)
-								: null;
+							// The keyed branch owns this record while its fields reconcile.
+							const details = untrack(() => {
+								const current = detailState.details;
+								return current?.id === mediaId ? current : undefined;
+							});
+							return (
+								details &&
+								props.renderData({
+									details,
+									isUpdating: () => mediaDetails.isRefetching,
+									onUpdate: handleUpdate,
+									get sourceRootPath() {
+										return props.sourceRootPath;
+									},
+								})
+							);
 						}}
 					</Show>
 				</Match>

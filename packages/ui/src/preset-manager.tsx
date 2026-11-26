@@ -1,3 +1,4 @@
+import { createRequest } from "./utils/create-request";
 import { useRenderedSearchState } from "./search-initial-state";
 import { t } from "@solid-imager/i18n";
 import {
@@ -10,10 +11,10 @@ import {
 	type SearchState,
 } from "@solid-imager/core/search";
 import { type Preset } from "@solid-imager/core/presets";
-import Trash2 from "lucide-solid/icons/trash";
+import Trash2 from "@lucide/solid/icons/trash";
 import { deepEqual } from "@solid-imager/core/utils";
-import { createEffect, createResource, createSignal, Show } from "solid-js";
-import type { SetStoreFunction } from "solid-js/store";
+import { createSignal, Show } from "solid-js";
+import type { StoreSetter } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -65,7 +66,7 @@ type PresetManagerProps = {
 	class?: string;
 	onAction?: () => void;
 	state?: SearchState;
-	setState?: SetStoreFunction<SearchState>;
+	setState?: StoreSetter<SearchState>;
 };
 
 function normalizeSearchCondition(condition: SearchGroup | undefined) {
@@ -90,7 +91,10 @@ function createClearedSearchState(state: SearchState): SearchState {
 }
 
 export function PresetManager(props: PresetManagerProps) {
-	const [data, { refetch }] = createResource(() => props.presetClient.list());
+	const { data, refetch } = createRequest(
+		() => props.presetClient,
+		(client) => client.list(),
+	);
 	const renderedState = useRenderedSearchState();
 	const currentState = () => props.state ?? renderedState();
 	const updateState = props.setState ?? setSearchState;
@@ -98,7 +102,7 @@ export function PresetManager(props: PresetManagerProps) {
 	const presets = () =>
 		data()?.filter((preset) => !preset.name.startsWith("current"));
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const availablePresets = presets();
 		const state = currentState();
 		if (!availablePresets || state.activePresetId !== null) {
@@ -111,7 +115,9 @@ export function PresetManager(props: PresetManagerProps) {
 			deepEqual(normalizeSearchCondition(preset.value), condition),
 		);
 		if (matchingPreset) {
-			updateState("activePresetId", matchingPreset.id);
+			updateState((draft) => {
+				draft.activePresetId = matchingPreset.id;
+			});
 		}
 	});
 
@@ -138,7 +144,7 @@ export function PresetManager(props: PresetManagerProps) {
 		setSaveError(null);
 	};
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const active = currentState().activePresetId;
 		if (active) {
 			setSelectedPresetId(String(active));
@@ -173,7 +179,7 @@ export function PresetManager(props: PresetManagerProps) {
 			});
 			setIsSaveDialogOpen(false);
 			setNewPresetName("");
-			void refetch();
+			void refetch().catch(() => undefined);
 			toast.success(t("presetManager.presetSaved"));
 			props.onAction?.();
 		} catch {
@@ -203,7 +209,7 @@ export function PresetManager(props: PresetManagerProps) {
 			if (selectedPresetId() === String(id)) {
 				setSelectedPresetId(null);
 			}
-			void refetch();
+			void refetch().catch(() => undefined);
 			setIsDeleteDialogOpen(false);
 			setPresetToDelete(null);
 		} catch {
@@ -221,14 +227,18 @@ export function PresetManager(props: PresetManagerProps) {
 		}
 		const preset = presets()?.find((item: Preset) => item.id === Number(id));
 		if (preset) {
-			updateState(preparePresetState(preset, currentState()));
+			updateState((draft) => {
+				Object.assign(draft, preparePresetState(preset, currentState()));
+			});
 			props.onAction?.();
 		}
 	};
 
 	const handleClearSelection = () => {
 		setSelectedPresetId(null);
-		updateState(createClearedSearchState(currentState()));
+		updateState((draft) => {
+			Object.assign(draft, createClearedSearchState(currentState()));
+		});
 		props.onAction?.();
 	};
 
@@ -484,3 +494,5 @@ export function PresetManager(props: PresetManagerProps) {
 		</div>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

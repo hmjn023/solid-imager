@@ -1,12 +1,12 @@
 import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
-import type { Accessor, JSX, ParentProps } from "solid-js";
+import type { Accessor, ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import {
 	createContext,
-	createEffect,
 	createSignal,
 	onCleanup,
-	onMount,
+	onSettled,
 	useContext,
 } from "solid-js";
 import type { UseSourcesPageResult } from "../hooks/use-sources-page";
@@ -32,8 +32,9 @@ import { type JobsBadgeCounts, Sidebar } from "./sidebar";
 export type { JobsBadgeCounts } from "./sidebar";
 
 /** Provides live active/failed job counts to the shared workspace sidebar. */
-export const JobsBadgeContext =
-	createContext<Accessor<JobsBadgeCounts | undefined>>();
+export const JobsBadgeContext = createContext<Accessor<
+	JobsBadgeCounts | undefined
+> | null>(null);
 
 export type AppShellProps = ParentProps<{
 	apiDocsHref?: string;
@@ -53,7 +54,7 @@ export function WorkspaceSetupFrame(props: ParentProps) {
 			<main
 				class="min-h-0 min-w-0 flex-1 overflow-auto"
 				id="main-content"
-				tabIndex={-1}
+				tabindex={-1}
 			>
 				{props.children}
 			</main>
@@ -127,7 +128,7 @@ export function AppShell(props: AppShellProps) {
 		createAppShortcut("goSettings", () => props.onNavigate?.("/config"));
 	}
 
-	onMount(() => {
+	onSettled(() => {
 		try {
 			const storedPreference = readUiStorageValue(
 				localStorage,
@@ -144,7 +145,7 @@ export function AppShell(props: AppShellProps) {
 		if (focusRestoreFrame !== undefined)
 			cancelAnimationFrame(focusRestoreFrame);
 	});
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (!sidebarPreferenceReady()) return;
 		try {
 			localStorage.setItem(
@@ -223,11 +224,11 @@ export function AppShell(props: AppShellProps) {
 						<main
 							class="min-h-0 min-w-0 flex-1 overflow-hidden"
 							id="main-content"
-							tabIndex={-1}
+							tabindex={-1}
 						>
-							<AddSourceContext.Provider value={sourcePage.handleAddSource}>
+							<AddSourceContext value={sourcePage.handleAddSource}>
 								{props.children}
-							</AddSourceContext.Provider>
+							</AddSourceContext>
 						</main>
 					</div>
 
@@ -303,3 +304,5 @@ export function AppShell(props: AppShellProps) {
 
 	return renderWorkspace();
 }
+
+import { createTrackedEffect } from "solid-js";

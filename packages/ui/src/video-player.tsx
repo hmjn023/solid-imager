@@ -2,12 +2,11 @@ import { getLocale, t } from "@solid-imager/i18n";
 import {
 	createEffect,
 	createSignal,
-	on,
 	onCleanup,
-	onMount,
+	onSettled,
 	Show,
 } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import { Dynamic } from "@solidjs/web";
 import { Button } from "./button";
 import { RefreshCw } from "./workspace/icons";
 
@@ -22,6 +21,7 @@ export function VideoPlayer(props: VideoPlayerProps) {
 	const [controlsReady, setControlsReady] = createSignal(false);
 	const [isLooping, setIsLooping] = createSignal(true);
 	let video: HTMLVideoElement | undefined;
+	let loopButton: HTMLButtonElement | undefined;
 	let disposed = false;
 	const handleLoopKey = (event: KeyboardEvent) => {
 		// Preserve native button activation before the controller handles playback hotkeys.
@@ -29,24 +29,22 @@ export function VideoPlayer(props: VideoPlayerProps) {
 	};
 
 	createEffect(
-		on(
-			() => props.src,
-			() => setIsLooping(true),
-		),
+		() => props.src,
+		() => {
+			setIsLooping(true);
+		},
 	);
 
-	onMount(() => {
+	onSettled(() => {
+		let loopObserver: MutationObserver | undefined;
 		if (video) {
 			const element = video;
 			// The browser's context menu can also change this reflected media property.
-			const loopObserver = new MutationObserver(() =>
-				setIsLooping(element.loop),
-			);
+			loopObserver = new MutationObserver(() => setIsLooping(element.loop));
 			loopObserver.observe(element, {
 				attributes: true,
 				attributeFilter: ["loop"],
 			});
-			onCleanup(() => loopObserver.disconnect());
 		}
 		void import("./video-player-elements")
 			.then(() => {
@@ -55,10 +53,13 @@ export function VideoPlayer(props: VideoPlayerProps) {
 			.catch(() => {
 				// Keep native controls usable if the optional control UI cannot load.
 			});
+		return () => loopObserver?.disconnect();
 	});
 
 	onCleanup(() => {
 		disposed = true;
+		loopButton?.removeEventListener("keydown", handleLoopKey);
+		loopButton?.removeEventListener("keyup", handleLoopKey);
 		video?.pause();
 		video?.removeAttribute("src");
 		// Reset the resource selection algorithm to cancel a pending native media download.
@@ -67,9 +68,9 @@ export function VideoPlayer(props: VideoPlayerProps) {
 
 	return (
 		<Dynamic
-			attr:defaultstreamtype="on-demand"
 			class="video-player"
 			component="media-controller"
+			defaultstreamtype="on-demand"
 			lang={getLocale()}
 		>
 			<video
@@ -98,9 +99,9 @@ export function VideoPlayer(props: VideoPlayerProps) {
 						<Dynamic component="media-mute-button" />
 						<Dynamic component="media-volume-range" />
 						<Dynamic
-							attr:notoggle=""
-							attr:showduration=""
 							component="media-time-display"
+							notoggle=""
+							showduration=""
 						/>
 						<span class="video-player-spacer" />
 						{/* Solid UI supplies the toggle; Media Chrome's loop button is a menu item. */}
@@ -108,9 +109,12 @@ export function VideoPlayer(props: VideoPlayerProps) {
 							aria-label={t("videoPlayer.toggleVideoLoop")}
 							aria-pressed={isLooping()}
 							class="video-player-loop"
-							on:keydown={handleLoopKey}
-							on:keyup={handleLoopKey}
 							onClick={() => setIsLooping((current) => !current)}
+							ref={(element) => {
+								loopButton = element;
+								element.addEventListener("keydown", handleLoopKey);
+								element.addEventListener("keyup", handleLoopKey);
+							}}
 							size="icon"
 							title={
 								isLooping() ? t("videoPlayer.loopOn") : t("videoPlayer.loopOff")

@@ -2,6 +2,24 @@ import { describe, expect, it } from "vitest";
 import { toQueryUiState } from "./query-state";
 
 describe("toQueryUiState", () => {
+	it("keeps query-owned loading and error reads out of the inline UI", () => {
+		for (const status of ["pending", "error"] as const) {
+			const error = new Error("unavailable");
+			expect(
+				toQueryUiState({
+					get data() {
+						throw error;
+					},
+					error: status === "error" ? error : undefined,
+					status,
+					fetchStatus: "idle",
+					isPending: status === "pending",
+					isLoadingError: status === "error",
+				}),
+			).toMatchObject({ phase: status, data: undefined });
+		}
+	});
+
 	it("maps an initial fetch to pending", () => {
 		expect(
 			toQueryUiState({

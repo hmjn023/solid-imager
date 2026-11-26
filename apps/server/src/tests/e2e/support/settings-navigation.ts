@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 export function settingsCategorySelect(page: Page) {
-	return page.getByRole("button", { name: /^設定カテゴリ(?: |$)/ });
+	return page.getByRole("combobox", { name: /^設定カテゴリ(?: |$)/ });
 }
 
 export async function selectSettingsCategory(page: Page, label: string) {

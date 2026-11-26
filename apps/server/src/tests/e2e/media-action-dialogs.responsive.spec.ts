@@ -72,7 +72,7 @@ for (const collection of [
 			});
 			expect(await transfer.textContent()).not.toContain("false");
 			await expect(copy).toBeDisabled();
-			const destinationField = transfer.getByRole("button", {
+			const destinationField = transfer.getByRole("combobox", {
 				name: /^保存先ソース/,
 			});
 			await destinationField.click();

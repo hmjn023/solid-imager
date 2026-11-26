@@ -5,9 +5,9 @@ import {
 	type TagDictionaryMigration,
 } from "@solid-imager/core/tags";
 import { t } from "@solid-imager/i18n";
-import { createMutation, createQuery } from "@tanstack/solid-query";
-import { createEffect, createSignal, For, Show } from "solid-js";
-import { isServer } from "solid-js/web";
+import { useMutation, useQuery } from "@tanstack/solid-query";
+import { createSignal, For, Show } from "solid-js";
+import { isServer } from "@solidjs/web";
 import { ErrorState } from "../../async-state";
 import { Button } from "../../button";
 import {
@@ -56,7 +56,7 @@ export function LegacyTagMigration(props: {
 	const [done, setDone] = createSignal<{ source: string; target: string }>();
 	let listTrigger: HTMLButtonElement | undefined;
 	let editTrigger: HTMLButtonElement | undefined;
-	const legacy = createQuery(() => {
+	const legacy = useQuery(() => {
 		const input = { query: query(), offset: offset() };
 		return {
 			queryKey: [...TAG_DICTIONARY_QUERY_KEY, "legacy", input],
@@ -65,7 +65,7 @@ export function LegacyTagMigration(props: {
 			enabled: !isServer && open(),
 		};
 	});
-	const migrate = createMutation(() => ({
+	const migrate = useMutation(() => ({
 		mutationFn: (input: TagDictionaryMigration) =>
 			props.actions.dictionaryMigrate(input),
 		onSuccess: (_result, input) => {
@@ -76,12 +76,12 @@ export function LegacyTagMigration(props: {
 		},
 		onError: () => void legacy.refetch(),
 	}));
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (
 			offset() > 0 &&
 			legacy.isSuccess &&
 			!legacy.isFetching &&
-			legacy.data.items.length === 0
+			readQueryData(legacy)?.items.length === 0
 		) {
 			setOffset(offset() - TAG_DICTIONARY_PAGE_SIZE);
 		}
@@ -107,7 +107,7 @@ export function LegacyTagMigration(props: {
 				>
 					{t("tagDictionary.legacyTitle")}
 					<ChevronDown
-						class="text-muted-foreground group-data-[expanded]:rotate-180"
+						class="text-muted-foreground group-data-[open]:rotate-180"
 						size={16}
 					/>
 				</CollapsibleTrigger>
@@ -146,16 +146,18 @@ export function LegacyTagMigration(props: {
 						onRetry={() => void legacy.refetch()}
 					/>
 				</Show>
-				<Show when={legacy.isSuccess && legacy.data.items.length === 0}>
+				<Show
+					when={legacy.isSuccess && readQueryData(legacy)?.items.length === 0}
+				>
 					<p class="text-sm text-muted-foreground">
 						{t(
 							query() ? "tagDictionary.noMatches" : "tagDictionary.legacyEmpty",
 						)}
 					</p>
 				</Show>
-				<Show when={legacy.data?.items.length}>
+				<Show when={readQueryData(legacy)?.items.length}>
 					<ul class="divide-y divide-border rounded-lg border border-border">
-						<For each={legacy.data?.items}>
+						<For each={readQueryData(legacy)?.items}>
 							{(item) => (
 								<li class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
 									<span class="min-w-0 break-all text-sm font-medium">
@@ -183,7 +185,7 @@ export function LegacyTagMigration(props: {
 						</For>
 					</ul>
 				</Show>
-				<Show when={offset() > 0 || legacy.data?.hasMore}>
+				<Show when={offset() > 0 || readQueryData(legacy)?.hasMore}>
 					<div class="flex justify-between gap-2">
 						<Button
 							type="button"
@@ -196,7 +198,7 @@ export function LegacyTagMigration(props: {
 						<Button
 							type="button"
 							variant="outline"
-							disabled={!legacy.data?.hasMore}
+							disabled={!readQueryData(legacy)?.hasMore}
 							onClick={() => setOffset(offset() + TAG_DICTIONARY_PAGE_SIZE)}
 						>
 							{t("actions.next")}
@@ -290,3 +292,7 @@ export function LegacyTagMigration(props: {
 		</Collapsible>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";
+
+import { readQueryData } from "../../query-state";

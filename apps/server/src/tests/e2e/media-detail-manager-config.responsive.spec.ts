@@ -428,7 +428,7 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 
 	await selectManagerCategory(page, "一括タグ付け");
 	if (testInfo.project.name !== "responsive-desktop") {
-		const currentCategory = page.getByRole("button", {
+		const currentCategory = page.getByRole("combobox", {
 			name: /^管理カテゴリ/,
 		});
 		await expect(currentCategory).toHaveText("一括タグ付け");

@@ -15,14 +15,7 @@ import type { Project } from "@solid-imager/core/projects";
 import { getErrorMessage } from "@solid-imager/core/utils";
 // oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
-import {
-	type Accessor,
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	Show,
-} from "solid-js";
+import { type Accessor, createMemo, createSignal, For, Show } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -89,9 +82,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [relationsDirty, setRelationsDirty] = createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [isSavingDescription, setIsSavingDescription] = createSignal(false);
-	const [descriptionValue, setDescriptionValue] = createSignal(
-		props.media.description || "",
-	);
+	const [descriptionValue, setDescriptionValue] = createSignal("");
 	const descriptionDirty = () =>
 		isEditingDescription() &&
 		descriptionValue() !== (props.media.description ?? "");
@@ -105,11 +96,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [allowBlockedNavigation, setAllowBlockedNavigation] =
 		createSignal(false);
 
-	createEffect(() => {
-		if (!isEditingDescription()) {
-			setDescriptionValue(props.media.description || "");
-		}
-	});
+	const relationGroups = [
+		{ title: t("labels.projects"), items: () => props.projects },
+		{ title: t("labels.ips"), items: () => props.media.ips },
+		{ title: t("labels.characters"), items: () => props.media.characters },
+	];
 
 	const positiveTags = createMemo(() =>
 		tags().filter((tag) => tag.type === "positive"),
@@ -155,7 +146,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							class="min-h-11 lg:min-h-8"
 							size="sm"
 							variant="outline"
-							onClick={() => setIsEditingDescription(true)}
+							onClick={() => {
+								setDescriptionValue(props.media.description ?? "");
+								setIsEditingDescription(true);
+							}}
 							type="button"
 						>
 							{t("actions.edit")}
@@ -307,21 +301,15 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						}}
 					/>
 				</div>
-				<For
-					each={[
-						{ title: t("labels.projects"), items: props.projects },
-						{ title: t("labels.ips"), items: props.media.ips },
-						{ title: t("labels.characters"), items: props.media.characters },
-					]}
-				>
+				<For each={relationGroups}>
 					{(group) => (
 						<div class="space-y-2">
 							<h3 class="font-semibold text-sm">{group.title}</h3>
 							<div class="flex flex-wrap gap-2">
-								<For each={group.items}>
-									{(item) => <Badge variant="secondary">{item.name}</Badge>}
+								<For each={group.items()} keyed={(item) => item.id}>
+									{(item) => <Badge variant="secondary">{item().name}</Badge>}
 								</For>
-								<Show when={group.items.length === 0}>
+								<Show when={group.items().length === 0}>
 									<span class="text-muted-foreground text-sm italic">
 										{t("mediaSidebar.noValueAssociated", {
 											value0: String(group.title.toLowerCase()),
@@ -357,7 +345,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<For each={positiveTags()}>
 						{(tag) => (
 							<MediaTagBadge
-								classList={{
+								class={{
 									"border-input":
 										tag.source === "AI" || tag.source === "comfyui_workflow",
 									"bg-info": tag.source === "AI",
@@ -422,7 +410,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						<Collapsible.Trigger class="flex min-h-11 w-full items-center justify-between font-semibold text-sm lg:min-h-9">
 							{t("mediaSidebar.generationInfo")}
 							<ChevronDown
-								class="motion-safe:transition-transform data-[expanded]:rotate-180"
+								class="motion-safe:transition-transform data-[open]:rotate-180"
 								size={14}
 							/>
 						</Collapsible.Trigger>

@@ -1,44 +1,71 @@
 import {
-	Content as AlertDialogPrimitiveContent,
-	Description as AlertDialogPrimitiveDescription,
-	Overlay as AlertDialogPrimitiveOverlay,
-	Portal as AlertDialogPrimitivePortal,
-	Root as AlertDialogPrimitiveRoot,
-	Title as AlertDialogPrimitiveTitle,
-	Trigger as AlertDialogPrimitiveTrigger,
-} from "@kobalte/core/alert-dialog";
-import { useDialogContext } from "@kobalte/core/dialog";
-import type { Component, ComponentProps, JSX } from "solid-js";
-import { splitProps } from "solid-js";
+	AlertDialogBackdrop as AlertDialogPrimitiveOverlay,
+	AlertDialogContent as AlertDialogPrimitiveContent,
+	AlertDialogDescription as AlertDialogPrimitiveDescription,
+	AlertDialogTitle as AlertDialogPrimitiveTitle,
+	AlertDialog as AlertDialogPrimitiveRoot,
+	AlertDialogTrigger as AlertDialogPrimitiveTrigger,
+	createAlertDialogController,
+} from "@ui-sdk/solid/alert-dialog";
+import { createContext, useContext } from "solid-js";
+import type { Component } from "solid-js";
+import {
+	Portal,
+	type ComponentProps,
+	type JSX,
+	type ValidComponent,
+} from "@solidjs/web";
+import { omit } from "solid-js";
 import { Button } from "./button";
+import {
+	dialogFinalFocus,
+	dialogInitialFocus,
+	type DialogFocusHandlers,
+} from "./dialog";
+import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
 import { cn } from "./utils/cn";
 
 type ClassProps<T> = Omit<T, "class"> & { class?: string | undefined };
 
-const AlertDialog = AlertDialogPrimitiveRoot;
-const AlertDialogTrigger = AlertDialogPrimitiveTrigger;
+const AlertDialogContext =
+	createContext<ReturnType<typeof createAlertDialogController>>();
 
-const AlertDialogPortal: Component<
-	ComponentProps<typeof AlertDialogPrimitivePortal>
-> = (props) => {
-	const [, rest] = splitProps(props, ["children"]);
+function AlertDialog(props: ComponentProps<typeof AlertDialogPrimitiveRoot>) {
+	const controller = props.controller ?? createAlertDialogController();
 	return (
-		<AlertDialogPrimitivePortal {...rest}>
-			<div class="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
-				{props.children}
-			</div>
-		</AlertDialogPrimitivePortal>
+		<AlertDialogContext value={controller}>
+			<AlertDialogPrimitiveRoot {...props} controller={controller} />
+		</AlertDialogContext>
 	);
-};
+}
+
+function AlertDialogTrigger<Tag extends ValidComponent = "button">(
+	props: PolymorphicProps<
+		Tag,
+		ComponentProps<typeof AlertDialogPrimitiveTrigger>
+	>,
+) {
+	const partProps: ComponentProps<typeof AlertDialogPrimitiveTrigger> & {
+		as?: Tag;
+	} = props;
+	return (
+		<AlertDialogPrimitiveTrigger
+			{...omit(partProps, "as")}
+			render={props.as ? renderAs(() => props.as) : props.render}
+		/>
+	);
+}
+
+const AlertDialogPortal = Portal;
 
 const AlertDialogOverlay: Component<
 	ClassProps<ComponentProps<typeof AlertDialogPrimitiveOverlay>>
 > = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+	const rest = omit(props, "class");
 	return (
 		<AlertDialogPrimitiveOverlay
 			class={cn(
-				"fixed inset-0 z-50 bg-background/80 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0",
+				"fixed inset-0 z-50 bg-background/80 motion-safe:data-[closed]:animate-out motion-safe:data-[open]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[open]:fade-in-0",
 				props.class,
 			)}
 			{...rest}
@@ -47,27 +74,43 @@ const AlertDialogOverlay: Component<
 };
 
 const AlertDialogContent: Component<
-	ClassProps<ComponentProps<typeof AlertDialogPrimitiveContent>>
+	ClassProps<
+		Omit<ComponentProps<typeof AlertDialogPrimitiveContent>, "children">
+	> &
+		DialogFocusHandlers & { children?: JSX.Element }
 > = (props) => {
-	const [, rest] = splitProps(props, ["class", "children"]);
+	const rest = omit(
+		props,
+		"class",
+		"children",
+		"onOpenAutoFocus",
+		"onCloseAutoFocus",
+		"initialFocus",
+		"finalFocus",
+	);
 	return (
-		<AlertDialogPortal>
+		<>
 			<AlertDialogOverlay />
 			<AlertDialogPrimitiveContent
+				initialFocus={dialogInitialFocus(
+					props.onOpenAutoFocus,
+					props.initialFocus,
+				)}
+				finalFocus={dialogFinalFocus(props.onCloseAutoFocus, props.finalFocus)}
 				class={cn(
-					"fixed top-1/2 left-1/2 z-50 grid max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 overflow-y-auto overscroll-contain scrollbar-stable rounded-lg border bg-background p-6 shadow-lg duration-200 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[expanded]:zoom-in-95 sm:max-h-dialog-safe",
+					"fixed top-1/2 left-1/2 z-50 grid max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 overflow-y-auto overscroll-contain scrollbar-stable rounded-lg border bg-background p-6 shadow-lg duration-200 motion-safe:data-[closed]:animate-out motion-safe:data-[open]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[open]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[open]:zoom-in-95 sm:max-h-dialog-safe",
 					props.class,
 				)}
 				{...rest}
 			>
 				{props.children}
 			</AlertDialogPrimitiveContent>
-		</AlertDialogPortal>
+		</>
 	);
 };
 
 const AlertDialogHeader: Component<ComponentProps<"div">> = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+	const rest = omit(props, "class");
 	return (
 		<div
 			class={cn(
@@ -80,7 +123,7 @@ const AlertDialogHeader: Component<ComponentProps<"div">> = (props) => {
 };
 
 const AlertDialogFooter: Component<ComponentProps<"div">> = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+	const rest = omit(props, "class");
 	return (
 		<div
 			class={cn(
@@ -95,7 +138,7 @@ const AlertDialogFooter: Component<ComponentProps<"div">> = (props) => {
 const AlertDialogTitle: Component<
 	ClassProps<ComponentProps<typeof AlertDialogPrimitiveTitle>>
 > = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+	const rest = omit(props, "class");
 	return (
 		<AlertDialogPrimitiveTitle
 			class={cn("font-semibold text-lg", props.class)}
@@ -107,7 +150,7 @@ const AlertDialogTitle: Component<
 const AlertDialogDescription: Component<
 	ClassProps<ComponentProps<typeof AlertDialogPrimitiveDescription>>
 > = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+	const rest = omit(props, "class");
 	return (
 		<AlertDialogPrimitiveDescription
 			class={cn("text-muted-foreground text-sm", props.class)}
@@ -138,14 +181,14 @@ function invokeButtonClick(
 }
 
 const AlertDialogButton: Component<AlertDialogButtonProps> = (props) => {
-	const context = useDialogContext();
-	const [local, rest] = splitProps(props, ["onClick"]);
+	const context = useContext(AlertDialogContext);
+	const rest = omit(props, "onClick");
 	return (
 		<Button
 			onClick={(event: AlertDialogButtonClickEvent) => {
-				invokeButtonClick(local.onClick, event);
+				invokeButtonClick(props.onClick, event);
 				if (!event.defaultPrevented) {
-					context.close();
+					void context.close();
 				}
 			}}
 			{...rest}
@@ -158,11 +201,11 @@ const AlertDialogAction: Component<AlertDialogButtonProps> = (props) => (
 );
 
 const AlertDialogCancel: Component<AlertDialogButtonProps> = (props) => {
-	const [local, rest] = splitProps(props, ["class", "variant"]);
+	const rest = omit(props, "class", "variant");
 	return (
 		<AlertDialogButton
-			class={cn("mt-2 sm:mt-0", local.class)}
-			variant={local.variant ?? "outline"}
+			class={cn("mt-2 sm:mt-0", props.class)}
+			variant={props.variant ?? "outline"}
 			{...rest}
 		/>
 	);

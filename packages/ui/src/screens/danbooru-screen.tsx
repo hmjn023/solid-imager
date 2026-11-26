@@ -7,8 +7,8 @@ import type {
 	ExternalSearch,
 	ViewerTag,
 } from "@solid-imager/core/external-viewer";
-import { createQuery } from "@tanstack/solid-query";
-import { createSignal, onMount } from "solid-js";
+import { useQuery } from "@tanstack/solid-query";
+import { createSignal, onSettled } from "solid-js";
 import { DanbooruPostDetail } from "../external-viewer/danbooru-post-detail";
 import type { createViewerImports } from "../external-viewer/viewer-imports";
 import {
@@ -32,14 +32,16 @@ export type DanbooruScreenProps = ViewerNavigation & {
 
 export function DanbooruScreen(props: DanbooruScreenProps) {
 	const [mounted, setMounted] = createSignal(false);
-	onMount(() => setMounted(true));
+	onSettled(() => {
+		setMounted(true);
+	});
 	const browse = createViewerSearch(
 		"danbooru",
-		props.search,
+		(input) => props.search(input),
 		undefined,
 		() => props.selectedPostId,
 	);
-	const detail = createQuery(() => ({
+	const detail = useQuery(() => ({
 		...viewerPostQueryOptions("danbooru", props.selectedPostId, props.getPost),
 		enabled: mounted() && !!props.selectedPostId,
 		initialData: () =>

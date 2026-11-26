@@ -9,18 +9,18 @@ import type { JobProgressEvent } from "@solid-imager/core/events";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
-	createQuery,
+	useQuery,
 	type QueryClient,
 	type QueryOptions,
 } from "@tanstack/solid-query";
 import {
 	type Accessor,
 	createSignal,
-	onMount,
+	onSettled,
 	onCleanup,
 	type Setter,
 } from "solid-js";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import { prefetchQueryOnClient } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
 import { toast } from "../toast";
@@ -300,25 +300,25 @@ export function useManagerPage(
 		onBatchTaggingStart,
 		onOpenJobs,
 	} = options;
-	const projects = createQuery<Project[]>(queryOptions.projects);
-	const ipsQuery = createQuery<Ip[]>(() => ({
+	const projects = useQuery<Project[]>(queryOptions.projects);
+	const ipsQuery = useQuery<Ip[]>(() => ({
 		...queryOptions.ips(),
 		enabled: !isServer,
 	}));
-	const characters = createQuery<Character[]>(() => ({
+	const characters = useQuery<Character[]>(() => ({
 		...queryOptions.characters(),
 		enabled: !isServer,
 	}));
-	const sourcesQuery = createQuery<SafeMediaSource[]>(() => ({
+	const sourcesQuery = useQuery<SafeMediaSource[]>(() => ({
 		...queryOptions.sources(),
 		enabled: !isServer,
 	}));
 
 	const queries: ManagerPageQueries = {
-		projects: () => projects.data,
-		ips: () => ipsQuery.data,
-		characters: () => characters.data,
-		sources: () => sourcesQuery.data,
+		projects: () => readQueryData(projects),
+		ips: () => readQueryData(ipsQuery),
+		characters: () => readQueryData(characters),
+		sources: () => readQueryData(sourcesQuery),
 	};
 
 	const [activeTab, setActiveTab] = createSignal<ManagerEntityType>("projects");
@@ -389,7 +389,7 @@ export function useManagerPage(
 	const activeBatchesKey = jobsQueryKeys.activeBatches();
 	const hadActiveBatches =
 		queryClient.getQueryData(activeBatchesKey) !== undefined;
-	const activeBatches = createQuery(() => ({
+	const activeBatches = useQuery(() => ({
 		queryKey: activeBatchesKey,
 		queryFn: async () => {
 			const versions = batches.readVersions();
@@ -427,7 +427,7 @@ export function useManagerPage(
 	});
 	let trackedRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 	onCleanup(() => clearTimeout(trackedRefreshTimer));
-	const trackedJob = createQuery<JobDto>(() => {
+	const trackedJob = useQuery<JobDto>(() => {
 		const jobId = trackedRun()?.jobId;
 		return {
 			queryKey: jobsQueryKeys.detail(jobId ?? ""),
@@ -474,7 +474,7 @@ export function useManagerPage(
 			staleTime: 0,
 		};
 	});
-	onMount(() => {
+	onSettled(() => {
 		const storage = managerSessionStorage();
 		const run = storage ? readManagerBatchRun(storage) : null;
 		if (!run) return;
@@ -791,7 +791,7 @@ export function useManagerPage(
 				event.event === "job-progress" ||
 				event.event === "job-retried" ||
 				activeBatches.isFetching ||
-				activeBatches.data?.some((job) => job.id === event.data.jobId)
+				readQueryData(activeBatches)?.some((job) => job.id === event.data.jobId)
 			)
 				refreshActiveBatches();
 		},
@@ -833,7 +833,7 @@ export function useManagerPage(
 			batches.invalidateScans();
 			return next;
 		},
-		activeBatches: () => activeBatches.data ?? [],
+		activeBatches: () => readQueryData(activeBatches) ?? [],
 		activeBatchesFailed: () => activeBatches.isError,
 		retryActiveBatches: refreshActiveBatches,
 		taggingStatus,
@@ -901,3 +901,5 @@ export function useManagerPage(
 		deleteCount: duplicates.deleteCount,
 	};
 }
+
+import { readQueryData } from "../query-state";

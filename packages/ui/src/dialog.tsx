@@ -1,48 +1,173 @@
 import { t } from "@solid-imager/i18n";
 import {
-	CloseButton as DialogPrimitiveCloseButton,
-	Content as DialogPrimitiveContent,
-	Description as DialogPrimitiveDescription,
-	Overlay as DialogPrimitiveOverlay,
-	Portal as DialogPrimitivePortal,
-	Root as DialogPrimitiveRoot,
-	Title as DialogPrimitiveTitle,
-	Trigger as DialogPrimitiveTrigger,
-} from "@kobalte/core/dialog";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+	Dialog as DialogPrimitiveRoot,
+	DialogBackdrop as DialogPrimitiveOverlay,
+	DialogClose as DialogPrimitiveCloseButton,
+	DialogContent as DialogPrimitiveContent,
+	DialogDescription as DialogPrimitiveDescription,
+	DialogTitle as DialogPrimitiveTitle,
+	DialogTrigger as DialogPrimitiveTrigger,
+	createDialogController,
+	type DialogInitialFocus,
+	type DialogFinalFocus,
+	type DialogOpenChangeReason,
+} from "@ui-sdk/solid/dialog";
+import { createContext, useContext, type Component } from "solid-js";
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
+import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
 
-const Dialog = DialogPrimitiveRoot;
-const DialogTrigger = DialogPrimitiveTrigger;
-
-const DialogPortal: Component<ComponentProps<typeof DialogPrimitivePortal>> = (
-	props,
-) => {
-	const [, rest] = splitProps(props, ["children"]);
-	return (
-		<DialogPrimitivePortal {...rest}>
-			<div class="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
-				{props.children}
-			</div>
-		</DialogPrimitivePortal>
-	);
+export type DialogDismissHandlers = {
+	onEscapeKeyDown?: (event: KeyboardEvent) => void;
+	onPointerDownOutside?: (event: PointerEvent) => void;
 };
 
-type DialogOverlayProps<_T extends ValidComponent = "div"> = ComponentProps<
-	typeof DialogPrimitiveOverlay
+type DialogContextValue = {
+	controller: ReturnType<typeof createDialogController>;
+	dismiss: DialogDismissHandlers | undefined;
+};
+
+const DialogContext = createContext<DialogContextValue>();
+
+export function useDialogContext() {
+	return useContext(DialogContext).controller;
+}
+
+export function useDialogDismissHandlers(handlers: DialogDismissHandlers) {
+	useContext(DialogContext).dismiss = handlers;
+}
+
+export type DialogFocusHandlers = {
+	onOpenAutoFocus?: (event: Event) => void;
+	onCloseAutoFocus?: (event: Event) => void;
+};
+
+export function dialogInitialFocus(
+	handler: DialogFocusHandlers["onOpenAutoFocus"],
+	fallback: DialogInitialFocus | undefined,
+): DialogInitialFocus | undefined {
+	if (!handler) return fallback;
+	return () => {
+		const event = new Event("focus", { cancelable: true });
+		handler(event);
+		return event.defaultPrevented &&
+			document.activeElement instanceof HTMLElement
+			? document.activeElement
+			: undefined;
+	};
+}
+
+export function dialogFinalFocus(
+	handler: DialogFocusHandlers["onCloseAutoFocus"],
+	fallback: DialogFinalFocus | undefined,
+): DialogFinalFocus | undefined {
+	if (!handler) return fallback;
+	return () => {
+		const prior = document.activeElement;
+		const event = new Event("focus", { cancelable: true });
+		handler(event);
+		if (event.defaultPrevented || document.activeElement !== prior) {
+			return document.activeElement instanceof HTMLElement
+				? document.activeElement
+				: undefined;
+		}
+		return undefined;
+	};
+}
+
+function runDismissHandler(
+	handlers: DialogDismissHandlers | undefined,
+	reason: DialogOpenChangeReason,
+	event: Event,
+) {
+	if (
+		reason === "escape-key" &&
+		handlers?.onEscapeKeyDown &&
+		event instanceof KeyboardEvent
+	) {
+		const dismissal = new KeyboardEvent(event.type, {
+			key: event.key,
+			code: event.code,
+			cancelable: true,
+		});
+		handlers.onEscapeKeyDown(dismissal);
+		return dismissal.defaultPrevented;
+	}
+	if (
+		reason === "outside-press" &&
+		handlers?.onPointerDownOutside &&
+		event instanceof PointerEvent
+	) {
+		const dismissal = new PointerEvent(event.type, {
+			button: event.button,
+			clientX: event.clientX,
+			clientY: event.clientY,
+			pointerId: event.pointerId,
+			pointerType: event.pointerType,
+			cancelable: true,
+		});
+		handlers.onPointerDownOutside(dismissal);
+		return dismissal.defaultPrevented;
+	}
+	return false;
+}
+
+function Dialog(props: ComponentProps<typeof DialogPrimitiveRoot>) {
+	const context: DialogContextValue = {
+		controller: props.controller ?? createDialogController(),
+		dismiss: undefined,
+	};
+	return (
+		<DialogContext value={context}>
+			<DialogPrimitiveRoot
+				{...props}
+				controller={context.controller}
+				onOpenChange={(open, details) => {
+					const event = details.event;
+					if (
+						!open &&
+						event &&
+						runDismissHandler(context.dismiss, details.reason, event)
+					) {
+						details.cancel();
+						return;
+					}
+					props.onOpenChange?.(open, details);
+				}}
+			/>
+		</DialogContext>
+	);
+}
+
+function DialogTrigger<Tag extends ValidComponent = "button">(
+	props: PolymorphicProps<Tag, ComponentProps<typeof DialogPrimitiveTrigger>>,
+) {
+	const partProps: ComponentProps<typeof DialogPrimitiveTrigger> & {
+		as?: Tag;
+	} = props;
+	return (
+		<DialogPrimitiveTrigger
+			{...omit(partProps, "as")}
+			render={props.as ? renderAs(() => props.as) : props.render}
+		/>
+	);
+}
+
+type DialogOverlayProps = Omit<
+	ComponentProps<typeof DialogPrimitiveOverlay>,
+	"class"
 > & { class?: string | undefined };
 
 const DialogOverlay = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, DialogOverlayProps<T>>,
+	props: PolymorphicProps<T, DialogOverlayProps>,
 ) => {
-	const [, rest] = splitProps(props as DialogOverlayProps, ["class"]);
+	const rest = omit(props as DialogOverlayProps, "class");
 	return (
 		<DialogPrimitiveOverlay
 			class={cn(
-				"fixed inset-0 z-50 bg-background/80 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0",
+				"fixed inset-0 z-50 bg-background/80 motion-safe:data-[closed]:animate-out motion-safe:data-[open]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[open]:fade-in-0",
 				props.class,
 			)}
 			{...rest}
@@ -50,24 +175,35 @@ const DialogOverlay = <T extends ValidComponent = "div">(
 	);
 };
 
-type DialogContentProps<_T extends ValidComponent = "div"> = ComponentProps<
-	typeof DialogPrimitiveContent
-> & {
-	class?: string | undefined;
-	children?: JSX.Element;
-	placement?: "center" | "left" | "right";
-	closeDisabled?: boolean;
-};
+type DialogContentProps = Omit<
+	ComponentProps<typeof DialogPrimitiveContent>,
+	"class" | "children"
+> &
+	DialogFocusHandlers &
+	DialogDismissHandlers & {
+		class?: string | undefined;
+		children?: JSX.Element;
+		placement?: "center" | "left" | "right";
+		closeDisabled?: boolean;
+		animateOnClose?: boolean;
+	};
 
-const DialogContent = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, DialogContentProps<T>>,
-) => {
-	const [, rest] = splitProps(props as DialogContentProps, [
+const DialogContent = (props: DialogContentProps) => {
+	useDialogDismissHandlers(props);
+	const rest = omit(
+		props as DialogContentProps,
 		"class",
 		"children",
 		"placement",
 		"closeDisabled",
-	]);
+		"animateOnClose",
+		"onOpenAutoFocus",
+		"onCloseAutoFocus",
+		"onEscapeKeyDown",
+		"onPointerDownOutside",
+		"initialFocus",
+		"finalFocus",
+	);
 	const placement = () => props.placement ?? "center";
 	const padded = () => {
 		if (/(?:^|\s)p-0(?:\s|$)|(?:^|\s)py-0(?:\s|$)/.test(props.class ?? "")) {
@@ -76,17 +212,30 @@ const DialogContent = <T extends ValidComponent = "div">(
 		return placement() === "left" ? "sm" : "md";
 	};
 	return (
-		<DialogPortal>
-			<DialogOverlay />
+		<>
+			<DialogOverlay
+				class={
+					props.animateOnClose === false
+						? "motion-safe:data-[closed]:animate-none!"
+						: undefined
+				}
+			/>
 			<DialogPrimitiveContent
+				initialFocus={dialogInitialFocus(
+					props.onOpenAutoFocus,
+					props.initialFocus,
+				)}
+				finalFocus={dialogFinalFocus(props.onCloseAutoFocus, props.finalFocus)}
 				data-padded={padded()}
 				class={cn(
-					"group/dialog fixed z-50 grid overflow-y-auto overscroll-contain scrollbar-stable border bg-background shadow-lg duration-200 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in",
+					"group/dialog fixed z-50 grid overflow-y-auto overscroll-contain scrollbar-stable border bg-background shadow-lg duration-200 motion-safe:data-[closed]:animate-out motion-safe:data-[open]:animate-in",
 					placement() === "center"
-						? "top-1/2 left-1/2 max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 rounded-lg p-6 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[expanded]:zoom-in-95 sm:max-h-dialog-safe"
+						? "top-1/2 left-1/2 max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 rounded-lg p-6 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[open]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[open]:zoom-in-95 sm:max-h-dialog-safe"
 						: placement() === "left"
-							? "inset-y-0 left-0 h-dvh max-h-none w-popover-medium max-w-none translate-x-0 translate-y-0 origin-left gap-4 rounded-none border-y-0 border-l-0 p-4 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:slide-out-to-left motion-safe:data-[expanded]:slide-in-from-left sm:max-h-none"
-							: "inset-y-0 right-0 left-auto h-dvh max-h-none w-popover-narrow max-w-none translate-x-0 translate-y-0 origin-right gap-4 rounded-none border-y-0 border-r-0 p-6 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:slide-out-to-right motion-safe:data-[expanded]:slide-in-from-right sm:max-h-none",
+							? "inset-y-0 left-0 h-dvh max-h-none w-popover-medium max-w-none translate-x-0 translate-y-0 origin-left gap-4 rounded-none border-y-0 border-l-0 p-4 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[open]:fade-in-0 motion-safe:data-[closed]:slide-out-to-left motion-safe:data-[open]:slide-in-from-left sm:max-h-none"
+							: "inset-y-0 right-0 left-auto h-dvh max-h-none w-popover-narrow max-w-none translate-x-0 translate-y-0 origin-right gap-4 rounded-none border-y-0 border-r-0 p-6 motion-safe:data-[closed]:fade-out-0 motion-safe:data-[open]:fade-in-0 motion-safe:data-[closed]:slide-out-to-right motion-safe:data-[open]:slide-in-from-right sm:max-h-none",
+					props.animateOnClose === false &&
+						"motion-safe:data-[closed]:animate-none!",
 					props.class,
 				)}
 				{...rest}
@@ -114,12 +263,12 @@ const DialogContent = <T extends ValidComponent = "div">(
 					<span class="sr-only">{t("actions.close")}</span>
 				</DialogPrimitiveCloseButton>
 			</DialogPrimitiveContent>
-		</DialogPortal>
+		</>
 	);
 };
 
 const DialogHeader: Component<ComponentProps<"div">> = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+	const rest = omit(props, "class");
 	return (
 		<div
 			class={cn(
@@ -132,7 +281,7 @@ const DialogHeader: Component<ComponentProps<"div">> = (props) => {
 };
 
 const DialogFooter: Component<ComponentProps<"div">> = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+	const rest = omit(props, "class");
 	return (
 		<div
 			class={cn(
@@ -144,16 +293,17 @@ const DialogFooter: Component<ComponentProps<"div">> = (props) => {
 	);
 };
 
-type DialogTitleProps<_T extends ValidComponent = "h2"> = ComponentProps<
-	typeof DialogPrimitiveTitle
+type DialogTitleProps = Omit<
+	ComponentProps<typeof DialogPrimitiveTitle>,
+	"class"
 > & {
 	class?: string | undefined;
 };
 
 const DialogTitle = <T extends ValidComponent = "h2">(
-	props: PolymorphicProps<T, DialogTitleProps<T>>,
+	props: PolymorphicProps<T, DialogTitleProps>,
 ) => {
-	const [, rest] = splitProps(props as DialogTitleProps, ["class"]);
+	const rest = omit(props as DialogTitleProps, "class");
 	return (
 		<DialogPrimitiveTitle
 			class={cn(
@@ -165,16 +315,17 @@ const DialogTitle = <T extends ValidComponent = "h2">(
 	);
 };
 
-type DialogDescriptionProps<_T extends ValidComponent = "p"> = ComponentProps<
-	typeof DialogPrimitiveDescription
+type DialogDescriptionProps = Omit<
+	ComponentProps<typeof DialogPrimitiveDescription>,
+	"class"
 > & {
 	class?: string | undefined;
 };
 
 const DialogDescription = <T extends ValidComponent = "p">(
-	props: PolymorphicProps<T, DialogDescriptionProps<T>>,
+	props: PolymorphicProps<T, DialogDescriptionProps>,
 ) => {
-	const [, rest] = splitProps(props as DialogDescriptionProps, ["class"]);
+	const rest = omit(props as DialogDescriptionProps, "class");
 	return (
 		<DialogPrimitiveDescription
 			class={cn("text-muted-foreground text-sm", props.class)}
@@ -186,6 +337,8 @@ const DialogDescription = <T extends ValidComponent = "p">(
 export {
 	Dialog,
 	DialogContent,
+	DialogOverlay,
+	DialogPrimitiveCloseButton as DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,

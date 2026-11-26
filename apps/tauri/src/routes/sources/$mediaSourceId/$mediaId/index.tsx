@@ -1,13 +1,13 @@
 import { t } from "@solid-imager/i18n";
 import { useSourceRootPath } from "@solid-imager/ui/sources";
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
-import { projectsQueryKeys } from "@solid-imager/ui/query";
+import { projectsQueryKeys, readQueryData } from "@solid-imager/ui/query";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import {
 	MediaDetailScreen,
 	RelatedMedia,
 } from "@solid-imager/ui/screens/media-detail";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useRouterState } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { MediaActions } from "~/components/media/media-actions";
@@ -62,10 +62,10 @@ function MediaDetailRoute() {
 
 	const sourceRootPathResolver = useSourceRootPath(mediaSourcesQueryOptions);
 	const sourceRootPath = () => sourceRootPathResolver(mediaSourceId());
-	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const mediaSources = useQuery(mediaSourcesQueryOptions);
 	const sourceName = () =>
-		mediaSources.data?.find((source) => source.id === mediaSourceId())?.name ??
-		t("mediaDetail.defaultSourceName");
+		readQueryData(mediaSources)?.find((source) => source.id === mediaSourceId())
+			?.name ?? t("mediaDetail.defaultSourceName");
 	const routeKey = () => `${mediaSourceId()}:${mediaId()}`;
 
 	return (

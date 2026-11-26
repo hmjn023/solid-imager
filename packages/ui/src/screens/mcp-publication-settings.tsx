@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { McpConfig, McpToolInfo } from "@solid-imager/core/config";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { createSignal, For, Show } from "solid-js";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
 import { Input } from "../input";
@@ -15,12 +15,12 @@ type Props = {
 
 export function McpPublicationSettings(props: Props) {
 	const [filter, setFilter] = createSignal("");
-	const catalog = createQuery(() => ({
+	const catalog = useQuery(() => ({
 		queryKey: [...configQueryKeys.all(), "mcpCatalog"],
 		queryFn: props.loadCatalog,
 	}));
 	const matches = () =>
-		(catalog.data ?? []).filter((tool) =>
+		(readQueryData(catalog) ?? []).filter((tool) =>
 			[tool.name, tool.title, tool.group]
 				.join(" ")
 				.toLowerCase()
@@ -109,3 +109,5 @@ export function McpPublicationSettings(props: Props) {
 		</fieldset>
 	);
 }
+
+import { readQueryData } from "../query-state";

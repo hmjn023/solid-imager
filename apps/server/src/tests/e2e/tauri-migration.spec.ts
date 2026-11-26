@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Page, Request, Response } from "@playwright/test";
 import { mediaContentPath, mediaThumbnailPath } from "@solid-imager/core/http";
-import { apiPathPattern, apiRequest } from "./support/api";
+import { apiPathPattern, apiRequest, routeApi } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -429,22 +429,31 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await waitForTauriWorkspace(popup);
 	await expect(popup).toHaveURL(new RegExp(`/#${mediaPath}$`));
 	await expectTauriMediaDetail(popup);
-	await expect
-		.poll(
-			() =>
-				popupRequests.filter((request) =>
-					apiPathPattern("sources/events").test(request.url()),
-				).length,
-		)
-		.toBe(2);
-	await expect
-		.poll(
-			() =>
-				popupRequests.filter((request) =>
-					apiPathPattern("imports/events").test(request.url()),
-				).length,
-		)
-		.toBe(1);
+	for (const [operation, count] of [
+		["sources/events", 2],
+		["imports/events", 1],
+	] as const) {
+		const pattern = apiPathPattern(operation);
+		await expect
+			.poll(
+				() =>
+					popupRequests.filter((request) => pattern.test(request.url())).length,
+			)
+			.toBe(count);
+		await expect
+			.poll(
+				() =>
+					popupResponses.filter(
+						(response) =>
+							pattern.test(response.url()) &&
+							response.ok() &&
+							response
+								.headers()
+								["content-type"]?.startsWith("text/event-stream"),
+					).length,
+			)
+			.toBe(count);
+	}
 	await expect
 		.poll(() =>
 			popupResponses.some(
@@ -461,7 +470,9 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await media.dblclick();
 	await expect(page).toHaveURL(new RegExp(`/#${mediaPath}$`));
 	await expectTauriMediaDetail(page);
-	await expect(page.getByRole("button", { name: /^評価/ })).toBeVisible();
+	await expect(
+		page.getByRole("combobox", { name: "評価", exact: true }),
+	).toBeVisible();
 	await expect(page.getByText(/^閲覧数: [1-9]\d*$/)).toBeVisible();
 	await captureTauriScreenshot(page, "detail");
 
@@ -470,6 +481,48 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await expect(page).toHaveURL(detailUrl);
 	await expectTauriMediaDetail(page);
 	await expectRouteHealthy(page);
+});
+
+test("Tauri keeps one in-flight source search while history is saved and after reload", async ({
+	page,
+}) => {
+	const operation = "media/search";
+	let release = Promise.withResolvers<void>();
+	let requestCount = 0;
+	await routeApi(page, operation, async (route) => {
+		requestCount += 1;
+		await release.promise;
+		await route.continue();
+	});
+
+	const sourceMedia = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
+	const expectPendingSourceResults = async (
+		load: () => Promise<void>,
+		expectedRequests: number,
+	) => {
+		try {
+			await load();
+			await expect.poll(() => requestCount).toBe(expectedRequests);
+			await expectWorkspaceShell(page);
+			await expect(sourceMedia).toHaveCount(0);
+			await expect(page).toHaveURL(
+				(url) =>
+					url.hash.startsWith(`#${sourcePath}?`) &&
+					new URLSearchParams(url.hash.split("?")[1]).has("search"),
+			);
+		} finally {
+			release.resolve();
+		}
+		await expect(sourceMedia).toBeVisible();
+		expect(requestCount).toBe(expectedRequests);
+	};
+
+	await expectPendingSourceResults(async () => {
+		await page.goto(tauriPath(sourcePath), { waitUntil: "domcontentloaded" });
+		await waitForTauriWorkspace(page);
+	}, 1);
+	release = Promise.withResolvers<void>();
+	await expectPendingSourceResults(() => reloadTauriRoute(page), 2);
 });
 
 test("Tauri source route reloads and exposes source and import dialogs", async ({
@@ -501,11 +554,15 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 	await bulkBar
 		.getByRole("button", { name: "一括操作を実行", exact: true })
 		.click();
-	const bulkDialog = page.getByRole("dialog", { name: "一括操作を実行" });
+	const bulkDialog = page.getByRole("dialog", {
+		name: "一括操作を実行",
+		includeHidden: true,
+	});
 	await expect(bulkDialog).toBeVisible();
 	await bulkDialog
 		.getByRole("button", { name: "キャンセル", exact: true })
 		.click();
+	await expect(bulkDialog).toHaveCount(0);
 	await bulkBar
 		.getByRole("button", { name: "選択を解除", exact: true })
 		.click();

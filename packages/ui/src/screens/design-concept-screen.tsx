@@ -1,48 +1,41 @@
-import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
-import ArrowLeft from "lucide-solid/icons/arrow-left";
-import Ban from "lucide-solid/icons/ban";
-import Bot from "lucide-solid/icons/bot";
-import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
-import ChevronDown from "lucide-solid/icons/chevron-down";
-import ChevronLeft from "lucide-solid/icons/chevron-left";
-import ChevronRight from "lucide-solid/icons/chevron-right";
-import CircleAlert from "lucide-solid/icons/circle-alert";
-import CircleCheck from "lucide-solid/icons/circle-check";
-import Clock3 from "lucide-solid/icons/clock-3";
-import DownloadCloud from "lucide-solid/icons/cloud-download";
-import Database from "lucide-solid/icons/database";
-import Download from "lucide-solid/icons/download";
-import ExternalLink from "lucide-solid/icons/external-link";
-import Filter from "lucide-solid/icons/funnel";
-import Folder from "lucide-solid/icons/folder";
-import Grid3X3 from "lucide-solid/icons/grid-3x3";
-import HardDrive from "lucide-solid/icons/hard-drive";
-import Image from "lucide-solid/icons/image";
-import Inbox from "lucide-solid/icons/inbox";
-import Library from "lucide-solid/icons/library";
-import List from "lucide-solid/icons/list";
-import Logs from "lucide-solid/icons/logs";
-import PanelLeftClose from "lucide-solid/icons/panel-left-close";
-import PanelLeftOpen from "lucide-solid/icons/panel-left-open";
-import PanelsTopLeft from "lucide-solid/icons/panels-top-left";
-import Plus from "lucide-solid/icons/plus";
-import RefreshCw from "lucide-solid/icons/refresh-cw";
-import RotateCcw from "lucide-solid/icons/rotate-ccw";
-import Search from "lucide-solid/icons/search";
-import Settings from "lucide-solid/icons/settings";
-import Share2 from "lucide-solid/icons/share-2";
-import Trash2 from "lucide-solid/icons/trash";
-import X from "lucide-solid/icons/x";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	type JSX,
-	onCleanup,
-	Show,
-} from "solid-js";
-import { createStore } from "solid-js/store";
+import ArrowDownUp from "@lucide/solid/icons/arrow-down-up";
+import ArrowLeft from "@lucide/solid/icons/arrow-left";
+import Ban from "@lucide/solid/icons/ban";
+import Bot from "@lucide/solid/icons/bot";
+import BriefcaseBusiness from "@lucide/solid/icons/briefcase-business";
+import ChevronDown from "@lucide/solid/icons/chevron-down";
+import ChevronLeft from "@lucide/solid/icons/chevron-left";
+import ChevronRight from "@lucide/solid/icons/chevron-right";
+import CircleAlert from "@lucide/solid/icons/triangle-exclamation-point";
+import CircleCheck from "@lucide/solid/icons/circle-check";
+import Clock3 from "@lucide/solid/icons/clock-3";
+import DownloadCloud from "@lucide/solid/icons/cloud-download";
+import Database from "@lucide/solid/icons/database";
+import Download from "@lucide/solid/icons/download";
+import ExternalLink from "@lucide/solid/icons/external-link";
+import Filter from "@lucide/solid/icons/funnel";
+import Folder from "@lucide/solid/icons/folder";
+import Grid3X3 from "@lucide/solid/icons/grid-3x3";
+import HardDrive from "@lucide/solid/icons/hard-drive";
+import Image from "@lucide/solid/icons/image";
+import Inbox from "@lucide/solid/icons/inbox";
+import Library from "@lucide/solid/icons/library";
+import List from "@lucide/solid/icons/list";
+import Logs from "@lucide/solid/icons/logs";
+import PanelLeftClose from "@lucide/solid/icons/panel-left-close";
+import PanelLeftOpen from "@lucide/solid/icons/panel-left-open";
+import PanelsTopLeft from "@lucide/solid/icons/panels-top-left";
+import Plus from "@lucide/solid/icons/plus";
+import RefreshCw from "@lucide/solid/icons/refresh-cw";
+import RotateCcw from "@lucide/solid/icons/rotate-ccw";
+import Search from "@lucide/solid/icons/search";
+import Settings from "@lucide/solid/icons/settings";
+import Share2 from "@lucide/solid/icons/share-2";
+import Trash2 from "@lucide/solid/icons/trash";
+import X from "@lucide/solid/icons/x";
+import { createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createStore } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -689,7 +682,7 @@ function DesignSourcesNavigation(props: {
 			<CollapsibleContent class="hidden min-h-0 xl:block">
 				<div class="ml-4 max-h-menu-compact overflow-y-auto overscroll-contain border-border border-l py-1 pl-2">
 					<button
-						aria-pressed={props.selectedId === "all"}
+						aria-pressed={props.selectedId === "all" ? "true" : "false"}
 						class={`flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 							props.selectedId === "all"
 								? "bg-muted font-medium text-primary"
@@ -704,7 +697,7 @@ function DesignSourcesNavigation(props: {
 					<For each={MOCK_SOURCES}>
 						{(source) => (
 							<button
-								aria-pressed={props.selectedId === source.id}
+								aria-pressed={props.selectedId === source.id ? "true" : "false"}
 								class={`group/source min-h-11 w-full rounded-md px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 									props.selectedId === source.id
 										? "bg-muted text-primary"
@@ -906,7 +899,7 @@ function MediaTile(props: {
 	return (
 		<button
 			aria-label={`${props.media.name}を選択`}
-			aria-pressed={props.selected}
+			aria-pressed={props.selected ? "true" : "false"}
 			class={`group relative aspect-landscape min-w-0 overflow-hidden rounded-md bg-muted text-left outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring ${
 				props.selected ? "ring-2 ring-ring" : "hover:ring-1 hover:ring-border"
 			}`}
@@ -961,7 +954,7 @@ function DesignFilterField(props: {
 	);
 	let inputElement: HTMLInputElement | undefined;
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const canonicalValue = props.state[props.field.key].join(", ");
 		if (!inputElement?.matches(":focus")) setDraft(canonicalValue);
 	});
@@ -1052,7 +1045,7 @@ function DesignFilterPopover(props: {
 							>
 								{([value, label]) => (
 									<Button
-										aria-pressed={props.mode === value}
+										aria-pressed={props.mode === value ? "true" : "false"}
 										class={`h-8 px-2 ${
 											props.mode === value
 												? "bg-muted text-primary hover:bg-muted-foreground"
@@ -1680,7 +1673,7 @@ function ImportInboxDialog(props: {
 	const allIds = () => new Set(MOCK_IMPORT_POSTS.map((post) => post.id));
 	const [selectedIds, setSelectedIds] = createSignal(allIds());
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (props.open) setSelectedIds(allIds());
 	});
 
@@ -1718,7 +1711,7 @@ function ImportInboxDialog(props: {
 							{selectedIds().size} of {MOCK_IMPORT_POSTS.length} selected
 						</p>
 						<Button
-							aria-pressed={allSelected()}
+							aria-pressed={allSelected() ? "true" : "false"}
 							class="h-8 px-2 text-xs"
 							onClick={() =>
 								setSelectedIds(allSelected() ? new Set<string>() : allIds())
@@ -1737,7 +1730,7 @@ function ImportInboxDialog(props: {
 								<li>
 									<button
 										aria-label={`Select post ${post.id}`}
-										aria-pressed={selectedIds().has(post.id)}
+										aria-pressed={selectedIds().has(post.id) ? "true" : "false"}
 										class={`group relative w-full overflow-hidden rounded-md border bg-white text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
 											selectedIds().has(post.id)
 												? "border-primary ring-1 ring-ring"
@@ -2027,7 +2020,7 @@ function ScreenLayoutsScreen() {
 					<For each={SCREEN_LAYOUT_OPTIONS}>
 						{(option) => (
 							<Button
-								aria-pressed={layout() === option.value}
+								aria-pressed={layout() === option.value ? "true" : "false"}
 								class={`h-auto min-h-16 items-start justify-start px-4 py-3 text-left ${
 									layout() === option.value
 										? "border-primary bg-muted text-primary hover:bg-muted"
@@ -2269,7 +2262,7 @@ function InteractionPatternsScreen() {
 								<For each={INTERACTION_ROWS}>
 									{(row) => (
 										<button
-											aria-pressed={selectedRow() === row.id}
+											aria-pressed={selectedRow() === row.id ? "true" : "false"}
 											class={`flex h-14 w-full items-center gap-3 px-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
 												selectedRow() === row.id
 													? "bg-muted"
@@ -2479,7 +2472,7 @@ function DataTransferToolPanel() {
 								{(item) => (
 									<button
 										aria-label={`${item.label}: ${item.description}`}
-										aria-pressed={format() === item.value}
+										aria-pressed={format() === item.value ? "true" : "false"}
 										class={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 											format() === item.value
 												? "border-primary bg-muted"
@@ -2778,7 +2771,9 @@ function DesignManagerScreen() {
 															<th class="p-0 font-normal" scope="row">
 																<button
 																	aria-label={item.name}
-																	aria-pressed={selectedId() === item.id}
+																	aria-pressed={
+																		selectedId() === item.id ? "true" : "false"
+																	}
 																	class="block min-h-14 w-full px-4 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 																	onClick={() => setSelectedId(item.id)}
 																	type="button"
@@ -2981,7 +2976,7 @@ function JobsScreen() {
 							>
 								{(option) => (
 									<Button
-										aria-pressed={filter() === option.value}
+										aria-pressed={filter() === option.value ? "true" : "false"}
 										class={`h-8 px-3 text-xs shadow-none ${
 											filter() === option.value
 												? "bg-white text-foreground"
@@ -3011,7 +3006,7 @@ function JobsScreen() {
 								>
 									<div class="flex min-w-0 items-start gap-3">
 										<button
-											aria-pressed={selectedId() === job.id}
+											aria-pressed={selectedId() === job.id ? "true" : "false"}
 											class="min-w-0 flex-1 rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 											onClick={() => setSelectedId(job.id)}
 											type="button"
@@ -3322,11 +3317,13 @@ function SettingsScreen() {
 		markDirty();
 	};
 	const changeSetting = (key: keyof SettingsDraft, value: string) => {
-		setSettingsDraft(key, value);
+		setSettingsDraft((draft) => {
+			draft[key] = value;
+		});
 		markDirty();
 	};
 	const discardChanges = () => {
-		setSettingsDraft({ ...INITIAL_SETTINGS_DRAFT });
+		setSettingsDraft(() => ({ ...INITIAL_SETTINGS_DRAFT }));
 		setAutoTagging(true);
 		setAutoVectors(false);
 		setRateLimit(true);
@@ -4205,32 +4202,40 @@ export function DesignConceptScreen() {
 		return tokens;
 	});
 	const setFilterValues = (key: FilterArrayKey, values: string[]) => {
-		setFilters(key, [...new Set(values)]);
+		setFilters((draft) => {
+			draft[key] = [...new Set(values)];
+		});
 	};
 	const addFilterValues = (key: FilterArrayKey, rawValue: string) => {
 		const values = parseFilterValues(rawValue);
 		if (values.length === 0) return;
-		setFilters(key, [...new Set([...filters[key], ...values])]);
+		setFilters((draft) => {
+			draft[key] = [...new Set([...filters[key], ...values])];
+		});
 	};
 	const removeFilterToken = (token: FilterToken) => {
 		if (token.key === "searchQuery") {
-			setFilters("searchQuery", "");
+			setFilters((draft) => {
+				draft.searchQuery = "";
+			});
 			return;
 		}
-		setFilters(
-			token.key,
-			filters[token.key].filter((value) => value !== token.value),
-		);
+		const key = token.key;
+		setFilters((draft) => {
+			draft[key] = draft[key].filter((value) => value !== token.value);
+		});
 	};
 	const clearFilters = () => {
-		setFilters({
-			searchQuery: "",
-			selectedIps: [],
-			selectedCharacters: [],
-			selectedTags: [],
-			excludeTags: [],
-			selectedAuthors: [],
-			selectedProjects: [],
+		setFilters((draft) => {
+			Object.assign(draft, {
+				searchQuery: "",
+				selectedIps: [],
+				selectedCharacters: [],
+				selectedTags: [],
+				excludeTags: [],
+				selectedAuthors: [],
+				selectedProjects: [],
+			});
 		});
 	};
 	const submitDraft = () => {
@@ -4253,7 +4258,9 @@ export function DesignConceptScreen() {
 
 			switch (prefix) {
 				case "name":
-					setFilters("searchQuery", value);
+					setFilters((draft) => {
+						draft.searchQuery = value;
+					});
 					break;
 				case "tag":
 					addFilterValues("selectedTags", value);
@@ -4279,7 +4286,9 @@ export function DesignConceptScreen() {
 		}
 
 		if (freeText.length > 0) {
-			setFilters("searchQuery", freeText.join(" "));
+			setFilters((draft) => {
+				draft.searchQuery = freeText.join(" ");
+			});
 		}
 		setDraft("");
 	};
@@ -4377,3 +4386,5 @@ export function DesignConceptScreen() {
 		</main>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

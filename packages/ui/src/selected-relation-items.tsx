@@ -1,5 +1,5 @@
 import { t } from "@solid-imager/i18n";
-import X from "lucide-solid/icons/x";
+import X from "@lucide/solid/icons/x";
 import { For, Show } from "solid-js";
 import { Button } from "./button";
 import { cn } from "./utils/cn";
@@ -53,7 +53,7 @@ export function SelectedRelationItems(props: {
 				ref={(element) => {
 					heading = element;
 				}}
-				tabIndex={-1}
+				tabindex={-1}
 			>
 				{t("relationsEditor.selectedItems")}
 			</h3>

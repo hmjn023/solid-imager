@@ -2,7 +2,6 @@ import { t } from "@solid-imager/i18n";
 import { useNavigate } from "@tanstack/solid-router";
 import {
 	type Component,
-	createEffect,
 	createMemo,
 	createSignal,
 	For,
@@ -205,7 +204,7 @@ export function CommandCenter(props: CommandCenterProps) {
 		props.onPaletteOpenChange(open);
 	};
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (!props.paletteOpen) {
 			setQuery("");
 		}
@@ -219,25 +218,15 @@ export function CommandCenter(props: CommandCenterProps) {
 				onOpenChange={setPaletteOpen}
 				open={props.paletteOpen}
 				title={t("sidebar.quickActions")}
+				query={query()}
+				onQueryChange={setQuery}
 			>
 				<div class="workspace-theme flex min-h-0 flex-1 flex-col text-popover-foreground">
 					<CommandInput
 						aria-label={t("commandCenter.searchQuickActions")}
 						autofocus
 						class="pr-9"
-						on:keydown={(event) => {
-							// Run before delegated shortcuts and preserve native IME confirmation.
-							if (
-								event.isComposing ||
-								// oxlint-disable-next-line typescript/no-deprecated -- Safari can report IME confirmation only through keyCode 229.
-								(event.key === "Enter" && event.keyCode === 229)
-							) {
-								event.stopPropagation();
-							}
-						}}
-						onValueChange={setQuery}
 						placeholder={t("commandCenter.searchActions")}
-						value={query()}
 					/>
 					<CommandList
 						class="max-h-menu-small overscroll-contain p-1 scrollbar-stable"
@@ -256,6 +245,7 @@ export function CommandCenter(props: CommandCenterProps) {
 												<CommandItem
 													class="gap-3"
 													keywords={action.keywords}
+													label={action.label}
 													onSelect={() => runAction(action)}
 													value={action.id}
 												>
@@ -324,3 +314,5 @@ export function CommandCenter(props: CommandCenterProps) {
 		</>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

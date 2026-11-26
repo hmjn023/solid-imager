@@ -11,6 +11,7 @@ import {
 	isSourceMediaResultsQueryKey,
 	MEDIA_RESULTS_STALE_TIME_MS,
 	removeMediaFromInfiniteQueryData,
+	sameMediaResultsOptions,
 	searchQueryKeys,
 	sourceMediaQueryKeys,
 } from "./search-query";
@@ -557,6 +558,29 @@ describe("applied search mechanism", () => {
 		searchMedia: vi.fn(async () => EMPTY_RESPONSE),
 		searchSimilar: vi.fn(async () => ({ media: [TEST_MEDIA], total: 37 })),
 	};
+	it("reuses options only while their search key and observer policy match", () => {
+		const input = { ...base, mode: "simple" as const, enabled: true };
+		const options = buildSearchResultsQueryOptions(input);
+		expect(
+			sameMediaResultsOptions(
+				options,
+				buildSearchResultsQueryOptions({ ...input, mode: "pro" }),
+			),
+		).toBe(true);
+		for (const change of [
+			{ similarityTopK: 75 },
+			{ enabled: false },
+			{ gcTime: 1000 },
+		]) {
+			expect(
+				sameMediaResultsOptions(
+					options,
+					buildSearchResultsQueryOptions({ ...input, ...change }),
+				),
+			).toBe(false);
+		}
+	});
+
 	it("executes similarity within the source with its anchor/model/cap and no ordinary filters", async () => {
 		const searchSimilar = vi.fn(async () => EMPTY_RESPONSE);
 		const searchMedia = vi.fn(async () => EMPTY_RESPONSE);
@@ -582,7 +606,10 @@ describe("applied search mechanism", () => {
 		);
 		expect(searchMedia).not.toHaveBeenCalled();
 		expect(options.placeholderData).toBeUndefined();
-		expect(options.meta).toEqual({ usesMediaActivity: false });
+		expect(options.meta).toEqual({
+			usesMediaActivity: false,
+			preservePreviousResults: false,
+		});
 	});
 	it("keys source similarity by applied anchor/model/source/cap, excluding suspended ordinary filters", () => {
 		const key = buildSourceMediaResultsQueryOptions(base).queryKey;
@@ -635,7 +662,10 @@ describe("applied search mechanism", () => {
 			sort: "rating",
 			order: "asc",
 		});
-		expect(ordinary.meta).toEqual({ usesMediaActivity: true });
+		expect(ordinary.meta).toEqual({
+			usesMediaActivity: true,
+			preservePreviousResults: true,
+		});
 	});
 	it("gives trimmed semantic text precedence over a retained anchor in execution and cache keys", async () => {
 		const searchSemantic = vi.fn(async () => EMPTY_RESPONSE);

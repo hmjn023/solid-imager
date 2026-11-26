@@ -72,7 +72,7 @@ test("reports partial results and retries only eligible items at the original de
 	const dialog = page.getByRole("dialog", {
 		name: t("searchScreen.runBulkAction"),
 	});
-	const destination = dialog.getByRole("button", {
+	const destination = dialog.getByRole("combobox", {
 		name: new RegExp(`^${t("moveCopyMediaDialog.destinationSource")}`),
 	});
 	const confirm = dialog.getByRole("button", {

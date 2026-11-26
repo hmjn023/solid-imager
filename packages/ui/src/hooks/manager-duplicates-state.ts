@@ -1,7 +1,8 @@
 import { t } from "@solid-imager/i18n";
 import type { DuplicateGroup } from "@solid-imager/core/media";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { batch, createSignal, type Setter } from "solid-js";
+import { createSignal, type Setter } from "solid-js";
+import { createSynchronousState } from "../utils/synchronous-state";
 
 type DeleteItem = {
 	sourceId: string;
@@ -32,20 +33,18 @@ export function createManagerDuplicatesState(actions: {
 	error: (message: string) => void;
 }) {
 	let generation = 0;
-	const [sourceId, setSourceId] = createSignal<string | undefined>();
-	const [result, setResult] = createSignal<ScanResult | null>(null);
-	const [confirmation, setConfirmation] = createSignal<Confirmation | null>(
-		null,
-	);
+	const sourceId = createSynchronousState<string | undefined>(undefined);
+	const result = createSynchronousState<ScanResult | null>(null);
+	const confirmation = createSynchronousState<Confirmation | null>(null);
 	const [dialogOpen, setDialogOpen] = createSignal(false);
 	const [scanning, setScanning] = createSignal(false);
-	const [deleting, setDeleting] = createSignal(false);
+	const deleting = createSynchronousState(false);
 	const [status, setStatus] = createSignal<string | null>(null);
 
 	function invalidate() {
 		generation++;
-		setResult(null);
-		setConfirmation(null);
+		result.set(null);
+		confirmation.set(null);
 		setDialogOpen(false);
 		setScanning(false);
 		setStatus(null);
@@ -57,23 +56,24 @@ export function createManagerDuplicatesState(actions: {
 	function changeSource(
 		value?: string | ((previous: string | undefined) => string | undefined),
 	) {
-		return batch(() => {
-			const previous = sourceId();
-			const next = setSourceId(value);
-			if (next !== previous) invalidate();
-			return next;
-		});
+		const previous = sourceId.current();
+		const next = typeof value === "function" ? value(previous) : value;
+		if (next !== previous) {
+			sourceId.set(next);
+			invalidate();
+		}
+		return next;
 	}
 	const changeDialogOpen: Setter<boolean> = (value) => {
 		const open = setDialogOpen(value);
-		if (!open) setConfirmation(null);
+		if (!open) confirmation.set(null);
 		return open;
 	};
 	function changeKeep(keepIds: Set<string>) {
-		const current = result();
-		if (!current || deleting()) return;
-		setResult({ ...current, keepIds });
-		setConfirmation(null);
+		const current = result.current();
+		if (!current || deleting.current()) return;
+		result.set({ ...current, keepIds });
+		confirmation.set(null);
 		setDialogOpen(false);
 	}
 	function chooseBy(
@@ -83,22 +83,22 @@ export function createManagerDuplicatesState(actions: {
 		) => number,
 	) {
 		const keep = new Set<string>();
-		for (const group of result()?.groups ?? []) {
+		for (const group of result.current()?.groups ?? []) {
 			const first = [...group.media].sort(compare)[0];
 			if (first) keep.add(first.id);
 		}
 		changeKeep(keep);
 	}
 	async function scan() {
-		if (deleting()) return;
+		if (deleting.current()) return;
 		invalidate();
 		const scanId = generation;
-		const scope = sourceId();
+		const scope = sourceId.current();
 		setScanning(true);
 		setStatus(t("duplicates.scanning"));
 		try {
 			const response = await actions.findDuplicateMedia(scope);
-			if (scanId !== generation || sourceId() !== scope) return;
+			if (scanId !== generation || sourceId.current() !== scope) return;
 			const groups = response.groups.filter((group) => group.media.length > 1);
 			const keepIds = new Set<string>();
 			for (const group of groups) {
@@ -108,7 +108,7 @@ export function createManagerDuplicatesState(actions: {
 				)[0];
 				if (oldest) keepIds.add(oldest.id);
 			}
-			setResult({ scanId, sourceId: scope, groups, keepIds });
+			result.set({ scanId, sourceId: scope, groups, keepIds });
 			setStatus(
 				t("managerDuplicatesState.valueGroupsFoundValueDuplicates", {
 					value0: String(groups.length),
@@ -129,12 +129,12 @@ export function createManagerDuplicatesState(actions: {
 		}
 	}
 	function prepareDelete() {
-		const current = result();
+		const current = result.current();
 		if (
 			!current ||
 			current.scanId !== generation ||
-			current.sourceId !== sourceId() ||
-			deleting()
+			current.sourceId !== sourceId.current() ||
+			deleting.current()
 		)
 			return;
 		const items = current.groups.flatMap((group) =>
@@ -151,7 +151,7 @@ export function createManagerDuplicatesState(actions: {
 			actions.error(t("managerDuplicatesState.noneSelectedForDeletion"));
 			return;
 		}
-		setConfirmation({
+		confirmation.set({
 			scanId: current.scanId,
 			sourceId: current.sourceId,
 			items,
@@ -159,20 +159,20 @@ export function createManagerDuplicatesState(actions: {
 		setDialogOpen(true);
 	}
 	async function confirmDelete() {
-		const command = confirmation();
-		const current = result();
+		const command = confirmation.current();
+		const current = result.current();
 		if (
 			!command ||
 			!current ||
-			deleting() ||
+			deleting.current() ||
 			command.scanId !== generation ||
 			current.scanId !== command.scanId ||
-			command.sourceId !== sourceId()
+			command.sourceId !== sourceId.current()
 		)
 			return;
-		setDeleting(true);
+		deleting.set(true);
 		// Consume once before the first await; double-clicks cannot submit it again.
-		setConfirmation(null);
+		confirmation.set(null);
 		setDialogOpen(false);
 		const bySource = new Map<string, string[]>();
 		for (const item of command.items) {
@@ -193,10 +193,10 @@ export function createManagerDuplicatesState(actions: {
 			}
 			if (command.scanId === generation) {
 				if (!failed) {
-					setResult(null);
+					result.set(null);
 					setStatus(null);
 				} else
-					setResult({
+					result.set({
 						...current,
 						groups: current.groups
 							.map((group) => ({
@@ -220,25 +220,25 @@ export function createManagerDuplicatesState(actions: {
 					}),
 				);
 		} finally {
-			setDeleting(false);
+			deleting.set(false);
 		}
 	}
 	return {
-		sourceId,
+		sourceId: sourceId.read,
 		setSourceId: changeSource,
-		groups: () => result()?.groups ?? [],
-		keepIds: () => result()?.keepIds ?? new Set<string>(),
+		groups: () => result.read()?.groups ?? [],
+		keepIds: () => result.read()?.keepIds ?? new Set<string>(),
 		status,
 		scanning,
-		deleting,
+		deleting: deleting.read,
 		dialogOpen,
 		setDialogOpen: changeDialogOpen,
-		itemsToDelete: () => confirmation()?.items ?? [],
+		itemsToDelete: () => confirmation.read()?.items ?? [],
 		scan,
 		prepareDelete,
 		confirmDelete,
 		setKeepForGroup: (groupId: string, mediaId: string) => {
-			const current = result();
+			const current = result.current();
 			const group = current?.groups.find(
 				(candidate) => candidate.id === groupId,
 			);
@@ -249,7 +249,7 @@ export function createManagerDuplicatesState(actions: {
 			changeKeep(keep);
 		},
 		keepAllForGroup: (groupId: string) => {
-			const current = result();
+			const current = result.current();
 			const group = current?.groups.find(
 				(candidate) => candidate.id === groupId,
 			);
@@ -259,7 +259,7 @@ export function createManagerDuplicatesState(actions: {
 			changeKeep(keep);
 		},
 		isGroupSkipped: (groupId: string) => {
-			const current = result();
+			const current = result.read();
 			const group = current?.groups.find(
 				(candidate) => candidate.id === groupId,
 			);
@@ -273,12 +273,16 @@ export function createManagerDuplicatesState(actions: {
 			),
 		selectKeepLargest: () =>
 			chooseBy((a, b) => (b.fileSize ?? 0) - (a.fileSize ?? 0)),
-		deleteCount: () =>
-			result()?.groups.reduce(
-				(count, group) =>
-					count +
-					group.media.filter((item) => !result()?.keepIds.has(item.id)).length,
-				0,
-			) ?? 0,
+		deleteCount: () => {
+			const current = result.read();
+			return (
+				current?.groups.reduce(
+					(count, group) =>
+						count +
+						group.media.filter((item) => !current.keepIds.has(item.id)).length,
+					0,
+				) ?? 0
+			);
+		},
 	};
 }

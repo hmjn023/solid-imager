@@ -59,8 +59,7 @@
 		--radius: 0.5rem;
 	}
 
-	.dark,
-	[data-kb-theme="dark"] {
+	.dark {
 		color-scheme: dark;
 		--background: 240 10% 3.9%;
 		--surface-subtle: 240 10% 5.5%;

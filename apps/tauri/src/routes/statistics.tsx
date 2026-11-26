@@ -1,6 +1,6 @@
 import { statisticsSelectionSchema } from "@solid-imager/core/statistics";
 import { StatisticsScreen } from "@solid-imager/ui/screens/statistics";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { createFileRoute } from "@tanstack/solid-router";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 

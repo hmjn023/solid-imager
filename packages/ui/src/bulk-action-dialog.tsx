@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createSignal, Show, untrack } from "solid-js";
 import { Alert, AlertDescription, AlertTitle } from "./alert";
 import {
 	AlertDialog,
@@ -85,7 +85,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	const [showDiscardConfirm, setShowDiscardConfirm] = createSignal(false);
 	const isTargetSourceAction = () =>
 		action() === "copy-source" || action() === "move-source";
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (!props.open && !isSubmitting()) {
 			setAction("copy-source");
 			setTargetSourceId("");
@@ -100,7 +100,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 
 	const sourceList = useMediaDestinationSources(
 		() => props.open && isTargetSourceAction(),
-		props.listSources,
+		() => untrack(() => props.listSources()),
 	);
 
 	const selectedItems = () => {
@@ -118,7 +118,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	const selectedSourceIds = () =>
 		new Set(selectedItems().map((item) => item.mediaSourceId));
 	const isMultiSource = () => selectedSourceIds().size > 1;
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (isMultiSource() && action() === "move-folder") {
 			setAction("copy-source");
 		}
@@ -394,3 +394,5 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 		</>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

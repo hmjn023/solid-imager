@@ -23,8 +23,8 @@ import {
 	type WatcherErrorEvent,
 	watcherErrorEventSchema,
 } from "@solid-imager/core/events";
-import { type Accessor, createEffect, onCleanup } from "solid-js";
-import { isServer } from "solid-js/web";
+import { type Accessor } from "solid-js";
+import { isServer } from "@solidjs/web";
 import { subscribeToEventStream } from "../event-stream";
 
 export type {
@@ -139,7 +139,7 @@ function validateAndDispatch<T>(
 export function useMediaSourceEvents(
 	options: UseMediaSourceEventsOptions,
 ): void {
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (isServer) {
 			return;
 		}
@@ -241,6 +241,8 @@ export function useMediaSourceEvents(
 			}
 		});
 
-		onCleanup(cleanup);
+		return cleanup;
 	});
 }
+
+import { createTrackedEffect } from "solid-js";

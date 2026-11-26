@@ -13,8 +13,8 @@ import {
 	type ExtendedMessage,
 	sourcesResponseSchema,
 } from "@ext/schema";
-import { createSignal, For, onMount, Show } from "solid-js";
-import { render } from "solid-js/web";
+import { createSignal, For, onSettled, Show } from "solid-js";
+import { render } from "@solidjs/web";
 
 function Popup() {
 	const [apiUrl, setApiUrl] = createSignal(DEFAULT_API_URL);
@@ -125,7 +125,7 @@ function Popup() {
 		}
 	};
 
-	onMount(() => {
+	onSettled(() => {
 		void fetchSources().catch(() => {
 			setStatus(t("index.failedToLoadSettings"));
 			setStatusType("error");
@@ -207,11 +207,13 @@ function Popup() {
 			</div>
 
 			<div
-				class="popup-status"
-				classList={{
-					"popup-status-error": statusType() === "error",
-					"popup-status-success": statusType() === "success",
-				}}
+				class={[
+					"popup-status",
+					{
+						"popup-status-error": statusType() === "error",
+						"popup-status-success": statusType() === "success",
+					},
+				]}
 			>
 				{status()}
 			</div>

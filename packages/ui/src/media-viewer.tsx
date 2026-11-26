@@ -1,12 +1,12 @@
+import { cn } from "./utils/cn";
 import { t } from "@solid-imager/i18n";
 import {
-	createEffect,
 	createMemo,
 	createSignal,
 	For,
 	Match,
 	onCleanup,
-	onMount,
+	onSettled,
 	Show,
 	Switch,
 } from "solid-js";
@@ -303,7 +303,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		}
 	};
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const source = mediaSource();
 		void retryCount();
 		const controller = new AbortController();
@@ -331,25 +331,25 @@ export function MediaViewer(props: MediaViewerProps) {
 			}
 		})();
 
-		onCleanup(() => {
+		return () => {
 			disposed = true;
 			controller.abort();
 			if (currentUrl && source.revokeUrl) {
 				source.revokeUrl(currentUrl);
 			}
-		});
+		};
 	});
-	onMount(() => {
+	onSettled(() => {
 		const handleFullscreenChange = () => {
 			setIsFullscreen(document.fullscreenElement === viewer);
 		};
 		document.addEventListener("fullscreenchange", handleFullscreenChange);
 		const handleResize = () => setPan((current) => clampPan(current));
 		window.addEventListener("resize", handleResize);
-		onCleanup(() =>
-			document.removeEventListener("fullscreenchange", handleFullscreenChange),
-		);
-		onCleanup(() => window.removeEventListener("resize", handleResize));
+		return () => {
+			document.removeEventListener("fullscreenchange", handleFullscreenChange);
+			window.removeEventListener("resize", handleResize);
+		};
 	});
 
 	return (
@@ -441,7 +441,7 @@ export function MediaViewer(props: MediaViewerProps) {
 									<img
 										alt={props.fileName}
 										class="pointer-events-none h-full w-full select-none object-contain"
-										draggable={false}
+										draggable="false"
 										fetchpriority="high"
 										height={props.height}
 										onError={() => handleMediaError(media)}
@@ -479,12 +479,14 @@ export function MediaViewer(props: MediaViewerProps) {
 							"mediaViewer.valueViewerUseArrowKeysToPanTheEnlarged",
 							{ value0: String(props.fileName) },
 						)}
-						class="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring media-viewer-stage"
-						classList={{
-							"cursor-grabbing": isPanning(),
-							"cursor-grab": !isPanning() && zoom() > 1,
-							"cursor-zoom-in": !isPanning() && zoom() <= 1,
-						}}
+						class={cn(
+							"relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring media-viewer-stage",
+							{
+								"cursor-grabbing": isPanning(),
+								"cursor-grab": !isPanning() && zoom() > 1,
+								"cursor-zoom-in": !isPanning() && zoom() <= 1,
+							},
+						)}
 						data-media-viewer-interactive
 						onDblClick={() => {
 							if (zoom() > 1) resetView();
@@ -532,7 +534,7 @@ export function MediaViewer(props: MediaViewerProps) {
 								<img
 									alt={props.fileName}
 									class="media-viewer-transform pointer-events-none h-full w-full select-none object-contain motion-safe:transition-transform"
-									draggable={false}
+									draggable="false"
 									height={props.height}
 									onError={() => handleMediaError(media)}
 									onLoad={() => setPan((current) => clampPan(current))}
@@ -641,3 +643,5 @@ export function MediaViewer(props: MediaViewerProps) {
 		</>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

@@ -1,11 +1,11 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import type { PolymorphicProps } from "./utils/polymorphic";
 import type { VariantProps } from "class-variance-authority";
-import type { JSX, ValidComponent } from "solid-js";
+import type { JSX, ValidComponent } from "@solidjs/web";
 import {
 	createContext,
 	createMemo,
 	createSignal,
-	splitProps,
+	omit,
 	useContext,
 } from "solid-js";
 
@@ -156,7 +156,8 @@ type ToggleGroupRootProps = ToggleGroupSelectionProps &
 
 // The registry root consumes Escape to clear selection. Let parent dialogs handle it.
 const ToggleGroup = (props: ToggleGroupRootProps) => {
-	const [local, others] = splitProps(props, [
+	const others = omit(
+		props,
 		"class",
 		"children",
 		"size",
@@ -168,7 +169,7 @@ const ToggleGroup = (props: ToggleGroupRootProps) => {
 		"disabled",
 		"orientation",
 		"disallowEmptySelection",
-	]);
+	);
 
 	const [uncontrolledValues, setUncontrolledValues] = createSignal<string[]>(
 		normalizeSelection(props.defaultValue),
@@ -178,22 +179,22 @@ const ToggleGroup = (props: ToggleGroupRootProps) => {
 			? normalizeSelection(props.value)
 			: uncontrolledValues(),
 	);
-	const orientation = () => local.orientation ?? "horizontal";
+	const orientation = () => props.orientation ?? "horizontal";
 
 	const handleItemToggle = (itemValue: string, pressed: boolean) => {
-		if (local.disabled) {
+		if (props.disabled) {
 			return;
 		}
 		const current = selectedValues();
 		let nextValues: string[];
-		if (local.multiple) {
+		if (props.multiple) {
 			if (pressed) {
 				nextValues = current.includes(itemValue)
 					? current
 					: [...current, itemValue];
 			} else {
 				if (
-					local.disallowEmptySelection &&
+					props.disallowEmptySelection &&
 					current.length <= 1 &&
 					current.includes(itemValue)
 				) {
@@ -203,7 +204,7 @@ const ToggleGroup = (props: ToggleGroupRootProps) => {
 			}
 		} else if (pressed) {
 			nextValues = [itemValue];
-		} else if (local.disallowEmptySelection) {
+		} else if (props.disallowEmptySelection) {
 			return;
 		} else {
 			nextValues = [];
@@ -220,25 +221,25 @@ const ToggleGroup = (props: ToggleGroupRootProps) => {
 			// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- WAI-ARIA button toggle group avoids native <fieldset> box-layout quirks.
 			role="group"
 			data-toggle-group=""
-			aria-disabled={local.disabled ? "true" : undefined}
+			aria-disabled={props.disabled ? "true" : undefined}
 			data-orientation={orientation()}
 			class={cn(
 				"flex items-center justify-center gap-1",
 				orientation() === "vertical" && "flex-col",
-				local.class,
+				props.class,
 			)}
 			{...others}
 		>
-			<ToggleGroupContext.Provider
+			<ToggleGroupContext
 				value={{
 					get size() {
-						return local.size;
+						return props.size;
 					},
 					get variant() {
-						return local.variant;
+						return props.variant;
 					},
 					get disabled() {
-						return Boolean(local.disabled);
+						return Boolean(props.disabled);
 					},
 					get orientation() {
 						return orientation();
@@ -247,14 +248,14 @@ const ToggleGroup = (props: ToggleGroupRootProps) => {
 					onItemToggle: handleItemToggle,
 				}}
 			>
-				{local.children}
-			</ToggleGroupContext.Provider>
+				{props.children}
+			</ToggleGroupContext>
 		</div>
 	);
 };
 
-type ToggleGroupItemProps<T extends ValidComponent = "button"> = Omit<
-	ToggleProps<T>,
+type ToggleGroupItemProps = Omit<
+	ToggleProps,
 	"pressed" | "defaultPressed" | "onChange"
 > & {
 	value: string;
@@ -262,22 +263,23 @@ type ToggleGroupItemProps<T extends ValidComponent = "button"> = Omit<
 };
 
 const ToggleGroupItem = <T extends ValidComponent = "button">(
-	props: PolymorphicProps<T, ToggleGroupItemProps<T>>,
+	props: PolymorphicProps<T, ToggleGroupItemProps>,
 ) => {
-	const [local, others] = splitProps(props as ToggleGroupItemProps, [
+	const others = omit(
+		props as ToggleGroupItemProps,
 		"size",
 		"variant",
 		"value",
 		"disabled",
 		"onKeyDown",
-	]);
+	);
 	const context = useContext(ToggleGroupContext);
 
 	const handleKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (
 		event,
 	) => {
-		invokeKeyDownHandler(local.onKeyDown, event);
-		if (event.defaultPrevented || context.disabled || local.disabled) {
+		invokeKeyDownHandler(props.onKeyDown, event);
+		if (event.defaultPrevented || context.disabled || props.disabled) {
 			return;
 		}
 		const group = event.currentTarget.closest("[data-toggle-group]");
@@ -303,12 +305,12 @@ const ToggleGroupItem = <T extends ValidComponent = "button">(
 		<Toggle
 			data-toggle-group-item=""
 			data-orientation={context.orientation}
-			pressed={context.isSelected(local.value)}
-			disabled={context.disabled || local.disabled}
-			onChange={(pressed) => context.onItemToggle(local.value, pressed)}
+			pressed={context.isSelected(props.value)}
+			disabled={context.disabled || props.disabled}
+			onChange={(pressed) => context.onItemToggle(props.value, pressed)}
 			onKeyDown={handleKeyDown}
-			size={context.size || local.size}
-			variant={context.variant || local.variant}
+			size={context.size || props.size}
+			variant={context.variant || props.variant}
 			{...others}
 		/>
 	);

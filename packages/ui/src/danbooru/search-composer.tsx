@@ -1,18 +1,19 @@
 import type { ViewerTag } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
-import { createQuery } from "@tanstack/solid-query";
-import X from "lucide-solid/icons/x";
+import { useQuery } from "@tanstack/solid-query";
+import X from "@lucide/solid/icons/x";
 import {
 	createEffect,
 	createMemo,
 	createSignal,
 	createUniqueId,
 	For,
-	type JSX,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Badge } from "../badge";
 import { Button } from "../button";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import { readQueryData } from "../query-state";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
 import { createDebouncedSignal } from "../utils/debounce";
 import { CircleHelp } from "../workspace/icons";
@@ -28,12 +29,13 @@ export function DanbooruSearchComposer(props: {
 	provider?: "Danbooru" | "pixiv";
 	draft: string;
 	onDraftChange: (value: string) => void;
-	onSubmit: () => void;
+	onSubmit: (draft: string) => void;
 	suggestTags: (query: string) => Promise<ViewerTag[]>;
 }) {
 	let input: HTMLInputElement | undefined;
 	createAppShortcut("focusSearch", () => input?.focus());
-	const [caret, setCaret] = createSignal(props.draft.length);
+	const [caret, setCaret] = createSignal<number>();
+	const currentCaret = () => caret() ?? props.draft.length;
 	const parts = createMemo(() => {
 		if (props.provider !== "pixiv")
 			return { prefix: "", active: props.draft, tags: [] as string[] };
@@ -47,34 +49,34 @@ export function DanbooruSearchComposer(props: {
 	const remove = (index: number) => {
 		const tags = parts().tags.filter((_, i) => i !== index);
 		const next = [...tags, parts().active].filter(Boolean).join(" ");
-		props.onDraftChange(next ? next + " " : "");
 		setCaret(next.length + 1);
-		props.onSubmit();
+		props.onSubmit(next);
 	};
-	const submit = () => {
-		if (props.provider === "pixiv" && props.draft.trim())
-			props.onDraftChange(props.draft.trim() + " ");
-		props.onSubmit();
-	};
+	const submit = () => props.onSubmit(props.draft);
 	const [query, setQuery] = createDebouncedSignal("", 250);
-	const token = createMemo(() => getDanbooruCompletion(props.draft, caret()));
-	createEffect(() => setQuery(token().query));
-	const suggestions = createQuery(() => ({
-		queryKey: [
-			"external-viewer",
-			props.provider ?? "Danbooru",
-			"tags",
-			query(),
-		],
-		queryFn: () => props.suggestTags(query()),
-		enabled: query().length > 0,
-		staleTime: 300_000,
-		retry: false,
-	}));
+	const token = createMemo(() =>
+		getDanbooruCompletion(props.draft, currentCaret()),
+	);
+	createEffect(
+		() => token().query,
+		(query) => {
+			setQuery(query);
+		},
+	);
+	const suggestions = useQuery(() => {
+		const word = query();
+		return {
+			queryKey: ["external-viewer", props.provider ?? "Danbooru", "tags", word],
+			queryFn: () => props.suggestTags(word),
+			enabled: word.length > 0,
+			staleTime: 300_000,
+			retry: false,
+		};
+	});
 	const options = createMemo(() => {
 		// Reading pending query data suspends the route and detaches the focused input.
 		if (!suggestions.isSuccess || query() !== token().query) return [];
-		return (suggestions.data ?? []).map((tag) => ({
+		return (readQueryData(suggestions) ?? []).map((tag) => ({
 			label: tag.name,
 			value: tag.name,
 			description: [
@@ -102,7 +104,11 @@ export function DanbooruSearchComposer(props: {
 				onDraftChange={(value) => props.onDraftChange(parts().prefix + value)}
 				onCaretChange={(value) => setCaret(parts().prefix.length + value)}
 				onSelect={(option) => {
-					const full = completeDanbooruTag(props.draft, caret(), option.value);
+					const full = completeDanbooruTag(
+						props.draft,
+						currentCaret(),
+						option.value,
+					);
 					if (props.provider === "pixiv") {
 						props.onDraftChange(full);
 						setCaret(full.length);

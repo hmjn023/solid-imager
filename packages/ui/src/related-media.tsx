@@ -5,26 +5,25 @@ import type {
 	RelatedMediaResponse,
 } from "@solid-imager/core/media";
 import {
-	createQuery,
+	useQuery,
 	onlineManager,
 	useQueryClient,
 	type QueryOptions,
 } from "@tanstack/solid-query";
 import {
-	createMemo,
 	createEffect,
+	createMemo,
 	createSignal,
 	createUniqueId,
 	For,
 	Match,
 	onCleanup,
-	onMount,
-	on,
+	onSettled,
 	Show,
-	Suspense,
+	Loading,
 	Switch,
-	type JSX,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { ErrorState, OfflineState, QueryStatus } from "./async-state";
 import { Button } from "./button";
 import { MediaGridItem, type MediaGridThumbnailProps } from "./media-grid-item";
@@ -207,9 +206,9 @@ export function RelatedMedia(props: RelatedMediaProps) {
 			class="@container min-w-0 space-y-3 border-border border-t p-3 sm:p-4"
 		>
 			<h2 class="font-semibold text-base">{t("relatedMedia.relatedMedia")}</h2>
-			<Suspense fallback={<RelatedMediaPending />}>
+			<Loading fallback={<RelatedMediaPending />}>
 				<RelatedMediaContent {...props} />
-			</Suspense>
+			</Loading>
 		</section>
 	);
 }
@@ -229,7 +228,13 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 		status: "pending" | "error" | "offline";
 	}>();
 	const anchor = () => `${props.media.mediaSourceId}/${props.media.id}`;
-	createEffect(on(anchor, () => setRefreshAttempt(undefined), { defer: true }));
+	createEffect(
+		anchor,
+		() => {
+			setRefreshAttempt(undefined);
+		},
+		{ defer: true },
+	);
 	const seed = createMemo(() => {
 		seedRevision();
 		return seedStore()?.get(props.media.mediaSourceId, props.media.id);
@@ -238,8 +243,10 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 	onCleanup(() => {
 		mounted = false;
 	});
-	onMount(() => setSeedStore(getBrowserRelatedMediaSeedStore(window)));
-	const query = createQuery<RelatedMediaResponse>(() => ({
+	onSettled(() => {
+		setSeedStore(getBrowserRelatedMediaSeedStore(window));
+	});
+	const query = useQuery<RelatedMediaResponse>(() => ({
 		...props.queryOptions(
 			props.media.mediaSourceId,
 			props.media.id,
@@ -302,12 +309,12 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 		) {
 			return t("relatedMedia.visualSimilarityIsAvailableForImagesAndVideo");
 		}
-		if (query.data?.similarityStatus === "not_indexed") {
+		if (readQueryData(query)?.similarityStatus === "not_indexed") {
 			return t(
 				"relatedMedia.similarRecommendationsRequireAnImageSearchIndexForThis",
 			);
 		}
-		if (query.data?.similarityStatus === "unavailable") {
+		if (readQueryData(query)?.similarityStatus === "unavailable") {
 			return t("relatedMedia.couldNotLoadSimilarImagesCharacterIPAndTag");
 		}
 		return undefined;
@@ -388,7 +395,7 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 					<RelatedMediaTabs
 						media={props.media}
 						renderThumbnail={props.renderThumbnail}
-						response={query.data}
+						response={readQueryData(query)}
 						similarityMessage={similarityMessage()}
 					/>
 				</div>
@@ -396,3 +403,5 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 		</Switch>
 	);
 }
+
+import { readQueryData } from "./query-state";

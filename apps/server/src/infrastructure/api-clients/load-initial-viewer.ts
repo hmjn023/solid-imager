@@ -7,7 +7,7 @@ import {
 	viewerPostQueryOptions,
 } from "@solid-imager/ui/external-viewer";
 import { createServerOnlyFn } from "@tanstack/solid-start";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import { viewerRouter } from "~/infrastructure/api/routers/viewer-router";
 import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 import { getApiOrigin, orpc } from "./orpc-client";

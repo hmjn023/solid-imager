@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import { MediaDetailPage } from "~/components/pages/media-detail-page";
 import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
 import type { RouteLoaderContext } from "~/infrastructure/router/route-types";

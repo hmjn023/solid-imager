@@ -34,7 +34,7 @@ test("a detail visit counts once and media preferences persist after reload", as
 			"aria-pressed",
 			String(!original.favorite),
 		);
-		const picker = page.getByRole("button", { name: /^評価/ });
+		const picker = page.getByRole("combobox", { name: "評価", exact: true });
 		await picker.click();
 		await page.getByRole("option", { name: `星${rating}つ` }).click();
 		await expect(picker).toContainText(`星${rating}つ`);

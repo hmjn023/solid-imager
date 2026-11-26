@@ -13,13 +13,13 @@ import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { TagResponse } from "@solid-imager/core/tags";
 import {
 	createSignal,
-	ErrorBoundary,
+	Errored,
 	onCleanup,
-	onMount,
+	onSettled,
 	Show,
-	Suspense,
+	Loading,
 } from "solid-js";
-import type { SetStoreFunction } from "solid-js/store";
+import type { StoreSetter } from "solid-js";
 import { Button } from "./button";
 import { EmbeddingSearchControls } from "./embedding-search-controls";
 import { Label } from "./label";
@@ -60,7 +60,7 @@ export type SearchControlPanelProps = {
 	onSelectSource?: (id: string) => void;
 	/** Optional isolated state for a draft editing surface. */
 	state?: SearchState;
-	setState?: SetStoreFunction<SearchState>;
+	setState?: StoreSetter<SearchState>;
 	/** Hide inline submit controls when an enclosing surface supplies Apply. */
 	showSearchButton?: boolean;
 	/** Hide sorting when the workspace toolbar provides it. */
@@ -84,24 +84,30 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 		searchState.selectedSource;
 	const handleSelectSource = (id: string) => {
 		if (props.setState) {
-			props.setState("selectedSource", id);
+			props.setState((draft) => {
+				draft.selectedSource = id;
+			});
 			return;
 		}
 		props.onSelectSource?.(id);
 	};
 	const handleSetMode = (mode: "simple" | "pro") => {
-		updateState(calculateNextModeState(currentState(), mode));
+		updateState((draft) => {
+			Object.assign(draft, calculateNextModeState(currentState(), mode));
+		});
 	};
 	const clearSimilarityAnchor = () => {
 		if (!props.setState) {
 			clearSimilaritySearch();
 			return;
 		}
-		props.setState({
-			similarityAnchorMediaId: null,
-			semanticQuery: "",
-			offset: 0,
-			scrollY: 0,
+		props.setState((draft) => {
+			Object.assign(draft, {
+				similarityAnchorMediaId: null,
+				semanticQuery: "",
+				offset: 0,
+				scrollY: 0,
+			});
 		});
 	};
 
@@ -164,9 +170,11 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					>
 						{presetLoadFailed() ? t("presetManager.couldNotLoadPresets") : ""}
 					</output>
-					<ErrorBoundary
+					<Errored
 						fallback={(error, retry) => {
-							onMount(() => setPresetLoadFailed(true));
+							onSettled(() => {
+								setPresetLoadFailed(true);
+							});
 							onCleanup(() => setPresetLoadFailed(false));
 							return (
 								<Button
@@ -180,7 +188,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 							);
 						}}
 					>
-						<Suspense fallback={<p>{t("status.loading")}</p>}>
+						<Loading fallback={<p>{t("status.loading")}</p>}>
 							<PresetManager
 								class="w-full flex-col items-stretch"
 								onAction={props.onSearch}
@@ -188,8 +196,8 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 								setState={props.setState}
 								state={props.state}
 							/>
-						</Suspense>
-					</ErrorBoundary>
+						</Loading>
+					</Errored>
 				</div>
 			</Show>
 
@@ -225,7 +233,11 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						authors={props.filterData.authors}
 						characters={props.filterData.characters}
 						ips={props.filterData.ips}
-						onChange={(value) => updateState("advancedCondition", value)}
+						onChange={(value) =>
+							updateState((draft) => {
+								draft.advancedCondition = value;
+							})
+						}
 						onSearch={
 							props.showSearchButton === false ? undefined : props.onSearch
 						}
@@ -283,10 +295,20 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					<SortControls
 						onClearSimilarity={clearSimilarityAnchor}
 						onSimilarityTopKChange={(value) =>
-							updateState("similarityTopK", value)
+							updateState((draft) => {
+								draft.similarityTopK = value;
+							})
 						}
-						onSortByChange={(value) => updateState("sortBy", value)}
-						onSortOrderChange={(value) => updateState("sortOrder", value)}
+						onSortByChange={(value) =>
+							updateState((draft) => {
+								draft.sortBy = value;
+							})
+						}
+						onSortOrderChange={(value) =>
+							updateState((draft) => {
+								draft.sortOrder = value;
+							})
+						}
 						similarityAnchorMediaId={currentState().similarityAnchorMediaId}
 						similarityLimitId={
 							props.setState

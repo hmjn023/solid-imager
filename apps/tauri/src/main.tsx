@@ -3,8 +3,8 @@ import { initializeBrowserLocale, t } from "@solid-imager/i18n";
 import { WorkspaceSetupFrame } from "@solid-imager/ui/app-shell";
 import { BootstrapStatusScreen } from "@solid-imager/ui/router-status";
 import { RouterProvider } from "@tanstack/solid-router";
-import { createSignal, Match, onMount, Show, Switch } from "solid-js";
-import { render } from "solid-js/web";
+import { createSignal, Match, onSettled, Show, Switch } from "solid-js";
+import { render } from "@solidjs/web";
 import "./index.css";
 import { initializeCollections } from "./collections";
 import { ServerSettingsScreen } from "./components/server-settings-screen";
@@ -82,7 +82,7 @@ function App() {
 		}
 	};
 
-	onMount(() => {
+	onSettled(() => {
 		void initialize();
 	});
 

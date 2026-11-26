@@ -1,3 +1,5 @@
+@layer ui-sdk;
+
 /* The visual fixture must not inherit the host OS's system UI font. */
 body {
 	font-family: "Noto Sans", sans-serif;

@@ -1,12 +1,12 @@
-import type { JSX } from "solid-js";
-import { splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import { cn } from "./utils/cn";
 
 export type TextareaProps = JSX.TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 const Textarea = (props: TextareaProps) => {
-	const [local, rest] = splitProps(props, ["class"]);
+	const local = props,
+		rest = omit(props, "class");
 	return (
 		<textarea
 			class={cn(
@@ -19,3 +19,5 @@ const Textarea = (props: TextareaProps) => {
 };
 
 export { Textarea };
+
+import { omit } from "solid-js";

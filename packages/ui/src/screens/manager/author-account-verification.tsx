@@ -3,7 +3,7 @@ import type {
 	AuthorAccount,
 	AuthorAccountVerification,
 } from "@solid-imager/core/authors";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { createSignal, onCleanup, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -48,7 +48,7 @@ export function AuthorAccountVerificationPanel(props: {
 	const [timedOut, setTimedOut] = createSignal(false);
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	onCleanup(() => clearTimeout(timeout));
-	const result = createQuery(() => ({
+	const result = useQuery(() => ({
 		queryKey: ["authors", "account-verification", preview()?.verificationId],
 		enabled: Boolean(preview()) && open() && !timedOut(),
 		queryFn: () =>
@@ -60,13 +60,13 @@ export function AuthorAccountVerificationPanel(props: {
 		retry: false,
 	}));
 	const failureMessage = () =>
-		result.data?.error ||
+		readQueryData(result)?.error ||
 		(result.isError
 			? result.error instanceof Error
 				? result.error.message
 				: t("authorAccountVerification.couldNotVerifyTheFetchedData")
 			: "") ||
-		(timedOut() && !result.data?.profile
+		(timedOut() && !readQueryData(result)?.profile
 			? t(
 					"authorAccountVerification.couldNotFetchTheProfileCheckXtracterUpdatesIts",
 				)
@@ -103,7 +103,7 @@ export function AuthorAccountVerificationPanel(props: {
 		if (
 			!pending ||
 			!confirmed() ||
-			!result.data?.profile ||
+			!readQueryData(result)?.profile ||
 			failureMessage() ||
 			busy()
 		)
@@ -128,7 +128,7 @@ export function AuthorAccountVerificationPanel(props: {
 			setBusy(false);
 		}
 	};
-	const isDirty = () => Boolean(result.data?.profile) || confirmed();
+	const isDirty = () => Boolean(readQueryData(result)?.profile) || confirmed();
 	const closeDialog = () => {
 		setDiscardOpen(false);
 		setOpen(false);
@@ -270,12 +270,12 @@ export function AuthorAccountVerificationPanel(props: {
 					<p class="text-xs text-muted-foreground">
 						{t("authorAccountVerification.anUpToDateXtracterIsRequiredSetIts")}
 					</p>
-					<Show when={!result.data?.profile && !failureMessage()}>
+					<Show when={!readQueryData(result)?.profile && !failureMessage()}>
 						<output class="text-sm" aria-live="polite">
 							{t("authorAccountVerification.waitingForXProfileData")}
 						</output>
 					</Show>
-					<Show when={result.data?.profile}>
+					<Show when={readQueryData(result)?.profile}>
 						{(profile) => (
 							<div class="space-y-2">
 								<dl class="grid grid-cols-2 gap-x-3 gap-y-1 break-words text-sm">
@@ -326,7 +326,7 @@ export function AuthorAccountVerificationPanel(props: {
 							disabled={
 								busy() ||
 								!confirmed() ||
-								!result.data?.profile ||
+								!readQueryData(result)?.profile ||
 								Boolean(failureMessage())
 							}
 							onClick={() => void save()}
@@ -359,3 +359,5 @@ export function AuthorAccountVerificationPanel(props: {
 		</div>
 	);
 }
+
+import { readQueryData } from "../../query-state";

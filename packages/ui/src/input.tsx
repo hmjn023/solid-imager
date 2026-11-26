@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import { cn } from "./utils/cn";
 
@@ -14,7 +13,8 @@ export type InputProps = JSX.InputHTMLAttributes<HTMLInputElement>;
  * @returns {JSX.Element} The rendered input element.
  */
 export function Input(props: InputProps) {
-	const [local, rest] = splitProps(props, ["class"]);
+	const local = props,
+		rest = omit(props, "class");
 	return (
 		<input
 			class={cn(
@@ -25,3 +25,5 @@ export function Input(props: InputProps) {
 		/>
 	);
 }
+
+import { omit } from "solid-js";

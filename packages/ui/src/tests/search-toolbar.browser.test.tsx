@@ -1,4 +1,5 @@
 import { t } from "@solid-imager/i18n";
+import { flush } from "solid-js";
 import { expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import {
@@ -52,7 +53,10 @@ test("commits a queued filename when closing filters and preserves external upda
 	await expect.element(filename).toBeVisible();
 	vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 	await filename.fill("stale.png");
-	setSearchState("searchQuery", "restored.png");
+	setSearchState((draft) => {
+		draft.searchQuery = "restored.png";
+	});
+	flush();
 	vi.advanceTimersByTime(250);
 	expect(searchState.searchQuery).toBe("restored.png");
 	await expect.element(filename).toHaveValue("restored.png");

@@ -47,7 +47,7 @@ export function ViewerLoadBoundary(props: {
 				size="sm"
 				variant="ghost"
 				class="min-h-11 sm:min-h-9"
-				aria-busy={props.loading}
+				aria-busy={props.loading ? "true" : "false"}
 				disabled={props.loading}
 				onClick={() => void props.onLoad()}
 			>

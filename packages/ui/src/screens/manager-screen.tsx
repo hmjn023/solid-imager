@@ -6,8 +6,7 @@ import {
 	createEffect,
 	createSignal,
 	Match,
-	on,
-	onMount,
+	onSettled,
 	Show,
 	Switch,
 } from "solid-js";
@@ -68,7 +67,7 @@ export function ManagerScreen(props: {
 	const [selectedId, setSelectedId] = createSignal<string | null>(null);
 	const [activeCategory, setActiveCategory] =
 		createSignal<ManagerCategoryValue>("projects");
-	onMount(() => {
+	onSettled(() => {
 		try {
 			if (
 				sessionStorage.getItem("solid-imager:manager:tag-dictionary-open") ===
@@ -85,13 +84,10 @@ export function ManagerScreen(props: {
 		}
 	});
 	createEffect(
-		on(
-			() => props.manager.activeTab(),
-			(tab, previous) => {
-				if (previous !== undefined || tab !== "projects")
-					setActiveCategory(tab);
-			},
-		),
+		() => props.manager.activeTab(),
+		(tab, previous) => {
+			if (previous !== undefined || tab !== "projects") setActiveCategory(tab);
+		},
 	);
 	const activeQueryState = () => {
 		const states = props.manager.queryStates();

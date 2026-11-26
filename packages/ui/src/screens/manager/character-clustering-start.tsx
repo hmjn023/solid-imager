@@ -3,7 +3,7 @@ import {
 	startCharacterClusteringSchema,
 	type StartCharacterClustering,
 } from "@solid-imager/core/characters";
-import { createMutation } from "@tanstack/solid-query";
+import { useMutation } from "@tanstack/solid-query";
 import { createSignal, Show } from "solid-js";
 import { Button } from "../../button";
 import {
@@ -26,7 +26,7 @@ export function CharacterClusteringStart(props: {
 	const [selectionMethod, setSelectionMethod] = createSignal<"eom" | "leaf">(
 		"leaf",
 	);
-	const mutation = createMutation(() => ({
+	const mutation = useMutation(() => ({
 		mutationFn: async () => {
 			const parsed = startCharacterClusteringSchema.safeParse({
 				neighbors: Number(neighbors()),

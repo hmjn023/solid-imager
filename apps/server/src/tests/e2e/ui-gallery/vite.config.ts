@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import sharp from "sharp";
 import { defineConfig, type Plugin } from "vite";
-import solidPlugin from "vite-plugin-solid";
+import solidPlugin from "@solidjs/vite-plugin";
 
 const galleryRoot = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(galleryRoot, "../../../../../..");
@@ -83,8 +83,9 @@ function virtualThumbnailPlugin(): Plugin {
 
 export default defineConfig({
 	root: galleryRoot,
+	optimizeDeps: { exclude: ["@ui-sdk/core"] },
 	resolve: {
-		dedupe: ["solid-js", "solid-js/web"],
+		dedupe: ["solid-js", "@solidjs/web"],
 	},
 	server: {
 		fs: {

@@ -71,9 +71,10 @@ Intel GPU で実行する場合は、推論サーバーに OpenVINO 対応の ON
 
 ```
 Runtime: Bun
-Framework: TanStack Start
+Framework: Solid 2 + TanStack Start
 API: oRPC v2
-UI: Kobalte + Tailwind CSS + solid-ui
+UI: Solid UI + UI SDK + Tailwind CSS
+Notifications: solid-sonner
 Database: PostgreSQL / PGlite
 ORM: Drizzle ORM
 Validation: Zod

@@ -1,9 +1,9 @@
 import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import type { OppaiOracleResponse } from "@solid-imager/core/tagging";
-import Check from "lucide-solid/icons/check";
-import Copy from "lucide-solid/icons/copy";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import Check from "@lucide/solid/icons/check";
+import Copy from "@lucide/solid/icons/copy";
+import { createSignal, For, Show } from "solid-js";
 import { Badge } from "./badge";
 import { Button } from "./button";
 import {
@@ -36,7 +36,7 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 	const [error, setError] = createSignal<string | null>(null);
 	const [copied, setCopied] = createSignal(false);
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (props.isOpen) {
 			let isCancelled = false;
 			setCopied(false);
@@ -69,9 +69,9 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 
 			void fetchTags();
 
-			onCleanup(() => {
+			return () => {
 				isCancelled = true;
-			});
+			};
 		} else {
 			setResult(null);
 			setError(null);
@@ -251,3 +251,5 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 		</Dialog>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

@@ -5,24 +5,23 @@ import {
 	useMediaCollectionSelection,
 } from "@solid-imager/ui/collections";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { sourceMediaQueryKeys } from "@solid-imager/ui/query";
+import { readQueryData, sourceMediaQueryKeys } from "@solid-imager/ui/query";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import type { SearchHistoryClient } from "@solid-imager/ui/search/history";
 import {
 	SourceMediaPage as SourceMediaPageComponent,
 	type SourceMediaPageProps,
 } from "@solid-imager/ui/source-media-page";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
 import {
 	type Accessor,
 	createEffect,
 	createSignal,
-	type JSX,
-	on,
-	onMount,
+	onSettled,
 	Show,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { createServerTransport } from "~/hooks/use-media-source-events";
@@ -82,9 +81,10 @@ export function SourceMediaPageController(
 	const [visibleMediaIds, setVisibleMediaIds] = createSignal<readonly string[]>(
 		[],
 	);
-	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const mediaSources = useQuery(mediaSourcesQueryOptions);
 	const mediaSourceName = () =>
-		mediaSources.data?.find((source) => source.id === mediaSourceId())?.name;
+		readQueryData(mediaSources)?.find((source) => source.id === mediaSourceId())
+			?.name;
 
 	const transport = createServerTransport(mediaSourceId);
 
@@ -112,20 +112,13 @@ export function SourceMediaPageController(
 		setIsBulkSelectMode(false);
 		selection.clear();
 	};
+	createEffect(mediaSourceId, handleCancelSelect, { defer: true });
 	createEffect(
-		on(
-			mediaSourceId,
-			() => {
-				handleCancelSelect();
-			},
-			{ defer: true },
-		),
+		() => visibleMediaIds().length === 0 && isBulkSelectMode(),
+		(shouldExitBulkSelect) => {
+			if (shouldExitBulkSelect) setIsBulkSelectMode(false);
+		},
 	);
-	createEffect(() => {
-		if (visibleMediaIds().length === 0 && isBulkSelectMode()) {
-			setIsBulkSelectMode(false);
-		}
-	});
 
 	// 一括操作成功時のコールバック
 	const handleBulkSuccess = (partial: boolean, succeededMediaIds: string[]) => {
@@ -139,7 +132,7 @@ export function SourceMediaPageController(
 		});
 	};
 
-	onMount(() => {
+	onSettled(() => {
 		setIsMounted(true);
 	});
 

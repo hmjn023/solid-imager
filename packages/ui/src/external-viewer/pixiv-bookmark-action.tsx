@@ -3,11 +3,7 @@ import type {
 	PixivBookmarkState,
 } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
-import {
-	createMutation,
-	createQuery,
-	useQueryClient,
-} from "@tanstack/solid-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal, Match, Show, Switch } from "solid-js";
 import { Button } from "../button";
 import {
@@ -36,14 +32,14 @@ export function PixivBookmarkAction(props: {
 	const [open, setOpen] = createSignal(false);
 	const [visibility, setVisibility] =
 		createSignal<NonNullable<PixivBookmarkChange["visibility"]>>("private");
-	const state = createQuery(() => ({
+	const state = useQuery(() => ({
 		queryKey: queryKey(),
 		queryFn: () => props.load(props.id),
 		gcTime: 0,
 		staleTime: 15_000,
 		retry: false,
 	}));
-	const change = createMutation(() => ({
+	const change = useMutation(() => ({
 		mutationFn: ({
 			input,
 		}: {
@@ -59,14 +55,16 @@ export function PixivBookmarkAction(props: {
 
 	function submit(next: PixivBookmarkChange["visibility"]) {
 		if (!change.isPending)
-			change.mutate({
-				input: { id: props.id, visibility: next },
-				key: queryKey(),
-			});
+			void change
+				.mutate({
+					input: { id: props.id, visibility: next },
+					key: queryKey(),
+				})
+				.catch(() => undefined);
 	}
 
 	const title = () => {
-		const current = state.data?.visibility;
+		const current = readQueryData(state)?.visibility;
 		if (current === "public") return t("pixivBookmarks.savedPublic");
 		if (current === "private") return t("pixivBookmarks.savedPrivate");
 		return t("pixivBookmarks.title");
@@ -83,7 +81,7 @@ export function PixivBookmarkAction(props: {
 			<DialogTrigger as={Button} class="min-h-11 md:min-h-9" variant="outline">
 				{title()}
 			</DialogTrigger>
-			<DialogContent closeDisabled={change.isPending}>
+			<DialogContent closeDisabled={change.isPending} animateOnClose={false}>
 				<DialogTitle class="pr-12">{title()}</DialogTitle>
 				<DialogDescription class="break-words">{props.title}</DialogDescription>
 				<Show when={change.isError}>
@@ -105,7 +103,7 @@ export function PixivBookmarkAction(props: {
 							{t("actions.retry")}
 						</Button>
 					</Match>
-					<Match when={state.data?.visibility}>
+					<Match when={readQueryData(state)?.visibility}>
 						<DialogFooter>
 							<Button
 								disabled={change.isPending}
@@ -125,7 +123,7 @@ export function PixivBookmarkAction(props: {
 							</Button>
 						</DialogFooter>
 					</Match>
-					<Match when={state.data?.canAdd}>
+					<Match when={readQueryData(state)?.canAdd}>
 						<RadioGroup
 							class="flex flex-wrap gap-4"
 							aria-label={t("pixivBookmarks.visibility")}
@@ -165,7 +163,7 @@ export function PixivBookmarkAction(props: {
 							</Button>
 						</DialogFooter>
 					</Match>
-					<Match when={state.data}>
+					<Match when={readQueryData(state)}>
 						<p class="text-muted-foreground text-sm">
 							{t("pixivBookmarks.unavailable")}
 						</p>
@@ -175,3 +173,5 @@ export function PixivBookmarkAction(props: {
 		</Dialog>
 	);
 }
+
+import { readQueryData } from "../query-state";

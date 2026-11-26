@@ -1,7 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import type { ViewerFetch, PixivClientFactory } from "./pixiv-account";
 import type { AppContractClient } from "@solid-imager/core/contract";
-import { onCleanup, onMount } from "solid-js";
+import { onSettled } from "solid-js";
 import {
 	type RouterHistory,
 	Outlet,
@@ -52,14 +52,12 @@ export function ExternalViewerRoute(
 		(items) => props.client.imports.bulkAdd({ items }),
 		(jobIds) => props.client.imports.existingRequestIds({ jobIds }),
 	);
-	onMount(() => {
-		onCleanup(
-			props.subscribeImportEvents((event) => {
-				if (event.event === "import-request:deleted")
-					imports.clearCancelled(event.data.jobIds);
-			}, imports.onConnected),
-		);
-	});
+	onSettled(() =>
+		props.subscribeImportEvents((event) => {
+			if (event.event === "import-request:deleted")
+				imports.clearCancelled(event.data.jobIds);
+		}, imports.onConnected),
+	);
 	const collectionDepth = () => {
 		const { state } = location();
 		if (

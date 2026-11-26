@@ -1,4 +1,5 @@
-import type { JSX, ParentProps } from "solid-js";
+import type { ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 export function CollectionHeader(
 	props: ParentProps<{ heading: JSX.Element; summary?: JSX.Element }>,

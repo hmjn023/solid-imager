@@ -1,6 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import { detectPlatform, formatForDisplay } from "@tanstack/solid-hotkeys";
-import { type Accessor, createSignal, type JSX, onMount } from "solid-js";
+import { type Accessor, createSignal, onSettled } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import { cn } from "../utils/cn";
 import type { ShortcutBinding, ShortcutId } from "./definitions";
@@ -16,7 +17,9 @@ export interface ShortcutKbdProps {
 
 export function createShortcutDisplayPlatform(): Accessor<ShortcutPlatform> {
 	const [platform, setPlatform] = createSignal<ShortcutPlatform>("linux");
-	onMount(() => setPlatform(detectPlatform()));
+	onSettled(() => {
+		setPlatform(detectPlatform());
+	});
 	return platform;
 }
 

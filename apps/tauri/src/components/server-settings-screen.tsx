@@ -1,3 +1,4 @@
+import { cn } from "@solid-imager/ui/utils";
 import { t } from "@solid-imager/i18n";
 import { Alert, AlertDescription } from "@solid-imager/ui/alert";
 import {
@@ -303,8 +304,9 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 
 	return (
 		<section
-			class="grid min-w-0 gap-4"
-			classList={{ "px-4 py-6 sm:px-6": props.showHeader !== false }}
+			class={cn("grid min-w-0 gap-4", {
+				"px-4 py-6 sm:px-6": props.showHeader !== false,
+			})}
 		>
 			<Show when={props.showHeader !== false}>
 				<header class="space-y-1 border-primary border-s-2 ps-3">
@@ -328,8 +330,9 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 			</Show>
 
 			<div
-				class="grid items-start gap-4"
-				classList={{ "lg:grid-cols-server-settings": hasSavedServers() }}
+				class={cn("grid items-start gap-4", {
+					"lg:grid-cols-server-settings": hasSavedServers(),
+				})}
 			>
 				<Show when={hasSavedServers()}>
 					<Card class="@container min-w-0">
@@ -346,11 +349,13 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 								<For each={localSettings().servers}>
 									{(server) => (
 										<div
-											class="grid gap-3 py-3 text-sm transition-colors last:pb-0 @xl:grid-cols-content-action @xl:items-center"
-											classList={{
-												"rounded-md bg-accent/50 px-3":
-													editingId() === server.id,
-											}}
+											class={cn(
+												"grid gap-3 py-3 text-sm transition-colors last:pb-0 @xl:grid-cols-content-action @xl:items-center",
+												{
+													"rounded-md bg-accent/50 px-3":
+														editingId() === server.id,
+												},
+											)}
 										>
 											<div class="min-w-0">
 												<div class="flex flex-wrap items-center gap-2">
@@ -377,7 +382,9 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 											</div>
 											<div class="flex flex-wrap gap-2 @xl:justify-end">
 												<Button
-													aria-busy={isCheckingKey(server.id)}
+													aria-busy={
+														isCheckingKey(server.id) ? "true" : "false"
+													}
 													disabled={isSaving() || isCheckingKey(server.id)}
 													onClick={() =>
 														void runHealthCheck(server.id, server.baseUrl)
@@ -499,7 +506,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 							</div>
 							<div class="col-span-full flex flex-wrap items-center gap-2 border-border border-t pt-4">
 								<Button
-									aria-busy={isCheckingKey("form")}
+									aria-busy={isCheckingKey("form") ? "true" : "false"}
 									class="sm:h-9"
 									disabled={isSaving() || isCheckingKey("form")}
 									onClick={() => void runHealthCheck("form", baseUrl())}
@@ -509,7 +516,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 									{t("serverSettingsScreen.checkConnection")}
 								</Button>
 								<Button
-									aria-busy={isSaving()}
+									aria-busy={isSaving() ? "true" : "false"}
 									class="sm:h-9"
 									disabled={isSaving()}
 									type="submit"

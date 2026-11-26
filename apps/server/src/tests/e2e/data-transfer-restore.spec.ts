@@ -77,9 +77,9 @@ test("restores an archive's original media and metadata into the selected source
 			.getByRole("button", { name: /データ転送/ })
 			.first()
 			.click();
-		await page.getByRole("button", { name: /^保存先ソース/ }).click();
+		await page.getByRole("combobox", { name: /^保存先ソース/ }).click();
 		await page.getByRole("option", { name: sourceName, exact: true }).click();
-		await page.getByRole("button", { name: /^復元形式/ }).click();
+		await page.getByRole("combobox", { name: /^復元形式/ }).click();
 		await page
 			.getByRole("option", { name: "TARアーカイブ", exact: true })
 			.click();

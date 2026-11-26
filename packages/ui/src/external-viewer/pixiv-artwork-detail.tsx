@@ -9,14 +9,8 @@ import {
 	pixivDownloadItem,
 	type PixivArtwork,
 } from "@solid-imager/core/external-viewer";
-import {
-	createMemo,
-	createSignal,
-	For,
-	onMount,
-	Show,
-	type JSX,
-} from "solid-js";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Toggle } from "../toggle";
 import { Button } from "../button";
 import {
@@ -51,20 +45,20 @@ export function PixivArtworkDetail(
 	return (
 		<ViewerDetail {...props} provider="pixiv">
 			{(post) => {
-				const title =
+				const title = () =>
 					post.title ||
 					t("pixivScreen.pixivValue", { value0: String(post.id) });
 				const [index, setIndex] = createSignal(0);
 				const [showOriginal, setShowOriginal] = createSignal(false);
-				const canRead = post.pages.length > 1 && !post.isAnimation;
-				const readingKey =
+				const canRead = () => post.pages.length > 1 && !post.isAnimation;
+				const readingKey = () =>
 					"solid-imager:pixiv-reading-position:v1:" +
 					JSON.stringify([...props.readingScope, post.id]);
-				onMount(() => {
-					if (!canRead) return;
+				onSettled(() => {
+					if (!canRead()) return;
 					try {
 						const saved = Number(
-							readUiStorageValue(sessionStorage, readingKey),
+							readUiStorageValue(sessionStorage, readingKey()),
 						);
 						if (
 							Number.isInteger(saved) &&
@@ -80,9 +74,9 @@ export function PixivArtworkDetail(
 					if (next === index()) return;
 					setShowOriginal(false);
 					setIndex(next);
-					if (!canRead) return;
+					if (!canRead()) return;
 					try {
-						sessionStorage.setItem(readingKey, String(next));
+						sessionStorage.setItem(readingKey(), String(next));
 					} catch {
 						return;
 					}
@@ -109,15 +103,15 @@ export function PixivArtworkDetail(
 						header={
 							<ViewerToolbar
 								{...props}
-								title={title}
+								title={title()}
 								provider="pixiv"
 								actions={
 									<div class="flex flex-wrap items-center gap-2">
-										<Show when={canRead}>
+										<Show when={canRead()}>
 											<PixivPageReader
 												pages={post.pages}
 												apiBase={props.apiBase()}
-												title={title}
+												title={title()}
 												index={index()}
 												onPageChange={changePage}
 											/>
@@ -150,7 +144,7 @@ export function PixivArtworkDetail(
 											sourceHref={`https://www.pixiv.net/artworks/${post.id}`}
 										/>
 										{props.historyAction}
-										{props.bookmarkAction?.(post.id, title)}
+										{props.bookmarkAction?.(post.id, title())}
 									</div>
 								}
 							/>
@@ -158,7 +152,7 @@ export function PixivArtworkDetail(
 						viewer={
 							<MediaViewer
 								source={source()}
-								fileName={title}
+								fileName={title()}
 								width={page().width}
 								height={page().height}
 							/>

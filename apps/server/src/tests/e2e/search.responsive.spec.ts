@@ -30,7 +30,9 @@ test("loads a preset without optional settings in the source list", async ({
 		await waitForAppHydration(page);
 		await page.getByRole("button", { name: /^検索フィルター、/ }).click();
 		const filters = page.getByRole("dialog", { name: "検索フィルター" });
-		await filters.getByRole("button", { name: "プリセットを選択..." }).click();
+		await filters
+			.getByRole("combobox", { name: "プリセットを選択..." })
+			.click();
 		await expect(page.getByRole("option", { name: presetName })).toBeVisible();
 	} finally {
 		await apiRequest(request, "presets/delete", { id });
@@ -80,7 +82,7 @@ test("keeps search filters available when presets fail to load", async ({
 
 	await filters.getByRole("button", { name: "再試行" }).click();
 	await expect(
-		filters.getByRole("button", { name: "プリセットを選択..." }),
+		filters.getByRole("combobox", { name: "プリセットを選択..." }),
 	).toBeVisible();
 	await expect(status).toHaveText("");
 	await expect(filename).toHaveValue(E2E_PRIMARY_FILE_NAME);

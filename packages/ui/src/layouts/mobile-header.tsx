@@ -1,5 +1,6 @@
 import { t } from "@solid-imager/i18n";
-import { createSignal, onMount, type Accessor, type JSX } from "solid-js";
+import { createSignal, onSettled, type Accessor } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Button } from "../button";
 import { Menu, Search } from "../workspace/icons";
 
@@ -10,7 +11,9 @@ export function MobileHeader(props: {
 	triggerRef?: (element: HTMLButtonElement) => void;
 }) {
 	const [menuReady, setMenuReady] = createSignal(false);
-	onMount(() => setMenuReady(true));
+	onSettled(() => {
+		setMenuReady(true);
+	});
 
 	return (
 		<header class="flex h-14 shrink-0 items-center gap-3 border-border border-b bg-background px-3 md:hidden">

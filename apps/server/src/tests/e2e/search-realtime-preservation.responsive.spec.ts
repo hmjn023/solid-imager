@@ -18,7 +18,7 @@ test(
 	{
 		tag: "@mobile-only",
 	},
-	async ({ context, page, browserHealth }) => {
+	async ({ browser, page, browserHealth }) => {
 		// Source sync events invalidate the list again while its previous refresh is pending.
 		browserHealth.allowRequestFailure(
 			apiPathPattern("sources/list"),
@@ -56,7 +56,7 @@ test(
 			path.join(getE2eMediaDir(), syncedFileName),
 		);
 
-		await syncFixtureSource(context);
+		await syncFixtureSource(browser, page.url());
 
 		await expect
 			.poll(
@@ -78,7 +78,7 @@ test(
 	{
 		tag: "@mobile-only",
 	},
-	async ({ context, page }) => {
+	async ({ browser, page }) => {
 		const sourceEventsConnected = page.waitForResponse(
 			(response) =>
 				sourceEventsEndpoint.test(new URL(response.url()).pathname) &&
@@ -111,7 +111,7 @@ test(
 			path.join(getE2eMediaDir(), syncedFileName),
 		);
 
-		await syncFixtureSource(context);
+		await syncFixtureSource(browser, page.url());
 
 		await expect
 			.poll(

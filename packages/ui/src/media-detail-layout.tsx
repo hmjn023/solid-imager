@@ -4,13 +4,12 @@ import {
 	createContext,
 	createSignal,
 	For,
-	type JSX,
-	onCleanup,
-	onMount,
+	onSettled,
 	type ParentProps,
 	Show,
 	useContext,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Button } from "./button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 import {
@@ -24,7 +23,7 @@ const MEDIA_DETAIL_METADATA_ID = "media-detail-metadata";
 // Keep both panels swipeable without reserving vertical space for the inactive one.
 const DETAIL_PANEL_CLASS =
 	"mt-0 w-full min-w-0 shrink-0 snap-start not-data-[selected]:overflow-clip not-data-[selected]:contain-size";
-const MediaDetailNavigationContext = createContext<() => void>();
+const MediaDetailNavigationContext = createContext<(() => void) | null>(null);
 type DetailPanel = "metadata" | "related";
 
 export function MediaDetailLayout(props: {
@@ -43,7 +42,7 @@ export function MediaDetailLayout(props: {
 	let panelScroller: HTMLDivElement | undefined;
 	let metadata: HTMLElement | undefined;
 
-	onMount(() => {
+	onSettled(() => {
 		const media = window.matchMedia("(min-width: 1024px)");
 		const update = () => {
 			setPanel("metadata");
@@ -51,7 +50,7 @@ export function MediaDetailLayout(props: {
 		};
 		update();
 		media.addEventListener("change", update);
-		onCleanup(() => media.removeEventListener("change", update));
+		return () => media.removeEventListener("change", update);
 	});
 
 	const selectPanel = (value: string) => {
@@ -84,7 +83,7 @@ export function MediaDetailLayout(props: {
 	);
 
 	return (
-		<MediaDetailNavigationContext.Provider value={showMetadata}>
+		<MediaDetailNavigationContext value={showMetadata}>
 			<div class="flex min-h-0 flex-1 flex-col">
 				{props.header}
 				<div
@@ -167,7 +166,7 @@ export function MediaDetailLayout(props: {
 					<Show when={!mobilePanels()}>{renderMetadata()}</Show>
 				</div>
 			</div>
-		</MediaDetailNavigationContext.Provider>
+		</MediaDetailNavigationContext>
 	);
 }
 
@@ -182,7 +181,7 @@ export function MediaDetailToolbar(props: {
 	showMetadataLink?: boolean;
 	actions?: JSX.Element;
 }) {
-	const showMetadata = useContext(MediaDetailNavigationContext);
+	const showMetadata = useContext(MediaDetailNavigationContext) ?? undefined;
 	return (
 		<header class="z-10 shrink-0 border-border border-b bg-background px-3 py-2 sm:px-4">
 			<div class="flex min-w-0 flex-wrap items-center gap-2">

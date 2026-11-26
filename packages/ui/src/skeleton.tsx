@@ -1,5 +1,6 @@
-import type { ComponentProps, ParentProps } from "solid-js";
-import { For, splitProps } from "solid-js";
+import type { ParentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
+import { For } from "solid-js";
 import { Card, CardContent, CardHeader } from "./card";
 import { cn } from "./utils/cn";
 
@@ -20,7 +21,8 @@ export type SkeletonProps = Omit<ComponentProps<"div">, "aria-hidden">;
 
 /** Decorative placeholder. Announce loading once on the containing region. */
 export function Skeleton(props: SkeletonProps) {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 
 	return (
 		<div
@@ -187,3 +189,5 @@ export function ConfigSkeleton(props: ConfigSkeletonProps) {
 		</div>
 	);
 }
+
+import { omit } from "solid-js";

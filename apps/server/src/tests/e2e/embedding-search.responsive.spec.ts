@@ -130,9 +130,9 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	await page.goto("/manager");
 	await selectManagerCategory(page, "ベクトル抽出");
 	await expect(
-		page.getByRole("button", { name: /^ベクトル抽出モデル/ }),
+		page.getByRole("combobox", { name: /^ベクトル抽出モデル/ }),
 	).toContainText("EmbeddingGemma 2");
-	await page.getByRole("button", { name: /^対象ソース / }).click();
+	await page.getByRole("combobox", { name: /^対象ソース(?: |$)/ }).click();
 	await page.getByRole("option", { name: sourceName, exact: true }).click();
 	await page.getByRole("button", { name: "抽出を開始", exact: true }).click();
 	await expect(
@@ -296,7 +296,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	).toBe(0);
 	await filters.click();
 	await expect(
-		dialog.getByRole("button", { name: /^類似検索モデル/ }),
+		dialog.getByRole("combobox", { name: /^類似検索モデル/ }),
 	).toContainText("EmbeddingGemma 2");
 	await expect
 		.poll(() =>

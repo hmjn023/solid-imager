@@ -1,9 +1,9 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as ToggleButtonPrimitive from "@kobalte/core/toggle-button";
+import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
+import { Toggle as ToggleButtonPrimitive } from "@ui-sdk/solid/toggle";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import type { ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+import type { ComponentProps, ValidComponent } from "@solidjs/web";
+import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
@@ -28,28 +28,36 @@ const toggleVariants = cva(
 	},
 );
 
-type ToggleButtonRootProps<T extends ValidComponent = "button"> =
-	ToggleButtonPrimitive.ToggleButtonRootProps<T> &
-		VariantProps<typeof toggleVariants> & {
-			class?: string | undefined;
-			"data-toggle-group-item"?: "";
-		};
+type ToggleButtonRootProps = Omit<
+	ComponentProps<typeof ToggleButtonPrimitive>,
+	"class" | "onPressedChange" | "onChange"
+> & { onChange?: (pressed: boolean) => void } & VariantProps<
+		typeof toggleVariants
+	> & {
+		class?: string | undefined;
+		"data-toggle-group-item"?: "";
+	};
 
 const Toggle = <T extends ValidComponent = "button">(
-	props: PolymorphicProps<T, ToggleButtonRootProps<T>>,
+	props: PolymorphicProps<T, ToggleButtonRootProps>,
 ) => {
-	const [local, others] = splitProps(props as ToggleButtonRootProps, [
+	const others = omit(
+		props as ToggleButtonRootProps & { as?: ValidComponent },
 		"class",
 		"variant",
 		"size",
-	]);
+		"onChange",
+		"as",
+	);
 	return (
-		<ToggleButtonPrimitive.Root
+		<ToggleButtonPrimitive
+			render={props.as ? renderAs(() => props.as) : undefined}
+			onPressedChange={props.onChange}
 			class={cn(
-				toggleVariants({ variant: local.variant, size: local.size }),
+				toggleVariants({ variant: props.variant, size: props.size }),
 				props["data-toggle-group-item"] !== undefined &&
 					"hover:bg-muted hover:text-muted-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground",
-				local.class,
+				props.class,
 			)}
 			{...others}
 		/>

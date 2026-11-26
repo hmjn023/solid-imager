@@ -1,5 +1,3 @@
-import { createEffect, onCleanup } from "solid-js";
-
 /** Observe the edge of a collection only while another page can be fetched. */
 export function observePageBoundary(options: {
 	target: () => Element | undefined;
@@ -8,7 +6,7 @@ export function observePageBoundary(options: {
 	rootMargin: string | (() => string);
 	load: () => void | Promise<unknown>;
 }) {
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const target = options.target();
 		if (!target || !options.enabled()) return;
 		let active = true;
@@ -32,9 +30,11 @@ export function observePageBoundary(options: {
 			},
 		);
 		observer.observe(target);
-		onCleanup(() => {
+		return () => {
 			active = false;
 			observer.disconnect();
-		});
+		};
 	});
 }
+
+import { createTrackedEffect } from "solid-js";

@@ -65,6 +65,8 @@ export function useSourcesPage(
 	>(null);
 	const [isDeleting, setIsDeleting] = createSignal(false);
 	const [isSyncing, setIsSyncing] = createSignal(false);
+	let deleting = false;
+	let syncing = false;
 
 	const invalidate = () => {
 		void queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
@@ -113,9 +115,10 @@ export function useSourcesPage(
 	};
 
 	const handleDeleteConfirm = async (mediaSourceId: string) => {
-		if (isDeleting()) {
+		if (deleting) {
 			return;
 		}
+		deleting = true;
 		setIsDeleting(true);
 		try {
 			await actions.deleteMediaSource(mediaSourceId);
@@ -130,6 +133,7 @@ export function useSourcesPage(
 				description: error instanceof Error ? error.message : String(error),
 			});
 		} finally {
+			deleting = false;
 			setIsDeleting(false);
 		}
 	};
@@ -137,9 +141,10 @@ export function useSourcesPage(
 	const handleSyncSource = async (
 		source: SafeMediaSource | MediaSourceInfo,
 	) => {
-		if (!source.id || isSyncing()) {
+		if (!source.id || syncing) {
 			return;
 		}
+		syncing = true;
 		setIsSyncing(true);
 		toast.info(
 			t("useSourcesPage.startingSyncForValue", { value0: String(source.name) }),
@@ -177,15 +182,17 @@ export function useSourcesPage(
 				},
 			);
 		} finally {
+			syncing = false;
 			setIsSyncing(false);
 		}
 	};
 
 	const handleSyncAll = async (sources: SafeMediaSource[] | undefined) => {
-		if (!sources || sources.length === 0 || isSyncing()) {
+		if (!sources || sources.length === 0 || syncing) {
 			return;
 		}
 
+		syncing = true;
 		setIsSyncing(true);
 		toast.info(t("useSourcesPage.startingSyncForAllSources"));
 		try {
@@ -212,6 +219,7 @@ export function useSourcesPage(
 				description: error instanceof Error ? error.message : String(error),
 			});
 		} finally {
+			syncing = false;
 			setIsSyncing(false);
 		}
 	};

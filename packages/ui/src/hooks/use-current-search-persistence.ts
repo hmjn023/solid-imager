@@ -5,13 +5,12 @@ import {
 } from "@solid-imager/core/search";
 import {
 	type Accessor,
-	createEffect,
 	createMemo,
 	createSignal,
 	onCleanup,
 	untrack,
 } from "solid-js";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import { searchState, setSearchState } from "../stores/search-store";
 import {
 	getSearchScrollStorageKey,
@@ -145,7 +144,9 @@ export function useCurrentSearchPersistence(
 	sourceId: SearchPersistenceSource = "current",
 	options: SearchPersistenceOptions = {},
 ): Accessor<boolean> {
-	const [isRestored, setIsRestored] = createSignal(false);
+	const [restoredSession, setRestoredSession] = createSignal<string | null>(
+		null,
+	);
 	const trackSession = createMemo(() =>
 		isServer ? "" : encodeSearchSession(searchState),
 	);
@@ -157,6 +158,8 @@ export function useCurrentSearchPersistence(
 	const getSourceId = () =>
 		typeof sourceId === "function" ? sourceId() : sourceId;
 	const resolveSessionName = () => getCurrentSessionName(getSourceId());
+	const isRestored = () =>
+		restoredSession() !== null && restoredSession() === resolveSessionName();
 	const resolveHistoryEntryKey = () =>
 		typeof options.historyEntryKey === "function"
 			? options.historyEntryKey()
@@ -174,14 +177,11 @@ export function useCurrentSearchPersistence(
 		}
 	};
 
-	createEffect(() => {
-		const currentSourceId = getSourceId();
-		const sessionName = getCurrentSessionName(currentSourceId);
+	createEffect(resolveSessionName, (sessionName) => {
 		if (!sessionName || isServer) {
+			setRestoredSession(null);
 			return;
 		}
-
-		setIsRestored(false);
 		untrack(() => {
 			const scrollY = readScrollPosition(sessionName, resolveHistoryEntryKey());
 			const storage = getSessionStorage();
@@ -191,15 +191,32 @@ export function useCurrentSearchPersistence(
 				const state = saved
 					? decodeSearchSession(saved, searchState.selectedSource)
 					: null;
-				setSearchState({ ...(state ?? defaultState), scrollY });
+				if (state) {
+					const serialized = encodeSearchSession(state);
+					if (saved !== serialized) {
+						try {
+							storage.setItem(
+								getSearchStateStorageKey(sessionName),
+								serialized,
+							);
+						} catch {
+							// Continue restoring when storage no longer accepts writes.
+						}
+					}
+				}
+				setSearchState((draft) => {
+					Object.assign(draft, { ...(state ?? defaultState), scrollY });
+				});
 			} else {
-				setSearchState("scrollY", scrollY);
+				setSearchState((draft) => {
+					draft.scrollY = scrollY;
+				});
 			}
 		});
-		setIsRestored(true);
+		setRestoredSession(sessionName);
 	});
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (debounceTimer) {
 			clearTimeout(debounceTimer);
 			debounceTimer = null;
@@ -220,11 +237,7 @@ export function useCurrentSearchPersistence(
 		pendingScrollPosition = searchState.scrollY;
 		const trackedSession = trackSession();
 		const initialSave = lastPersistedSessionName !== sessionName;
-		// Restoration can update the store in the same effect cycle as the first
-		// save. Read it directly before the memo has refreshed in that cycle.
-		const serializedSession = initialSave
-			? untrack(() => encodeSearchSession(searchState))
-			: trackedSession;
+		const serializedSession = trackedSession;
 
 		const persistCurrentState = () => {
 			try {
@@ -260,3 +273,5 @@ export function useCurrentSearchPersistence(
 
 	return isRestored;
 }
+
+import { createEffect, createTrackedEffect } from "solid-js";

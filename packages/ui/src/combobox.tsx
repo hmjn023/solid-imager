@@ -1,363 +1,443 @@
+import Check from "@lucide/solid/icons/check";
 import { t } from "@solid-imager/i18n";
-import * as ComboboxPrimitive from "@kobalte/core/combobox";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import { createVirtualizer } from "@tanstack/solid-virtual";
-import type { JSX, ValidComponent } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import * as Sdk from "@ui-sdk/solid/combobox";
 import {
-	createEffect,
+	createContext,
 	createMemo,
 	createSignal,
 	For,
 	Show,
-	splitProps,
+	onCleanup,
+	omit,
+	useContext,
+	type ComponentProps,
 } from "solid-js";
-
 import { cn } from "./utils/cn";
+import { createVirtualizer } from "./utils/virtualizer";
 
-const Combobox = ComboboxPrimitive.Root;
-const useComboboxContext = ComboboxPrimitive.useComboboxContext;
-const ComboboxItemLabel = ComboboxPrimitive.ItemLabel;
-const ComboboxHiddenSelect = ComboboxPrimitive.HiddenSelect;
-
-type ComboboxLabelProps<T extends ValidComponent = "label"> =
-	ComboboxPrimitive.ComboboxLabelProps<T> & { class?: string | undefined };
-
-const ComboboxLabel = <T extends ValidComponent = "label">(
-	props: PolymorphicProps<T, ComboboxLabelProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxLabelProps, ["class"]);
-	return (
-		<ComboboxPrimitive.Label
-			class={cn(
-				"font-medium text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-				local.class,
-			)}
-			{...others}
-		/>
-	);
+type OptionProperty<T> = keyof T | ((option: T) => string);
+type Choice<T> = {
+	key: string;
+	textValue: string;
+	rawValue: T;
+	index?: number;
 };
+type CommonProps<T> = {
+	children?: JSX.Element;
+	inline?: boolean;
+	class?: string;
+	disabled?: boolean;
+	name?: string;
+	placeholder?: string;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	query?: string;
+	onInputChange?: (query: string) => void;
+	noResetInputOnBlur?: boolean;
+	triggerMode?: "focus" | "input";
+	options: T[];
+	optionValue?: OptionProperty<T>;
+	optionLabel?: OptionProperty<T>;
+	optionTextValue?: OptionProperty<T>;
+	defaultFilter?: (option: T, query: string) => boolean;
+	itemComponent?: (props: { item: Choice<T> }) => JSX.Element;
+	disallowEmptySelection?: boolean;
+};
+type ComboboxProps<T> = CommonProps<T> &
+	(
+		| {
+				multiple?: false;
+				value?: T | null;
+				onChange?: (value: T | null) => void;
+		  }
+		| { multiple: true; value?: T[]; onChange?: (value: T[]) => void }
+	);
+type ComboboxContextValue = {
+	placeholder?: string;
+	triggerMode?: CommonProps<string>["triggerMode"];
+	controller: Sdk.ComboboxController<string, boolean>;
+	renderItem: (key: string, index?: number) => JSX.Element;
+	visibleKeys: () => string[];
+	registerScroll: (scroll: (index: number) => void) => void;
+};
+const ComboboxContext = createContext<ComboboxContextValue>();
 
-type ComboboxItemProps<T extends ValidComponent = "li"> =
-	ComboboxPrimitive.ComboboxItemProps<T> & {
-		class?: string | undefined;
+function readOption<T>(option: T, property?: OptionProperty<T>): string {
+	if (typeof property === "function") return property(option);
+	return String(property === undefined ? option : option[property]);
+}
+
+function useComboboxContext() {
+	const context = useContext(ComboboxContext);
+	return {
+		isOpen: context.controller.isOpen,
+		close: context.controller.close,
+		setInputValue: context.controller.setQuery,
+	};
+}
+
+function Combobox<T>(props: ComboboxProps<T>) {
+	const controller = Sdk.createComboboxController<string, boolean>();
+	let scrollToItem: ((index: number) => void) | undefined;
+	const choices = createMemo(
+		() =>
+			new Map(
+				props.options.map((option) => [
+					readOption(option, props.optionValue),
+					{
+						key: readOption(option, props.optionValue),
+						textValue: readOption(
+							option,
+							props.optionTextValue ?? props.optionLabel,
+						),
+						rawValue: option,
+					},
+				]),
+			),
+	);
+	const items = createMemo(() =>
+		Array.from(choices().values())
+			.filter(
+				(choice) =>
+					props.defaultFilter?.(choice.rawValue, props.query ?? "") ?? true,
+			)
+			.map((choice) => ({ value: choice.key, label: choice.textValue })),
+	);
+	const selectedId = (option: T) => readOption(option, props.optionValue);
+	const context: ComboboxContextValue = {
+		get placeholder() {
+			return props.placeholder;
+		},
+		get triggerMode() {
+			return props.triggerMode;
+		},
+		controller,
+		visibleKeys: () => items().map((item) => item.value),
+		renderItem: (key, index) => {
+			return (
+				<Show keyed when={choices().get(key)}>
+					{(choice) => {
+						const option = { ...choice, index };
+						return (
+							<>
+								{props.itemComponent ? (
+									props.itemComponent({ item: option })
+								) : (
+									<ComboboxItem item={option}>{choice.textValue}</ComboboxItem>
+								)}
+							</>
+						);
+					}}
+				</Show>
+			);
+		},
+		registerScroll: (scroll) => {
+			scrollToItem = scroll;
+		},
 	};
 
-const ComboboxItem = <T extends ValidComponent = "li">(
-	props: PolymorphicProps<T, ComboboxItemProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxItemProps, ["class"]);
 	return (
-		<ComboboxPrimitive.Item
-			class={cn(
-				"relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[selected]:font-medium data-[highlighted]:text-foreground data-[disabled]:opacity-50",
-				local.class,
-			)}
-			{...others}
-		/>
+		<ComboboxContext value={context}>
+			<div class={props.class}>
+				<Sdk.Combobox<string, boolean>
+					controller={controller}
+					disabled={props.disabled}
+					multiple={props.multiple}
+					name={props.name}
+					open={props.open}
+					onOpenChange={(open, details) => {
+						if (
+							props.inline &&
+							!open &&
+							(details.reason === "focus-out" ||
+								details.reason === "outside-press")
+						) {
+							details.cancel();
+							return;
+						}
+						props.onOpenChange?.(open);
+					}}
+					items={props.inline ? undefined : items()}
+					filter={props.defaultFilter ? false : "contains"}
+					query={props.query}
+					onQueryChange={(query, details) => {
+						if (
+							props.noResetInputOnBlur &&
+							details.reason !== "input-change" &&
+							details.reason !== "imperative"
+						) {
+							details.cancel();
+							return;
+						}
+						if (details.reason !== "imperative") props.onInputChange?.(query);
+					}}
+					value={
+						props.multiple
+							? props.value?.map(selectedId)
+							: props.value === undefined
+								? undefined
+								: props.value === null
+									? null
+									: selectedId(props.value)
+					}
+					itemToLabel={(id) =>
+						choices().get(id)?.textValue ??
+						(!props.multiple && props.value != null
+							? readOption(props.value, props.optionLabel)
+							: id)
+					}
+					onValueChange={(value) => {
+						if (props.multiple) {
+							const selected = Array.isArray(value) ? value : [];
+							const options = new Map(
+								props.value?.map((item) => [selectedId(item), item]),
+							);
+							props.onChange?.(
+								selected.flatMap((id) => {
+									const item = choices().get(id)?.rawValue ?? options.get(id);
+									return item === undefined ? [] : [item];
+								}),
+							);
+						} else if (typeof value === "string") {
+							props.onChange?.(choices().get(value)?.rawValue ?? null);
+						} else if (!props.disallowEmptySelection) {
+							props.onChange?.(null);
+						}
+					}}
+					onHighlight={(_, details) => scrollToItem?.(details.index)}
+				>
+					{props.children}
+				</Sdk.Combobox>
+			</div>
+		</ComboboxContext>
 	);
-};
+}
 
-type ComboboxItemIndicatorProps<T extends ValidComponent = "div"> =
-	ComboboxPrimitive.ComboboxItemIndicatorProps<T> & {
-		children?: JSX.Element;
-	};
-
-const ComboboxItemIndicator = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, ComboboxItemIndicatorProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxItemIndicatorProps, [
-		"children",
-	]);
+function ComboboxControl(props: JSX.IntrinsicElements["div"]) {
 	return (
-		<ComboboxPrimitive.ItemIndicator {...others}>
-			<Show
-				fallback={
-					<svg
-						aria-label={t("contextMenu.selected")}
-						class="size-4"
-						fill="none"
-						stroke="currentColor"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						viewBox="0 0 24 24"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<title>{t("contextMenu.selected")}</title>
-						<path d="M5 12l5 5l10 -10" />
-					</svg>
-				}
-				when={local.children}
-			>
-				{(children) => children()}
-			</Show>
-		</ComboboxPrimitive.ItemIndicator>
-	);
-};
-
-type ComboboxSectionProps<T extends ValidComponent = "li"> =
-	ComboboxPrimitive.ComboboxSectionProps<T> & { class?: string | undefined };
-
-const ComboboxSection = <T extends ValidComponent = "li">(
-	props: PolymorphicProps<T, ComboboxSectionProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxSectionProps, ["class"]);
-	return (
-		<ComboboxPrimitive.Section
-			class={cn(
-				"overflow-hidden p-1 px-2 py-1.5 font-medium text-muted-foreground text-xs",
-				local.class,
-			)}
-			{...others}
-		/>
-	);
-};
-
-type ComboboxControlProps<
-	U,
-	T extends ValidComponent = "div",
-> = ComboboxPrimitive.ComboboxControlProps<U, T> & {
-	class?: string | undefined;
-};
-
-const ComboboxControl = <T, U extends ValidComponent = "div">(
-	props: PolymorphicProps<U, ComboboxControlProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxControlProps<T>, [
-		"class",
-	]);
-	return (
-		<ComboboxPrimitive.Control
+		<div
+			{...omit(props, "class")}
 			class={cn(
 				"flex h-10 items-center rounded-md border border-input px-3 focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
-				local.class,
+				props.class,
 			)}
-			{...others}
-		/>
-	);
-};
-
-type ComboboxInputProps<T extends ValidComponent = "input"> =
-	ComboboxPrimitive.ComboboxInputProps<T> & { class?: string | undefined };
-
-const ComboboxInput = <T extends ValidComponent = "input">(
-	props: PolymorphicProps<T, ComboboxInputProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxInputProps, ["class"]);
-	return (
-		<ComboboxPrimitive.Input
-			class={cn(
-				"flex size-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
-				local.class,
-			)}
-			{...others}
-		/>
-	);
-};
-
-type ComboboxTriggerProps<T extends ValidComponent = "button"> =
-	ComboboxPrimitive.ComboboxTriggerProps<T> & {
-		class?: string | undefined;
-		children?: JSX.Element;
-	};
-
-const ComboboxTrigger = <T extends ValidComponent = "button">(
-	props: PolymorphicProps<T, ComboboxTriggerProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxTriggerProps, [
-		"class",
-		"children",
-	]);
-	return (
-		<ComboboxPrimitive.Trigger
-			aria-label={t("controls.toggleOptions")}
-			class={cn(
-				"flex min-h-11 min-w-11 items-center justify-center opacity-50",
-				local.class,
-			)}
-			{...others}
-		>
-			<ComboboxPrimitive.Icon>
-				<Show
-					fallback={
-						<svg
-							aria-label={t("combobox.toggle")}
-							class="size-4"
-							fill="none"
-							stroke="currentColor"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<title>{t("combobox.toggle")}</title>
-							<path d="M8 9l4 -4l4 4" />
-							<path d="M16 15l-4 4l-4 -4" />
-						</svg>
-					}
-					when={local.children}
-				>
-					{(children) => children()}
-				</Show>
-			</ComboboxPrimitive.Icon>
-		</ComboboxPrimitive.Trigger>
-	);
-};
-
-type ComboboxContentProps<T extends ValidComponent = "div"> =
-	ComboboxPrimitive.ComboboxContentProps<T> & { class?: string | undefined };
-
-type PortalledComboboxContentProps<T extends ValidComponent = "div"> =
-	ComboboxContentProps<T> & { portalMount?: HTMLElement };
-
-const preventInputBlur = (event: MouseEvent) => {
-	// Touch selection is committed on click, after the compatibility mousedown.
-	// Keep input focus so blur cannot reset the query and replace the tapped item.
-	// Preventing mousedown leaves native touch scrolling and click intact.
-	if (event.button === 0) {
-		event.preventDefault();
-	}
-};
-
-function ComboboxInlineListbox() {
-	return (
-		<ComboboxPrimitive.Listbox
-			class="m-0 max-h-60 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground"
-			onMouseDown={preventInputBlur}
 		/>
 	);
 }
 
-const ComboboxContent = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, PortalledComboboxContentProps<T>>,
-) => {
-	const [local, others] = splitProps(props as PortalledComboboxContentProps, [
-		"class",
-		"portalMount",
-	]);
+function ComboboxInput(props: ComponentProps<typeof Sdk.ComboboxInput>) {
+	const context = useContext(ComboboxContext);
 	return (
-		<ComboboxPrimitive.Portal mount={local.portalMount}>
-			<ComboboxPrimitive.Content
-				class={cn(
-					"motion-safe:fade-in-80 relative z-50 flex max-h-popover-fit-available min-w-32 max-w-viewport-gutter flex-col overflow-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md motion-safe:animate-in",
-					local.class,
-				)}
-				{...others}
-			>
-				<ComboboxPrimitive.Listbox
-					class="m-0 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1"
-					onMouseDown={preventInputBlur}
-				/>
-			</ComboboxPrimitive.Content>
-		</ComboboxPrimitive.Portal>
+		<Sdk.ComboboxInput
+			{...omit(props, "class", "onFocus", "placeholder")}
+			class={cn(
+				"flex size-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+				props.class,
+			)}
+			placeholder={props.placeholder ?? context.placeholder}
+			onFocus={(event) => {
+				if (typeof props.onFocus === "function") props.onFocus(event);
+				if (!event.defaultPrevented && context.triggerMode === "focus") {
+					context.controller.setOpen(true);
+				}
+			}}
+		/>
 	);
-};
+}
 
-const ITEM_HEIGHT_PX = 44;
-const VIRTUAL_OVERSCAN = 5;
-
-const VirtualComboboxContent = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, ComboboxContentProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxContentProps, ["class"]);
-	const [scrollEl, setScrollEl] = createSignal<HTMLUListElement | null>(null);
-	const [itemIndices, setItemIndices] = createSignal<Map<string, number>>(
-		new Map(),
-	);
-
-	const virtualizer = createVirtualizer({
-		count: 0,
-		getScrollElement: () => scrollEl(),
-		estimateSize: () => ITEM_HEIGHT_PX,
-		overscan: VIRTUAL_OVERSCAN,
-	});
-
+function ComboboxLabel(props: ComponentProps<typeof Sdk.ComboboxLabel>) {
 	return (
-		<ComboboxPrimitive.Portal>
-			<ComboboxPrimitive.Content
-				class={cn(
-					"motion-safe:fade-in-80 relative z-50 flex max-h-popover-fit-available min-w-32 max-w-viewport-gutter flex-col overflow-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md motion-safe:animate-in",
-					local.class,
-				)}
-				{...others}
-			>
-				<ComboboxPrimitive.Listbox
-					class="m-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1"
-					onMouseDown={preventInputBlur}
-					ref={(el: Element) => {
-						setScrollEl(el as HTMLUListElement);
-					}}
-					scrollToItem={(key) => {
-						const index = itemIndices().get(key);
-						if (index !== undefined) virtualizer.scrollToIndex(index);
-					}}
+		<Sdk.ComboboxLabel
+			{...omit(props, "class")}
+			class={cn(
+				"font-medium text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+				props.class,
+			)}
+		/>
+	);
+}
+
+function ComboboxItem<T>(
+	props: Omit<ComponentProps<typeof Sdk.ComboboxItem>, "value" | "index"> & {
+		item: Choice<T>;
+	},
+) {
+	return (
+		<Sdk.ComboboxItem
+			{...omit(props, "item", "class")}
+			value={props.item.key}
+			index={props.item.index}
+			label={props.item.textValue}
+			class={cn(
+				"relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[selected]:font-medium data-[highlighted]:text-foreground data-[disabled]:opacity-50",
+				props.class,
+			)}
+		/>
+	);
+}
+
+function ComboboxItemLabel(props: JSX.IntrinsicElements["span"]) {
+	return <span {...props} />;
+}
+
+function ComboboxItemIndicator(
+	props: ComponentProps<typeof Sdk.ComboboxItemIndicator>,
+) {
+	return (
+		<Sdk.ComboboxItemIndicator {...props}>
+			{props.children ?? <Check aria-hidden="true" class="size-4" />}
+		</Sdk.ComboboxItemIndicator>
+	);
+}
+
+function ComboboxTrigger(props: ComponentProps<typeof Sdk.ComboboxTrigger>) {
+	return (
+		<Sdk.ComboboxTrigger
+			aria-label={t("controls.toggleOptions")}
+			{...omit(props, "class")}
+			class={cn(
+				"flex min-h-11 min-w-11 items-center justify-center opacity-50",
+				props.class,
+			)}
+		>
+			{props.children ?? (
+				<svg
+					aria-hidden="true"
+					class="size-4"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
 				>
-					{(items) => {
-						const asArray = createMemo(() => [...items()]);
-
-						createEffect(() => {
-							const collectionItems = asArray();
-							virtualizer.setOptions({
-								...virtualizer.options,
-								count: collectionItems.length,
-							});
-							const nextItemIndices = new Map<string, number>();
-							collectionItems.forEach((item, index) => {
-								nextItemIndices.set(item.key, index);
-							});
-							setItemIndices(nextItemIndices);
-						});
-
-						const virtualItems = createMemo(() => {
-							return virtualizer.getVirtualItems();
-						});
-
-						return (
-							<div
-								class="relative w-full virtualized-combobox-list"
-								style={{
-									"--combobox-list-height": `${virtualizer.getTotalSize()}px`,
-								}}
-							>
-								<For each={virtualItems()}>
-									{(virtualRow) => {
-										const item = asArray()[virtualRow.index];
-										if (!item) return null;
-										return (
-											<div
-												class="absolute top-0 left-0 w-full virtualized-combobox-row"
-												style={{
-													"--combobox-row-height": `${virtualRow.size}px`,
-													"--combobox-row-offset": `${virtualRow.start}px`,
-												}}
-											>
-												<ComboboxPrimitive.Item
-													item={item}
-													class="relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[selected]:font-medium data-[highlighted]:text-foreground data-[disabled]:opacity-50"
-												>
-													<ComboboxPrimitive.ItemLabel>
-														{item.textValue}
-													</ComboboxPrimitive.ItemLabel>
-												</ComboboxPrimitive.Item>
-											</div>
-										);
-									}}
-								</For>
-							</div>
-						);
-					}}
-				</ComboboxPrimitive.Listbox>
-			</ComboboxPrimitive.Content>
-		</ComboboxPrimitive.Portal>
+					<path d="m8 9 4-4 4 4m0 6-4 4-4-4" />
+				</svg>
+			)}
+		</Sdk.ComboboxTrigger>
 	);
-};
+}
+
+const ComboboxSection = Sdk.ComboboxGroup;
+
+type ContentProps = Omit<
+	ComponentProps<typeof Sdk.ComboboxContent>,
+	"children" | "container"
+> & { portalMount?: HTMLElement };
+
+function itemKeys(items: Sdk.ListData<unknown>): string[] {
+	return items.flatMap((item) => {
+		if (typeof item === "string") return [item];
+		if ("value" in item && typeof item.value === "string") return [item.value];
+		return [];
+	});
+}
+
+const listClass = "m-0 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1";
+
+function ComboboxListItems(props: { items: Sdk.ListData<unknown> }) {
+	const context = useContext(ComboboxContext);
+	return (
+		<For each={itemKeys(props.items)}>
+			{(key) => <>{context.renderItem(key)}</>}
+		</For>
+	);
+}
+
+function VirtualComboboxList(props: { items: Sdk.ListData<unknown> }) {
+	const context = useContext(ComboboxContext);
+	const keys = createMemo(() => itemKeys(props.items));
+	const [scrollElement, setScrollElement] = createSignal<HTMLDivElement | null>(
+		null,
+	);
+	const virtualizer = createVirtualizer({
+		get count() {
+			return keys().length;
+		},
+		getScrollElement: scrollElement,
+		estimateSize: () => 44,
+		overscan: 5,
+	});
+	context.registerScroll((index) => virtualizer.scrollToIndex(index));
+	onCleanup(() => context.registerScroll(() => {}));
+
+	return (
+		<Sdk.ComboboxList class={listClass} ref={setScrollElement}>
+			<div
+				class="relative w-full virtualized-combobox-list"
+				style={{ "--combobox-list-height": `${virtualizer.getTotalSize()}px` }}
+			>
+				<For each={virtualizer.getVirtualItems()}>
+					{(row) => (
+						<div
+							class="absolute top-0 left-0 w-full virtualized-combobox-row"
+							style={{
+								"--combobox-row-height": `${row.size}px`,
+								"--combobox-row-offset": `${row.start}px`,
+							}}
+						>
+							{context.renderItem(keys()[row.index] ?? "", row.index)}
+						</div>
+					)}
+				</For>
+			</div>
+		</Sdk.ComboboxList>
+	);
+}
+
+function ComboboxPopup(props: ContentProps & { virtual?: boolean }) {
+	return (
+		<Sdk.ComboboxContent
+			{...omit(props, "class", "portalMount", "virtual")}
+			class={cn(
+				"motion-safe:fade-in-80 relative z-50 flex max-h-[min(24rem,var(--available-height,calc(100dvh-2rem)))] min-w-32 max-w-viewport-gutter flex-col overflow-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md motion-safe:animate-in",
+				props.class,
+			)}
+			container={props.portalMount}
+		>
+			{(state) => (
+				<Show
+					when={props.virtual}
+					fallback={
+						<Sdk.ComboboxList class={listClass}>
+							<ComboboxListItems items={state.items} />
+						</Sdk.ComboboxList>
+					}
+				>
+					<VirtualComboboxList items={state.items} />
+				</Show>
+			)}
+		</Sdk.ComboboxContent>
+	);
+}
+
+function ComboboxContent(props: ContentProps) {
+	return <ComboboxPopup {...props} />;
+}
+
+function VirtualComboboxContent(props: ContentProps) {
+	return <ComboboxPopup {...props} virtual />;
+}
+
+function ComboboxInlineListbox() {
+	const context = useContext(ComboboxContext);
+	return (
+		<Sdk.ComboboxList
+			class="m-0 max-h-60 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground"
+			onMouseDown={(event) => {
+				if (event.button === 0) event.preventDefault();
+			}}
+		>
+			<For each={context.visibleKeys()}>
+				{(key) => <>{context.renderItem(key)}</>}
+			</For>
+		</Sdk.ComboboxList>
+	);
+}
 
 export {
 	Combobox,
 	ComboboxContent,
 	ComboboxControl,
-	ComboboxHiddenSelect,
 	ComboboxInlineListbox,
 	ComboboxInput,
 	ComboboxItem,

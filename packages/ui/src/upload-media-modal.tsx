@@ -1,16 +1,9 @@
+import { cn } from "./utils/cn";
 import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { createForm } from "@tanstack/solid-form";
-import X from "lucide-solid/icons/x";
-import {
-	batch,
-	createEffect,
-	createSignal,
-	For,
-	on,
-	onCleanup,
-	Show,
-} from "solid-js";
+import { createForm } from "./utils/create-form";
+import X from "@lucide/solid/icons/x";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "./alert";
 import {
@@ -263,59 +256,57 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	};
 
 	createEffect(
-		on(
-			() => props.isOpen,
-			(isOpen) => {
-				if (!isOpen) {
-					draft.close();
-					return;
-				}
-				batch(() => {
-					const initial = props.initialFiles?.length
-						? props.initialFiles
-						: props.initialFile
-							? [props.initialFile]
-							: [];
-					draft.open(initial);
-					form.reset({
-						...EMPTY_UPLOAD_FORM,
-						filename: initial[0]?.name ?? "",
-						sourceUrl: props.pastedUrl ?? "",
-					});
-					setSubmitError(null);
-					setShowDiscardDialog(false);
-				});
-			},
-		),
+		() => props.isOpen,
+		(isOpen) => {
+			if (!isOpen) {
+				draft.close();
+				return;
+			}
+			const initial = props.initialFiles?.length
+				? props.initialFiles
+				: props.initialFile
+					? [props.initialFile]
+					: [];
+			draft.open(initial);
+			form.reset({
+				...EMPTY_UPLOAD_FORM,
+				filename: initial[0]?.name ?? "",
+				sourceUrl: props.pastedUrl ?? "",
+			});
+			setSubmitError(null);
+			setShowDiscardDialog(false);
+		},
 	);
 	createEffect(
-		on(
-			() => [props.isOpen, sourceUrl()] as const,
-			([open, url]) => {
-				draft.changeUrl(url);
-				if (
-					open &&
-					selectedFiles().length === 0 &&
-					url &&
-					props.onFetchUrl &&
-					z.url().safeParse(url).success &&
-					url !== draft.lastFetchedUrl()
-				)
-					void handleUrlFetch(url);
-			},
-		),
+		() => ({
+			open: props.isOpen,
+			url: sourceUrl(),
+			canFetch: Boolean(props.onFetchUrl) && selectedFiles().length === 0,
+		}),
+		({ open, url, canFetch }) => {
+			draft.changeUrl(url);
+			if (
+				open &&
+				canFetch &&
+				url &&
+				z.url().safeParse(url).success &&
+				url !== draft.lastFetchedUrl()
+			)
+				void handleUrlFetch(url);
+		},
 	);
 
 	onCleanup(draft.close);
 
 	const requestClose = () => {
-		if (isSubmitting()) return;
+		if (isSubmitting()) return false;
 		if (form.state.isDirty || selectedFiles().length > 0 || isFetchingUrl()) {
 			setShowDiscardDialog(true);
-			return;
+			return false;
 		}
 		draft.close();
 		props.onClose();
+		return true;
 	};
 	const discardAndClose = () => {
 		setShowDiscardDialog(false);
@@ -327,8 +318,8 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	return (
 		<>
 			<Dialog
-				onOpenChange={(open) => {
-					if (!open && !isSubmitting()) requestClose();
+				onOpenChange={(open, details) => {
+					if (!open && !requestClose()) details.cancel();
 				}}
 				open={props.isOpen}
 			>
@@ -355,11 +346,13 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								when={selectedFiles().length > 0}
 								fallback={
 									<button
-										class="rounded-lg border-2 border-dashed p-6 text-center transition-colors"
-										classList={{
-											"border-primary bg-primary/5": isDragging(),
-											"border-muted": !isDragging(),
-										}}
+										class={cn(
+											"rounded-lg border-2 border-dashed p-6 text-center transition-colors",
+											{
+												"border-primary bg-primary/5": isDragging(),
+												"border-muted": !isDragging(),
+											},
+										)}
 										onClick={() => openFilePicker("replace")}
 										onDragEnter={(event) => {
 											event.preventDefault();
@@ -396,10 +389,9 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								}
 							>
 								<div
-									class="rounded-md border p-3 transition-colors"
-									classList={{
+									class={cn("rounded-md border p-3 transition-colors", {
 										"border-primary bg-primary/5": isDragging(),
-									}}
+									})}
 									onDragEnter={(event) => {
 										event.preventDefault();
 										setIsDragging(true);
@@ -502,7 +494,11 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 										<div class="space-y-2 sm:col-span-3">
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(event) =>
@@ -554,7 +550,11 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 										<div class="relative space-y-2 sm:col-span-3">
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(event) =>
@@ -713,7 +713,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 							>
 								{(state) => (
 									<Button
-										aria-busy={state().isSubmitting}
+										aria-busy={state().isSubmitting ? "true" : "false"}
 										disabled={
 											!state().canSubmit ||
 											state().isSubmitting ||

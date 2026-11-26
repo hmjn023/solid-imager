@@ -4,8 +4,8 @@ import type {
 	MediaDetails,
 	MediaPreferencesPatch,
 } from "@solid-imager/core/media";
-import { createMutation, useQueryClient } from "@tanstack/solid-query";
-import { onMount, Show } from "solid-js";
+import { useMutation, useQueryClient } from "@tanstack/solid-query";
+import { onSettled, Show } from "solid-js";
 import { v7 as uuidv7 } from "uuid";
 import { Button } from "./button";
 import {
@@ -71,7 +71,7 @@ export function MediaActivityControls(props: {
 		});
 	};
 
-	const visit = createMutation(() => ({
+	const visit = useMutation(() => ({
 		mutationFn: (input: MediaLocation & { viewId: string }) =>
 			props.api.recordView(input),
 		retry: 1,
@@ -79,9 +79,13 @@ export function MediaActivityControls(props: {
 			refresh(input, { viewCount, lastViewedAt }),
 	}));
 	// Only a mounted detail inspector represents a visit. Prefetches and query refreshes are reads.
-	onMount(() => visit.mutate({ ...location(), viewId: uuidv7() }));
+	onSettled(() => {
+		void visit
+			.mutate({ ...location(), viewId: uuidv7() })
+			.catch(() => undefined);
+	});
 
-	const save = createMutation(() => ({
+	const save = useMutation(() => ({
 		mutationFn: (input: MediaLocation & { data: MediaPreferencesPatch }) =>
 			props.api.updatePreferences(input),
 		onSuccess: ({ rating, favorite }, input) =>
@@ -153,7 +157,7 @@ export function MediaActivityControls(props: {
 					fallback={t("mediaActivityControls.neverViewed")}
 				>
 					{(date) => (
-						<time dateTime={date().toISOString()}>
+						<time datetime={date().toISOString()}>
 							{date().toLocaleString(getLocale())}
 						</time>
 					)}

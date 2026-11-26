@@ -13,7 +13,7 @@ test("manager source selectors expose all sources only where supported", async (
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 
-	const source = page.getByRole("button", { name: /^対象ソース / });
+	const source = page.getByRole("combobox", { name: /^対象ソース(?: |$)/ });
 	const allSources = page.getByRole("option", {
 		name: "すべてのソース",
 		exact: true,

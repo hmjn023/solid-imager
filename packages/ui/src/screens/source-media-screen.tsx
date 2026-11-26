@@ -1,7 +1,7 @@
 import { useRenderedSearchState } from "../search-initial-state";
 import { t } from "@solid-imager/i18n";
-import Upload from "lucide-solid/icons/upload";
-import { createSignal, onMount, Show } from "solid-js";
+import Upload from "@lucide/solid/icons/upload";
+import { createSignal, onSettled, Show } from "solid-js";
 import { EmptyState, FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import { MediaDeleteDialog } from "../media-delete-dialog";
@@ -51,7 +51,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const showEmptySource = () =>
 		shouldRenderGrid() &&
 		page().contentState().phase === "empty" &&
-		!page().mediaQuery.isPlaceholderData &&
+		page().resultsCurrent() &&
 		!hasSearchConditions(searchState());
 	const clearSearch = () => {
 		clearPresetFilters();
@@ -71,7 +71,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		}
 	};
 
-	onMount(() => {
+	onSettled(() => {
 		setIsMounted(true);
 		try {
 			const storedMode = readUiStorageValue(
@@ -215,7 +215,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							enableVirtualization={props.enableVirtualization}
 							hasNextPage={page().mediaQuery.hasNextPage}
 							isBulkSelectMode={props.isBulkSelectMode}
-							isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
+							isFetchingNextPage={page().isFetchingNextPage()}
 							isFetchNextPageError={page().mediaQuery.isFetchNextPageError}
 							itemAspectRatio={4 / 3}
 							isSelected={props.isSelected}
@@ -228,8 +228,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							onBulkAction={props.onBulkAction}
 							onClearSelection={props.onClearSelection}
 							onClearSearch={
-								!page().mediaQuery.isPlaceholderData &&
-								hasSearchConditions(searchState())
+								page().resultsCurrent() && hasSearchConditions(searchState())
 									? clearSearch
 									: undefined
 							}

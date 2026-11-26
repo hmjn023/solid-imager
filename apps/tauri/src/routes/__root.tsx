@@ -5,14 +5,13 @@ import { ApiActivityIndicator } from "@solid-imager/ui/api-activity-indicator";
 import { AppShell } from "@solid-imager/ui/app-shell";
 import { useJobsQueryEvents } from "@solid-imager/ui/jobs";
 import { MediaContentAccessContext } from "@solid-imager/ui/media-actions";
-import { jobsQueryKeys } from "@solid-imager/ui/query";
+import { jobsQueryKeys, readQueryData } from "@solid-imager/ui/query";
 import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
 import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts";
 import { Toaster } from "@solid-imager/ui/toast";
-import { useLiveQuery } from "@tanstack/solid-db";
 import {
-	createQuery,
 	type QueryClient,
+	useQuery,
 	useQueryClient,
 } from "@tanstack/solid-query";
 import {
@@ -21,6 +20,7 @@ import {
 	useNavigate,
 } from "@tanstack/solid-router";
 import { getCollections, refetchCollection } from "~/collections";
+import { observeSources } from "~/collections/live-sources";
 import { collectionQueryKeys } from "~/collections/query-keys";
 import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -46,16 +46,16 @@ function RootRouteComponent() {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
 	const { sources } = getCollections();
-	const sourceCollection = useLiveQuery(() => sources);
+	const sourceCollection = observeSources(sources);
 	useJobsQueryEvents((signal) => orpc.jobs.events(undefined, { signal }));
-	const activeJobsBadge = createQuery(() => ({
+	const activeJobsBadge = useQuery(() => ({
 		queryKey: [...jobsQueryKeys.all(), "badge", "active"],
 		queryFn: ({ signal }) =>
 			orpc.jobs.list({ status: "active", limit: 1, offset: 0 }, { signal }),
 		staleTime: JOBS_BADGE_STALE_MS,
 		select: (response) => response.total,
 	}));
-	const failedJobsBadge = createQuery(() => ({
+	const failedJobsBadge = useQuery(() => ({
 		queryKey: [...jobsQueryKeys.all(), "badge", "failed"],
 		queryFn: ({ signal }) =>
 			orpc.jobs.list({ status: "failed", limit: 1, offset: 0 }, { signal }),
@@ -63,13 +63,12 @@ function RootRouteComponent() {
 		select: (response) => response.total,
 	}));
 	const jobsCounts = () => ({
-		active: activeJobsBadge.data ?? 0,
-		failed: failedJobsBadge.data ?? 0,
+		active: readQueryData(activeJobsBadge) ?? 0,
+		failed: readQueryData(failedJobsBadge) ?? 0,
 	});
 	const sourceData = () => {
-		const cachedSources = sourceCollection();
-		return cachedSources.length > 0 ||
-			(sourceCollection.isReady && !sources.utils.isError)
+		const { rows: cachedSources, isReady } = sourceCollection();
+		return cachedSources.length > 0 || (isReady && !sources.utils.isError)
 			? cachedSources
 			: [];
 	};
@@ -126,14 +125,14 @@ function RootRouteComponent() {
 				serverConnectionsHref="/servers"
 			>
 				<ApiActivityIndicator />
-				<MediaContentAccessContext.Provider
+				<MediaContentAccessContext
 					value={{
 						getUrl: buildMediaContentUrl,
 						fetchContent: (url) => getApiFetch()(url),
 					}}
 				>
 					<Outlet />
-				</MediaContentAccessContext.Provider>
+				</MediaContentAccessContext>
 			</AppShell>
 		</ShortcutPreferencesProvider>
 	);

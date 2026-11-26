@@ -1,5 +1,5 @@
 import type { Media } from "@solid-imager/core/media";
-import { createRenderEffect, createSignal, onCleanup } from "solid-js";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 import type { ThumbnailSource } from "./thumbnail-image";
 
 const DEFAULT_HTTP_MAX_RETRIES = 10;
@@ -84,7 +84,9 @@ function resolveMimeType(fileName: string) {
 export function createHttpThumbnailSource(
 	props: CreateHttpThumbnailSourceProps,
 ): ThumbnailSource {
-	const [cacheKey, setCacheKey] = createSignal(0);
+	const [cacheKey, setCacheKey] = createSignal(() =>
+		new Date(props.modifiedAt).getTime(),
+	);
 	const [retryCount, setRetryCount] = createSignal(0);
 	const listeners = new Set<() => void>();
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -96,14 +98,15 @@ export function createHttpThumbnailSource(
 		}
 	};
 
-	createRenderEffect(() => {
-		void props.mediaId;
-		void props.mediaSourceId;
-		void props.modifiedAt;
-		clearRetryTimer();
-		setRetryCount(0);
-		setCacheKey(new Date(props.modifiedAt).getTime());
-	});
+	createEffect(
+		() => [props.mediaId, props.mediaSourceId, props.modifiedAt] as const,
+		([, , modifiedAt]) => {
+			clearRetryTimer();
+			setRetryCount(0);
+			setCacheKey(new Date(modifiedAt).getTime());
+		},
+		{ defer: true },
+	);
 
 	onCleanup(() => {
 		clearRetryTimer();
@@ -240,20 +243,25 @@ export function createLocalThumbnailSource(
 		scheduleRetry();
 	};
 
-	createRenderEffect(() => {
-		void props.media.id;
-		void props.media.mediaSourceId;
-		void props.media.modifiedAt;
-		clearRetryTimer();
-		setRetryCount(0);
-		setFallbackUrl((current) => {
-			revokeObjectUrl(props.objectUrl, current);
-			return null;
-		});
-		setThumbnailFilePath(null);
-		setUrl(null);
-		void loadThumbnail();
-	});
+	createEffect(
+		() =>
+			[
+				props.media.id,
+				props.media.mediaSourceId,
+				props.media.modifiedAt,
+			] as const,
+		() => {
+			clearRetryTimer();
+			setRetryCount(0);
+			setFallbackUrl((current) => {
+				revokeObjectUrl(props.objectUrl, current);
+				return null;
+			});
+			setThumbnailFilePath(null);
+			setUrl(null);
+			void loadThumbnail();
+		},
+	);
 
 	onCleanup(() => {
 		clearRetryTimer();

@@ -1,20 +1,22 @@
-import * as BreadcrumbPrimitive from "@kobalte/core/breadcrumbs";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import { Polymorphic, type PolymorphicProps } from "./utils/polymorphic";
 import { t } from "@solid-imager/i18n";
-import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import type { Component } from "solid-js";
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { Show, omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
-const Breadcrumb = BreadcrumbPrimitive.Root;
+const Breadcrumb: Component<ComponentProps<"nav">> = (props) => (
+	<nav aria-label={t("appShell.navigation")} {...props} />
+);
 
 const BreadcrumbList: Component<ComponentProps<"ol">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const others = omit(props, "class");
 	return (
 		<ol
 			class={cn(
 				"flex flex-wrap items-center gap-1.5 break-words text-muted-foreground text-sm sm:gap-2.5",
-				local.class,
+				props.class,
 			)}
 			{...others}
 		/>
@@ -22,49 +24,61 @@ const BreadcrumbList: Component<ComponentProps<"ol">> = (props) => {
 };
 
 const BreadcrumbItem: Component<ComponentProps<"li">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const others = omit(props, "class");
 	return (
 		<li
-			class={cn("inline-flex items-center gap-1.5", local.class)}
+			class={cn("inline-flex items-center gap-1.5", props.class)}
 			{...others}
 		/>
 	);
 };
 
-type BreadcrumbLinkProps<T extends ValidComponent = "a"> =
-	BreadcrumbPrimitive.BreadcrumbsLinkProps<T> & { class?: string | undefined };
+type BreadcrumbLinkProps = ComponentProps<"a"> & { current?: boolean } & {
+	class?: string | undefined;
+};
 
 const BreadcrumbLink = <T extends ValidComponent = "a">(
-	props: PolymorphicProps<T, BreadcrumbLinkProps<T>>,
+	props: PolymorphicProps<T, BreadcrumbLinkProps>,
 ) => {
-	const [local, others] = splitProps(props as BreadcrumbLinkProps, ["class"]);
+	const others = omit(
+		props as BreadcrumbLinkProps & { as?: ValidComponent },
+		"class",
+		"as",
+		"current",
+	);
 	return (
-		<BreadcrumbPrimitive.Link
+		<Polymorphic
+			as={props.as ?? "a"}
+			aria-current={props.current ? "page" : undefined}
+			data-current={props.current ? "" : undefined}
 			class={cn(
 				"transition-colors hover:text-foreground data-[current]:font-normal data-[current]:text-foreground",
-				local.class,
+				props.class,
 			)}
 			{...others}
 		/>
 	);
 };
 
-type BreadcrumbSeparatorProps<T extends ValidComponent = "span"> =
-	BreadcrumbPrimitive.BreadcrumbsSeparatorProps<T> & {
-		class?: string | undefined;
-		children?: JSX.Element;
-	};
+type BreadcrumbSeparatorProps = ComponentProps<"span"> & {
+	class?: string | undefined;
+	children?: JSX.Element;
+};
 
 const BreadcrumbSeparator = <T extends ValidComponent = "span">(
-	props: PolymorphicProps<T, BreadcrumbSeparatorProps<T>>,
+	props: PolymorphicProps<T, BreadcrumbSeparatorProps>,
 ) => {
-	const [local, others] = splitProps(props as BreadcrumbSeparatorProps, [
+	const others = omit(
+		props as BreadcrumbSeparatorProps & { as?: ValidComponent },
 		"class",
 		"children",
-	]);
+		"as",
+	);
 	return (
-		<BreadcrumbPrimitive.Separator
-			class={cn("[&>svg]:size-3.5", local.class)}
+		<Polymorphic
+			as={props.as ?? "span"}
+			aria-hidden="true"
+			class={cn("[&>svg]:size-3.5", props.class)}
 			{...others}
 		>
 			<Show
@@ -82,19 +96,19 @@ const BreadcrumbSeparator = <T extends ValidComponent = "span">(
 						<path d="M9 6l6 6l-6 6" />
 					</svg>
 				}
-				when={local.children}
+				when={props.children}
 			>
-				{local.children}
+				{props.children}
 			</Show>
-		</BreadcrumbPrimitive.Separator>
+		</Polymorphic>
 	);
 };
 
 const BreadcrumbEllipsis: Component<ComponentProps<"span">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const others = omit(props, "class");
 	return (
 		<span
-			class={cn("flex size-9 items-center justify-center", local.class)}
+			class={cn("flex size-9 items-center justify-center", props.class)}
 			{...others}
 		>
 			<svg

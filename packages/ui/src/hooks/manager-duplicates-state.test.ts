@@ -1,4 +1,5 @@
 import type { DuplicateGroup } from "@solid-imager/core/media";
+import { flush } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 import { createManagerDuplicatesState } from "./manager-duplicates-state";
 
@@ -79,9 +80,12 @@ describe("Manager duplicate scan and confirmation", () => {
 		state.setSourceId("source-a");
 		await state.scan();
 		state.prepareDelete();
+		flush();
 		expect(state.dialogOpen()).toBe(true);
 		state.setSourceId("source-b");
+		flush();
 		expect(state.dialogOpen()).toBe(false);
+		flush();
 		expect(state.itemsToDelete()).toEqual([]);
 		await state.confirmDelete();
 		expect(bulkDeleteMedia).not.toHaveBeenCalled();
@@ -90,6 +94,7 @@ describe("Manager duplicate scan and confirmation", () => {
 		const { state, bulkDeleteMedia } = setup();
 		await state.scan();
 		state.prepareDelete();
+		flush();
 		expect(state.itemsToDelete()).toEqual([
 			{
 				sourceId: "source-a",
@@ -111,6 +116,7 @@ describe("Manager duplicate scan and confirmation", () => {
 		await state.confirmDelete();
 		expect(bulkDeleteMedia).not.toHaveBeenCalled();
 		state.prepareDelete();
+		flush();
 		expect(state.itemsToDelete()[0].mediaId).toBe("source-a-1");
 		state.setDialogOpen(false);
 		await state.confirmDelete();
@@ -132,17 +138,21 @@ describe("Manager duplicate scan and confirmation", () => {
 	it("allows keeping all items in a group to skip deletion safely", async () => {
 		const { state } = setup();
 		await state.scan();
+		flush();
 		expect(state.isGroupSkipped("group")).toBe(false);
 		expect(state.deleteCount()).toBe(1);
 
 		state.keepAllForGroup("group");
+		flush();
 		expect(state.isGroupSkipped("group")).toBe(true);
 		expect(state.deleteCount()).toBe(0);
 
 		state.prepareDelete();
+		flush();
 		expect(state.dialogOpen()).toBe(false);
 
 		state.setKeepForGroup("group", "source-a-2");
+		flush();
 		expect(state.isGroupSkipped("group")).toBe(false);
 		expect(state.deleteCount()).toBe(1);
 	});

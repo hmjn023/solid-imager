@@ -1,6 +1,6 @@
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { t } from "@solid-imager/i18n";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";
 import {
@@ -42,7 +42,7 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 	const canSubmit = () =>
 		!props.isSubmitting && !sourceList.loading() && Boolean(target());
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (!props.open) setTargetSourceId("");
 	});
 
@@ -121,3 +121,5 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 		</Dialog>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

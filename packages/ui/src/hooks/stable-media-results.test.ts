@@ -1,11 +1,8 @@
 import type { Media, MediaSearchResponse } from "@solid-imager/core/media";
 import type { InfiniteData } from "@tanstack/solid-query";
-import { createStore } from "solid-js/store";
-import { describe, expect, it } from "vitest";
-import {
-	type StableMediaResultsState,
-	updateStableMediaResults,
-} from "./stable-media-results";
+import { createRoot, createSignal, flush } from "solid-js";
+import { describe, expect, it, onTestFinished } from "vitest";
+import { createStableMediaResults } from "./stable-media-results";
 
 const TEST_MEDIA: Media = {
 	id: "11111111-1111-4111-8111-111111111111",
@@ -34,14 +31,14 @@ function infiniteData(
 
 describe("createStableMediaResults", () => {
 	it("preserves existing media identity across refreshed query objects", () => {
-		const [state, setState] = createStore<StableMediaResultsState>({
-			items: [],
+		const { results, setData } = createRoot((dispose) => {
+			onTestFinished(dispose);
+			const [data, setData] = createSignal(infiniteData([TEST_MEDIA]));
+			return { results: createStableMediaResults(data), setData };
 		});
-		updateStableMediaResults(setState, infiniteData([TEST_MEDIA]));
-		const original = state.items[0];
+		const original = results()[0];
 
-		updateStableMediaResults(
-			setState,
+		setData(
 			infiniteData([
 				{ ...TEST_MEDIA, fileName: "updated.png" },
 				{
@@ -52,15 +49,13 @@ describe("createStableMediaResults", () => {
 			]),
 		);
 
-		expect(state.items[0]).toBe(original);
-		expect(state.items[0].fileName).toBe("updated.png");
-		expect(state.items).toHaveLength(2);
+		flush();
+		expect(results()[0]).toBe(original);
+		expect(results()[0].fileName).toBe("updated.png");
+		expect(results()).toHaveLength(2);
 	});
 
 	it("deduplicates media returned across pages", () => {
-		const [state, setState] = createStore<StableMediaResultsState>({
-			items: [],
-		});
 		const data: InfiniteData<MediaSearchResponse, number> = {
 			pages: [
 				{ media: [TEST_MEDIA], total: 1 },
@@ -68,8 +63,11 @@ describe("createStableMediaResults", () => {
 			],
 			pageParams: [0, 1],
 		};
-		updateStableMediaResults(setState, data);
+		const results = createRoot((dispose) => {
+			onTestFinished(dispose);
+			return createStableMediaResults(() => data);
+		});
 
-		expect(state.items).toHaveLength(1);
+		expect(results()).toHaveLength(1);
 	});
 });

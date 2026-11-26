@@ -1,7 +1,8 @@
 import type { MediaDetails } from "@solid-imager/core/media";
 import { useNavigate, useRouter } from "@tanstack/solid-router";
 import type { RouterHistory } from "@tanstack/solid-router";
-import { type JSX, onCleanup, onMount } from "solid-js";
+import { onCleanup, onSettled } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { MediaDetailToolbar } from "./media-detail-layout";
 import {
 	clearMediaReturnPath,
@@ -103,7 +104,7 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 	};
 
 	/** Navigates to adjacent media via Left/Right arrow keys when no dialog, lightbox, or input is active. */
-	onMount(() => {
+	onSettled(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (
 				event.defaultPrevented ||
@@ -135,7 +136,7 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
-		onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
+		return () => window.removeEventListener("keydown", handleKeyDown);
 	});
 
 	return (

@@ -1,13 +1,7 @@
 import { useRenderedSearchState } from "../search-initial-state";
 import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
-import {
-	createEffect,
-	createSignal,
-	onMount,
-	Show,
-	useContext,
-} from "solid-js";
+import { createSignal, onSettled, Show, useContext } from "solid-js";
 import { EmptyState, FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import type { SearchWorkspaceController } from "../hooks/use-search-workspace";
@@ -100,13 +94,13 @@ export type SearchScreenProps = SearchWorkspaceProps & {
 	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
 	onToggleSelect?: (mediaId: string) => void;
 	onVisibleMediaIdsChange?: (mediaIds: readonly string[]) => void;
-	renderMediaPreview?: (media: Media) => import("solid-js").JSX.Element;
+	renderMediaPreview?: (media: Media) => import("@solidjs/web").JSX.Element;
 	selectedCount?: () => number;
 };
 
 export function SearchScreen(props: SearchScreenProps) {
 	const searchState = useRenderedSearchState();
-	const addSource = useContext(AddSourceContext);
+	const addSource = useContext(AddSourceContext) ?? undefined;
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
@@ -164,7 +158,7 @@ export function SearchScreen(props: SearchScreenProps) {
 			// Storage can be unavailable in hardened browser contexts.
 		}
 	};
-	createEffect(() => {
+	createTrackedEffect(() => {
 		props.onVisibleMediaIdsChange?.(
 			page()
 				.searchResults()
@@ -172,7 +166,7 @@ export function SearchScreen(props: SearchScreenProps) {
 		);
 	});
 
-	onMount(() => {
+	onSettled(() => {
 		setIsMounted(true);
 		try {
 			const storedMode = readUiStorageValue(
@@ -291,7 +285,7 @@ export function SearchScreen(props: SearchScreenProps) {
 							enableVirtualization={props.enableVirtualization}
 							errorTitle={t("searchScreen.couldNotLoadSearchResults")}
 							hasNextPage={page().searchResultQuery.hasNextPage}
-							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
+							isFetchingNextPage={page().isFetchingNextPage()}
 							isFetchNextPageError={
 								page().searchResultQuery.isFetchNextPageError
 							}
@@ -374,3 +368,5 @@ export function SearchScreen(props: SearchScreenProps) {
 		</section>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

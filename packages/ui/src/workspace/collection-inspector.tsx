@@ -1,16 +1,10 @@
 import { getLocale, t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
-import ExternalLink from "lucide-solid/icons/external-link";
-import X from "lucide-solid/icons/x";
-import type { Accessor, JSX } from "solid-js";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
+import ExternalLink from "@lucide/solid/icons/external-link";
+import X from "@lucide/solid/icons/x";
+import type { Accessor } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createMemo, createSignal, onSettled, Show } from "solid-js";
 import { Button } from "../button";
 import type { QueryUiState } from "../query-state";
 import { reconcileCollectionPreviewId } from "./collection-navigation";
@@ -29,16 +23,16 @@ export function createCollectionInspector(options: {
 		isOpen() &&
 		(options.phase() === "pending" || options.phase() === "data");
 
-	onMount(() => {
+	onSettled(() => {
 		// Use the workspace's 2xl threshold for both the layout and its pointer action.
 		const viewport = window.matchMedia("(min-width: 96rem)");
 		const update = () => setIsWide(viewport.matches);
 		update();
 		viewport.addEventListener("change", update);
-		onCleanup(() => viewport.removeEventListener("change", update));
+		return () => viewport.removeEventListener("change", update);
 	});
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const nextId = options.enabled()
 			? reconcileCollectionPreviewId(options.media(), previewId())
 			: null;
@@ -209,3 +203,5 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 		</aside>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

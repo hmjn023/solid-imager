@@ -153,14 +153,17 @@ export function AssociationManager(props: AssociationManagerProps) {
 				</Show>
 			</div>
 
-			<CommandDialog onOpenChange={setOpen} open={open()}>
+			<CommandDialog
+				onOpenChange={setOpen}
+				open={open()}
+				query={search()}
+				onQueryChange={setSearch}
+			>
 				<CommandInput
 					disabled={isBusy()}
-					onValueChange={setSearch}
 					placeholder={t("relationsEditor.searchValue2", {
 						value0: String(props.title.toLowerCase()),
 					})}
-					value={search()}
 				/>
 				<CommandList>
 					<Show when={props.isLoading}>

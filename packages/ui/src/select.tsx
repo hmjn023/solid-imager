@@ -1,146 +1,328 @@
-import { t } from "@solid-imager/i18n";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { Check, ChevronsUpDown } from "@lucide/solid";
+import { FieldDescription, FieldError } from "@ui-sdk/solid/field";
 import {
-	Content as SelectPrimitiveContent,
-	type SelectContentProps as SelectPrimitiveContentProps,
-	Description as SelectPrimitiveDescription,
-	type SelectDescriptionProps as SelectPrimitiveDescriptionProps,
-	ErrorMessage as SelectPrimitiveErrorMessage,
-	type SelectErrorMessageProps as SelectPrimitiveErrorMessageProps,
-	HiddenSelect as SelectPrimitiveHiddenSelect,
-	Icon as SelectPrimitiveIcon,
-	Item as SelectPrimitiveItem,
-	ItemIndicator as SelectPrimitiveItemIndicator,
-	ItemLabel as SelectPrimitiveItemLabel,
-	type SelectItemProps as SelectPrimitiveItemProps,
-	Label as SelectPrimitiveLabel,
-	type SelectLabelProps as SelectPrimitiveLabelProps,
-	Listbox as SelectPrimitiveListbox,
-	Portal as SelectPrimitivePortal,
-	Root as SelectPrimitiveRoot,
-	Trigger as SelectPrimitiveTrigger,
-	type SelectTriggerProps as SelectPrimitiveTriggerProps,
-	Value as SelectPrimitiveValue,
-} from "@kobalte/core/select";
+	Select as SelectPrimitiveRoot,
+	SelectContent as SelectPrimitiveContent,
+	SelectItem as SelectPrimitiveItem,
+	SelectItemIndicator,
+	SelectItemText,
+	SelectLabel as SelectPrimitiveLabel,
+	SelectList,
+	SelectTrigger as SelectPrimitiveTrigger,
+	SelectValue as SelectPrimitiveValue,
+} from "@ui-sdk/solid/select";
 import { cva } from "class-variance-authority";
-import type { JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import { createContext, For, omit, useContext } from "solid-js";
 import { cn } from "./utils/cn";
+import {
+	popupAlign,
+	popupSide,
+	type PopupPlacement,
+} from "./utils/popup-placement";
 
-const Select = SelectPrimitiveRoot;
-const SelectValue = SelectPrimitiveValue;
-const SelectHiddenSelect = SelectPrimitiveHiddenSelect;
+type SelectItemData<Option> = {
+	rawValue: Option;
+	label: string;
+	disabled?: boolean;
+};
+type OptionProperty<Option, Value> = keyof Option | ((option: Option) => Value);
+type LegacySelectProps<Option> = {
+	children?: JSX.Element;
+	options: readonly Option[];
+	placeholder?: string;
+	optionValue?: OptionProperty<Option, string>;
+	optionTextValue?: OptionProperty<Option, string>;
+	optionDisabled?: OptionProperty<Option, boolean>;
+	disallowEmptySelection?: boolean;
+	placement?: PopupPlacement;
+	gutter?: number;
+	itemComponent?: (props: { item: SelectItemData<Option> }) => JSX.Element;
+};
+type SelectRootProps<Option> = LegacySelectProps<Option> &
+	Omit<ComponentProps<"div">, "children" | "onChange" | "aria-invalid"> & {
+		"aria-invalid"?: ComponentProps<"div">["aria-invalid"] | boolean;
+	} & Pick<
+		ComponentProps<typeof SelectPrimitiveRoot<Option, boolean>>,
+		| "open"
+		| "defaultOpen"
+		| "onOpenChange"
+		| "disabled"
+		| "readOnly"
+		| "required"
+		| "name"
+		| "form"
+	> &
+	(
+		| {
+				multiple?: false;
+				value?: Option | null;
+				defaultValue?: Option | null;
+				onChange?: (option: Option) => void;
+		  }
+		| {
+				multiple: true;
+				value?: Option[];
+				defaultValue?: Option[];
+				onChange?: (options: Option[]) => void;
+		  }
+	);
 
-type SelectTriggerProps<T extends ValidComponent = "button"> =
-	SelectPrimitiveTriggerProps<T> & {
-		class?: string | undefined;
-		children?: JSX.Element;
-	};
+const SelectContext = createContext<{
+	renderItems: () => JSX.Element;
+	placeholder: () => string | undefined;
+	position: () => PopupPlacement | undefined;
+	gutter: () => number | undefined;
+	triggerProps: () => Pick<
+		ComponentProps<typeof SelectPrimitiveTrigger>,
+		"aria-label" | "aria-labelledby" | "aria-describedby" | "aria-invalid"
+	>;
+}>();
 
-const SelectTrigger = <T extends ValidComponent = "button">(
-	props: PolymorphicProps<T, SelectTriggerProps<T>>,
-) => {
-	const [local, others] = splitProps(props as SelectTriggerProps, [
-		"class",
-		"children",
-	]);
+function readOption<Option, Value>(
+	option: Option,
+	property: OptionProperty<Option, Value> | undefined,
+) {
+	if (typeof property === "function") return property(option);
+	if (property !== undefined) return option[property];
+}
+
+function Select<Option>(props: SelectRootProps<Option>) {
+	function optionKey(option: Option) {
+		const key = readOption(option, props.optionValue);
+		if (key !== undefined && key !== null) return String(key);
+		if (option && typeof option === "object") {
+			if ("value" in option) return String(option.value);
+			if ("id" in option) return String(option.id);
+		}
+		return String(option);
+	}
+	function optionLabel(option: Option) {
+		const label = readOption(option, props.optionTextValue);
+		if (label !== undefined && label !== null) return String(label);
+		return option && typeof option === "object" && "label" in option
+			? String(option.label)
+			: optionKey(option);
+	}
+	function optionIsDisabled(option: Option) {
+		return Boolean(readOption(option, props.optionDisabled));
+	}
+
+	const renderItems = () => (
+		<For each={props.options}>
+			{(rawValue) => {
+				const item = {
+					rawValue,
+					get label() {
+						return optionLabel(rawValue);
+					},
+					get disabled() {
+						return optionIsDisabled(rawValue);
+					},
+				};
+				return (
+					props.itemComponent?.({ item }) ?? (
+						<SelectItem item={item}>{item.label}</SelectItem>
+					)
+				);
+			}}
+		</For>
+	);
+	return (
+		<div
+			{...omit(
+				props,
+				"children",
+				"options",
+				"placeholder",
+				"optionValue",
+				"optionTextValue",
+				"optionDisabled",
+				"itemComponent",
+				"disallowEmptySelection",
+				"placement",
+				"gutter",
+				"value",
+				"defaultValue",
+				"onChange",
+				"open",
+				"defaultOpen",
+				"onOpenChange",
+				"multiple",
+				"disabled",
+				"readOnly",
+				"required",
+				"name",
+				"form",
+				"aria-label",
+				"aria-labelledby",
+				"aria-describedby",
+				"aria-invalid",
+			)}
+		>
+			<SelectContext
+				value={{
+					renderItems,
+					placeholder: () => props.placeholder,
+					position: () => props.placement,
+					gutter: () => props.gutter,
+					triggerProps: () => ({
+						"aria-label": props["aria-label"],
+						"aria-labelledby": props["aria-labelledby"],
+						"aria-describedby": props["aria-describedby"],
+						"aria-invalid":
+							typeof props["aria-invalid"] === "boolean"
+								? props["aria-invalid"]
+									? "true"
+									: "false"
+								: props["aria-invalid"],
+					}),
+				}}
+			>
+				<SelectPrimitiveRoot<Option, boolean>
+					placeholder={props.placeholder}
+					itemToValue={optionKey}
+					itemToLabel={optionLabel}
+					isItemEqualToValue={(option, value) =>
+						optionKey(option) === optionKey(value)
+					}
+					multiple={props.multiple}
+					value={props.value}
+					defaultValue={props.defaultValue}
+					onValueChange={(value, details) => {
+						if (value === null && props.disallowEmptySelection) {
+							details.cancel();
+							return;
+						}
+						if (props.multiple && Array.isArray(value)) props.onChange?.(value);
+						if (!props.multiple && value !== null && !Array.isArray(value))
+							props.onChange?.(value);
+					}}
+					open={props.open}
+					defaultOpen={props.defaultOpen}
+					onOpenChange={props.onOpenChange}
+					name={props.name}
+					form={props.form}
+					required={props.required}
+					disabled={props.disabled}
+					readOnly={props.readOnly}
+				>
+					{props.children}
+				</SelectPrimitiveRoot>
+			</SelectContext>
+		</div>
+	);
+}
+
+type ClassProps<Props> = Omit<Props, "class" | "children"> & {
+	class?: string;
+	children?: JSX.Element;
+};
+
+function SelectTrigger(
+	props: ClassProps<ComponentProps<typeof SelectPrimitiveTrigger>>,
+) {
+	const context = useContext(SelectContext);
 	return (
 		<SelectPrimitiveTrigger
+			{...context.triggerProps()}
+			{...omit(props, "class", "children")}
 			class={cn(
 				"flex min-h-11 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-				local.class,
+				props.class,
 			)}
-			{...others}
 		>
-			{local.children}
-			<SelectPrimitiveIcon
-				as="svg"
-				class="size-4 opacity-50"
-				fill="none"
-				stroke="currentColor"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				stroke-width="2"
-				viewBox="0 0 24 24"
-				xmlns="http://www.w3.org/2000/svg"
-			>
-				<path d="M8 9l4 -4l4 4" />
-				<path d="M16 15l-4 4l-4 -4" />
-			</SelectPrimitiveIcon>
+			{props.children ?? <SelectValue />}
+			<ChevronsUpDown class="size-4 opacity-50" aria-hidden="true" />
 		</SelectPrimitiveTrigger>
 	);
-};
+}
 
-type SelectContentProps<T extends ValidComponent = "div"> =
-	SelectPrimitiveContentProps<T> & {
-		class?: string | undefined;
+function SelectContent(
+	props: ClassProps<ComponentProps<typeof SelectPrimitiveContent>> & {
 		portalMount?: HTMLElement;
-	};
-
-const SelectContent = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, SelectContentProps<T>>,
-) => {
-	const [local, others] = splitProps(props as SelectContentProps, [
-		"class",
-		"portalMount",
-	]);
+	},
+) {
+	const context = useContext(SelectContext);
 	return (
-		<SelectPrimitivePortal mount={local.portalMount}>
-			<SelectPrimitiveContent
-				class={cn(
-					"motion-safe:fade-in-80 relative z-50 flex max-h-popover-fit-available min-w-32 max-w-viewport-gutter flex-col overflow-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0",
-					local.class,
-				)}
-				{...others}
-			>
-				<SelectPrimitiveListbox class="m-0 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1" />
-			</SelectPrimitiveContent>
-		</SelectPrimitivePortal>
+		<SelectPrimitiveContent
+			side={popupSide(context.position())}
+			align={popupAlign(context.position())}
+			sideOffset={context.gutter() ?? 4}
+			collisionPadding={props.portalMount ? 16 : undefined}
+			alignItemWithTrigger={false}
+			{...omit(props, "class", "children", "portalMount")}
+			container={props.portalMount ?? props.container}
+			class={cn(
+				"motion-safe:fade-in-80 z-50 flex max-h-popover-fit-available min-w-32 max-w-viewport-gutter origin-(--transform-origin) flex-col overflow-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md motion-safe:data-[closed]:animate-out motion-safe:data-[open]:animate-in motion-safe:data-[closed]:fade-out-0",
+				props.class,
+			)}
+		>
+			<SelectList class="m-0 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1">
+				{props.children ?? context.renderItems()}
+			</SelectList>
+		</SelectPrimitiveContent>
 	);
-};
+}
 
-type SelectItemProps<T extends ValidComponent = "li"> =
-	SelectPrimitiveItemProps<T> & {
-		class?: string | undefined;
-		children?: JSX.Element;
-	};
-
-const SelectItem = <T extends ValidComponent = "li">(
-	props: PolymorphicProps<T, SelectItemProps<T>>,
-) => {
-	const [local, others] = splitProps(props as SelectItemProps, [
-		"class",
-		"children",
-	]);
+function SelectItem<Option>(
+	props: Omit<
+		ClassProps<ComponentProps<typeof SelectPrimitiveItem<Option>>>,
+		"value"
+	> & { item: SelectItemData<Option> },
+) {
 	return (
-		<SelectPrimitiveItem
+		<SelectPrimitiveItem<Option>
+			{...omit(props, "class", "children", "item")}
+			value={props.item.rawValue}
+			label={props.item.label}
+			disabled={props.disabled ?? props.item.disabled}
 			class={cn(
 				"relative mt-0 flex min-h-11 w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[selected]:font-medium data-[highlighted]:text-foreground data-[disabled]:opacity-50",
-				local.class,
+				props.class,
 			)}
-			{...others}
 		>
-			<SelectPrimitiveItemIndicator class="absolute right-2 flex size-3.5 items-center justify-center">
-				<svg
-					class="size-4"
-					fill="none"
-					stroke="currentColor"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					viewBox="0 0 24 24"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<title>{t("select.check")}</title>
-					<path d="M0 0h24v24H0z" fill="none" stroke="none" />
-					<path d="M5 12l5 5l10 -10" />
-				</svg>
-			</SelectPrimitiveItemIndicator>
-			<SelectPrimitiveItemLabel>{local.children}</SelectPrimitiveItemLabel>
+			<SelectItemIndicator class="absolute right-2 flex size-3.5 items-center justify-center">
+				<Check class="size-4" aria-hidden="true" />
+			</SelectItemIndicator>
+			{props.children ?? <SelectItemText />}
 		</SelectPrimitiveItem>
 	);
+}
+
+type SelectValueProps<Option> = Omit<
+	ClassProps<ComponentProps<typeof SelectPrimitiveValue>>,
+	"children"
+> & {
+	children?: (state: {
+		selectedOption: () => Option;
+		selectedOptions: () => Option[];
+	}) => JSX.Element;
 };
+
+function SelectValue<Option>(props: SelectValueProps<Option>) {
+	const context = useContext(SelectContext);
+	return (
+		<SelectPrimitiveValue {...omit(props, "children")}>
+			{(state) => {
+				if (state.placeholder)
+					return props.placeholder ?? context.placeholder();
+				// The SDK's value slot erases the root's option type. The shared API
+				// supplies that same type at the value slot's call site.
+				const selected = () =>
+					(Array.isArray(state.value)
+						? state.value
+						: [state.value]) as Option[];
+				return (
+					props.children?.({
+						selectedOption: () => selected()[0],
+						selectedOptions: selected,
+					}) ?? state.label
+				);
+			}}
+		</SelectPrimitiveValue>
+	);
+}
 
 const labelVariants = cva(
 	"font-medium text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
@@ -152,66 +334,47 @@ const labelVariants = cva(
 				error: "text-destructive text-xs",
 			},
 		},
-		defaultVariants: {
-			variant: "label",
-		},
+		defaultVariants: { variant: "label" },
 	},
 );
 
-type SelectLabelProps<T extends ValidComponent = "label"> =
-	SelectPrimitiveLabelProps<T> & {
-		class?: string | undefined;
-	};
-
-const SelectLabel = <T extends ValidComponent = "label">(
-	props: PolymorphicProps<T, SelectLabelProps<T>>,
-) => {
-	const [local, others] = splitProps(props as SelectLabelProps, ["class"]);
+function SelectLabel(
+	props: ClassProps<ComponentProps<typeof SelectPrimitiveLabel>>,
+) {
 	return (
 		<SelectPrimitiveLabel
-			class={cn(labelVariants(), local.class)}
-			{...others}
+			{...omit(props, "class")}
+			class={cn(labelVariants(), props.class)}
 		/>
 	);
-};
+}
 
-type SelectDescriptionProps<T extends ValidComponent = "div"> =
-	SelectPrimitiveDescriptionProps<T> & {
-		class?: string | undefined;
-	};
-
-const SelectDescription = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, SelectDescriptionProps<T>>,
-) => {
-	const [local, others] = splitProps(props as SelectDescriptionProps, [
-		"class",
-	]);
+function SelectDescription(
+	props: ClassProps<ComponentProps<typeof FieldDescription>>,
+) {
 	return (
-		<SelectPrimitiveDescription
-			class={cn(labelVariants({ variant: "description" }), local.class)}
-			{...others}
+		<FieldDescription
+			{...omit(props, "class")}
+			class={cn(labelVariants({ variant: "description" }), props.class)}
 		/>
 	);
-};
+}
 
-type SelectErrorMessageProps<T extends ValidComponent = "div"> =
-	SelectPrimitiveErrorMessageProps<T> & {
-		class?: string | undefined;
-	};
-
-const SelectErrorMessage = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, SelectErrorMessageProps<T>>,
-) => {
-	const [local, others] = splitProps(props as SelectErrorMessageProps, [
-		"class",
-	]);
+function SelectErrorMessage(
+	props: ClassProps<ComponentProps<typeof FieldError>>,
+) {
 	return (
-		<SelectPrimitiveErrorMessage
-			class={cn(labelVariants({ variant: "error" }), local.class)}
-			{...others}
+		<FieldError
+			{...omit(props, "class")}
+			class={cn(labelVariants({ variant: "error" }), props.class)}
 		/>
 	);
-};
+}
+
+// The SDK renders its form input as part of the Select root.
+function SelectHiddenSelect() {
+	return null;
+}
 
 export {
 	Select,

@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js";
-import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import { isServer } from "solid-js/web";
+import { createEffect, createSignal, onCleanup } from "solid-js";
+import { isServer } from "@solidjs/web";
 
 export function resolveScrollContainer(
 	selector: string | undefined,
@@ -199,7 +199,7 @@ export function useScrollRestoration(
 		}, SCROLL_SAVE_DEBOUNCE_MS);
 	};
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const key = options.restoreKey();
 		if (key !== activeKey) {
 			savePosition();
@@ -226,103 +226,100 @@ export function useScrollRestoration(
 		}
 	});
 
-	onMount(() => {
-		if ("scrollRestoration" in history) {
-			history.scrollRestoration = "manual";
-		}
+	createEffect(
+		() => options.scrollContainerSelector,
+		(selector) => {
+			if ("scrollRestoration" in history) {
+				history.scrollRestoration = "manual";
+			}
 
-		const notifyScrollPosition = () => {
-			if (options.scrollContainerSelector) {
-				resolveScrollContainer(options.scrollContainerSelector)?.dispatchEvent(
-					new Event("scroll"),
-				);
-				return;
-			}
-			window.dispatchEvent(new Event("scroll"));
-		};
+			const notifyScrollPosition = () => {
+				if (selector) {
+					resolveScrollContainer(selector)?.dispatchEvent(new Event("scroll"));
+					return;
+				}
+				window.dispatchEvent(new Event("scroll"));
+			};
 
-		const reconcileVirtualizerPosition = () => {
-			notifyScrollPosition();
-			if (reconcileFrameId !== undefined) {
-				cancelAnimationFrame(reconcileFrameId);
-			}
-			if (secondReconcileFrameId !== undefined) {
-				cancelAnimationFrame(secondReconcileFrameId);
-			}
-			reconcileFrameId = requestAnimationFrame(() => {
-				reconcileFrameId = undefined;
+			const reconcileVirtualizerPosition = () => {
 				notifyScrollPosition();
-				secondReconcileFrameId = requestAnimationFrame(() => {
-					secondReconcileFrameId = undefined;
+				if (reconcileFrameId !== undefined) {
+					cancelAnimationFrame(reconcileFrameId);
+				}
+				if (secondReconcileFrameId !== undefined) {
+					cancelAnimationFrame(secondReconcileFrameId);
+				}
+				reconcileFrameId = requestAnimationFrame(() => {
+					reconcileFrameId = undefined;
 					notifyScrollPosition();
+					secondReconcileFrameId = requestAnimationFrame(() => {
+						secondReconcileFrameId = undefined;
+						notifyScrollPosition();
+					});
 				});
+			};
+
+			const scrollContainer = resolveScrollContainer(selector);
+			const handleScrollForPersistence = (event: Event) => {
+				if (scrollContainer) {
+					if (event.target !== scrollContainer) return;
+				} else if (
+					selector &&
+					event.target !== resolveScrollContainer(selector)
+				) {
+					return;
+				}
+				scheduleSavePosition();
+			};
+			const scrollEventTarget =
+				scrollContainer ?? (selector ? document : window);
+			const useCapture = Boolean(selector && !scrollContainer);
+			scrollEventTarget.addEventListener("scroll", handleScrollForPersistence, {
+				capture: useCapture,
+				passive: true,
 			});
-		};
 
-		const scrollContainer = resolveScrollContainer(
-			options.scrollContainerSelector,
-		);
-		const handleScrollForPersistence = (event: Event) => {
-			if (scrollContainer) {
-				if (event.target !== scrollContainer) return;
-			} else if (
-				options.scrollContainerSelector &&
-				event.target !== resolveScrollContainer(options.scrollContainerSelector)
-			) {
-				return;
-			}
-			scheduleSavePosition();
-		};
-		const scrollEventTarget =
-			scrollContainer ?? (options.scrollContainerSelector ? document : window);
-		const useCapture = Boolean(
-			options.scrollContainerSelector && !scrollContainer,
-		);
-		scrollEventTarget.addEventListener("scroll", handleScrollForPersistence, {
-			capture: useCapture,
-			passive: true,
-		});
-
-		const cancelRestore = () => {
-			if (!isRestored()) {
-				cancelled = true;
-				restoreGeneration += 1;
-				if (frameId !== undefined) {
-					cancelAnimationFrame(frameId);
-					frameId = undefined;
+			const cancelRestore = () => {
+				if (!isRestored()) {
+					cancelled = true;
+					restoreGeneration += 1;
+					if (frameId !== undefined) {
+						cancelAnimationFrame(frameId);
+						frameId = undefined;
+					}
+					if (settleTimer !== undefined) {
+						clearTimeout(settleTimer);
+						settleTimer = undefined;
+					}
+					// User input takes ownership of the scroll position. Mark the
+					// restoration complete so cleanup persists the position they chose
+					// instead of treating it as an unfinished restore.
+					setIsRestored(true);
+					// The virtualizer listens to native scroll events. A user event can
+					// cancel restoration before the browser changes scrollTop, leaving
+					// its previous (restored) range mounted at the top of the container.
+					// Re-notify it now and for the next two frames so it reconciles with
+					// the actual scroll position after pending layout work settles.
+					reconcileVirtualizerPosition();
 				}
-				if (settleTimer !== undefined) {
-					clearTimeout(settleTimer);
-					settleTimer = undefined;
-				}
-				// User input takes ownership of the scroll position. Mark the
-				// restoration complete so cleanup persists the position they chose
-				// instead of treating it as an unfinished restore.
-				setIsRestored(true);
-				// The virtualizer listens to native scroll events. A user event can
-				// cancel restoration before the browser changes scrollTop, leaving
-				// its previous (restored) range mounted at the top of the container.
-				// Re-notify it now and for the next two frames so it reconciles with
-				// the actual scroll position after pending layout work settles.
-				reconcileVirtualizerPosition();
-			}
-		};
-		window.addEventListener("pointerdown", cancelRestore, { passive: true });
-		window.addEventListener("wheel", cancelRestore, { passive: true });
-		window.addEventListener("touchstart", cancelRestore, { passive: true });
-		window.addEventListener("keydown", cancelRestore);
-		onCleanup(() => {
-			scrollEventTarget.removeEventListener(
-				"scroll",
-				handleScrollForPersistence,
-				useCapture,
-			);
-			window.removeEventListener("pointerdown", cancelRestore);
-			window.removeEventListener("wheel", cancelRestore);
-			window.removeEventListener("touchstart", cancelRestore);
-			window.removeEventListener("keydown", cancelRestore);
-		});
-	});
+			};
+			window.addEventListener("pointerdown", cancelRestore, { passive: true });
+			window.addEventListener("wheel", cancelRestore, { passive: true });
+			window.addEventListener("touchstart", cancelRestore, { passive: true });
+			window.addEventListener("keydown", cancelRestore);
+			return () => {
+				scrollEventTarget.removeEventListener(
+					"scroll",
+					handleScrollForPersistence,
+					useCapture,
+				);
+				window.removeEventListener("pointerdown", cancelRestore);
+				window.removeEventListener("wheel", cancelRestore);
+				window.removeEventListener("touchstart", cancelRestore);
+				window.removeEventListener("keydown", cancelRestore);
+			};
+		},
+	);
 
 	onCleanup(() => {
 		cancelled = true;
@@ -339,3 +336,5 @@ export function useScrollRestoration(
 
 	return isRestored;
 }
+
+import { createTrackedEffect } from "solid-js";

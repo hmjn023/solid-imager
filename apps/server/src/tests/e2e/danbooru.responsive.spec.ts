@@ -520,9 +520,13 @@ test("the collection restores the second-page tile on Back and reload and can sc
 	await expectAnchorRestored(page, grid, scroller, 209, searches);
 	await scroller.evaluate((el) => el.scrollTo(0, 0));
 	await expect(first).toHaveCount(1);
+	await expect(grid.getByRole("link")).toHaveCount(79);
+	await expect(
+		grid.getByRole("link", { name: "Danbooru #201 を開く", exact: true }),
+	).toBeInViewport();
 	await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
 	await expect(last).toBeInViewport();
-	expect(searches.every(({ page }) => page <= 2)).toBe(true);
+	expect(searches.map(({ page }) => page)).toEqual([1, 2, 2, 1]);
 });
 
 test(

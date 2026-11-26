@@ -1,37 +1,35 @@
-import { Root as ButtonPrimitiveRoot } from "@kobalte/core/button";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import { Polymorphic } from "@kobalte/core/polymorphic";
-import * as SeparatorPrimitive from "@kobalte/core/separator";
-import * as TextFieldPrimitive from "@kobalte/core/text-field";
 import { t } from "@solid-imager/i18n";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import type {
-	Accessor,
-	Component,
-	ComponentProps,
-	ValidComponent,
-} from "solid-js";
+import type { Accessor, Component } from "solid-js";
+import type { ComponentProps, ValidComponent } from "@solidjs/web";
 import {
 	createContext,
-	mergeProps,
-	onCleanup,
-	onMount,
+	merge,
+	onSettled,
 	Show,
-	splitProps,
+	omit,
 	Switch,
 	Match,
+	untrack,
 	useContext,
 } from "solid-js";
 import { createSignal } from "solid-js";
 
 import type { ButtonProps } from "./button";
-import { buttonVariants } from "./button";
+import { Button } from "./button";
+import { Separator } from "./separator";
 import { SidebarTooltip } from "./layouts/sidebar-tooltip";
 import { Sheet, SheetContent } from "./sheet";
 import { Skeleton } from "./skeleton";
+import { TextField, TextFieldInput } from "./text-field";
 import { TooltipContent, TooltipTrigger } from "./tooltip";
 import { cn } from "./utils/cn";
+import {
+	Polymorphic,
+	renderAs,
+	type PolymorphicProps,
+} from "./utils/polymorphic";
 
 const MOBILE_BREAKPOINT = 768;
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
@@ -62,14 +60,14 @@ function useSidebar() {
 export function useIsMobile(fallback = false) {
 	const [isMobile, setIsMobile] = createSignal(fallback);
 
-	onMount(() => {
+	onSettled(() => {
 		const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
 		const onChange = (event: MediaQueryListEvent | MediaQueryList) => {
 			setIsMobile(event.matches);
 		};
 		mql.addEventListener("change", onChange);
 		onChange(mql);
-		onCleanup(() => mql.removeEventListener("change", onChange));
+		return () => mql.removeEventListener("change", onChange);
 	});
 
 	return isMobile;
@@ -83,28 +81,32 @@ type SidebarProviderProps = ComponentProps<"div"> & {
 };
 
 const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
-	const props = mergeProps(
+	const props = merge(
 		{ defaultOpen: true, enableKeyboardShortcut: true },
 		rawProps,
 	);
-	const [local, others] = splitProps(props, [
+	const local = props;
+	const others = omit(
+		local,
 		"defaultOpen",
 		"open",
 		"onOpenChange",
 		"enableKeyboardShortcut",
 		"class",
 		"children",
-	]);
+	);
 
 	const isMobile = useIsMobile();
 	const [openMobile, setOpenMobile] = createSignal(false);
 
-	const [_open, _setOpen] = createSignal(local.defaultOpen);
-	const open = () => local.open ?? _open();
+	const [internalOpen, setInternalOpen] = createSignal(
+		untrack(() => local.defaultOpen),
+	);
+	const open = () => local.open ?? internalOpen();
 	const setOpen = (value: boolean | ((previous: boolean) => boolean)) => {
 		const nextValue = typeof value === "function" ? value(open()) : value;
 		if (local.open === undefined) {
-			_setOpen(nextValue);
+			setInternalOpen(nextValue);
 		}
 		local.onOpenChange?.(nextValue);
 		if (typeof document !== "undefined") {
@@ -117,7 +119,7 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
 			? setOpenMobile((previous) => !previous)
 			: setOpen((previous) => !previous);
 
-	onMount(() => {
+	onSettled(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (
 				local.enableKeyboardShortcut &&
@@ -130,7 +132,7 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
-		onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
+		return () => window.removeEventListener("keydown", handleKeyDown);
 	});
 
 	const state = () => (open() ? "expanded" : "collapsed");
@@ -146,7 +148,7 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
 	};
 
 	return (
-		<SidebarContext.Provider value={contextValue}>
+		<SidebarContext value={contextValue}>
 			<div
 				class={cn(
 					"group/sidebar-wrapper flex min-h-dvh w-full text-foreground has-[[data-variant=inset]]:bg-background",
@@ -156,7 +158,7 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
 			>
 				{local.children}
 			</div>
-		</SidebarContext.Provider>
+		</SidebarContext>
 	);
 };
 
@@ -167,7 +169,7 @@ type SidebarProps = ComponentProps<"div"> & {
 };
 
 const Sidebar: Component<SidebarProps> = (rawProps) => {
-	const props = mergeProps<SidebarProps[]>(
+	const props = merge<SidebarProps[]>(
 		{
 			side: "left",
 			variant: "sidebar",
@@ -175,13 +177,15 @@ const Sidebar: Component<SidebarProps> = (rawProps) => {
 		},
 		rawProps,
 	);
-	const [local, others] = splitProps(props, [
+	const local = props;
+	const others = omit(
+		local,
 		"side",
 		"variant",
 		"collapsible",
 		"class",
 		"children",
-	]);
+	);
 
 	const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
@@ -262,19 +266,15 @@ type SidebarTriggerProps<T extends ValidComponent = "button"> =
 const SidebarTrigger = <T extends ValidComponent = "button">(
 	props: SidebarTriggerProps<T>,
 ) => {
-	const [local, others] = splitProps(props as SidebarTriggerProps, [
-		"class",
-		"onClick",
-	]);
+	const local = props as SidebarTriggerProps;
+	const others = omit(local, "class", "onClick");
 	const { toggleSidebar } = useSidebar();
 
 	return (
-		<ButtonPrimitiveRoot
-			class={cn(
-				buttonVariants({ variant: "ghost", size: "icon" }),
-				"size-7",
-				local.class,
-			)}
+		<Button
+			class={cn("size-7", local.class)}
+			variant="ghost"
+			size="icon"
 			data-sidebar="trigger"
 			onClick={(event: MouseEvent) => {
 				local.onClick?.(event);
@@ -296,12 +296,13 @@ const SidebarTrigger = <T extends ValidComponent = "button">(
 				<path d="M9 3v18" />
 			</svg>
 			<span class="sr-only">{t("definitions.toggleSidebar")}</span>
-		</ButtonPrimitiveRoot>
+		</Button>
 	);
 };
 
 const SidebarRail: Component<ComponentProps<"button">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	const { toggleSidebar } = useSidebar();
 
 	return (
@@ -316,7 +317,7 @@ const SidebarRail: Component<ComponentProps<"button">> = (props) => {
 			)}
 			data-sidebar="rail"
 			onClick={toggleSidebar}
-			tabIndex={-1}
+			tabindex={-1}
 			title={t("definitions.toggleSidebar")}
 			type="button"
 			{...others}
@@ -325,7 +326,8 @@ const SidebarRail: Component<ComponentProps<"button">> = (props) => {
 };
 
 const SidebarInset: Component<ComponentProps<"main">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<main
 			class={cn(
@@ -338,29 +340,31 @@ const SidebarInset: Component<ComponentProps<"main">> = (props) => {
 	);
 };
 
-type SidebarInputProps<T extends ValidComponent = "input"> =
-	TextFieldPrimitive.TextFieldInputProps<T> & { class?: string | undefined };
+type SidebarInputProps = ComponentProps<typeof TextFieldInput>;
 
 const SidebarInput = <T extends ValidComponent = "input">(
-	props: PolymorphicProps<T, SidebarInputProps<T>>,
+	props: PolymorphicProps<T, SidebarInputProps>,
 ) => {
-	const [local, others] = splitProps(props as SidebarInputProps, ["class"]);
+	const local = props as SidebarInputProps & { as?: ValidComponent };
+	const others = omit(local, "class", "as");
 	return (
-		<TextFieldPrimitive.Root class="flex flex-col gap-1">
-			<TextFieldPrimitive.Input
+		<TextField class="flex flex-col gap-1">
+			<TextFieldInput
 				class={cn(
 					"flex h-8 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-none ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
 					local.class,
 				)}
 				data-sidebar="input"
+				render={local.as ? renderAs(() => local.as) : undefined}
 				{...others}
 			/>
-		</TextFieldPrimitive.Root>
+		</TextField>
 	);
 };
 
 const SidebarHeader: Component<ComponentProps<"div">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<div
 			class={cn("flex flex-col gap-2 p-2", local.class)}
@@ -371,7 +375,8 @@ const SidebarHeader: Component<ComponentProps<"div">> = (props) => {
 };
 
 const SidebarFooter: Component<ComponentProps<"div">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<div
 			class={cn("flex flex-col gap-2 p-2", local.class)}
@@ -381,15 +386,15 @@ const SidebarFooter: Component<ComponentProps<"div">> = (props) => {
 	);
 };
 
-type SidebarSeparatorProps<T extends ValidComponent = "hr"> =
-	SeparatorPrimitive.SeparatorRootProps<T> & { class?: string | undefined };
+type SidebarSeparatorProps = ComponentProps<typeof Separator>;
 
 const SidebarSeparator = <T extends ValidComponent = "hr">(
-	props: PolymorphicProps<T, SidebarSeparatorProps<T>>,
+	props: PolymorphicProps<T, SidebarSeparatorProps>,
 ) => {
-	const [local, others] = splitProps(props as SidebarSeparatorProps, ["class"]);
+	const local = props as SidebarSeparatorProps;
+	const others = omit(local, "class");
 	return (
-		<SeparatorPrimitive.Root
+		<Separator
 			class={cn("mx-2 h-px w-auto shrink-0 bg-border", local.class)}
 			data-sidebar="separator"
 			{...others}
@@ -398,7 +403,8 @@ const SidebarSeparator = <T extends ValidComponent = "hr">(
 };
 
 const SidebarContent: Component<ComponentProps<"div">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<div
 			class={cn(
@@ -412,7 +418,8 @@ const SidebarContent: Component<ComponentProps<"div">> = (props) => {
 };
 
 const SidebarGroup: Component<ComponentProps<"div">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<div
 			class={cn("relative flex w-full min-w-0 flex-col p-2", local.class)}
@@ -428,13 +435,12 @@ type SidebarGroupLabelProps<T extends ValidComponent = "div"> =
 const SidebarGroupLabel = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, SidebarGroupLabelProps<T>>,
 ) => {
-	const [local, others] = splitProps(props as SidebarGroupLabelProps, [
-		"class",
-	]);
+	const local = props as SidebarGroupLabelProps & { as?: ValidComponent };
+	const others = omit(local, "class", "as");
 
 	return (
-		<Polymorphic<SidebarGroupLabelProps>
-			as="div"
+		<Polymorphic
+			as={local.as ?? "div"}
 			class={cn(
 				"flex h-8 shrink-0 items-center rounded-md px-2 font-medium text-muted-foreground text-xs outline-none ring-ring transition-all duration-200 ease-linear motion-reduce:transition-none focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
 				"group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
@@ -452,12 +458,11 @@ type SidebarGroupActionProps<T extends ValidComponent = "button"> =
 const SidebarGroupAction = <T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, SidebarGroupActionProps<T>>,
 ) => {
-	const [local, others] = splitProps(props as SidebarGroupActionProps, [
-		"class",
-	]);
+	const local = props as SidebarGroupActionProps & { as?: ValidComponent };
+	const others = omit(local, "class", "as");
 	return (
-		<Polymorphic<SidebarGroupActionProps>
-			as="button"
+		<Polymorphic
+			as={local.as ?? "button"}
 			class={cn(
 				"absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground outline-none ring-ring transition-transform motion-reduce:transition-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
 				"after:absolute after:-inset-2 after:md:hidden",
@@ -471,7 +476,8 @@ const SidebarGroupAction = <T extends ValidComponent = "button">(
 };
 
 const SidebarGroupContent: Component<ComponentProps<"div">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<div
 			class={cn("w-full text-sm", local.class)}
@@ -482,7 +488,8 @@ const SidebarGroupContent: Component<ComponentProps<"div">> = (props) => {
 };
 
 const SidebarMenu: Component<ComponentProps<"ul">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<ul
 			class={cn("flex w-full min-w-0 flex-col gap-1", local.class)}
@@ -493,7 +500,8 @@ const SidebarMenu: Component<ComponentProps<"ul">> = (props) => {
 };
 
 const SidebarMenuItem: Component<ComponentProps<"li">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<li
 			class={cn("group/menu-item relative", local.class)}
@@ -536,22 +544,22 @@ type SidebarMenuButtonProps<T extends ValidComponent = "button"> =
 const SidebarMenuButton = <T extends ValidComponent = "button">(
 	rawProps: PolymorphicProps<T, SidebarMenuButtonProps<T>>,
 ) => {
-	const props = mergeProps(
+	const props = merge(
 		{ isActive: false, variant: "default", size: "default" },
 		rawProps,
 	);
-	const [local, others] = splitProps(
-		props as SidebarMenuButtonProps & { as?: ValidComponent },
-		[
-			"as",
-			"type",
-			"isActive",
-			"tooltip",
-			"tooltipDisabled",
-			"variant",
-			"size",
-			"class",
-		],
+	const local = props as SidebarMenuButtonProps & { as?: ValidComponent };
+	const others = omit(
+		local,
+		"as",
+		"type",
+		"isActive",
+		"tooltip",
+		"tooltipDisabled",
+		"variant",
+		"size",
+		"class",
+		"style",
 	);
 	const { isMobile, state } = useSidebar();
 	const component = () => local.as ?? "button";
@@ -565,7 +573,7 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 	return (
 		<Show
 			fallback={
-				<Polymorphic<SidebarMenuButtonProps>
+				<Polymorphic
 					as={component()}
 					class={cn(
 						sidebarMenuButtonVariants({
@@ -577,6 +585,7 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 					data-active={local.isActive}
 					data-sidebar="menu-button"
 					data-size={local.size}
+					style={local.style}
 					type={buttonType()}
 					{...others}
 				/>
@@ -604,6 +613,7 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 					data-active={local.isActive}
 					data-sidebar="menu-button"
 					data-size={local.size}
+					style={local.style || undefined}
 					type={buttonType()}
 					{...others}
 				/>
@@ -621,15 +631,13 @@ type SidebarMenuActionProps<T extends ValidComponent = "button"> =
 const SidebarMenuAction = <T extends ValidComponent = "button">(
 	rawProps: PolymorphicProps<T, SidebarMenuActionProps<T>>,
 ) => {
-	const props = mergeProps({ showOnHover: false }, rawProps);
-	const [local, others] = splitProps(props as SidebarMenuActionProps, [
-		"class",
-		"showOnHover",
-	]);
+	const props = merge({ showOnHover: false }, rawProps);
+	const local = props as SidebarMenuActionProps & { as?: ValidComponent };
+	const others = omit(local, "class", "showOnHover", "as");
 
 	return (
-		<Polymorphic<SidebarMenuActionProps>
-			as="button"
+		<Polymorphic
+			as={local.as ?? "button"}
 			class={cn(
 				"absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground outline-none ring-ring transition-transform motion-reduce:transition-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
 				"after:absolute after:-inset-2 after:md:hidden",
@@ -648,7 +656,8 @@ const SidebarMenuAction = <T extends ValidComponent = "button">(
 };
 
 const SidebarMenuBadge: Component<ComponentProps<"div">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<div
 			class={cn(
@@ -671,8 +680,9 @@ type SidebarMenuSkeletonProps = ComponentProps<"div"> & {
 };
 
 const SidebarMenuSkeleton: Component<SidebarMenuSkeletonProps> = (rawProps) => {
-	const props = mergeProps({ showIcon: false }, rawProps);
-	const [local, others] = splitProps(props, ["class", "showIcon"]);
+	const props = merge({ showIcon: false }, rawProps);
+	const local = props;
+	const others = omit(local, "class", "showIcon");
 
 	return (
 		<div
@@ -689,7 +699,8 @@ const SidebarMenuSkeleton: Component<SidebarMenuSkeletonProps> = (rawProps) => {
 };
 
 const SidebarMenuSub: Component<ComponentProps<"ul">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props;
+	const others = omit(local, "class");
 	return (
 		<ul
 			class={cn(
@@ -716,16 +727,13 @@ type SidebarMenuSubButtonProps<T extends ValidComponent = "a"> =
 const SidebarMenuSubButton = <T extends ValidComponent = "a">(
 	rawProps: PolymorphicProps<T, SidebarMenuSubButtonProps<T>>,
 ) => {
-	const props = mergeProps({ size: "md" }, rawProps);
-	const [local, others] = splitProps(props as SidebarMenuSubButtonProps, [
-		"size",
-		"isActive",
-		"class",
-	]);
+	const props = merge({ size: "md" }, rawProps);
+	const local = props as SidebarMenuSubButtonProps & { as?: ValidComponent };
+	const others = omit(local, "size", "isActive", "class", "as");
 
 	return (
-		<Polymorphic<SidebarMenuSubButtonProps>
-			as="a"
+		<Polymorphic
+			as={local.as ?? "a"}
 			class={cn(
 				"flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-foreground outline-none ring-ring hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 active:bg-accent active:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-accent-foreground",
 				"data-[active=true]:bg-accent data-[active=true]:text-accent-foreground",

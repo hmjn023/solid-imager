@@ -1,11 +1,12 @@
 import { t } from "@solid-imager/i18n";
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
 import type { MediaDetails } from "@solid-imager/core/media";
+import { readQueryData } from "@solid-imager/ui/query";
 import {
 	MediaDetailScreen,
 	RelatedMedia,
 } from "@solid-imager/ui/screens/media-detail";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { ClientOnly } from "@tanstack/solid-router";
 import { type Accessor, Show } from "solid-js";
 import { MediaActions } from "~/components/media/media-actions";
@@ -44,10 +45,11 @@ function MediaContent(props: {
 	mediaId: Accessor<string>;
 	mediaSourceId: Accessor<string>;
 }) {
-	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const mediaSources = useQuery(mediaSourcesQueryOptions);
 	const sourceName = () =>
-		mediaSources.data?.find((source) => source.id === props.mediaSourceId())
-			?.name ?? t("mediaDetail.defaultSourceName");
+		readQueryData(mediaSources)?.find(
+			(source) => source.id === props.mediaSourceId(),
+		)?.name ?? t("mediaDetail.defaultSourceName");
 
 	return (
 		<MediaDetailScreen

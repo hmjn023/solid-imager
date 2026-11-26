@@ -1,3 +1,4 @@
+import { flush } from "solid-js";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	activateSimilaritySearch,
@@ -41,28 +42,35 @@ describe("activateSimilaritySearch", () => {
 			configurable: true,
 			value: new MemoryStorage(),
 		});
-		setSearchState({
-			mode: "simple",
-			selectedSource: "source-1",
-			similarityAnchorMediaId: null,
-			offset: 0,
-			scrollY: 0,
+		setSearchState((draft) => {
+			Object.assign(draft, {
+				mode: "simple",
+				selectedSource: "source-1",
+				similarityAnchorMediaId: null,
+				offset: 0,
+				scrollY: 0,
+			});
 		});
+		flush();
 	});
 
 	it("distinguishes a global similarity handoff from source composer updates", () => {
 		const sourceActivation = getGlobalSimilarityActivation();
 		activateSimilaritySearch("global-anchor", "embeddinggemma2");
+		flush();
 		expect(getGlobalSimilarityActivation()).toBe(sourceActivation + 1);
 		expect(searchState.similarityAnchorMediaId).toBe("global-anchor");
 		// A newly mounted source view owns the current epoch and can run its own composer search.
 		const newSourceActivation = getGlobalSimilarityActivation();
-		setSearchState("similarityAnchorMediaId", "source-anchor");
+		setSearchState((draft) => {
+			draft.similarityAnchorMediaId = "source-anchor";
+		});
 		expect(getGlobalSimilarityActivation()).toBe(newSourceActivation);
 	});
 
 	it("writes the canonical state and clears the selected source", () => {
 		activateSimilaritySearch("media-1");
+		flush();
 
 		expect(searchState.mode).toBe("simple");
 		expect(searchState.similarityAnchorMediaId).toBe("media-1");
@@ -86,17 +94,21 @@ describe("clearSimilaritySearch", () => {
 			configurable: true,
 			value: new MemoryStorage(),
 		});
-		setSearchState({
-			mode: "pro",
-			selectedSource: "source-2",
-			similarityAnchorMediaId: "media-1",
-			offset: 10,
-			scrollY: 100,
+		setSearchState((draft) => {
+			Object.assign(draft, {
+				mode: "pro",
+				selectedSource: "source-2",
+				similarityAnchorMediaId: "media-1",
+				offset: 10,
+				scrollY: 100,
+			});
 		});
+		flush();
 	});
 
 	it("clears the anchor and persists canonical state without changing source", () => {
 		clearSimilaritySearch();
+		flush();
 
 		expect(searchState.mode).toBe("pro");
 		expect(searchState.selectedSource).toBe("source-2");

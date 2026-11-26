@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
-import type { JSX } from "solid-js";
-import { children, Show, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { children, Show } from "solid-js";
 import {
 	Select,
 	SelectContent,
@@ -34,7 +34,8 @@ export function ManagementScreen(props: {
 export function ManagementScrollArea(
 	props: JSX.HTMLAttributes<HTMLDivElement>,
 ) {
-	const [local, rest] = splitProps(props, ["class"]);
+	const local = props,
+		rest = omit(props, "class");
 	return (
 		<div
 			{...rest}
@@ -165,3 +166,5 @@ export function CategoryLabel(props: {
 		</>
 	);
 }
+
+import { omit } from "solid-js";

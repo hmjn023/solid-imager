@@ -1,3 +1,5 @@
+import { cn } from "./utils/cn";
+import { createRequest } from "./utils/create-request";
 import { t } from "@solid-imager/i18n";
 import { danbooruMediaUrlSchema } from "@solid-imager/core/danbooru";
 import { pixivImageUrlSchema } from "@solid-imager/core/external-viewer";
@@ -5,11 +7,9 @@ import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
 	createMemo,
-	createResource,
 	createSignal,
 	createUniqueId,
 	For,
-	on,
 	Show,
 	untrack,
 } from "solid-js";
@@ -132,8 +132,9 @@ function ImportPreviewImage(props: { src?: string; expanded?: boolean }) {
 	const [failedSrc, setFailedSrc] = createSignal<string | null>();
 	return (
 		<div
-			class="overflow-hidden rounded-md bg-muted"
-			classList={{ "aspect-landscape": !props.expanded }}
+			class={cn("overflow-hidden rounded-md bg-muted", {
+				"aspect-landscape": !props.expanded,
+			})}
 		>
 			<Show
 				when={props.src !== failedSrc() && props.src}
@@ -146,11 +147,10 @@ function ImportPreviewImage(props: { src?: string; expanded?: boolean }) {
 				{(src) => (
 					<img
 						alt={props.expanded ? t("importReviewModal.importPreview") : ""}
-						class="block w-full"
-						classList={{
+						class={cn("block w-full", {
 							"max-h-dialog-screen-compact object-contain": props.expanded,
 							"h-full object-cover": !props.expanded,
-						}}
+						})}
 						loading={props.expanded ? "eager" : "lazy"}
 						onError={(event) =>
 							setFailedSrc(event.currentTarget.getAttribute("src"))
@@ -185,7 +185,7 @@ function ImportReviewCard(props: {
 		() => pixivImageUrlSchema.safeParse(props.item.previewUrl).data,
 	);
 	const animationId = createMemo(() => pixivAnimationId(props.item));
-	const [legacyPoster] = createResource(
+	const { data: legacyPoster } = createRequest(
 		() => props.pixivPreview && !preview() && animationId(),
 		async (id) => {
 			const url = await props.pixivPreview
@@ -204,7 +204,7 @@ function ImportReviewCard(props: {
 	const danbooruPoster = createMemo(() =>
 		danbooruPosterUrl(props.item.previewUrl),
 	);
-	const [legacyDanbooruPoster] = createResource(
+	const { data: legacyDanbooruPoster } = createRequest(
 		() => {
 			const url = danbooruVideo();
 			const id =
@@ -245,8 +245,10 @@ function ImportReviewCard(props: {
 
 	return (
 		<div
-			class="flex min-w-0 flex-col rounded-lg border border-border bg-card transition-colors"
-			classList={{ "border-primary bg-primary/5": props.checked }}
+			class={cn(
+				"flex min-w-0 flex-col rounded-lg border border-border bg-card transition-colors",
+				{ "border-primary bg-primary/5": props.checked },
+			)}
 		>
 			<Checkbox
 				checked={props.checked}
@@ -338,40 +340,32 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	const [openGeneration, setOpenGeneration] = createSignal<number>();
 	let openCount = 0;
 
-	const [pendingJobs, { refetch: refetchJobs }] = createResource(
-		openGeneration,
-		props.listPending,
-	);
-	const [sources, { refetch: refetchSources }] = createResource(
-		openGeneration,
-		props.listSources,
-	);
-	const sourcesFailed = () => sources.state === "errored";
-	const jobsFailed = () => pendingJobs.state === "errored";
-	const currentJobs = () => (jobsFailed() ? undefined : pendingJobs());
+	const pendingJobs = createRequest(openGeneration, () => props.listPending());
+	const sources = createRequest(openGeneration, () => props.listSources());
+	const sourcesFailed = () => Boolean(sources.error());
+	const jobsFailed = () => Boolean(pendingJobs.error());
+	const currentJobs = () => (jobsFailed() ? undefined : pendingJobs.data());
 	const localSources = createMemo(() => {
 		if (sourcesFailed()) return [];
-		return (sources() ?? []).filter(
+		return (sources.data() ?? []).filter(
 			(source): source is typeof source & { id: string } =>
 				source.type === "local" && !!source.id,
 		);
 	});
 	const sourceSelectionDisabled = () =>
-		sources.loading || !localSources().length || activeAction() !== null;
+		sources.loading() || !localSources().length || activeAction() !== null;
 
 	createEffect(
-		on(
-			() => props.isOpen,
-			(isOpen) => {
-				if (!isOpen) return;
-				setIsDirty(false);
-				setIsDiscardDialogOpen(false);
-				setOpenGeneration(++openCount);
-			},
-		),
+		() => props.isOpen,
+		(isOpen) => {
+			if (!isOpen) return;
+			setIsDirty(false);
+			setIsDiscardDialogOpen(false);
+			setOpenGeneration(++openCount);
+		},
 	);
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const jobs = currentJobs();
 		if (jobs?.length) {
 			setSelectedJobIds(new Set(jobs.map((job) => job.id)));
@@ -380,7 +374,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		setSelectedJobIds(createEmptySelection());
 	});
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (!props.isOpen) return;
 		const sourceList = localSources();
 		if (!sourceList.length) {
@@ -481,7 +475,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		try {
 			setActiveAction("delete");
 			await props.cancelPending(Array.from(selectedJobIds()));
-			await refetchJobs();
+			await pendingJobs.refetch();
 			setSelectedJobIds(createEmptySelection());
 			setIsDirty(false);
 			setIsDeleteDialogOpen(false);
@@ -568,7 +562,9 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										<span>{t("importReviewModal.failedToLoadSources")}</span>
 										<Button
 											class="min-h-11 px-2 text-xs sm:min-h-8"
-											onClick={() => void refetchSources()}
+											onClick={() =>
+												void sources.refetch().catch(() => undefined)
+											}
 											size="sm"
 											type="button"
 											variant="outline"
@@ -579,7 +575,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								</Show>
 								<Show
 									when={
-										!sources.loading &&
+										!sources.loading() &&
 										!sourcesFailed() &&
 										localSources().length === 0
 									}
@@ -637,13 +633,15 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 						</div>
 
 						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5">
-							<Show when={pendingJobs.loading}>
+							<Show when={pendingJobs.loading()}>
 								<div class="flex min-h-48 items-center justify-center text-muted-foreground text-sm">
 									{t("importReviewModal.loadingImportInbox")}
 								</div>
 							</Show>
 							<Show
-								when={!pendingJobs.loading && (currentJobs()?.length ?? 0) > 0}
+								when={
+									!pendingJobs.loading() && (currentJobs()?.length ?? 0) > 0
+								}
 							>
 								<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
 									<For each={currentJobs()}>
@@ -665,12 +663,19 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 									<p class="text-destructive text-sm">
 										{t("importReviewModal.failedToLoadImportInbox")}
 									</p>
-									<Button onClick={() => void refetchJobs()} variant="outline">
+									<Button
+										onClick={() =>
+											void pendingJobs.refetch().catch(() => undefined)
+										}
+										variant="outline"
+									>
 										{t("actions.retry")}
 									</Button>
 								</div>
 							</Show>
-							<Show when={!pendingJobs.loading && currentJobs()?.length === 0}>
+							<Show
+								when={!pendingJobs.loading() && currentJobs()?.length === 0}
+							>
 								<div class="flex min-h-48 flex-col items-center justify-center gap-1 text-center">
 									<p class="font-medium">
 										{t("importReviewModal.importInboxIsEmpty")}
@@ -704,7 +709,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 							class="flex-1 px-2 sm:flex-none sm:px-4"
 							disabled={
 								selectedJobIds().size === 0 ||
-								sources.loading ||
+								sources.loading() ||
 								!selectedSourceOption() ||
 								activeAction() !== null
 							}
@@ -791,3 +796,5 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		</>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

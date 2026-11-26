@@ -1,4 +1,4 @@
-import { createMemo, onCleanup, splitProps } from "solid-js";
+import { createMemo, onCleanup } from "solid-js";
 import { createManagedThumbnailSource } from "./managed-thumbnail-source";
 import { ThumbnailImage, type ThumbnailImageProps } from "./thumbnail-image";
 
@@ -9,7 +9,8 @@ export function ManagedThumbnailImage(
 		releaseUrl?: (url: string) => void;
 	},
 ) {
-	const [local, image] = splitProps(props, ["src", "releaseUrl"]);
+	const local = props,
+		image = omit(props, "src", "releaseUrl");
 	const source = createMemo(() => {
 		const managed = createManagedThumbnailSource(local.src, local.releaseUrl);
 		onCleanup(managed.dispose);
@@ -17,3 +18,5 @@ export function ManagedThumbnailImage(
 	});
 	return <ThumbnailImage {...image} source={source()} />;
 }
+
+import { omit } from "solid-js";

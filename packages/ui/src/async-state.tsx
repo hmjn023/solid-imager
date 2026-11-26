@@ -1,5 +1,6 @@
 import { t } from "@solid-imager/i18n";
-import type { JSX, ParentProps } from "solid-js";
+import type { ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { children, createSignal, Match, Show, Switch } from "solid-js";
 import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";

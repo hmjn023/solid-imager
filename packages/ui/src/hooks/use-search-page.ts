@@ -15,23 +15,18 @@ import {
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { TagResponse } from "@solid-imager/core/tags";
 import {
-	createInfiniteQuery,
-	createQuery,
-	type InfiniteData,
+	useInfiniteQuery,
+	useQuery,
 	type QueryOptions,
 	useQueryClient,
 } from "@tanstack/solid-query";
-import {
-	type Accessor,
-	createEffect,
-	createMemo,
-	createSignal,
-	onCleanup,
-} from "solid-js";
-import { isServer } from "solid-js/web";
+import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
+import { isServer } from "@solidjs/web";
 import { buildSearchResultsQueryOptions } from "../query-options";
+import { sameMediaResultsOptions } from "../query-options/search-query";
 import { useInitialSearch } from "../search-initial-state";
 import { type QueryUiState, toQueryUiState } from "../query-state";
+import { createInfiniteMediaResults } from "./infinite-media-results";
 import { observePageBoundary } from "./observe-page-boundary";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 
@@ -104,14 +99,13 @@ export interface UseSearchPageOptions {
 }
 
 export interface UseSearchPageResult {
-	searchResultQuery: ReturnType<
-		typeof createInfiniteQuery<MediaSearchResponse>
-	>;
+	searchResultQuery: ReturnType<typeof useInfiniteQuery<MediaSearchResponse>>;
 	searchResults: () => MediaSearchResponse["media"];
 	resultsCurrent: () => boolean;
 	hasData: () => boolean;
 	totalCount: () => number | undefined;
 	fetchNextPage: () => Promise<unknown>;
+	isFetchingNextPage: () => boolean;
 	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
 	filterStates: {
 		tags: () => QueryUiState<TagResponse[]>;
@@ -166,27 +160,27 @@ export function useSearchPage(
 	const charactersQueryKey = queries.characters().queryKey;
 	const authorsQueryKey = queries.authors().queryKey;
 
-	const tags = createQuery<TagResponse[]>(() => ({
+	const tags = useQuery<TagResponse[]>(() => ({
 		...queries.tags(),
 		enabled: !isServer,
 	}));
-	const sources = createQuery<SafeMediaSource[]>(() => ({
+	const sources = useQuery<SafeMediaSource[]>(() => ({
 		...queries.sources(),
 		enabled: !isServer,
 	}));
-	const allProjects = createQuery<Project[]>(() => ({
+	const allProjects = useQuery<Project[]>(() => ({
 		...queries.projects(),
 		enabled: !isServer,
 	}));
-	const allIps = createQuery<Ip[]>(() => ({
+	const allIps = useQuery<Ip[]>(() => ({
 		...queries.ips(),
 		enabled: !isServer,
 	}));
-	const allCharacters = createQuery<Character[]>(() => ({
+	const allCharacters = useQuery<Character[]>(() => ({
 		...queries.characters(),
 		enabled: !isServer,
 	}));
-	const allAuthors = createQuery<Author[]>(() => ({
+	const allAuthors = useQuery<Author[]>(() => ({
 		...queries.authors(),
 		enabled: !isServer,
 	}));
@@ -205,31 +199,31 @@ export function useSearchPage(
 	>();
 	const [authorsData, setAuthorsData] = createSignal<Author[] | undefined>();
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		void tags.dataUpdatedAt;
 		setTagsData(queryClient.getQueryData<TagResponse[]>(tagsQueryKey));
 	});
-	createEffect(() => {
+	createTrackedEffect(() => {
 		void sources.dataUpdatedAt;
 		setSourcesData(
 			queryClient.getQueryData<SafeMediaSource[]>(sourcesQueryKey),
 		);
 	});
-	createEffect(() => {
+	createTrackedEffect(() => {
 		void allProjects.dataUpdatedAt;
 		setProjectsData(queryClient.getQueryData<Project[]>(projectsQueryKey));
 	});
-	createEffect(() => {
+	createTrackedEffect(() => {
 		void allIps.dataUpdatedAt;
 		setIpsData(queryClient.getQueryData<Ip[]>(ipsQueryKey));
 	});
-	createEffect(() => {
+	createTrackedEffect(() => {
 		void allCharacters.dataUpdatedAt;
 		setCharactersData(
 			queryClient.getQueryData<Character[]>(charactersQueryKey),
 		);
 	});
-	createEffect(() => {
+	createTrackedEffect(() => {
 		void allAuthors.dataUpdatedAt;
 		setAuthorsData(queryClient.getQueryData<Author[]>(authorsQueryKey));
 	});
@@ -238,84 +232,41 @@ export function useSearchPage(
 		JSON.stringify(getSearchCondition() ?? null),
 	);
 
-	const searchResultQueryOptions = createMemo(() => {
-		return buildSearchResultsQueryOptions({
-			mode: mode(),
-			sourceId: selectedSource() || undefined,
-			condition: getSearchCondition(),
-			conditionKey: conditionKey(),
-			sort: sortBy(),
-			order: sortOrder(),
-			limit: limit(),
-			similarityAnchorMediaId: similarityAnchorMediaId(),
-			similarityTopK: similarityTopK(),
-			similarityModel: options.similarityModel?.(),
-			semanticQuery: options.semanticQuery?.(),
-			searchSemantic: options.searchSemantic,
-			searchMedia,
-			searchSimilar: options.searchSimilar,
-			enabled: !isServer && isSearchStateRestored(),
-			gcTime,
-		});
-	});
-	const searchResultQuery = createInfiniteQuery(searchResultQueryOptions);
-	const fetchNextPage = () =>
-		isSearchStateRestored() && searchResultQuery.hasNextPage
-			? searchResultQuery.fetchNextPage({ cancelRefetch: false })
-			: Promise.resolve();
-	const [searchResultData, setSearchResultData] = createSignal<
-		InfiniteData<MediaSearchResponse> | undefined
-	>(
-		initialSearch
-			? queryClient.getQueryData(searchResultQueryOptions().queryKey)
-			: undefined,
+	const searchResultQueryOptions = createMemo(
+		() => {
+			return buildSearchResultsQueryOptions({
+				mode: mode(),
+				sourceId: selectedSource() || undefined,
+				condition: getSearchCondition(),
+				conditionKey: conditionKey(),
+				sort: sortBy(),
+				order: sortOrder(),
+				limit: limit(),
+				similarityAnchorMediaId: similarityAnchorMediaId(),
+				similarityTopK: similarityTopK(),
+				similarityModel: options.similarityModel?.(),
+				semanticQuery: options.semanticQuery?.(),
+				searchSemantic: options.searchSemantic,
+				searchMedia,
+				searchSimilar: options.searchSimilar,
+				enabled: !isServer && isSearchStateRestored(),
+				gcTime,
+			});
+		},
+		{ equals: sameMediaResultsOptions },
 	);
-	const [renderedQueryKey, setRenderedQueryKey] = createSignal(
-		searchResultData()
-			? JSON.stringify(searchResultQueryOptions().queryKey)
-			: undefined,
+	const searchResultQuery = useInfiniteQuery(searchResultQueryOptions);
+	const results = createInfiniteMediaResults(
+		queryClient,
+		searchResultQueryOptions,
+		searchResultQuery,
+		{
+			hasInitialData: () => initialSearch !== undefined,
+			isRestored: isSearchStateRestored,
+		},
 	);
-
-	createEffect(() => {
-		// Solid Query exposes `data` as a resource-backed accessor. During an
-		// infinite-page fetch it can suspend even when previous pages are cached;
-		// keep the rendered result in a regular signal so the collection DOM stays
-		// mounted while the next page is loading.
-		const queryKey = searchResultQueryOptions().queryKey;
-		void searchResultQuery.dataUpdatedAt;
-		const cachedData =
-			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
-		if (cachedData !== undefined) {
-			setSearchResultData(cachedData);
-			setRenderedQueryKey(JSON.stringify(queryKey));
-		} else if (!searchResultQuery.isPlaceholderData) {
-			setSearchResultData(undefined);
-			setRenderedQueryKey(undefined);
-		}
-	});
-
-	const searchResults = createMemo(() => {
-		const seen = new Set<string>();
-		return (searchResultData()?.pages.flatMap((p) => p.media) || []).filter(
-			(m) => {
-				if (seen.has(m.id)) {
-					return false;
-				}
-				seen.add(m.id);
-				return true;
-			},
-		);
-	});
-	const contentState = () =>
-		toQueryUiState(
-			{
-				data: searchResultData() ? searchResults() : undefined,
-				error: searchResultQuery.error,
-				status: searchResultQuery.status,
-				fetchStatus: searchResultQuery.fetchStatus,
-			},
-			{ isEmpty: (data) => data.length === 0 },
-		);
+	const searchResultData = results.data;
+	const searchResults = results.results;
 	const arrayState = <T>(
 		query: {
 			data: T[] | undefined;
@@ -385,13 +336,10 @@ export function useSearchPage(
 			void key;
 			setScrollY(position);
 		},
-		isReady: () =>
-			isSearchStateRestored() &&
-			Boolean(searchResultData()) &&
-			!searchResultQuery.isLoading,
+		isReady: () => isSearchStateRestored() && results.current(),
 		hasNextPage: () => searchResultQuery.hasNextPage,
-		isFetchingNextPage: () => searchResultQuery.isFetchingNextPage,
-		fetchNextPage,
+		isFetchingNextPage: results.isFetchingNextPage,
+		fetchNextPage: results.fetchNextPage,
 		scrollContainerSelector: options.scrollContainerSelector,
 	});
 
@@ -419,10 +367,11 @@ export function useSearchPage(
 			!enableVirtualization &&
 			isSearchStateRestored() &&
 			searchResultQuery.hasNextPage &&
-			!searchResultQuery.isFetching &&
+			!results.isFetchingNextPage() &&
+			searchResultQuery.fetchStatus === "idle" &&
 			!searchResultQuery.isFetchNextPageError,
 		rootMargin: "2400px",
-		load: fetchNextPage,
+		load: results.fetchNextPage,
 	});
 
 	return {
@@ -430,14 +379,12 @@ export function useSearchPage(
 		searchResults,
 		// Previous results stay mounted during a filter change, but must not be
 		// treated as the completed result of the new search.
-		resultsCurrent: () =>
-			!searchResultQuery.isPlaceholderData &&
-			renderedQueryKey() ===
-				JSON.stringify(searchResultQueryOptions().queryKey),
+		resultsCurrent: results.current,
 		hasData: () => searchResultData() !== undefined,
 		totalCount: () => searchResultData()?.pages[0]?.total,
-		fetchNextPage,
-		contentState,
+		fetchNextPage: results.fetchNextPage,
+		isFetchingNextPage: results.isFetchingNextPage,
+		contentState: results.contentState,
 		filterStates: {
 			tags: () => arrayState(tags, tagsData),
 			sources: () => arrayState(sources, sourcesData),
@@ -474,3 +421,5 @@ export function useSearchPage(
 		conditionKey,
 	};
 }
+
+import { createTrackedEffect } from "solid-js";

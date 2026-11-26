@@ -203,25 +203,24 @@ test("manager source and format selectors expose their visible labels", async ({
 	await waitForAppHydration(page);
 	const navigation = page.locator('nav[aria-label="管理カテゴリ"]:visible');
 	await navigation.getByRole("button", { name: /データ転送/ }).click();
-	const target = page.getByRole("button", { name: /^保存先ソース/ });
+	const target = page.getByRole("combobox", { name: /^保存先ソース/ });
 	await expect(target).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: /^エクスポート形式/ }),
+		page.getByRole("combobox", { name: /^エクスポート形式/ }),
 	).toBeVisible();
-	await expect(page.getByRole("button", { name: /^復元形式/ })).toBeVisible();
+	await expect(page.getByRole("combobox", { name: /^復元形式/ })).toBeVisible();
 	await target.click();
 	await page
 		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
 		.click();
-	await expect(target).toHaveAccessibleName(
-		new RegExp(`保存先ソース.*${E2E_SOURCE_NAME}`),
-	);
+	await expect(target).toHaveAccessibleName(/^保存先ソース/);
+	await expect(target).toContainText(E2E_SOURCE_NAME);
 	for (const category of ["一括タグ付け", "サムネイル", "重複検出"]) {
 		await navigation
 			.getByRole("button", { name: new RegExp(category) })
 			.click();
 		await expect(
-			page.getByRole("button", { name: /^対象ソース/ }),
+			page.getByRole("combobox", { name: /^対象ソース/ }),
 		).toBeVisible();
 	}
 });

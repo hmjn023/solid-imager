@@ -1,17 +1,11 @@
+import { cn } from "./utils/cn";
 import { t } from "@solid-imager/i18n";
 import type { MediaDetails } from "@solid-imager/core/media";
 import type { DetectAndCropResponse } from "@solid-imager/core/tagging";
-import Download from "lucide-solid/icons/download";
-import Scan from "lucide-solid/icons/scan";
-import ScanFace from "lucide-solid/icons/scan-face";
-import {
-	createEffect,
-	createSignal,
-	For,
-	onCleanup,
-	Show,
-	untrack,
-} from "solid-js";
+import Download from "@lucide/solid/icons/download";
+import Scan from "@lucide/solid/icons/scan";
+import ScanFace from "@lucide/solid/icons/scan-face";
+import { createSignal, For, onCleanup, Show, untrack } from "solid-js";
 import { buttonVariants } from "./button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import {
@@ -68,7 +62,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 		}
 	};
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (props.isOpen) {
 			void detectAndCrop(untrack(transparent));
 		} else {
@@ -170,10 +164,9 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 										return (
 											<div class="overflow-hidden rounded-lg border bg-background">
 												<div
-													class="relative bg-muted"
-													classList={{
+													class={cn("relative bg-muted", {
 														"bg-checkerboard": transparent(),
-													}}
+													})}
 												>
 													<img
 														alt={t("characterCropModal.valueValue", {
@@ -229,3 +222,5 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 		</Dialog>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

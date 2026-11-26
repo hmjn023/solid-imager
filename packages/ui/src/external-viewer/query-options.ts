@@ -8,6 +8,10 @@ import { infiniteQueryOptions } from "@tanstack/solid-query";
 export type PixivCollection = PixivFeed | "bookmarks";
 type ViewerPage = { posts: { id: number }[]; hasNextPage: boolean };
 
+// Solid Query reconciles arrays by id. Keep the page number on the envelope
+// so prepending a page preserves the identity of pages that shift position.
+export type ViewerQueryPage<T extends ViewerPage> = { id: number; result: T };
+
 export function pixivQueryScope(base: string, userId = "guest", expiresAt = 0) {
 	return [base, userId, expiresAt];
 }
@@ -41,13 +45,13 @@ export function viewerPagination(page: number) {
 	return {
 		initialPageParam: page,
 		getNextPageParam: (
-			result: ViewerPage,
-			_pages: ViewerPage[],
+			page: ViewerQueryPage<ViewerPage>,
+			_pages: ViewerQueryPage<ViewerPage>[],
 			current: number,
-		) => (result.hasNextPage && current < 1000 ? current + 1 : undefined),
+		) => (page.result.hasNextPage && current < 1000 ? current + 1 : undefined),
 		getPreviousPageParam: (
-			_result: ViewerPage,
-			_pages: ViewerPage[],
+			_page: ViewerQueryPage<ViewerPage>,
+			_pages: ViewerQueryPage<ViewerPage>[],
 			current: number,
 		) => (current > 1 ? current - 1 : undefined),
 	};
@@ -61,7 +65,10 @@ export function initialViewerSearchOptions<T extends ViewerPage>(
 	return infiniteQueryOptions({
 		...viewerPagination(1),
 		queryKey: viewerSearchKey(provider, scope, 1),
-		queryFn: run,
+		queryFn: async (): Promise<ViewerQueryPage<T>> => ({
+			id: 1,
+			result: await run(),
+		}),
 	});
 }
 

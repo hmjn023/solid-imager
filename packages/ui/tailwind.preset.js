@@ -54,15 +54,6 @@ const mediaUtilities = plugin(({ addUtilities }) => {
 		".bottom-safe-sm": {
 			bottom: "calc(1.5rem + env(safe-area-inset-bottom))",
 		},
-		".origin-kb-menu": {
-			transformOrigin: "var(--kb-menu-content-transform-origin)",
-		},
-		".origin-kb-popover": {
-			transformOrigin: "var(--kb-popover-content-transform-origin)",
-		},
-		".origin-kb-tooltip": {
-			transformOrigin: "var(--kb-tooltip-content-transform-origin)",
-		},
 	});
 });
 
@@ -207,7 +198,7 @@ const solidUiPreset = {
 			"dialog-90vh": "90vh",
 			"dialog-fit": "min(52rem, calc(100dvh - 2rem))",
 			"popover-fit": "min(24rem, calc(100dvh - 2rem))",
-			"popover-fit-available": "min(42rem, var(--kb-popper-content-available-height, calc(100dvh - 2rem)))",
+			"popover-fit-available": "min(42rem, var(--available-height, calc(100dvh - 2rem)))",
 			"menu-fit": "min(28rem, 60dvh)",
 			"menu-tall": "min(32rem, 65dvh)",
 			"menu-source": "min(36dvh, 22rem)",
@@ -239,10 +230,10 @@ const solidUiPreset = {
       keyframes: {
         "accordion-down": {
           from: { height: 0 },
-          to: { height: "var(--kb-accordion-content-height)" },
+          to: { height: "var(--accordion-panel-height)" },
         },
         "accordion-up": {
-          from: { height: "var(--kb-accordion-content-height)" },
+          from: { height: "var(--accordion-panel-height)" },
           to: { height: 0 },
         },
         "content-show": {

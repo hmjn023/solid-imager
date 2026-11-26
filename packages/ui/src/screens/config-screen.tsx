@@ -8,26 +8,26 @@ import {
 	type McpToolInfo,
 } from "@solid-imager/core/config";
 import type { AiHealthResponse } from "@solid-imager/core/tagging";
-import { createForm } from "@tanstack/solid-form";
+import { createForm } from "../utils/create-form";
 import { useQueryClient } from "@tanstack/solid-query";
 // oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
-import Bot from "lucide-solid/icons/bot";
-import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
-import DownloadCloud from "lucide-solid/icons/cloud-download";
-import HardDrive from "lucide-solid/icons/hard-drive";
-import Image from "lucide-solid/icons/image";
-import Keyboard from "lucide-solid/icons/keyboard";
-import Languages from "lucide-solid/icons/languages";
-import Logs from "lucide-solid/icons/logs";
-import Wrench from "lucide-solid/icons/wrench";
+import Bot from "@lucide/solid/icons/bot";
+import BriefcaseBusiness from "@lucide/solid/icons/briefcase-business";
+import DownloadCloud from "@lucide/solid/icons/cloud-download";
+import HardDrive from "@lucide/solid/icons/hard-drive";
+import Image from "@lucide/solid/icons/image";
+import Keyboard from "@lucide/solid/icons/keyboard";
+import Languages from "@lucide/solid/icons/languages";
+import Logs from "@lucide/solid/icons/logs";
+import Wrench from "@lucide/solid/icons/wrench";
 import {
 	createEffect,
 	createSignal,
 	For,
-	onCleanup,
-	onMount,
+	onSettled,
 	Show,
+	untrack,
 } from "solid-js";
 import type { z } from "zod";
 import {
@@ -102,18 +102,23 @@ function CommaSeparatedTextarea(props: {
 	value: string[] | undefined;
 	placeholder?: string;
 	"aria-describedby"?: string;
-	"aria-invalid"?: boolean;
+	"aria-invalid"?: "true" | "false";
 	onChange: (value: string[]) => void;
 	onBlur: () => void;
 }) {
-	const [draft, setDraft] = createSignal((props.value ?? []).join(", "));
+	const [draft, setDraft] = createSignal(
+		untrack(() => (props.value ?? []).join(", ")),
+	);
 
-	createEffect(() => {
-		const external = props.value ?? [];
-		if (!areStringArraysEqual(parseCommaSeparatedList(draft()), external)) {
-			setDraft(external.join(", "));
-		}
-	});
+	createEffect(
+		() => props.value,
+		(value) => {
+			const external = value ?? [];
+			if (!areStringArraysEqual(parseCommaSeparatedList(draft()), external)) {
+				setDraft(external.join(", "));
+			}
+		},
+	);
 
 	return (
 		<Textarea
@@ -307,20 +312,20 @@ export function ConfigScreen(props: ConfigScreenProps) {
 	const [isDesktop, setIsDesktop] = createSignal(true);
 	const [activeTab, setActiveTab] = createSignal("interface");
 
-	onMount(() => {
+	onSettled(() => {
 		const media = window.matchMedia("(min-width: 1024px)");
 		const update = () => setIsDesktop(media.matches);
 		update();
 		media.addEventListener("change", update);
-		onCleanup(() => media.removeEventListener("change", update));
+		return () => media.removeEventListener("change", update);
 	});
 	const [aiHealth, setAiHealth] = createSignal<AiHealthResponse | null>(null);
 	const [aiHealthError, setAiHealthError] = createSignal<string | null>(null);
 	const [isCheckingAiHealth, setIsCheckingAiHealth] = createSignal(false);
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const sectionClass = "min-w-0 space-y-5 border-b border-border pb-8";
-	let baseline = props.data;
-	const [baselineAi, setBaselineAi] = createSignal(props.data.ai);
+	let baseline = untrack(() => props.data);
+	const [baselineAi, setBaselineAi] = createSignal(baseline.ai);
 	const form = createForm(() => ({
 		defaultValues: toFormValues(props.data),
 		validators: {
@@ -377,14 +382,16 @@ export function ConfigScreen(props: ConfigScreenProps) {
 		}
 	};
 
-	createEffect(() => {
-		const data = props.data;
-		if (!form.state.isDirty) {
-			baseline = data;
-			setBaselineAi(data.ai);
-			form.reset(toFormValues(data));
-		}
-	});
+	createEffect(
+		() => props.data,
+		(data) => {
+			if (!form.state.isDirty) {
+				baseline = data;
+				setBaselineAi(data.ai);
+				form.reset(toFormValues(data));
+			}
+		},
+	);
 
 	return (
 		<div class="min-w-0 space-y-6 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
@@ -420,7 +427,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											invalidCategories().has(category.value);
 										return (
 											<TabsTrigger
-												aria-invalid={hasError() || undefined}
+												aria-invalid={hasError() ? "true" : undefined}
 												class="min-h-11 shrink-0 gap-2.5 whitespace-nowrap rounded-md px-2.5 text-muted-foreground shadow-none hover:bg-muted data-[selected]:bg-accent data-[selected]:text-primary data-[selected]:hover:bg-accent lg:min-h-10 lg:w-full lg:justify-start lg:whitespace-normal"
 												type="button"
 												value={category.value}
@@ -467,7 +474,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												min={1}
 												onBlur={field().handleBlur}
@@ -502,7 +513,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												min={1}
 												onBlur={field().handleBlur}
@@ -535,7 +550,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												min={100}
 												onBlur={field().handleBlur}
@@ -678,7 +697,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										</form.Subscribe>
 									</div>
 									<Button
-										aria-busy={isCheckingAiHealth()}
+										aria-busy={isCheckingAiHealth() ? "true" : "false"}
 										class="min-h-11 sm:min-h-9"
 										disabled={isCheckingAiHealth()}
 										onClick={() => void checkAiHealth()}
@@ -699,7 +718,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<Input
 												aria-describedby={`${field().name}-help ${field().name}-example ${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => field().handleChange(e.target.value)}
@@ -736,7 +759,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												min={1000}
 												onBlur={field().handleBlur}
@@ -817,7 +844,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												max="60000"
 												min="0"
@@ -855,7 +886,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => field().handleChange(e.target.value)}
@@ -880,7 +915,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												</Label>
 												<Input
 													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
+													aria-invalid={
+														field().state.meta.errors.length > 0
+															? "true"
+															: "false"
+													}
 													id={field().name}
 													max={4096}
 													min={64}
@@ -910,7 +949,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												</Label>
 												<Input
 													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
+													aria-invalid={
+														field().state.meta.errors.length > 0
+															? "true"
+															: "false"
+													}
 													id={field().name}
 													max={100}
 													min={1}
@@ -978,7 +1021,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												</Label>
 												<CommaSeparatedTextarea
 													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
+													aria-invalid={
+														field().state.meta.errors.length > 0
+															? "true"
+															: "false"
+													}
 													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
@@ -1005,7 +1052,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												</Label>
 												<CommaSeparatedTextarea
 													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
+													aria-invalid={
+														field().state.meta.errors.length > 0
+															? "true"
+															: "false"
+													}
 													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
@@ -1029,7 +1080,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												</Label>
 												<CommaSeparatedTextarea
 													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
+													aria-invalid={
+														field().state.meta.errors.length > 0
+															? "true"
+															: "false"
+													}
 													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
@@ -1058,7 +1113,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<CommaSeparatedTextarea
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}
@@ -1082,7 +1141,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<CommaSeparatedTextarea
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}
@@ -1106,7 +1169,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											</Label>
 											<CommaSeparatedTextarea
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}

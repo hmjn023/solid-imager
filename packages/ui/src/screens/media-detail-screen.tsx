@@ -1,5 +1,5 @@
 import { t } from "@solid-imager/i18n";
-import { Suspense } from "solid-js";
+import { Loading } from "solid-js";
 import { MediaDetailLayout } from "../media-detail-layout";
 import { MediaDetailSkeleton } from "../media-detail-skeleton";
 import { LoadingRegion } from "../skeleton";
@@ -14,7 +14,7 @@ export type MediaDetailScreenProps = MediaDetailScreenBaseProps & {
 		isUpdating: import("solid-js").Accessor<boolean>,
 		onUpdate: () => void,
 		sourceRootPath?: string,
-	) => import("solid-js").JSX.Element;
+	) => import("@solidjs/web").JSX.Element;
 };
 
 export function MediaDetailScreen(props: MediaDetailScreenProps) {
@@ -28,31 +28,34 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	);
 	return (
 		<div class="flex h-full min-h-0 w-full flex-col bg-background">
-			<Suspense fallback={renderPending()}>
+			<Loading fallback={renderPending()}>
 				<MediaDetailScreenController
 					{...props}
-					renderData={({ details, isUpdating, onUpdate, sourceRootPath }) => (
+					renderData={(data) => (
 						<MediaDetailLayout
 							switchDetailsOnMobile
 							header={props.renderHeader?.(
-								details,
-								isUpdating,
-								() => void onUpdate(),
-								sourceRootPath,
+								data.details,
+								data.isUpdating,
+								() => void data.onUpdate(),
+								data.sourceRootPath,
 							)}
-							viewer={props.renderMediaViewer(details, sourceRootPath)}
-							related={props.renderRelatedMedia?.(details)}
+							viewer={props.renderMediaViewer(
+								data.details,
+								data.sourceRootPath,
+							)}
+							related={props.renderRelatedMedia?.(data.details)}
 							sidebar={props.renderMediaSidebar(
-								details,
-								isUpdating,
-								() => void onUpdate(),
-								sourceRootPath,
+								data.details,
+								data.isUpdating,
+								() => void data.onUpdate(),
+								data.sourceRootPath,
 							)}
 						/>
 					)}
 					renderPending={renderPending}
 				/>
-			</Suspense>
+			</Loading>
 		</div>
 	);
 }

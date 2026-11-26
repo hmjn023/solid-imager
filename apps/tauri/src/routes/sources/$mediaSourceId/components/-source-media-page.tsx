@@ -7,7 +7,7 @@ import {
 import { useSourceRootPath } from "@solid-imager/ui/sources";
 import { saveMediaContext } from "@solid-imager/ui/media-context";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { sourceMediaQueryKeys } from "@solid-imager/ui/query";
+import { readQueryData, sourceMediaQueryKeys } from "@solid-imager/ui/query";
 import { createSearchHistoryClient } from "@solid-imager/ui/search/history";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import {
@@ -15,14 +15,14 @@ import {
 	getSearchCondition,
 	searchState,
 } from "@solid-imager/ui/search/state";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
 import {
 	useLocation,
 	useNavigate,
 	useParams,
 	useRouter,
 } from "@tanstack/solid-router";
-import { createEffect, createSignal, on } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
@@ -68,9 +68,10 @@ export function SourceMediaPage() {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const mediaSourceId = () => params().mediaSourceId;
-	const mediaSources = createQuery(() => mediaSourcesQueryOptions());
+	const mediaSources = useQuery(mediaSourcesQueryOptions);
 	const mediaSourceName = () =>
-		mediaSources.data?.find((source) => source.id === mediaSourceId())?.name;
+		readQueryData(mediaSources)?.find((source) => source.id === mediaSourceId())
+			?.name;
 	const sourceRootPathResolver = useSourceRootPath(mediaSourcesQueryOptions);
 	const transport = createTauriTransport(mediaSourceId);
 	const [visibleMediaIds, setVisibleMediaIds] = createSignal<readonly string[]>(
@@ -91,20 +92,13 @@ export function SourceMediaPage() {
 		setIsBulkSelectMode(false);
 		selection.clear();
 	};
+	createEffect(mediaSourceId, clearSelection, { defer: true });
 	createEffect(
-		on(
-			mediaSourceId,
-			() => {
-				clearSelection();
-			},
-			{ defer: true },
-		),
+		() => visibleMediaIds().length === 0 && isBulkSelectMode(),
+		(shouldExitBulkSelect) => {
+			if (shouldExitBulkSelect) setIsBulkSelectMode(false);
+		},
 	);
-	createEffect(() => {
-		if (visibleMediaIds().length === 0 && isBulkSelectMode()) {
-			setIsBulkSelectMode(false);
-		}
-	});
 	const currentReturnPath = () => {
 		const current = location();
 		return `${current.pathname}${current.searchStr}${current.hash}`;

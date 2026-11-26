@@ -2,18 +2,11 @@ import type { UpdatePositiveMediaTags } from "@solid-imager/core/media";
 import { TAG_DICTIONARY_PAGE_SIZE } from "@solid-imager/core/tags";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { t } from "@solid-imager/i18n";
-import { createInfiniteQuery } from "@tanstack/solid-query";
-import X from "lucide-solid/icons/x";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	createUniqueId,
-	For,
-	type JSX,
-	Show,
-} from "solid-js";
-import { isServer } from "solid-js/web";
+import { useInfiniteQuery } from "@tanstack/solid-query";
+import X from "@lucide/solid/icons/x";
+import { createMemo, createSignal, createUniqueId, For, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { isServer } from "@solidjs/web";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -65,7 +58,6 @@ function TagEntryInput(props: {
 	inputRef: (element: HTMLInputElement) => void;
 }) {
 	const context = useComboboxContext();
-	createEffect(() => context.setInputValue(props.value));
 	return (
 		<ComboboxInput
 			ref={props.inputRef}
@@ -77,7 +69,7 @@ function TagEntryInput(props: {
 			autocapitalize="none"
 			autocorrect="off"
 			onPaste={props.onPaste}
-			on:keydown={(
+			onKeyDown={(
 				event: KeyboardEvent & { currentTarget: HTMLInputElement },
 			) => {
 				if (
@@ -125,6 +117,7 @@ export function MediaTagEditor(props: {
 	const [error, setError] = createSignal<string>();
 	const [confirm, setConfirm] = createSignal(false);
 	const [suggestionsOpen, setSuggestionsOpen] = createSignal(false);
+	const [failedPageQuery, setFailedPageQuery] = createSignal<string>();
 	const [query, setQuery] = createDebouncedSignal("", 200);
 	const hintId = createUniqueId();
 	const names = createMemo(() => [...assignments().keys()]);
@@ -132,7 +125,7 @@ export function MediaTagEditor(props: {
 		() => new Set(expected().map(({ name }) => name)),
 	);
 	const pendingName = () => input().trim();
-	const dictionary = createInfiniteQuery(() => {
+	const dictionary = useInfiniteQuery(() => {
 		const search = props.dictionary?.dictionarySearch;
 		const key = query();
 		return {
@@ -155,6 +148,25 @@ export function MediaTagEditor(props: {
 			staleTime: 60_000,
 		};
 	});
+	const dictionaryFailed = () =>
+		dictionary.isError || failedPageQuery() === query();
+
+	const loadDictionaryPage = async () => {
+		const requestQuery = query();
+		const nextPage =
+			dictionary.hasNextPage || failedPageQuery() === requestQuery;
+		entryInput?.focus({ preventScroll: true });
+		setSuggestionsOpen(true);
+		setFailedPageQuery(undefined);
+		try {
+			if (nextPage) await dictionary.fetchNextPage({ throwOnError: true });
+			else await dictionary.refetch({ throwOnError: true });
+		} catch {
+			if (nextPage && props.open && query() === requestQuery) {
+				setFailedPageQuery(requestQuery);
+			}
+		}
+	};
 	const dirty = () =>
 		(pendingName().length > 0 && !assignments().has(pendingName())) ||
 		assignments().size !== initialNames().size ||
@@ -164,12 +176,15 @@ export function MediaTagEditor(props: {
 	let assignedHeading: HTMLHeadingElement | undefined;
 	let entryInput: HTMLInputElement | undefined;
 
-	createEffect(() => props.onDirtyChange(props.open && (dirty() || saving())));
+	createTrackedEffect(() => {
+		props.onDirtyChange(props.open && (dirty() || saving()));
+	});
 
 	const clearInput = () => {
 		setInput("");
 		setQuery("");
 		setSuggestionsOpen(false);
+		setFailedPageQuery(undefined);
 	};
 	const begin = () => {
 		setExpected(props.tags.map(({ id, name }) => ({ id, name })));
@@ -222,7 +237,7 @@ export function MediaTagEditor(props: {
 		}
 		if (props.dictionary && query() === name) {
 			const entries =
-				dictionary.data?.pages.flatMap((page) => page.items) ?? [];
+				readQueryData(dictionary)?.pages.flatMap((page) => page.items) ?? [];
 			const seen = new Set<string>();
 			for (const entry of entries) {
 				if (seen.has(entry.name) || assignedFromDictionary(entry.name))
@@ -293,6 +308,7 @@ export function MediaTagEditor(props: {
 			}}
 		>
 			<Combobox<TagOption>
+				inline
 				class="min-w-0 space-y-2"
 				disabled={saving()}
 				defaultFilter={() => true}
@@ -305,6 +321,7 @@ export function MediaTagEditor(props: {
 				}}
 				onOpenChange={setSuggestionsOpen}
 				open={menuVisible()}
+				query={input()}
 				optionLabel="label"
 				optionTextValue="label"
 				optionValue={(item) =>
@@ -340,7 +357,7 @@ export function MediaTagEditor(props: {
 					{t("mediaTagEditor.entryHelp")}
 				</p>
 				<div class="flex items-center gap-2">
-					<ComboboxControl<TagOption> class="min-h-11 min-w-0 flex-1 border-input bg-card focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
+					<ComboboxControl class="min-h-11 min-w-0 flex-1 border-input bg-card focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
 						<TagEntryInput
 							inputRef={(element) => {
 								entryInput = element;
@@ -373,26 +390,22 @@ export function MediaTagEditor(props: {
 				</Show>
 			</Combobox>
 			<Show when={query() === pendingName() && !saving() && !confirm()}>
-				<Show when={dictionary.isError}>
+				<Show when={dictionaryFailed()}>
 					<p aria-live="polite" class="mt-2 text-xs text-muted-foreground">
 						{t("tagDictionary.searchError")}
 					</p>
 				</Show>
-				<Show when={dictionary.isError || dictionary.hasNextPage}>
+				<Show when={dictionaryFailed() || dictionary.hasNextPage}>
 					<Button
 						class="mt-2"
 						type="button"
 						variant="outline"
 						size="sm"
 						disabled={dictionary.isFetching}
-						onClick={() => {
-							entryInput?.focus({ preventScroll: true });
-							setSuggestionsOpen(true);
-							if (dictionary.hasNextPage) void dictionary.fetchNextPage();
-							else void dictionary.refetch();
-						}}
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={() => void loadDictionaryPage()}
 					>
-						{dictionary.isError ? t("actions.retry") : t("actions.loadMore")}
+						{dictionaryFailed() ? t("actions.retry") : t("actions.loadMore")}
 					</Button>
 				</Show>
 			</Show>
@@ -422,7 +435,7 @@ export function MediaTagEditor(props: {
 								ref={(heading) => {
 									assignedHeading = heading;
 								}}
-								tabIndex={-1}
+								tabindex={-1}
 								aria-live="polite"
 							>
 								{t("mediaTagEditor.assignedCount", { count: names().length })}
@@ -515,3 +528,7 @@ export function MediaTagEditor(props: {
 		</>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";
+
+import { readQueryData } from "./query-state";

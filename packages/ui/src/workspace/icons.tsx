@@ -1,5 +1,5 @@
-import type { Component, JSX } from "solid-js";
-import { splitProps } from "solid-js";
+import type { Component } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 type IconProps = JSX.SvgSVGAttributes<SVGSVGElement> & {
 	size?: number | string;
@@ -7,7 +7,8 @@ type IconProps = JSX.SvgSVGAttributes<SVGSVGElement> & {
 
 function icon(draw: () => JSX.Element): Component<IconProps> {
 	return (props) => {
-		const [local, rest] = splitProps(props, ["size"]);
+		const local = props,
+			rest = omit(props, "size");
 		return (
 			<svg
 				{...rest}
@@ -211,3 +212,5 @@ export const Trash2 = icon(() => (
 		<path d="M10 11v6M14 11v6" />
 	</>
 ));
+
+import { omit } from "solid-js";

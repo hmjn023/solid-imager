@@ -81,7 +81,7 @@ test("background updates preserve job rows, focus, and filter controls", async (
 	const table = page.getByRole("table");
 	await expect(table.getByRole("row")).toHaveCount(4);
 	await page.getByRole("button", { name: "Start background refresh" }).click();
-	const types = page.getByRole("button", { name: "ジョブの種類で絞り込む" });
+	const types = page.getByRole("combobox", { name: "ジョブの種類で絞り込む" });
 	await expect(types).toBeEnabled();
 	const jobButton = table.locator("tbody tr").first().getByRole("button");
 	await jobButton.focus();
@@ -128,7 +128,9 @@ test(
 	},
 );
 
-test("bulk retry controls fit next to the batch detail", async ({ page }) => {
+test("bulk retry controls fit after returning to the job list", async ({
+	page,
+}) => {
 	await page.setViewportSize({ width: 1024, height: 768 });
 	await page.goto(
 		`http://127.0.0.1:${process.env.E2E_GALLERY_PORT}/?jobs=1&jobDetails=1`,
@@ -136,6 +138,7 @@ test("bulk retry controls fit next to the batch detail", async ({ page }) => {
 	await expect(
 		page.getByRole("complementary", { name: "ジョブの詳細" }),
 	).toBeVisible();
+	await page.getByRole("button", { name: "一覧へ戻る" }).click();
 	const selectAll = page.getByText("失敗したジョブをすべて選択", {
 		exact: true,
 	});
@@ -145,7 +148,7 @@ test("bulk retry controls fit next to the batch detail", async ({ page }) => {
 	expect((await selectAll.boundingBox())?.height).toBeLessThan(32);
 	await selectAll.click();
 	await expect(page.getByText("失敗した1件中1件を選択")).toBeVisible();
-	await page.getByRole("button", { name: "ジョブの一括操作" }).click();
+	await page.getByRole("combobox", { name: "ジョブの一括操作" }).click();
 	await page.getByRole("option", { name: "失敗したジョブを再試行" }).click();
 	await expect(apply).toBeEnabled();
 	await expect(apply).toBeInViewport({ ratio: 1 });

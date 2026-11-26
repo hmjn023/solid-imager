@@ -1,71 +1,106 @@
-import type { PolymorphicProps } from "@kobalte/core";
+import type { PolymorphicProps } from "./utils/polymorphic";
 import {
-	Content as TabsContentPrimitive,
-	type TabsContentProps as TabsContentPropsPrimitive,
-	List as TabsListPrimitive,
-	type TabsListProps as TabsListPropsPrimitive,
-	Root as TabsRoot,
-	Trigger as TabsTriggerPrimitive,
-	type TabsTriggerProps as TabsTriggerPropsPrimitive,
-} from "@kobalte/core/tabs";
-import type { ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+	TabsPanel as TabsContentPrimitive,
+	TabsList as TabsListPrimitive,
+	Tabs as TabsRoot,
+	TabsTab as TabsTriggerPrimitive,
+} from "@ui-sdk/solid/tabs";
+import type { ComponentProps, ValidComponent } from "@solidjs/web";
+import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
-const Tabs = TabsRoot;
+type TabsProps = Omit<
+	ComponentProps<typeof TabsRoot<string>>,
+	"onChange" | "onValueChange" | "activation"
+> & {
+	onChange?: (value: string) => void;
+	activationMode?: "automatic" | "manual";
+};
+const Tabs = (props: TabsProps) => (
+	<TabsRoot
+		{...omit(props, "onChange", "activationMode")}
+		activation={props.activationMode}
+		onValueChange={(value) => {
+			if (value !== null) props.onChange?.(value);
+		}}
+	/>
+);
 
-type TabsListProps = TabsListPropsPrimitive & {
+type TabsListProps = Omit<ComponentProps<typeof TabsListPrimitive>, "class"> & {
 	class?: string | undefined;
 };
 
 const TabsList = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, TabsListProps>,
 ) => {
-	const [local, others] = splitProps(props as TabsListProps, ["class"]);
+	const others = omit(props as TabsListProps, "class");
 	return (
 		<TabsListPrimitive
 			class={cn(
 				"inline-flex min-h-10 max-w-full items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-				local.class,
+				props.class,
 			)}
 			{...others}
 		/>
 	);
 };
 
-type TabsTriggerProps = TabsTriggerPropsPrimitive & {
+type TabsTriggerProps = Omit<
+	ComponentProps<typeof TabsTriggerPrimitive>,
+	"class"
+> & {
 	class?: string | undefined;
 };
 
 const TabsTrigger = <T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, TabsTriggerProps>,
 ) => {
-	const [local, others] = splitProps(props as TabsTriggerProps, ["class"]);
+	const others = omit(props as TabsTriggerProps, "class");
 	return (
 		<TabsTriggerPrimitive
 			class={cn(
 				"inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 font-medium text-sm ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-background data-[selected]:text-foreground data-[selected]:shadow-sm",
-				local.class,
+				props.class,
 			)}
 			{...others}
 		/>
 	);
 };
 
-type TabsContentProps = TabsContentPropsPrimitive & {
+type TabsContentProps = Omit<
+	ComponentProps<typeof TabsContentPrimitive>,
+	"class" | "aria-hidden"
+> & {
+	forceMount?: boolean;
+	"aria-hidden"?:
+		| ComponentProps<typeof TabsContentPrimitive>["aria-hidden"]
+		| boolean;
 	class?: string | undefined;
 };
 
 const TabsContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, TabsContentProps>,
 ) => {
-	const [local, others] = splitProps(props as TabsContentProps, ["class"]);
+	const others = omit(
+		props as TabsContentProps,
+		"class",
+		"forceMount",
+		"aria-hidden",
+	);
 	return (
 		<TabsContentPrimitive
+			keepMounted={props.forceMount}
+			aria-hidden={
+				typeof props["aria-hidden"] === "boolean"
+					? props["aria-hidden"]
+						? "true"
+						: "false"
+					: props["aria-hidden"]
+			}
 			class={cn(
 				"mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-				local.class,
+				props.class,
 			)}
 			{...others}
 		/>

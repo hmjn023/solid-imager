@@ -64,7 +64,7 @@ function mountDialog(
 			name: t("moveCopyMediaDialog.copy"),
 			exact: true,
 		}),
-		destination: dialog.getByRole("button", {
+		destination: dialog.getByRole("combobox", {
 			name: new RegExp(`^${t("moveCopyMediaDialog.destinationSource")}`),
 		}),
 	};

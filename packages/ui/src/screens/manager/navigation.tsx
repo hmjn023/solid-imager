@@ -1,13 +1,13 @@
 import { t } from "@solid-imager/i18n";
-import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
-import Bot from "lucide-solid/icons/bot";
-import CopyCheck from "lucide-solid/icons/copy-check";
-import Folder from "lucide-solid/icons/folder";
-import Image from "lucide-solid/icons/image";
-import Library from "lucide-solid/icons/library";
-import ScanFace from "lucide-solid/icons/scan-face";
-import Tags from "lucide-solid/icons/tags";
-import UserRound from "lucide-solid/icons/user-round";
+import ArrowDownUp from "@lucide/solid/icons/arrow-down-up";
+import Bot from "@lucide/solid/icons/bot";
+import CopyCheck from "@lucide/solid/icons/copy-check";
+import Folder from "@lucide/solid/icons/folder";
+import Image from "@lucide/solid/icons/image";
+import Library from "@lucide/solid/icons/library";
+import ScanFace from "@lucide/solid/icons/scan-face";
+import Tags from "@lucide/solid/icons/tags";
+import UserRound from "@lucide/solid/icons/user-round";
 import { For } from "solid-js";
 import { Binary, Sparkles } from "../../workspace/icons";
 import {

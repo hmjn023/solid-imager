@@ -17,7 +17,7 @@ const sourceEventsEndpoint = apiPathPattern("sources/events");
 test(
 	"preserves an open dialog, input value, and focus after an SSE reconnect refreshes media",
 	{ tag: "@dev-smoke" },
-	async ({ context, page }) => {
+	async ({ browser, page }) => {
 		let streamAttempts = 0;
 		let reconnectedRequest: Request | undefined;
 		const reconnected = page.waitForResponse(
@@ -70,7 +70,7 @@ test(
 			path.join(getE2eMediaDir(), syncedFileName),
 		);
 
-		await syncFixtureSource(context);
+		await syncFixtureSource(browser, page.url());
 
 		const resultCount = page.getByText(/^[\d,]+件$/);
 		await expect(resultCount).toBeVisible({ timeout: 30_000 });

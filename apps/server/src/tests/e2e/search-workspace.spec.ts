@@ -63,7 +63,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 				exact: true,
 			}),
 		});
-		await dialog.getByRole("button", { name: /^保存先ソース/ }).click();
+		await dialog.getByRole("combobox", { name: /^保存先ソース/ }).click();
 		await page
 			.locator('[role="listbox"]')
 			.getByText(destination.name, { exact: true })

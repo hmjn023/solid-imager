@@ -18,16 +18,17 @@ import type { JobProgressEvent } from "@solid-imager/core/events";
 import type { TagResponse } from "@solid-imager/core/tags";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import type { QueryClient } from "@tanstack/solid-query";
-import { createInfiniteQuery, type InfiniteData } from "@tanstack/solid-query";
+import { useInfiniteQuery, type InfiniteData } from "@tanstack/solid-query";
 import type { Accessor, Setter } from "solid-js";
 import {
 	createEffect,
 	createMemo,
 	createSignal,
 	onCleanup,
-	onMount,
+	onSettled,
+	untrack,
 } from "solid-js";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import { z } from "zod";
 import {
 	buildSourceMediaResultsQueryOptions,
@@ -35,8 +36,11 @@ import {
 	removeMediaFromInfiniteQueryData,
 	sourceMediaQueryKeys,
 } from "../query-options";
-import { SEARCH_COLLECTION_PAGE_SIZE } from "../query-options/search-query";
-import { type QueryUiState, toQueryUiState } from "../query-state";
+import {
+	sameMediaResultsOptions,
+	SEARCH_COLLECTION_PAGE_SIZE,
+} from "../query-options/search-query";
+import type { QueryUiState } from "../query-state";
 import {
 	useInitialSearch,
 	useRenderedSearchState,
@@ -49,7 +53,7 @@ import {
 	setScrollPosition,
 } from "../stores/source-scroll-store";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
-import { createStableMediaResults } from "./stable-media-results";
+import { createInfiniteMediaResults } from "./infinite-media-results";
 import { useMediaItemActions } from "./use-media-collection-actions";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
@@ -143,9 +147,11 @@ export type UseSourceMediaPageOptions = {
 
 export type UseSourceMediaPageResult = {
 	mediaSourceId: () => string | undefined;
-	mediaQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
+	mediaQuery: ReturnType<typeof useInfiniteQuery<MediaSearchResponse>>;
 	mediaResults: () => MediaSearchResponse["media"];
+	resultsCurrent: () => boolean;
 	fetchNextPage: () => Promise<unknown>;
+	isFetchingNextPage: () => boolean;
 	hasData: () => boolean;
 	totalCount: () => number | undefined;
 	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
@@ -237,7 +243,7 @@ export function useSourceMediaPage(
 	// Global Find Similar sets shared search state before navigation can unmount
 	// this view. Its successor owns that request; do not launch a transient
 	// source-scoped query that will immediately be cancelled by navigation.
-	const sourceActivation = getGlobalSimilarityActivation();
+	const sourceActivation = untrack(getGlobalSimilarityActivation);
 	// --- Filter data queries ---
 	const filterData = (): SourceMediaPageFilterData => ({
 		tags: queries.tags(),
@@ -248,69 +254,47 @@ export function useSourceMediaPage(
 	});
 
 	// --- Infinite query ---
-	const mediaQueryOptions = createMemo(() => {
-		const initial = initialSearch?.()?.state;
-		const condition = initial
-			? getSearchConditionFromState(initial)
-			: getSearchCondition();
-		return buildSourceMediaResultsQueryOptions({
-			similarityAnchorMediaId: state().similarityAnchorMediaId,
-			similarityModel: state().similarityModel,
-			searchSimilar: actions.searchSimilar,
-			semanticQuery: state().semanticQuery,
-			similarityTopK: state().similarityTopK,
-			searchSemantic: actions.searchSemantic,
-			sourceId: id(),
-			condition,
-			conditionKey: JSON.stringify(condition ?? null),
-			sort: initial?.sortBy ?? sortBy(),
-			order: initial?.sortOrder ?? sortOrder(),
-			limit: itemsPerPage,
-			searchMedia: actions.searchMedia,
-			enabled:
-				!isServer &&
-				isSearchStateRestored() &&
-				!!id() &&
-				getGlobalSimilarityActivation() === sourceActivation,
-		});
-	});
-	const mediaQuery = createInfiniteQuery(mediaQueryOptions);
-	const [mediaQueryData, setMediaQueryData] = createSignal<
-		InfiniteData<MediaSearchResponse> | undefined
-	>(
-		initialSearch?.()
-			? queryClient.getQueryData(mediaQueryOptions().queryKey)
-			: undefined,
+	const mediaQueryOptions = createMemo(
+		() => {
+			const initial = initialSearch?.()?.state;
+			const condition = initial
+				? getSearchConditionFromState(initial)
+				: getSearchCondition();
+			return buildSourceMediaResultsQueryOptions({
+				similarityAnchorMediaId: state().similarityAnchorMediaId,
+				similarityModel: state().similarityModel,
+				searchSimilar: actions.searchSimilar,
+				semanticQuery: state().semanticQuery,
+				similarityTopK: state().similarityTopK,
+				searchSemantic: actions.searchSemantic,
+				sourceId: id(),
+				condition,
+				conditionKey: JSON.stringify(condition ?? null),
+				sort: initial?.sortBy ?? sortBy(),
+				order: initial?.sortOrder ?? sortOrder(),
+				limit: itemsPerPage,
+				searchMedia: actions.searchMedia,
+				enabled:
+					!isServer &&
+					isSearchStateRestored() &&
+					!!id() &&
+					getGlobalSimilarityActivation() === sourceActivation,
+			});
+		},
+		{ equals: sameMediaResultsOptions },
 	);
-
-	createEffect(() => {
-		// Keep paginated results outside Solid Query's resource-backed `data`
-		// accessor. A page fetch must not suspend and remount the media grid.
-		const queryKey = mediaQueryOptions().queryKey;
-		void mediaQuery.dataUpdatedAt;
-		const cachedData =
-			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
-		if (cachedData !== undefined) {
-			setMediaQueryData(cachedData);
-		} else if (!mediaQuery.isPlaceholderData) {
-			setMediaQueryData(undefined);
-		}
-	});
-
-	// Preserve existing media cards across background refetches. New query
-	// objects are reconciled by media ID so only genuinely added or removed
-	// cards mount and unmount.
-	const mediaResults = createStableMediaResults(mediaQueryData);
-	const contentState = () =>
-		toQueryUiState(
-			{
-				data: mediaQueryData() ? mediaResults() : undefined,
-				error: mediaQuery.error,
-				status: mediaQuery.status,
-				fetchStatus: mediaQuery.fetchStatus,
-			},
-			{ isEmpty: (data) => data.length === 0 },
-		);
+	const mediaQuery = useInfiniteQuery(mediaQueryOptions);
+	const results = createInfiniteMediaResults(
+		queryClient,
+		mediaQueryOptions,
+		mediaQuery,
+		{
+			hasInitialData: () => initialSearch?.() !== undefined,
+			isRestored: isSearchStateRestored,
+		},
+	);
+	const mediaQueryData = results.data;
+	const mediaResults = results.results;
 
 	// --- Search handler ---
 	const handleSearch = () => {
@@ -318,24 +302,6 @@ export function useSourceMediaPage(
 		const sourceId = id();
 		if (sourceId) setScrollPosition(sourceId, 0, historyEntryKey?.());
 		scrollToPosition(options.scrollContainerSelector, 0);
-	};
-
-	let nextPageFetchInFlight = false;
-	const fetchNextPage = async (): Promise<unknown> => {
-		if (
-			!isSearchStateRestored() ||
-			nextPageFetchInFlight ||
-			!mediaQuery.hasNextPage ||
-			mediaQuery.isFetchingNextPage
-		) {
-			return;
-		}
-		nextPageFetchInFlight = true;
-		try {
-			return await mediaQuery.fetchNextPage({ cancelRefetch: false });
-		} finally {
-			nextPageFetchInFlight = false;
-		}
 	};
 
 	// --- Scroll restoration ---
@@ -351,11 +317,13 @@ export function useSourceMediaPage(
 				setScrollPosition(sourceId, position, historyEntryKey?.());
 			}
 		},
-		isReady: () => Boolean(mediaQueryData()) && !mediaQuery.isLoading,
+		isReady: () => isSearchStateRestored() && results.current(),
 		hasNextPage: () => mediaQuery.hasNextPage,
-		isFetchingNextPage: () => mediaQuery.isFetchingNextPage,
-		fetchNextPage,
-		scrollContainerSelector: options.scrollContainerSelector,
+		isFetchingNextPage: results.isFetchingNextPage,
+		fetchNextPage: results.fetchNextPage,
+		get scrollContainerSelector() {
+			return options.scrollContainerSelector;
+		},
 	});
 
 	// --- Infinite scroll ---
@@ -366,40 +334,39 @@ export function useSourceMediaPage(
 		HTMLDivElement | undefined
 	>(undefined);
 
-	onMount(() => {
-		if (enableVirtualization) {
-			return;
-		}
-		createEffect(() => {
-			const el = loadMoreRef();
-			if (
-				!el ||
-				!mediaQuery.hasNextPage ||
-				mediaQuery.isFetchingNextPage ||
-				mediaQuery.isFetchNextPageError
-			) {
-				return;
-			}
-			void mediaResults().length;
+	if (!enableVirtualization) {
+		createEffect(
+			() => {
+				const el = loadMoreRef();
+				if (
+					!el ||
+					!mediaQuery.hasNextPage ||
+					results.isFetchingNextPage() ||
+					mediaQuery.isFetchNextPageError
+				) {
+					return;
+				}
+				return { el, count: mediaResults().length };
+			},
+			(target) => {
+				if (!target) return;
+				const observer = new IntersectionObserver(
+					(entries) => {
+						if (
+							entries[0]?.isIntersecting &&
+							!mediaQuery.isFetchNextPageError
+						) {
+							void results.fetchNextPage();
+						}
+					},
+					{ threshold: 0.5, rootMargin: "2400px" },
+				);
 
-			const observer = new IntersectionObserver(
-				(entries) => {
-					if (
-						entries[0]?.isIntersecting &&
-						mediaQuery.hasNextPage &&
-						!mediaQuery.isFetchingNextPage &&
-						!mediaQuery.isFetchNextPageError
-					) {
-						void fetchNextPage();
-					}
-				},
-				{ threshold: 0.5, rootMargin: "2400px" },
-			);
-
-			observer.observe(el);
-			onCleanup(() => observer.disconnect());
-		});
-	});
+				observer.observe(target.el);
+				return () => observer.disconnect();
+			},
+		);
+	}
 
 	// --- UI state ---
 	const [showUploadModal, setShowUploadModal] = createSignal(false);
@@ -742,11 +709,9 @@ export function useSourceMediaPage(
 		void handlePaste(event);
 	};
 
-	onMount(() => {
+	onSettled(() => {
 		document.addEventListener("paste", handlePasteListener);
-		onCleanup(() => {
-			document.removeEventListener("paste", handlePasteListener);
-		});
+		return () => document.removeEventListener("paste", handlePasteListener);
 	});
 
 	const itemActions = useMediaItemActions({
@@ -822,10 +787,12 @@ export function useSourceMediaPage(
 		mediaSourceId: id,
 		mediaQuery,
 		mediaResults,
-		fetchNextPage,
+		resultsCurrent: results.current,
+		fetchNextPage: results.fetchNextPage,
+		isFetchingNextPage: results.isFetchingNextPage,
 		hasData: () => mediaQueryData() !== undefined,
 		totalCount: () => mediaQueryData()?.pages[0]?.total,
-		contentState,
+		contentState: results.contentState,
 		filterData,
 		filterStates: queryStates,
 		handleSearch,

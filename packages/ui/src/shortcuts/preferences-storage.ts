@@ -83,10 +83,16 @@ export function parseShortcutBinding(
 	}
 
 	const validation = validateHotkey(value);
+	const knownNamedKey =
+		/^(?:[a-z0-9]|F(?:[1-9]|1[0-9]|2[0-4])|Arrow(?:Up|Down|Left|Right)|Escape|Enter|Tab|Backspace|Delete|Insert|Home|End|PageUp|PageDown|Space|CapsLock|NumLock|ScrollLock|Pause|PrintScreen|ContextMenu)$/i;
+	const key = value.trim().split("+").at(-1) ?? "";
+	if (/^[a-z]+$/i.test(key) && !knownNamedKey.test(key)) {
+		return { valid: false, messages: [t("shortcuts.invalidBindingType")] };
+	}
 	if (!validation.valid || validation.warnings.length > 0) {
 		return {
 			valid: false,
-			messages: [...validation.errors, ...validation.warnings],
+			messages: [t("shortcuts.invalidBindingType")],
 		};
 	}
 

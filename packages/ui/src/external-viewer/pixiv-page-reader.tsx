@@ -1,6 +1,6 @@
 import type { PixivArtwork } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
-import { createEffect, For, onCleanup, onMount } from "solid-js";
+import { createEffect, For, onSettled } from "solid-js";
 import { Button } from "../button";
 import {
 	Dialog,
@@ -40,7 +40,6 @@ function PixivReaderContent(props: PixivPageReaderProps) {
 	let thumbnails!: HTMLElement;
 	const pages: HTMLLIElement[] = [];
 	const thumbnailsByPage: HTMLButtonElement[] = [];
-	const initialPage = props.index;
 	const pageLabel = (index: number) =>
 		t("pixivArtworkDetail.pageNumber", { page: index + 1 });
 	const preview = (page: PixivArtwork["pages"][number]) =>
@@ -61,21 +60,25 @@ function PixivReaderContent(props: PixivPageReaderProps) {
 		if (index >= 0) props.onPageChange(index);
 	}
 
-	onMount(() => {
+	onSettled(() => {
+		const initialPage = props.index;
 		const frame = requestAnimationFrame(() => jumpTo(initialPage));
-		onCleanup(() => cancelAnimationFrame(frame));
+		return () => cancelAnimationFrame(frame);
 	});
 
-	createEffect(() => {
-		const thumbnail = thumbnailsByPage[props.index];
-		if (!thumbnail || !thumbnails) return;
-		const thumb = thumbnail.getBoundingClientRect();
-		const strip = thumbnails.getBoundingClientRect();
-		if (thumb.left < strip.left)
-			thumbnails.scrollLeft += thumb.left - strip.left - 8;
-		else if (thumb.right > strip.right)
-			thumbnails.scrollLeft += thumb.right - strip.right + 8;
-	});
+	createEffect(
+		() => props.index,
+		(index) => {
+			const thumbnail = thumbnailsByPage[index];
+			if (!thumbnail || !thumbnails) return;
+			const thumb = thumbnail.getBoundingClientRect();
+			const strip = thumbnails.getBoundingClientRect();
+			if (thumb.left < strip.left)
+				thumbnails.scrollLeft += thumb.left - strip.left - 8;
+			else if (thumb.right > strip.right)
+				thumbnails.scrollLeft += thumb.right - strip.right + 8;
+		},
+	);
 
 	return (
 		<>
@@ -150,7 +153,7 @@ function PixivReaderContent(props: PixivPageReaderProps) {
 									src={preview(page)}
 									width={page.width}
 									height={page.height}
-									loading={initialPage === index() ? "eager" : "lazy"}
+									loading={props.index === index() ? "eager" : "lazy"}
 									decoding="async"
 									class="block aspect-(--pixiv-page-ratio) h-auto w-full object-contain"
 									style={{

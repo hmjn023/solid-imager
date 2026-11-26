@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
-import solidPlugin from "vite-plugin-solid";
+import solidPlugin from "@solidjs/vite-plugin";
 import { nitro } from "nitro/vite";
 import { toNodeHandler } from "srvx/node";
 import { devtools } from "@tanstack/devtools-vite";
@@ -300,6 +300,12 @@ export default defineConfig({
 
 			"~": path.resolve(__dirname, "./src"),
 		},
+		dedupe: [
+			"solid-js",
+			"@solidjs/web",
+			"@tanstack/query-core",
+			"@tanstack/solid-query",
+		],
 		tsconfigPaths: true,
 	},
 	plugins: [
@@ -350,10 +356,6 @@ export default defineConfig({
 		include: [
 			"@floating-ui/dom",
 			"@internationalized/number",
-			"@kobalte/utils",
-			"@solid-primitives/props",
-			"@solid-primitives/refs",
-			"@solid-primitives/resize-observer",
 			"@tanstack/form-core",
 			"@tanstack/history",
 			"@tanstack/query-core",
@@ -362,13 +364,10 @@ export default defineConfig({
 			"@tanstack/router-core/scroll-restoration-script",
 			"@tanstack/router-core/ssr/client",
 			"@tanstack/router-core/ssr/server",
-			"@tanstack/router-ssr-query-core",
-			"@tanstack/solid-store",
-			"h3-v2",
 			"isbot",
 			"seroval",
 		],
-		exclude: ["bun", "dghs-imgutils-rs"],
+		exclude: ["@ui-sdk/core", "bun", "dghs-imgutils-rs"],
 	},
 	customLogger: {
 		warn(msg, options) {
@@ -406,14 +405,11 @@ export default defineConfig({
 			"@tanstack/solid-router",
 			"@tanstack/solid-query",
 			"@tanstack/solid-start",
-			"@kobalte/core",
-			"cmdk-solid",
-			"lucide-solid",
-			"@tanstack/solid-form",
+			"@ui-sdk/solid",
+			"@ui-sdk/core",
+			"@lucide/solid",
 			"@tanstack/charts",
 			"solid-sonner",
-			"corvu",
-			"@solid-primitives/.*",
 		],
 		external: [
 			"bun",

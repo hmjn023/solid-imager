@@ -1,5 +1,6 @@
-import Search from "lucide-solid/icons/search";
-import { createEffect, createSignal, type JSX, Show } from "solid-js";
+import Search from "@lucide/solid/icons/search";
+import { createSignal, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Button } from "../button";
 import {
 	Combobox,
@@ -8,7 +9,6 @@ import {
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
-	useComboboxContext,
 	VirtualComboboxContent,
 } from "../combobox";
 import { Label } from "../label";
@@ -34,8 +34,6 @@ type ComposerInputProps = {
 };
 
 function ComposerInput(props: ComposerInputProps) {
-	const context = useComboboxContext();
-	createEffect(() => context.setInputValue(props.draft));
 	const updateCaret = (event: Event & { currentTarget: HTMLInputElement }) => {
 		const element = event.currentTarget;
 		props.onCaretChange?.(element.selectionStart ?? element.value.length);
@@ -48,15 +46,17 @@ function ComposerInput(props: ComposerInputProps) {
 			class="h-7 min-h-7 min-w-0 flex-1 basis-32 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
 			enterkeyhint="search"
 			id={props.id}
-			on:keydown={(event: KeyboardEvent) => {
-				// Kobalte also handles delegated Enter; keep composition keys native.
+			onKeyDown={(event) => {
+				// Keep IME confirmation separate from submitting the search.
 				if (
 					event.isComposing ||
 					// oxlint-disable-next-line typescript/no-deprecated -- Safari can report IME confirmation only through keyCode 229.
 					(event.key === "Enter" && event.keyCode === 229)
 				) {
 					event.stopPropagation();
+					return;
 				}
+				props.onKeyDown(event);
 			}}
 			onFocus={props.onFocus}
 			onInput={(event: InputEvent & { currentTarget: HTMLInputElement }) => {
@@ -65,7 +65,6 @@ function ComposerInput(props: ComposerInputProps) {
 			}}
 			onClick={updateCaret}
 			onKeyUp={updateCaret}
-			onKeyDown={props.onKeyDown}
 			placeholder={props.placeholder}
 			ref={props.inputRef}
 		/>
@@ -144,8 +143,6 @@ export function SearchComposerField<T extends ComposerOption>(props: {
 						{props.label}
 					</Label>
 					<Combobox<T>
-						allowDuplicateSelectionEvents
-						closeOnSelection
 						noResetInputOnBlur
 						defaultFilter={() => true}
 						disallowEmptySelection={false}
@@ -166,15 +163,15 @@ export function SearchComposerField<T extends ComposerOption>(props: {
 						onChange={handleSelect}
 						onOpenChange={setOpen}
 						open={menuVisible()}
+						query={props.draft}
 						optionLabel="label"
 						optionTextValue="label"
 						optionValue={(item) => props.optionValue?.(item) ?? item.value}
 						options={props.options}
-						removeOnBackspace={false}
 						triggerMode="input"
 						value={null}
 					>
-						<ComboboxControl<T>
+						<ComboboxControl
 							aria-label={props.label}
 							class="flex h-auto min-h-11 items-center gap-2 rounded-md border border-input bg-card px-3 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 sm:min-h-9"
 						>

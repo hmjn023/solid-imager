@@ -10,7 +10,7 @@ import {
 } from "@solid-imager/ui/search";
 import { searchQueryKeys, sourceMediaQueryKeys } from "@solid-imager/ui/query";
 import type { QueryClient } from "@tanstack/solid-query";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import { orpc } from "./orpc-client";
 import { searchMedia, searchSemantic, searchSimilar } from "./search-api";
 

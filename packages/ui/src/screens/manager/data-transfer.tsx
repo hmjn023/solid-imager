@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
-import Download from "lucide-solid/icons/download";
-import Upload from "lucide-solid/icons/upload";
+import Download from "@lucide/solid/icons/download";
+import Upload from "@lucide/solid/icons/upload";
 import { createSignal, onCleanup, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -284,7 +284,7 @@ export function DataTransferPanel(props: {
 							ref={(element) => {
 								fileInput = element;
 							}}
-							tabIndex={-1}
+							tabindex={-1}
 							type="file"
 						/>
 						<Button

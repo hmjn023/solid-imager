@@ -1,7 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import type { TaggingResponse } from "@solid-imager/core/tagging";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { Badge } from "./badge";
 import {
 	Dialog,
@@ -30,7 +30,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 	const [result, setResult] = createSignal<TaggingResponse | null>(null);
 	const [error, setError] = createSignal<string | null>(null);
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (props.isOpen) {
 			let isCancelled = false;
 
@@ -61,9 +61,9 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 
 			void fetchTags();
 
-			onCleanup(() => {
+			return () => {
 				isCancelled = true;
-			});
+			};
 		} else {
 			setResult(null);
 			setError(null);
@@ -203,3 +203,5 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 		</Dialog>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

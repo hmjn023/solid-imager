@@ -52,26 +52,26 @@ describe("createHttpThumbnailSource", () => {
 	it("notifies active images when a failed thumbnail is retried", () => {
 		vi.useFakeTimers();
 		try {
-			createRoot((dispose) => {
-				const source = createHttpThumbnailSource({
+			const { source, dispose } = createRoot((dispose) => ({
+				source: createHttpThumbnailSource({
 					buildUrl,
 					mediaId: "media-1",
 					mediaSourceId: "source-1",
 					modifiedAt: "2026-08-02T00:00:00.000Z",
 					retryDelayMs: 100,
-				});
-				const listener = vi.fn();
-				const unsubscribe = source.subscribe?.(listener);
+				}),
+				dispose,
+			}));
+			const listener = vi.fn();
+			const unsubscribe = source.subscribe?.(listener);
+			source.onError?.();
+			vi.advanceTimersByTime(99);
+			expect(listener).not.toHaveBeenCalled();
+			vi.advanceTimersByTime(1);
+			expect(listener).toHaveBeenCalledOnce();
 
-				source.onError?.();
-				vi.advanceTimersByTime(99);
-				expect(listener).not.toHaveBeenCalled();
-				vi.advanceTimersByTime(1);
-				expect(listener).toHaveBeenCalledOnce();
-
-				unsubscribe?.();
-				dispose();
-			});
+			unsubscribe?.();
+			dispose();
 		} finally {
 			vi.useRealTimers();
 		}

@@ -45,15 +45,13 @@ function IpPickerInput() {
 		<ComboboxInput
 			id="manager-entity-ips"
 			placeholder={t("dialogs.selectIPs")}
-			on:keydown={(event: KeyboardEvent) => {
+			onKeyDown={(event: KeyboardEvent) => {
 				if (event.key === "Enter" && !combobox.isOpen() && !event.isComposing)
 					event.preventDefault();
 				if (event.key !== "Escape" || !combobox.isOpen()) return;
 				event.preventDefault();
 				event.stopPropagation();
-				combobox.resetInputValue(
-					combobox.listState().selectionManager().selectedKeys(),
-				);
+				combobox.setInputValue("");
 				combobox.close();
 			}}
 		/>

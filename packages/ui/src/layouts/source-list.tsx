@@ -1,7 +1,7 @@
 import { getLocale, t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { Link, useLocation } from "@tanstack/solid-router";
-import { createSelector, createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { Button } from "../button";
 import {
 	Collapsible,
@@ -116,7 +116,7 @@ export function SourceList(props: SourceListProps) {
 			return match?.[1] ? decodeURIComponent(match[1]) : undefined;
 		},
 	});
-	const isCurrentSource = createSelector(currentSourceId);
+	const isCurrentSource = (id: string | undefined) => currentSourceId() === id;
 	const handleSourcesOpenChange = (open: boolean) => {
 		if (props.expanded) {
 			setSourcesOpen(open);
@@ -143,15 +143,17 @@ export function SourceList(props: SourceListProps) {
 				>
 					<Database aria-hidden="true" class="shrink-0" size={18} />
 					<span
-						class="min-w-0 flex-1 truncate"
-						classList={{ hidden: !props.expanded }}
+						class={cn("min-w-0 flex-1 truncate", { hidden: !props.expanded })}
 					>
 						{t("sourceList.sources")}
 					</span>
 					<ChevronDown
 						aria-hidden="true"
-						class="shrink-0 transition-transform motion-reduce:transition-none"
-						classList={{ hidden: !props.expanded, "rotate-180": sourcesOpen() }}
+						class={cn(
+							"shrink-0 transition-transform motion-reduce:transition-none",
+							{ hidden: !props.expanded, "rotate-180": sourcesOpen() },
+						)}
+
 						size={14}
 					/>
 				</TooltipTrigger>

@@ -1,6 +1,7 @@
+import { createRequest } from "./utils/create-request";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { t } from "@solid-imager/i18n";
-import { type Accessor, createResource, createSignal, Show } from "solid-js";
+import { type Accessor, createSignal, Show } from "solid-js";
 import { Alert, AlertDescription } from "./alert";
 import { RetryButton } from "./async-state";
 import {
@@ -18,20 +19,18 @@ export function useMediaDestinationSources(
 	open: Accessor<boolean>,
 	listSources: () => Promise<SafeMediaSource[]>,
 ) {
-	const [sources, { refetch }] = createResource(
-		() => (open() ? true : undefined),
-		listSources,
-		{ initialValue: [] },
-	);
+	const sources = createRequest(() => (open() ? true : undefined), listSources);
 	return {
 		sources: () =>
-			sources.error
+			sources.error()
 				? []
-				: sources().flatMap(({ id, name }) => (id ? [{ id, name }] : [])),
-		loading: () => sources.loading,
-		failed: () => Boolean(sources.error),
+				: (sources.data() ?? []).flatMap(({ id, name }) =>
+						id ? [{ id, name }] : [],
+					),
+		loading: sources.loading,
+		failed: () => Boolean(sources.error()),
 		retry: async () => {
-			await refetch();
+			await sources.refetch().catch(() => undefined);
 		},
 	};
 }

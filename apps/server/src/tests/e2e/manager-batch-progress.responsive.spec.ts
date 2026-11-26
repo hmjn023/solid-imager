@@ -104,12 +104,12 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 					: "ベクトル抽出";
 		await selectManagerCategory(page, category);
 		if (kind === "ccip") {
-			await page.getByRole("button", { name: "ベクトル抽出モデル" }).click();
+			await page.getByRole("combobox", { name: "ベクトル抽出モデル" }).click();
 			await page.getByRole("option", { name: "CCIP", exact: true }).click();
 		}
 		await page
-			.getByRole("button", {
-				name: /^対象ソース /,
+			.getByRole("combobox", {
+				name: /^対象ソース(?: |$)/,
 			})
 			.click();
 		await page
@@ -154,10 +154,8 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 		await expect(bar).toHaveAttribute("aria-valuenow", "75");
 		await expect(start).toBeDisabled();
 		await expect(
-			page.getByRole("button", {
-				name: new RegExp(`^対象ソース .*${E2E_SOURCE_NAME}$`),
-			}),
-		).toBeVisible();
+			page.getByRole("combobox", { name: /^対象ソース(?: |$)/ }),
+		).toContainText(E2E_SOURCE_NAME);
 		await page.reload();
 		await expect(bar).toHaveAttribute("aria-valuenow", "75");
 		await page.screenshot({

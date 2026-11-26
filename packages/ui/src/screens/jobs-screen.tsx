@@ -1,16 +1,16 @@
-import ArrowLeft from "lucide-solid/icons/arrow-left";
-import ChevronDown from "lucide-solid/icons/chevron-down";
+import ArrowLeft from "@lucide/solid/icons/arrow-left";
+import ChevronDown from "@lucide/solid/icons/chevron-down";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "../collapsible";
-import { createStore, reconcile, unwrap } from "solid-js/store";
+import { createProjection, snapshot } from "solid-js";
 import { observePageBoundary } from "../hooks/observe-page-boundary";
 import { Input } from "../input";
 import { Label } from "../label";
 import { jobsQueryKeys } from "../query-options/jobs-query";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import type { BatchTargets } from "@solid-imager/core/jobs";
 import { PaginationControls } from "../pagination-controls";
 import { jobTypeLabel } from "../display-labels";
@@ -27,16 +27,15 @@ import {
 	type JobListRequest,
 	type JobListResponse,
 } from "@solid-imager/core/jobs";
-import Ban from "lucide-solid/icons/ban";
-import CircleAlert from "lucide-solid/icons/circle-alert";
-import CircleCheck from "lucide-solid/icons/circle-check";
-import Clock3 from "lucide-solid/icons/clock-3";
-import Download from "lucide-solid/icons/download";
-import RefreshCw from "lucide-solid/icons/refresh-cw";
-import RotateCcw from "lucide-solid/icons/rotate-ccw";
+import Ban from "@lucide/solid/icons/ban";
+import CircleAlert from "@lucide/solid/icons/triangle-exclamation-point";
+import CircleCheck from "@lucide/solid/icons/circle-check";
+import Clock3 from "@lucide/solid/icons/clock-3";
+import Download from "@lucide/solid/icons/download";
+import RefreshCw from "@lucide/solid/icons/refresh-cw";
+import RotateCcw from "@lucide/solid/icons/rotate-ccw";
 import type { Accessor } from "solid-js";
 import {
-	createEffect,
 	createMemo,
 	createSignal,
 	createUniqueId,
@@ -206,7 +205,7 @@ function statusLabel(status: JobDto["status"]): string {
 function JobStatusBadge(props: { status: JobDto["status"] }) {
 	return (
 		<Badge
-			classList={{
+			class={{
 				"border-input": true,
 				"bg-muted": props.status === "cancelled" || props.status === "failed",
 				"text-muted-foreground": props.status === "cancelled",
@@ -378,9 +377,10 @@ function JobsTable(props: {
 	selectedJobIds: ReadonlySet<string>;
 }) {
 	// Own the row objects so reconciliation never mutates query-cache data.
-	const copyJobs = () => structuredClone(unwrap(props.jobs));
-	const [rows, setRows] = createStore<{ jobs: JobDto[] }>({ jobs: copyJobs() });
-	createEffect(() => setRows("jobs", reconcile(copyJobs(), { key: "id" })));
+	const copyJobs = () => structuredClone(snapshot(props.jobs));
+	const rows = createProjection(() => ({ jobs: copyJobs() }), {
+		jobs: [] as JobDto[],
+	});
 	return (
 		<div class="overflow-hidden rounded-md border border-border bg-card">
 			{/* Live progress must not resize columns and rewrap neighboring rows. */}
@@ -667,11 +667,14 @@ function BatchTargetList(props: {
 			setSubmitting(undefined);
 		}
 	};
-	const query = createQuery(() => ({
-		queryKey: [...jobsQueryKeys.targets(props.id), page()],
-		queryFn: ({ signal }) =>
-			props.load(props.id, (page() - 1) * size, size, signal),
-	}));
+	const query = useQuery(() => {
+		const { id, load } = props;
+		const currentPage = page();
+		return {
+			queryKey: [...jobsQueryKeys.targets(id), currentPage],
+			queryFn: ({ signal }) => load(id, (currentPage - 1) * size, size, signal),
+		};
+	});
 	return (
 		<section
 			class="@container min-w-0 [&>div:has(table)]:overflow-visible"
@@ -695,7 +698,7 @@ function BatchTargetList(props: {
 					title={t("jobsScreen.couldNotLoadBatchTargets")}
 				/>
 			</Show>
-			<Show when={query.data}>
+			<Show when={readQueryData(query)}>
 				{(data) => (
 					<>
 						<Show when={data().stages}>
@@ -730,7 +733,7 @@ function BatchTargetList(props: {
 									each={data().items}
 									fallback={
 										<TableRow>
-											<TableCell colSpan={4}>
+											<TableCell colspan={4}>
 												{t("jobsScreen.noRecordedTargets")}
 											</TableCell>
 										</TableRow>
@@ -1097,7 +1100,7 @@ function JobsInspector(props: {
 									<ChevronDown
 										aria-hidden="true"
 										size={16}
-										class="group-data-[expanded]:rotate-180"
+										class="group-data-[open]:rotate-180"
 									/>
 								</CollapsibleTrigger>
 								<CollapsibleContent>
@@ -1255,7 +1258,7 @@ export function JobsScreen(props: JobsScreenProps) {
 		else setLocalSelection(job.id);
 	};
 	const selectedId = createMemo(() => selectedJob()?.id);
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (selectedId()) setDetailOpen(true);
 	});
 	const retryableJobIds = createMemo(() => getRetryableJobIds(props.jobs()));
@@ -1593,3 +1596,7 @@ export function JobsScreen(props: JobsScreenProps) {
 		</ManagementScreen>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";
+
+import { readQueryData } from "../query-state";

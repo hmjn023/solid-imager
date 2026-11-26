@@ -1,6 +1,5 @@
 import type { PixivCard } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
-import { useDialogContext } from "@kobalte/core/dialog";
 import { Show } from "solid-js";
 import {
 	AlertDialog,
@@ -14,7 +13,13 @@ import {
 } from "../alert-dialog";
 import { EmptyState } from "../async-state";
 import { Button } from "../button";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "../dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogTitle,
+	DialogTrigger,
+	useDialogContext,
+} from "../dialog";
 import {
 	ViewerResultsGrid,
 	type ViewerGridItemDescription,
@@ -53,6 +58,7 @@ export function PixivViewingHistoryContent(
 	return (
 		<DialogContent
 			class="workspace-theme flex max-w-4xl flex-col gap-3 overflow-hidden"
+			animateOnClose={false}
 			onCloseAutoFocus={props.onCloseAutoFocus}
 		>
 			<DialogTitle
@@ -77,7 +83,7 @@ export function PixivViewingHistoryContent(
 						describe={props.describePost}
 						postHref={props.postHref}
 						onOpenPost={(id) => {
-							dialog.close();
+							void dialog.close();
 							props.onOpenPost(id);
 						}}
 					/>

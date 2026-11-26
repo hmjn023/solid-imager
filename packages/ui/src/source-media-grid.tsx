@@ -2,29 +2,30 @@ import { mediaTypeLabel } from "./display-labels";
 import { getLocale, t } from "@solid-imager/i18n";
 import type { SimilarityModel } from "@solid-imager/core/search";
 import type { Media } from "@solid-imager/core/media";
-import { useMenuContext } from "@kobalte/core/menu";
+import { useMenuContext } from "./menu";
 import {
 	createVirtualizer,
 	createWindowVirtualizer,
-} from "@tanstack/solid-virtual";
-import Copy from "lucide-solid/icons/copy";
-import ExternalLink from "lucide-solid/icons/external-link";
-import FolderInput from "lucide-solid/icons/folder-input";
-import ListChecks from "lucide-solid/icons/list-checks";
-import SquareCheck from "lucide-solid/icons/square-check";
-import X from "lucide-solid/icons/x";
-import type { Accessor, JSX, Setter } from "solid-js";
+} from "./utils/virtualizer";
+import Copy from "@lucide/solid/icons/copy";
+import ExternalLink from "@lucide/solid/icons/external-link";
+import FolderInput from "@lucide/solid/icons/folder-input";
+import ListChecks from "@lucide/solid/icons/list-checks";
+import SquareCheck from "@lucide/solid/icons/square-check";
+import X from "@lucide/solid/icons/x";
+import type { Accessor, Setter } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import {
 	createEffect,
 	createMemo,
-	createSelector,
+	createProjection,
 	createSignal,
 	For,
 	Match,
-	onCleanup,
-	onMount,
+	onSettled,
 	Show,
 	Switch,
+	untrack,
 } from "solid-js";
 import { Button } from "./button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
@@ -170,9 +171,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const showEmptyState = () => props.showEmptyState ?? true;
 	const showOpenInNewTab = () => props.showOpenInNewTab ?? true;
 	const disableContextMenu = () => props.disableContextMenu ?? false;
-	const isPreviewSelected = createSelector(() =>
-		props.previewSelectedMediaId?.(),
-	);
+	const previewSelection = createProjection<Record<string, true>>((draft) => {
+		const selectedId = props.previewSelectedMediaId?.();
+		for (const id of Object.keys(draft)) delete draft[id];
+		if (selectedId) draft[selectedId] = true;
+	}, {});
+	const isPreviewSelected = (id: string) => previewSelection[id] === true;
 	const totalCount = () => props.totalCount ?? props.mediaResults().length;
 	const selectionModeFromEvent = (
 		event: MouseEvent | KeyboardEvent,
@@ -231,77 +235,88 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	let listLoadRequestCount = -1;
 	let listLoadWasFetching = false;
 
-	onMount(() => {
+	onSettled(() => {
 		setScrollElement(
 			collectionRoot()?.closest<HTMLElement>("[data-media-scroll]") ??
 				undefined,
 		);
 	});
 
-	createEffect(() => {
-		const fetching = props.isFetchingNextPage;
-		const resultCount = props.mediaResults().length;
-		if (fetching) {
-			listLoadWasFetching = true;
-			return;
-		}
-		if (listLoadWasFetching || resultCount !== listLoadRequestCount) {
-			listLoadRequestPending = false;
-			listLoadWasFetching = false;
-		}
-	});
-
-	createEffect(() => {
-		if (viewMode() !== "list") return;
-		void props.mediaResults().length;
-		void props.hasNextPage;
-		const target = props.scrollMode === "element" ? scrollElement() : window;
-		if (!target) return;
-
-		const handleScroll = () => {
-			if (
-				!props.hasNextPage ||
-				props.isFetchingNextPage ||
-				props.isFetchNextPageError ||
-				!props.onLoadMore ||
-				listLoadRequestPending
-			) {
+	createEffect(
+		() => ({
+			fetching: props.isFetchingNextPage,
+			resultCount: props.mediaResults().length,
+		}),
+		({ fetching, resultCount }) => {
+			if (fetching) {
+				listLoadWasFetching = true;
 				return;
 			}
-
-			const metrics =
-				target instanceof HTMLElement
-					? {
-							contentSize: target.scrollHeight,
-							scrollOffset: target.scrollTop,
-							viewportSize: target.clientHeight,
-						}
-					: {
-							contentSize: document.documentElement.scrollHeight,
-							scrollOffset: window.scrollY,
-							viewportSize: window.innerHeight,
-						};
-			if (
-				!isCollectionScrollNearEnd({
-					...metrics,
-					threshold: LIST_LOAD_MORE_THRESHOLD_PX,
-				})
-			) {
-				return;
+			if (listLoadWasFetching || resultCount !== listLoadRequestCount) {
+				listLoadRequestPending = false;
+				listLoadWasFetching = false;
 			}
+		},
+	);
 
-			listLoadRequestPending = true;
-			listLoadRequestCount = props.mediaResults().length;
-			props.onLoadMore();
-		};
+	createEffect(
+		() =>
+			viewMode() === "list"
+				? {
+						resultCount: props.mediaResults().length,
+						hasNextPage: props.hasNextPage,
+						target: props.scrollMode === "element" ? scrollElement() : window,
+					}
+				: undefined,
+		(list) => {
+			const target = list?.target;
+			if (!target) return;
 
-		target.addEventListener("scroll", handleScroll, { passive: true });
-		const frameId = requestAnimationFrame(handleScroll);
-		onCleanup(() => {
-			cancelAnimationFrame(frameId);
-			target.removeEventListener("scroll", handleScroll);
-		});
-	});
+			const handleScroll = () => {
+				if (
+					!props.hasNextPage ||
+					props.isFetchingNextPage ||
+					props.isFetchNextPageError ||
+					!props.onLoadMore ||
+					listLoadRequestPending
+				) {
+					return;
+				}
+
+				const metrics =
+					target instanceof HTMLElement
+						? {
+								contentSize: target.scrollHeight,
+								scrollOffset: target.scrollTop,
+								viewportSize: target.clientHeight,
+							}
+						: {
+								contentSize: document.documentElement.scrollHeight,
+								scrollOffset: window.scrollY,
+								viewportSize: window.innerHeight,
+							};
+				if (
+					!isCollectionScrollNearEnd({
+						...metrics,
+						threshold: LIST_LOAD_MORE_THRESHOLD_PX,
+					})
+				) {
+					return;
+				}
+
+				listLoadRequestPending = true;
+				listLoadRequestCount = props.mediaResults().length;
+				props.onLoadMore();
+			};
+
+			target.addEventListener("scroll", handleScroll, { passive: true });
+			const frameId = requestAnimationFrame(handleScroll);
+			return () => {
+				cancelAnimationFrame(frameId);
+				target.removeEventListener("scroll", handleScroll);
+			};
+		},
+	);
 
 	const contextMenuMedia = () => {
 		const mediaId =
@@ -345,12 +360,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		}
 	};
 
-	onMount(() => {
+	onSettled(() => {
 		const element = collectionRoot();
 		element?.addEventListener("dragstart", handleMediaDragStart);
-		onCleanup(() => {
+		return () =>
 			element?.removeEventListener("dragstart", handleMediaDragStart);
-		});
 	});
 
 	const gridLoadMore = createMemo(() =>
@@ -718,7 +732,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		},
 		getScrollElement: () => scrollElement() ?? null,
 		estimateSize: () => LIST_ROW_ESTIMATE_PX,
-		getItemKey: (index) => props.mediaResults()[index]?.id ?? index,
+		get getItemKey() {
+			const results = props.mediaResults();
+			return (index: number) => results[index]?.id ?? index;
+		},
 		overscan: LIST_VIRTUAL_OVERSCAN,
 	});
 	const windowListVirtualizer = createWindowVirtualizer<HTMLTableRowElement>({
@@ -729,7 +746,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			return shouldVirtualizeList() && props.scrollMode !== "element";
 		},
 		estimateSize: () => LIST_ROW_ESTIMATE_PX,
-		getItemKey: (index) => props.mediaResults()[index]?.id ?? index,
+		get getItemKey() {
+			const results = props.mediaResults();
+			return (index: number) => results[index]?.id ?? index;
+		},
 		overscan: LIST_VIRTUAL_OVERSCAN,
 	});
 	const activeListVirtualizer = () =>
@@ -842,11 +862,28 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					</Show>
 					<For each={visibleListIds()}>
 						{(id) => {
-							const initialEntry = listEntriesById().get(id);
+							const initialEntry = untrack(() => listEntriesById().get(id));
 							if (!initialEntry) return;
 							const entry = () => listEntriesById().get(id) ?? initialEntry;
 							const media = createMemo(() => entry().media);
 							const rowIndex = createMemo(() => entry().index);
+							let rowElement: HTMLTableRowElement | undefined;
+							createEffect(
+								() =>
+									shouldVirtualizeList()
+										? {
+												index: rowIndex(),
+												virtualizer: activeListVirtualizer(),
+											}
+										: undefined,
+								(row) => {
+									if (rowElement) row?.virtualizer.measureElement(rowElement);
+								},
+							);
+							const isSelected = () =>
+								props.isBulkSelectMode?.()
+									? props.isSelected?.(id)
+									: isPreviewSelected(id);
 							return (
 								<TableRow
 									aria-label={t("sourceMediaGrid.valueValue", {
@@ -854,16 +891,14 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										value1: String(media().filePath),
 									})}
 									aria-selected={
-										props.isBulkSelectMode?.()
-											? props.isSelected?.(id)
-											: isPreviewSelected(id)
+										isSelected() === undefined
+											? undefined
+											: isSelected()
+												? "true"
+												: "false"
 									}
 									class={
-										(
-											props.isBulkSelectMode?.()
-												? props.isSelected?.(id)
-												: isPreviewSelected(id)
-										)
+										isSelected()
 											? "bg-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-accent"
 											: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-muted"
 									}
@@ -998,15 +1033,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											props.onPreviewSelect?.(media());
 										}
 									}}
-									ref={(element: HTMLTableRowElement) => {
-										createEffect(() => {
-											void rowIndex();
-											if (shouldVirtualizeList()) {
-												activeListVirtualizer().measureElement(element);
-											}
-										});
-									}}
-									tabIndex={
+									ref={rowElement}
+									tabindex={
 										props.onPreviewSelect ||
 										props.onOpenMediaDetail ||
 										props.onToggleSelect ||
@@ -1303,7 +1331,11 @@ function MediaContextMenuContent(props: {
 	return (
 		<ContextMenuContent
 			class="workspace-theme min-w-56 max-w-80"
-			onKeyDown={(event) => props.onShortcut(event, () => menu.close(true))}
+			onKeyDown={(event) =>
+				props.onShortcut(event, () => {
+					void menu.close();
+				})
+			}
 		>
 			{props.children}
 		</ContextMenuContent>

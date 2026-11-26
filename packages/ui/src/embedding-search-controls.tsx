@@ -1,8 +1,8 @@
 import { t } from "@solid-imager/i18n";
 import type { SearchState } from "@solid-imager/core/search";
-import ChevronDown from "lucide-solid/icons/chevron-down";
-import { createEffect, createSignal, Show } from "solid-js";
-import type { SetStoreFunction } from "solid-js/store";
+import ChevronDown from "@lucide/solid/icons/chevron-down";
+import { createEffect, createSignal, Show, untrack } from "solid-js";
+import type { StoreSetter } from "solid-js";
 import { Button } from "./button";
 import {
 	Collapsible,
@@ -21,30 +21,36 @@ import {
 
 export function EmbeddingSearchControls(props: {
 	state: SearchState;
-	setState: SetStoreFunction<SearchState>;
+	setState: StoreSetter<SearchState>;
 	onSearch: () => void;
 	id: string;
 	registerCommitDraft?: (commit: () => boolean) => void;
 }) {
-	const [draft, setDraft] = createSignal(props.state.semanticQuery);
+	const initialQuery = untrack(() => props.state.semanticQuery);
+	const [draft, setDraft] = createSignal(initialQuery);
 	const [textSearchOpen, setTextSearchOpen] = createSignal(
-		Boolean(props.state.semanticQuery.trim()),
+		Boolean(initialQuery.trim()),
 	);
-	createEffect(() => {
-		const query = props.state.semanticQuery;
-		setDraft(query);
-		if (query.trim()) setTextSearchOpen(true);
-	});
-	props.registerCommitDraft?.(() => {
+	createEffect(
+		() => props.state.semanticQuery,
+		(query) => {
+			setDraft(query);
+			if (query.trim()) setTextSearchOpen(true);
+		},
+	);
+	const registerCommitDraft = untrack(() => props.registerCommitDraft);
+	registerCommitDraft?.(() => {
 		if (!textSearchOpen()) return false;
 		const query = draft().trim();
 		if (!query || query === props.state.semanticQuery) return false;
-		props.setState({
-			semanticQuery: query,
-			similarityAnchorMediaId: null,
-			similarityModel: "embeddinggemma2",
-			offset: 0,
-			scrollY: 0,
+		props.setState((draft) => {
+			Object.assign(draft, {
+				semanticQuery: query,
+				similarityAnchorMediaId: null,
+				similarityModel: "embeddinggemma2",
+				offset: 0,
+				scrollY: 0,
+			});
 		});
 		return true;
 	});
@@ -60,10 +66,10 @@ export function EmbeddingSearchControls(props: {
 						options={["ccip", "embeddinggemma2"]}
 						value={props.state.similarityModel}
 						onChange={(value) => {
-							props.setState(
-								"similarityModel",
-								value === "embeddinggemma2" ? "embeddinggemma2" : "ccip",
-							);
+							props.setState((draft) => {
+								draft.similarityModel =
+									value === "embeddinggemma2" ? "embeddinggemma2" : "ccip";
+							});
 						}}
 						itemComponent={(item) => (
 							<SelectItem item={item.item}>
@@ -103,7 +109,7 @@ export function EmbeddingSearchControls(props: {
 					{t("embeddingSearchControls.naturalLanguageSearchEmbeddingGemma2")}
 					<ChevronDown
 						aria-hidden="true"
-						class="text-muted-foreground transition-transform motion-reduce:transition-none group-data-[expanded]:rotate-180"
+						class="text-muted-foreground transition-transform motion-reduce:transition-none group-data-[open]:rotate-180"
 					/>
 				</CollapsibleTrigger>
 				<CollapsibleContent class="space-y-3 rounded-md border border-border bg-muted/30 p-3">
@@ -113,12 +119,14 @@ export function EmbeddingSearchControls(props: {
 							event.preventDefault();
 							const query = draft().trim();
 							if (!query) return;
-							props.setState({
-								semanticQuery: query,
-								similarityAnchorMediaId: null,
-								similarityModel: "embeddinggemma2",
-								offset: 0,
-								scrollY: 0,
+							props.setState((draft) => {
+								Object.assign(draft, {
+									semanticQuery: query,
+									similarityAnchorMediaId: null,
+									similarityModel: "embeddinggemma2",
+									offset: 0,
+									scrollY: 0,
+								});
 							});
 							props.onSearch();
 						}}
@@ -131,7 +139,7 @@ export function EmbeddingSearchControls(props: {
 						<Input
 							id={`${props.id}-text`}
 							name="semantic-query"
-							maxLength={2000}
+							maxlength={2000}
 							placeholder={t(
 								"embeddingSearchControls.exampleAPersonInRedStandingOnABeach",
 							)}
@@ -148,7 +156,9 @@ export function EmbeddingSearchControls(props: {
 									size="sm"
 									variant="outline"
 									onClick={() => {
-										props.setState("semanticQuery", "");
+										props.setState((draft) => {
+											draft.semanticQuery = "";
+										});
 										setDraft("");
 										props.onSearch();
 									}}

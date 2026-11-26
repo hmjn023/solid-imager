@@ -1,12 +1,9 @@
-import {
-	Root as ButtonPrimitiveRoot,
-	type ButtonRootProps,
-} from "@kobalte/core/button";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import { Button as ButtonPrimitive } from "@ui-sdk/solid/button";
+import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import type { JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
@@ -42,38 +39,69 @@ const buttonVariants = cva(
 	},
 );
 
-/**
- * Props for the Button component.
- * Extends ButtonRootProps from `@kobalte/core/button` and VariantProps from `class-variance-authority`.
- * @template T - The valid component type, defaults to "button".
- * @property {string} [class] - Optional CSS class for custom styling.
- * @property {JSX.Element} [children] - The content to be rendered inside the button.
- */
-type ButtonProps<T extends ValidComponent = "button"> = ButtonRootProps<T> &
-	VariantProps<typeof buttonVariants> & {
+type BooleanAria = Pick<
+	ComponentProps<"button">,
+	"aria-busy" | "aria-expanded" | "aria-pressed"
+>;
+type ButtonProps<T extends ValidComponent = "button"> = Omit<
+	ComponentProps<T>,
+	"class" | "children" | keyof BooleanAria
+> & { [K in keyof BooleanAria]?: BooleanAria[K] | boolean } & VariantProps<
+		typeof buttonVariants
+	> & {
 		class?: string | undefined;
 		children?: JSX.Element;
 	};
-/**
- * A customizable button component that supports various styles and sizes.
- * It leverages `@kobalte/core/button` for accessibility and `class-variance-authority` for styling.
- * @template T - The valid component type, defaults to "button".
- * @param {PolymorphicProps<T, ButtonProps<T>>} props - The properties for the button component.
- * @returns {JSX.Element} The rendered button component.
- */
 const Button = <T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, ButtonProps<T>>,
 ) => {
-	const [local, others] = splitProps(props as ButtonProps, [
+	const others = omit(
+		props as ButtonProps & { as?: ValidComponent },
 		"variant",
 		"size",
 		"class",
-	]);
+		"as",
+		"aria-busy",
+		"aria-expanded",
+		"aria-pressed",
+		"style",
+		"disabled",
+		"type",
+	);
 	return (
-		<ButtonPrimitiveRoot
+		<ButtonPrimitive
+			style={props.style || undefined}
+			disabled={props.disabled === "" || props.disabled === true}
+			type={
+				props.type === "submit" || props.type === "reset"
+					? props.type
+					: "button"
+			}
+			aria-busy={
+				typeof props["aria-busy"] === "boolean"
+					? props["aria-busy"]
+						? "true"
+						: "false"
+					: props["aria-busy"]
+			}
+			aria-expanded={
+				typeof props["aria-expanded"] === "boolean"
+					? props["aria-expanded"]
+						? "true"
+						: "false"
+					: props["aria-expanded"]
+			}
+			aria-pressed={
+				typeof props["aria-pressed"] === "boolean"
+					? props["aria-pressed"]
+						? "true"
+						: "false"
+					: props["aria-pressed"]
+			}
+			render={props.as ? renderAs(() => props.as) : undefined}
 			class={cn(
-				buttonVariants({ variant: local.variant, size: local.size }),
-				local.class,
+				buttonVariants({ variant: props.variant, size: props.size }),
+				props.class,
 			)}
 			{...others}
 		/>

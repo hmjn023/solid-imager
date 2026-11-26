@@ -9,8 +9,8 @@ import {
 	StatisticsScreen,
 	statisticsQueryOptions,
 } from "@solid-imager/ui/screens/statistics";
-import type { JSX } from "solid-js";
-import { isServer } from "solid-js/web";
+import type { JSX } from "@solidjs/web";
+import { isServer } from "@solidjs/web";
 import { createFileRoute, useLoaderData } from "@tanstack/solid-router";
 import { createServerOnlyFn } from "@tanstack/solid-start";
 import { getCookie } from "@tanstack/solid-start/server";

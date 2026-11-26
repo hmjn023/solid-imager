@@ -1,3 +1,5 @@
+@layer ui-sdk;
+
 @layer scalar-base, scalar-theme, scalar-config, theme, base, components, utilities;
 @import "tailwindcss";
 @import "@solid-imager/ui/theme.css";

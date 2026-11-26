@@ -10,10 +10,10 @@ import {
 	Scripts,
 	useLocation,
 } from "@tanstack/solid-router";
-import { createSignal, onMount, type ParentProps, Show } from "solid-js";
-import { HydrationScript, isServer } from "solid-js/web";
+import { createSignal, onSettled, type ParentProps, Show } from "solid-js";
+import { isServer } from "@solidjs/web";
 import styleCss from "~/app.css?url";
-import { AppLayout } from "~/components/layout/layout";
+import { AppLayout, jobsBadgeQueryOptions } from "~/components/layout/layout";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
 import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 
@@ -27,11 +27,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		context,
 		location,
 	}: RouteLoaderContext & { location: { pathname: string } }) => {
-		if (isServer && !isStandalonePath(location.pathname)) {
-			await context.queryClient
-				.query(mediaSourcesQueryOptions())
-				.catch(() => undefined);
-		}
+		if (!isServer || isStandalonePath(location.pathname)) return;
+		// Replay only changes which could have raced these server snapshots.
+		const jobsReplaySince = Date.now();
+		await Promise.allSettled([
+			context.queryClient.query(mediaSourcesQueryOptions()),
+			context.queryClient.query(jobsBadgeQueryOptions("active")),
+			context.queryClient.query(jobsBadgeQueryOptions("failed")),
+		]);
+		return { jobsReplaySince };
 	},
 	head: () => ({
 		meta: [
@@ -67,7 +71,7 @@ function RootDocument(props: ParentProps) {
 	const [isHydrated, setIsHydrated] = createSignal(false);
 	const [locale, setLocale] = createSignal(getLocale());
 	const location = useLocation();
-	onMount(() => {
+	onSettled(() => {
 		if (migrateBrowserLocale()) {
 			window.location.reload();
 			return;
@@ -84,11 +88,10 @@ function RootDocument(props: ParentProps) {
 			lang={locale()}
 		>
 			<head>
-				<HydrationScript />
 				<HeadContent />
 			</head>
 			<body
-				classList={{
+				class={{
 					"workspace-theme": !isStandalonePath(location().pathname),
 				}}
 			>
@@ -107,9 +110,10 @@ function RootDocument(props: ParentProps) {
 
 function RootComponent() {
 	const location = useLocation();
+	const initial = Route.useLoaderData();
 	return (
 		<Show fallback={<Outlet />} when={!isStandalonePath(location().pathname)}>
-			<AppLayout />
+			<AppLayout jobsReplaySince={initial()?.jobsReplaySince} />
 		</Show>
 	);
 }

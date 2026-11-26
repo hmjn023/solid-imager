@@ -1,8 +1,8 @@
 import { t } from "@solid-imager/i18n";
-import Pencil from "lucide-solid/icons/pencil";
-import Plus from "lucide-solid/icons/plus";
-import Search from "lucide-solid/icons/search";
-import Trash2 from "lucide-solid/icons/trash";
+import Pencil from "@lucide/solid/icons/pencil";
+import Plus from "@lucide/solid/icons/plus";
+import Search from "@lucide/solid/icons/search";
+import Trash2 from "@lucide/solid/icons/trash";
 import { createMemo, For, Show } from "solid-js";
 import { EmptyState } from "../../async-state";
 import { Button } from "../../button";

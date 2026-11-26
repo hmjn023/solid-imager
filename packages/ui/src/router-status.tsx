@@ -1,7 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import type { ErrorComponentProps } from "@tanstack/solid-router";
 import { Link, useRouter, useRouterState } from "@tanstack/solid-router";
-import { createEffect, createSignal, onCleanup, Show, untrack } from "solid-js";
+import { createSignal, onCleanup, Show, untrack } from "solid-js";
 import { ErrorState } from "./async-state";
 import { Progress } from "./progress";
 import { ScreenSkeleton, type ScreenSkeletonLayout } from "./screen-skeleton";
@@ -22,7 +22,7 @@ function useDelayedPending(isPending: () => boolean) {
 		hideTimer = undefined;
 	};
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const pending = isPending();
 		const visible = untrack(isVisible);
 
@@ -160,3 +160,5 @@ export function BootstrapStatusScreen(props: BootstrapStatusScreenProps) {
 		</Show>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

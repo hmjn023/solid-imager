@@ -4,13 +4,8 @@ import {
 	formatForDisplay,
 	type Hotkey,
 } from "@tanstack/solid-hotkeys";
-import {
-	createSignal,
-	createUniqueId,
-	For,
-	type JSX,
-	onCleanup,
-} from "solid-js";
+import { createSignal, createUniqueId, For, onCleanup } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 import { Button } from "../button";
 import { Input } from "../input";
@@ -364,7 +359,7 @@ export function ShortcutSettingsPanel(
 																startRecording(definition.id);
 															}
 														}}
-														readOnly
+														readonly
 														value={
 															isActive()
 																? t("shortcutSettingsPanel.pressShortcut")

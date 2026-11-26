@@ -5,7 +5,7 @@ import {
 	useMediaSourceEvents as useMediaSourceEventsShared,
 } from "@solid-imager/ui/source-events";
 import { useLocation } from "@tanstack/solid-router";
-import { type Accessor, mergeProps } from "solid-js";
+import { type Accessor, merge } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { logger } from "~/infrastructure/logger";
 
@@ -183,5 +183,5 @@ export function useMediaSourceEvents(
 ): void {
 	const transport = createServerTransport(mediaSourceId);
 
-	useMediaSourceEventsShared(mergeProps(options, { transport }));
+	useMediaSourceEventsShared(merge(options, { transport }));
 }

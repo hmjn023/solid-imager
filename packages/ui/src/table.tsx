@@ -1,10 +1,11 @@
-import type { Component, ComponentProps } from "solid-js";
-import { splitProps } from "solid-js";
+import type { Component } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 
 import { cn } from "./utils/cn";
 
 const Table: Component<ComponentProps<"table">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 	return (
 		<div class="relative w-full overflow-auto">
 			<table
@@ -16,19 +17,22 @@ const Table: Component<ComponentProps<"table">> = (props) => {
 };
 
 const TableHeader: Component<ComponentProps<"thead">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 	return <thead class={cn("[&_tr]:border-b", local.class)} {...others} />;
 };
 
 const TableBody: Component<ComponentProps<"tbody">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 	return (
 		<tbody class={cn("[&_tr:last-child]:border-0", local.class)} {...others} />
 	);
 };
 
 const TableFooter: Component<ComponentProps<"tfoot">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 	return (
 		<tfoot
 			class={cn("bg-primary font-medium text-primary-foreground", local.class)}
@@ -38,7 +42,8 @@ const TableFooter: Component<ComponentProps<"tfoot">> = (props) => {
 };
 
 const TableRow: Component<ComponentProps<"tr">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 	return (
 		<tr
 			class={cn(
@@ -51,7 +56,8 @@ const TableRow: Component<ComponentProps<"tr">> = (props) => {
 };
 
 const TableHead: Component<ComponentProps<"th">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 	return (
 		<th
 			class={cn(
@@ -64,7 +70,8 @@ const TableHead: Component<ComponentProps<"th">> = (props) => {
 };
 
 const TableCell: Component<ComponentProps<"td">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 	return (
 		<td
 			class={cn("p-2 align-middle [&:has([role=checkbox])]:pr-0", local.class)}
@@ -74,7 +81,8 @@ const TableCell: Component<ComponentProps<"td">> = (props) => {
 };
 
 const TableCaption: Component<ComponentProps<"caption">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const local = props,
+		others = omit(props, "class");
 	return (
 		<caption
 			class={cn("mt-4 text-muted-foreground text-sm", local.class)}
@@ -93,3 +101,5 @@ export {
 	TableHeader,
 	TableRow,
 };
+
+import { omit } from "solid-js";

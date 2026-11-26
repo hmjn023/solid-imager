@@ -9,19 +9,17 @@ import {
 	type SearchState,
 } from "@solid-imager/core/search";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
-import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
-import ChevronDown from "lucide-solid/icons/chevron-down";
-import Filter from "lucide-solid/icons/funnel";
-import Grid3X3 from "lucide-solid/icons/grid-3x3";
-import List from "lucide-solid/icons/list";
-import SquareCheck from "lucide-solid/icons/square-check";
-import type { JSX } from "solid-js";
+import ArrowDownUp from "@lucide/solid/icons/arrow-down-up";
+import ChevronDown from "@lucide/solid/icons/chevron-down";
+import Filter from "@lucide/solid/icons/funnel";
+import Grid3X3 from "@lucide/solid/icons/grid-3x3";
+import List from "@lucide/solid/icons/list";
+import SquareCheck from "@lucide/solid/icons/square-check";
+import type { JSX } from "@solidjs/web";
 import {
-	batch,
 	createEffect,
 	createMemo,
 	createSignal,
-	on,
 	onCleanup,
 	Show,
 } from "solid-js";
@@ -44,7 +42,6 @@ import {
 	clearPresetFilters,
 	getSearchFiltersRevision,
 	clearSimilaritySearch,
-	searchState,
 	setSearchState,
 } from "../stores/search-store";
 import { CollectionHeader } from "./collection-header";
@@ -103,32 +100,36 @@ function parseValues(value: string): string[] {
 	];
 }
 
-function appendValues(key: SearchArrayKey, rawValue: string) {
+function appendValues(
+	state: SearchState,
+	key: SearchArrayKey,
+	rawValue: string,
+) {
 	const values = parseValues(rawValue);
 	if (values.length === 0) return;
-	setSearchState(key, [...new Set([...searchState[key], ...values])]);
+	state[key] = [...new Set([...state[key], ...values])];
 }
 
-function removeToken(token: SearchToken) {
+function removeToken(state: SearchState, token: SearchToken) {
 	if (token.key === "semanticQuery") {
-		setSearchState("semanticQuery", "");
+		state.semanticQuery = "";
 		return;
 	}
 	if (token.key === "searchQuery") {
-		setSearchState("searchQuery", "");
+		state.searchQuery = "";
 		return;
 	}
 	if (token.key === "similarityAnchorMediaId") {
-		clearSimilaritySearch();
+		state.similarityAnchorMediaId = null;
+		state.semanticQuery = "";
+		state.offset = 0;
+		state.scrollY = 0;
 		return;
 	}
 	if (token.key === "similarityTopK") {
 		return;
 	}
-	setSearchState(
-		token.key,
-		searchState[token.key].filter((value) => value !== token.value),
-	);
+	state[token.key] = state[token.key].filter((value) => value !== token.value);
 }
 
 const SEARCH_APPLY_DEBOUNCE_MS = 250;
@@ -137,11 +138,11 @@ function tokenId(token: Pick<SearchToken, "key" | "value">): string {
 	return `${token.key}\u0000${token.value}`;
 }
 
-function submitComposerDraft(rawDraft: string): boolean {
+function submitComposerDraft(state: SearchState, rawDraft: string): boolean {
 	const semanticDraft = parseSemanticSearchDraft(rawDraft);
 	if (semanticDraft !== undefined) {
 		if (!semanticDraft) return false;
-		setSearchState({
+		Object.assign(state, {
 			semanticQuery: semanticDraft,
 			similarityAnchorMediaId: null,
 			similarityModel: "embeddinggemma2",
@@ -177,56 +178,56 @@ function submitComposerDraft(rawDraft: string): boolean {
 					break;
 				}
 				sawSimilarityAnchor = true;
-				if (searchState.similarityAnchorMediaId !== anchorMediaId) {
-					setSearchState("similarityAnchorMediaId", anchorMediaId);
+				if (state.similarityAnchorMediaId !== anchorMediaId) {
+					state.similarityAnchorMediaId = anchorMediaId;
 					changed = true;
 				}
-				if (searchState.semanticQuery) {
-					setSearchState("semanticQuery", "");
+				if (state.semanticQuery) {
+					state.semanticQuery = "";
 					changed = true;
 				}
 				break;
 			}
 			case "name":
-				setSearchState("searchQuery", value);
+				state.searchQuery = value;
 				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "tag":
-				appendValues("selectedTags", value);
+				appendValues(state, "selectedTags", value);
 				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "-tag":
-				appendValues("excludeTags", value);
+				appendValues(state, "excludeTags", value);
 				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "character":
-				appendValues("selectedCharacters", value);
+				appendValues(state, "selectedCharacters", value);
 				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "ip":
-				appendValues("selectedIps", value);
+				appendValues(state, "selectedIps", value);
 				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "author":
-				appendValues("selectedAuthors", value);
+				appendValues(state, "selectedAuthors", value);
 				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "project":
-				appendValues("selectedProjects", value);
+				appendValues(state, "selectedProjects", value);
 				matchedOrdinaryCondition = true;
 				changed = true;
 				break;
 			case "limit": {
 				const topK = parseSimilarityTopK(value);
-				if (searchState.similarityAnchorMediaId && topK !== undefined) {
-					if (searchState.similarityTopK !== topK) {
-						setSearchState("similarityTopK", topK);
+				if (state.similarityAnchorMediaId && topK !== undefined) {
+					if (state.similarityTopK !== topK) {
+						state.similarityTopK = topK;
 						changed = true;
 					}
 				} else {
@@ -240,22 +241,22 @@ function submitComposerDraft(rawDraft: string): boolean {
 	}
 
 	if (freeText.length > 0) {
-		setSearchState("searchQuery", freeText.join(" "));
+		state.searchQuery = freeText.join(" ");
 		matchedOrdinaryCondition = true;
 		changed = true;
 	}
 
 	if (matchedOrdinaryCondition) {
-		if (searchState.mode === "pro") {
-			setSearchState("mode", "simple");
+		if (state.mode === "pro") {
+			state.mode = "simple";
 			changed = true;
 		}
-		if (searchState.semanticQuery) {
-			setSearchState("semanticQuery", "");
+		if (state.semanticQuery) {
+			state.semanticQuery = "";
 			changed = true;
 		}
-		if (!sawSimilarityAnchor && searchState.similarityAnchorMediaId) {
-			setSearchState("similarityAnchorMediaId", null);
+		if (!sawSimilarityAnchor && state.similarityAnchorMediaId) {
+			state.similarityAnchorMediaId = null;
 			changed = true;
 		}
 	}
@@ -297,7 +298,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	let commitSemanticDraft: (() => boolean) | undefined;
 	const applyAndCloseFilters = () => {
 		if (!filterOpen()) return;
-		batch(() => {
+		{
 			if (
 				state().mode === "simple" &&
 				getSearchExecutionKind(state()) === "ordinary"
@@ -305,10 +306,12 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				commitFilenameDraft?.();
 			}
 			commitSemanticDraft?.();
-		});
-		const changed = encodeSearchSession(state()) !== filtersOnOpen;
+		}
+		const initialFilters = filtersOnOpen;
 		setFilterOpen(false);
-		if (changed) props.onSearch();
+		queueMicrotask(() => {
+			if (encodeSearchSession(state()) !== initialFilters) props.onSearch();
+		});
 	};
 	const tokens = createMemo(() => {
 		const removalIds = new Set(pendingRemovals().map(tokenId));
@@ -330,21 +333,18 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	);
 	let composerInput: HTMLInputElement | undefined;
 	let searchApplyTimer: ReturnType<typeof setTimeout> | undefined;
-	const applySuggestionAdditions = (additions: SearchSuggestion[]) => {
+	const applySuggestionAdditions = (
+		nextState: SearchState,
+		additions: SearchSuggestion[],
+	) => {
 		if (additions.length === 0) return;
-		if (state().mode === "pro") {
-			setSearchState("mode", "simple");
-		}
-		if (state().semanticQuery) {
-			setSearchState("semanticQuery", "");
-		}
-		if (state().similarityAnchorMediaId) {
-			setSearchState("similarityAnchorMediaId", null);
-		}
+		nextState.mode = "simple";
+		nextState.semanticQuery = "";
+		nextState.similarityAnchorMediaId = null;
 		for (const suggestion of additions) {
-			setSearchState(suggestion.key, [
-				...new Set([...state()[suggestion.key], suggestion.value]),
-			]);
+			nextState[suggestion.key] = [
+				...new Set([...nextState[suggestion.key], suggestion.value]),
+			];
 		}
 	};
 	const applyPendingChanges = () => {
@@ -353,13 +353,13 @@ export function SearchToolbar(props: SearchToolbarProps) {
 		const removals = pendingRemovals();
 		if (additions.length === 0 && removals.length === 0) return;
 
-		batch(() => {
-			for (const token of removals) removeToken(token);
-			applySuggestionAdditions(additions);
+		setSearchState((draftState) => {
+			for (const token of removals) removeToken(draftState, token);
+			applySuggestionAdditions(draftState, additions);
 		});
 		setPendingSuggestions([]);
 		setPendingRemovals([]);
-		props.onSearch();
+		queueMicrotask(() => props.onSearch());
 	};
 	const scheduleSearchApply = () => {
 		if (searchApplyTimer) clearTimeout(searchApplyTimer);
@@ -372,16 +372,14 @@ export function SearchToolbar(props: SearchToolbarProps) {
 		if (searchApplyTimer) clearTimeout(searchApplyTimer);
 	});
 	createEffect(
-		on(
-			getSearchFiltersRevision,
-			() => {
-				clearTimeout(searchApplyTimer);
-				searchApplyTimer = undefined;
-				setPendingSuggestions([]);
-				setPendingRemovals([]);
-			},
-			{ defer: true },
-		),
+		getSearchFiltersRevision,
+		() => {
+			clearTimeout(searchApplyTimer);
+			searchApplyTimer = undefined;
+			setPendingSuggestions([]);
+			setPendingRemovals([]);
+		},
+		{ defer: true },
 	);
 	const selectSuggestion = (suggestion: SearchSuggestion) => {
 		const suggestionId = tokenId(suggestion);
@@ -407,17 +405,16 @@ export function SearchToolbar(props: SearchToolbarProps) {
 		searchApplyTimer = undefined;
 		const additions = pendingSuggestions();
 		const removals = pendingRemovals();
-		let changed = additions.length > 0 || removals.length > 0;
-		batch(() => {
-			for (const token of removals) removeToken(token);
-			applySuggestionAdditions(additions);
-			if (submitComposerDraft(draft())) changed = true;
-		});
-		if (!changed) return;
+		const nextState = { ...state() };
+		for (const token of removals) removeToken(nextState, token);
+		applySuggestionAdditions(nextState, additions);
+		const parsedDraft = submitComposerDraft(nextState, draft());
+		if (!parsedDraft && additions.length === 0 && removals.length === 0) return;
+		setSearchState(() => nextState);
 		setPendingSuggestions([]);
 		setPendingRemovals([]);
 		setDraft("");
-		props.onSearch();
+		queueMicrotask(() => props.onSearch());
 	};
 
 	createAppShortcut("focusSearch", () => composerInput?.focus());
@@ -558,7 +555,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					</PopoverTrigger>
 					<PopoverContent
 						aria-label={t("searchToolbar.searchFilters")}
-						class="workspace-theme relative flex min-h-0 max-h-popover-fit-available w-popover-compact! flex-col overflow-hidden bg-card p-0 text-foreground shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
+						class="workspace-theme relative flex min-h-0 max-h-popover-fit-available w-popover-compact! flex-col overflow-hidden bg-card p-0 text-foreground shadow-xl data-[closed]:hidden data-[open]:animate-none"
 					>
 						<div class="flex shrink-0 items-start justify-between border-border border-b px-4 py-3">
 							<div>
@@ -573,8 +570,10 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								class="min-h-11 px-2 text-xs sm:h-7 sm:min-h-7"
 								onClick={() => {
 									clearPresetFilters();
-									filtersOnOpen = encodeSearchSession(state());
-									props.onSearch();
+									queueMicrotask(() => {
+										filtersOnOpen = encodeSearchSession(state());
+										props.onSearch();
+									});
 								}}
 								size="sm"
 								variant="ghost"
@@ -588,7 +587,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								filterData={props.filterData}
 								onSearch={() => {
 									setFilterOpen(false);
-									props.onSearch();
+									queueMicrotask(() => props.onSearch());
 								}}
 								onSelectSource={props.onSelectSource}
 								presetClient={props.presetClient}
@@ -641,10 +640,20 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					<PopoverContent class="workspace-theme w-72 p-4 shadow-xl">
 						<SortControls
 							onClearSimilarity={() => clearSimilaritySearch()}
-							onSortByChange={(value) => setSearchState("sortBy", value)}
-							onSortOrderChange={(value) => setSearchState("sortOrder", value)}
+							onSortByChange={(value) =>
+								setSearchState((draftState) => {
+									draftState.sortBy = value;
+								})
+							}
+							onSortOrderChange={(value) =>
+								setSearchState((draftState) => {
+									draftState.sortOrder = value;
+								})
+							}
 							onSimilarityTopKChange={(value) =>
-								setSearchState("similarityTopK", value)
+								setSearchState((draftState) => {
+									draftState.similarityTopK = value;
+								})
 							}
 							similarityAnchorMediaId={state().similarityAnchorMediaId}
 							similarityLimitId="sort-similarity-limit"

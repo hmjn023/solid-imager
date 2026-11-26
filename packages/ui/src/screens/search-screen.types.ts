@@ -34,7 +34,7 @@ export type SearchWorkspaceProps = {
 	renderMediaItem: (
 		media: Media,
 		options?: SearchMediaItemOptions,
-	) => import("solid-js").JSX.Element;
+	) => import("@solidjs/web").JSX.Element;
 	selectedSource: string | null;
 	sources: SafeMediaSource[] | undefined;
 	ssrGuard?: boolean;

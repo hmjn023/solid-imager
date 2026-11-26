@@ -1,9 +1,10 @@
 import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { Link } from "@tanstack/solid-router";
-import type { Accessor, JSX } from "solid-js";
+import type { Accessor } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { For, Show } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import { Dynamic } from "@solidjs/web";
 import { Button } from "../button";
 import { ShortcutKbd } from "../shortcuts/shortcut-kbd";
 import {
@@ -106,8 +107,11 @@ export function Sidebar(props: SidebarProps) {
 						<TooltipTrigger
 							aria-label={t("sidebar.solidImagerLibrary")}
 							as={Link}
-							class="flex min-w-0 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							classList={{ "flex-1": props.expanded }}
+							class={cn(
+								"flex min-w-0 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								{ "flex-1": props.expanded },
+							)}
+
 							onClick={props.onNavigate}
 							to="/search"
 						>
@@ -115,8 +119,10 @@ export function Sidebar(props: SidebarProps) {
 								<Image aria-hidden="true" size={17} />
 							</span>
 							<strong
-								class="min-w-0 flex-1 truncate font-semibold text-base text-foreground"
-								classList={{ hidden: !props.expanded }}
+								class={cn(
+									"min-w-0 flex-1 truncate font-semibold text-base text-foreground",
+									{ hidden: !props.expanded },
+								)}
 							>
 								{t("sidebar.solidImager")}
 							</strong>
@@ -172,8 +178,9 @@ export function Sidebar(props: SidebarProps) {
 							>
 								<Search aria-hidden="true" class="shrink-0" size={16} />
 								<span
-									class="min-w-0 flex-1 truncate text-left"
-									classList={{ hidden: !props.expanded }}
+									class={cn("min-w-0 flex-1 truncate text-left", {
+										hidden: !props.expanded,
+									})}
 								>
 									{t("sidebar.quickActions")}
 								</span>
@@ -361,7 +368,7 @@ export function Sidebar(props: SidebarProps) {
 									tooltipDisabled={props.expanded}
 								>
 									<FileText aria-hidden="true" class="shrink-0" size={18} />
-									<span classList={{ hidden: !props.expanded }}>
+									<span class={{ hidden: !props.expanded }}>
 										{t("sidebar.aPIDocs")}
 									</span>
 								</SidebarMenuButton>
