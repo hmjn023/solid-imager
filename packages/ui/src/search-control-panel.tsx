@@ -181,6 +181,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						<Suspense fallback={<p>{t("status.loading")}</p>}>
 							<PresetManager
 								class="w-full flex-col items-stretch"
+								onAction={props.onSearch}
 								presetClient={props.presetClient}
 								setState={props.setState}
 								state={props.state}

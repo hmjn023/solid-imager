@@ -1,6 +1,6 @@
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { t } from "@solid-imager/i18n";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Alert, AlertDescription } from "./alert";
 import {
 	AlertDialog,
@@ -44,6 +44,7 @@ type Draft = { ids: string[]; names: string[]; query: string };
 type Props = {
 	groups: Record<RelationGroup, Group>;
 	onUpdate?: () => void;
+	onDirtyChange?: (dirty: boolean) => void;
 	disabled?: boolean;
 };
 
@@ -237,6 +238,7 @@ export function RelationsEditor(props: Props) {
 			);
 		}),
 	);
+	createEffect(() => props.onDirtyChange?.(open() && (dirty() || saving())));
 	const begin = () => {
 		const initial = readDraft();
 		setBaseline(initial);

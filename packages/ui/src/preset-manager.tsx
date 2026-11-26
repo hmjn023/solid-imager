@@ -116,6 +116,7 @@ export function PresetManager(props: PresetManagerProps) {
 	});
 
 	const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
+	const [confirmSaveDiscard, setConfirmSaveDiscard] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [presetToDelete, setPresetToDelete] = createSignal<number | null>(null);
 	const [newPresetName, setNewPresetName] = createSignal("");
@@ -126,6 +127,16 @@ export function PresetManager(props: PresetManagerProps) {
 	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
 		null,
 	);
+	const isSaveDirty = () => newPresetName().trim().length > 0;
+	const requestCloseSaveDialog = () => {
+		if (isSaving()) return;
+		if (isSaveDirty()) {
+			setConfirmSaveDiscard(true);
+			return;
+		}
+		setIsSaveDialogOpen(false);
+		setSaveError(null);
+	};
 
 	createEffect(() => {
 		const active = currentState().activePresetId;
@@ -352,9 +363,12 @@ export function PresetManager(props: PresetManagerProps) {
 
 				<Dialog
 					onOpenChange={(open) => {
-						if (!isSaving()) {
-							setIsSaveDialogOpen(open);
-							if (!open) setSaveError(null);
+						if (open) {
+							setSaveError(null);
+							setConfirmSaveDiscard(false);
+							setIsSaveDialogOpen(true);
+						} else {
+							requestCloseSaveDialog();
 						}
 					}}
 					open={isSaveDialogOpen()}
@@ -401,7 +415,7 @@ export function PresetManager(props: PresetManagerProps) {
 								<Button
 									class="min-h-11 sm:min-h-9"
 									disabled={isSaving()}
-									onClick={() => setIsSaveDialogOpen(false)}
+									onClick={requestCloseSaveDialog}
 									type="button"
 									variant="outline"
 								>
@@ -419,6 +433,39 @@ export function PresetManager(props: PresetManagerProps) {
 						</form>
 					</DialogContent>
 				</Dialog>
+
+				<AlertDialog
+					onOpenChange={setConfirmSaveDiscard}
+					open={isSaveDialogOpen() && confirmSaveDiscard()}
+				>
+					<AlertDialogContent class="workspace-theme rounded-lg sm:max-w-dialog-xs">
+						<AlertDialogHeader>
+							<AlertDialogTitle>
+								{t("relationsEditor.discardChanges")}
+							</AlertDialogTitle>
+							<AlertDialogDescription>
+								{t("presetManager.unsavedChangesDescription")}
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel class="min-h-11 sm:min-h-9">
+								{t("configScreen.keepEditing")}
+							</AlertDialogCancel>
+							<AlertDialogAction
+								class="min-h-11 sm:min-h-9"
+								onClick={() => {
+									setConfirmSaveDiscard(false);
+									setNewPresetName("");
+									setSaveError(null);
+									setIsSaveDialogOpen(false);
+								}}
+								variant="destructive"
+							>
+								{t("actions.discard")}
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
 
 				<Show when={selectedPresetId()}>
 					<Button

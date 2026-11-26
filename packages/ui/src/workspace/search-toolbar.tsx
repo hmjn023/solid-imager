@@ -508,7 +508,12 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				/>
 
 				<Popover
-					onOpenChange={setFilterOpen}
+					onOpenChange={(open) => {
+						if (!open && commitSemanticDraft?.()) {
+							props.onSearch();
+						}
+						setFilterOpen(open);
+					}}
 					open={filterOpen()}
 					placement="bottom-end"
 				>
@@ -524,7 +529,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						<Filter aria-hidden="true" size={15} />
 						{t("searchToolbar.filters")}
 						<Show when={appliedFilterCount() > 0}>
-							<span class="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-label-xs text-white">
+							<span class="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-label-xs text-primary-foreground">
 								{appliedFilterCount()}
 							</span>
 						</Show>
@@ -543,7 +548,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								</p>
 							</div>
 							<Button
-								class="h-7 px-2 text-xs"
+								class="min-h-11 px-2 text-xs sm:h-7 sm:min-h-7"
 								onClick={() => {
 									clearPresetFilters();
 									props.onSearch();
@@ -577,22 +582,16 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						<div class="flex shrink-0 justify-end gap-2 border-border border-t bg-card p-3">
 							<Button
 								class="min-h-11 sm:min-h-9"
-								onClick={() => setFilterOpen(false)}
+								onClick={() => {
+									if (commitSemanticDraft?.()) {
+										props.onSearch();
+									}
+									setFilterOpen(false);
+								}}
 								size="sm"
 								variant="outline"
 							>
 								{t("actions.close")}
-							</Button>
-							<Button
-								class="min-h-11 sm:min-h-9"
-								onClick={() => {
-									commitSemanticDraft?.();
-									props.onSearch();
-									setFilterOpen(false);
-								}}
-								size="sm"
-							>
-								{t("actions.apply")}
 							</Button>
 						</div>
 					</PopoverContent>

@@ -19,12 +19,13 @@ import {
 } from "./dialog";
 import { clampMediaPan, type MediaPan } from "./media-viewer-pan";
 import { Separator } from "./separator";
+import { LoadingRegion, Skeleton } from "./skeleton";
 import { VideoPlayer } from "./video-player";
 import { Maximize2, Minus, Plus, RotateCcw } from "./workspace/icons";
 
 export interface MediaSource {
 	type: "image" | "video" | "audio";
-	getUrl(): string | Promise<string>;
+	getUrl(signal?: AbortSignal): string | Promise<string>;
 	revokeUrl?(url: string): void;
 }
 
@@ -95,6 +96,10 @@ export function MediaViewer(props: MediaViewerProps) {
 		source: MediaSource;
 		url: string;
 	}>();
+	const [viewerLoadState, setViewerLoadState] = createSignal<
+		"loading" | "ready" | "error"
+	>("loading");
+	const [retryCount, setRetryCount] = createSignal(0);
 	const mediaUrl = () => {
 		const resolved = resolvedMedia();
 		return resolved?.source === mediaSource() ? resolved.url : undefined;
@@ -291,29 +296,35 @@ export function MediaViewer(props: MediaViewerProps) {
 
 	createEffect(() => {
 		const source = mediaSource();
+		void retryCount();
+		const controller = new AbortController();
 		let currentUrl: string | null = null;
 		let disposed = false;
 		setResolvedMedia(undefined);
+		setViewerLoadState("loading");
 		resetView();
 
 		void (async () => {
 			try {
-				const url = await source.getUrl();
+				const url = await source.getUrl(controller.signal);
 				if (disposed) {
 					source.revokeUrl?.(url);
 					return;
 				}
 				currentUrl = url;
 				setResolvedMedia({ source, url });
+				setViewerLoadState("ready");
 			} catch {
 				if (!disposed) {
 					setResolvedMedia(undefined);
+					setViewerLoadState("error");
 				}
 			}
 		})();
 
 		onCleanup(() => {
 			disposed = true;
+			controller.abort();
 			if (currentUrl && source.revokeUrl) {
 				source.revokeUrl(currentUrl);
 			}
@@ -347,42 +358,52 @@ export function MediaViewer(props: MediaViewerProps) {
 				}}
 			>
 				<Switch>
-					<Match when={mediaSource().type === "video"}>
-						<Show
-							fallback={
-								<div class="flex h-full max-h-full w-full items-center justify-center bg-foreground text-background">
-									{t("mediaViewer.videoPreviewUnavailable")}
-								</div>
-							}
-							when={mediaUrl()}
+					<Match when={viewerLoadState() === "loading"}>
+						<LoadingRegion
+							class="h-full w-full"
+							label={t("mediaViewer.loadingPreview")}
 						>
+							<Skeleton class="h-full w-full rounded-none" />
+						</LoadingRegion>
+					</Match>
+					<Match when={viewerLoadState() === "error" || !mediaUrl()}>
+						<div class="flex h-full w-full flex-col items-center justify-center gap-3 bg-muted px-6 text-center text-muted-foreground">
+							<p class="text-sm font-medium text-foreground">
+								{mediaSource().type === "video"
+									? t("mediaViewer.videoPreviewUnavailable")
+									: mediaSource().type === "audio"
+										? t("mediaViewer.audioPreviewUnavailable")
+										: t("mediaViewer.imagePreviewUnavailable")}
+							</p>
+							<p
+								class="max-w-image-preview truncate rounded-md border border-current/20 px-4 py-1.5 text-xs"
+								title={props.fileName}
+							>
+								{props.fileName}
+							</p>
+							<Button
+								class="min-h-11 sm:min-h-9"
+								onClick={() => setRetryCount((count) => count + 1)}
+								size="sm"
+								type="button"
+								variant="outline"
+							>
+								{t("actions.retry")}
+							</Button>
+						</div>
+					</Match>
+					<Match when={mediaSource().type === "video"}>
+						<Show when={mediaUrl()}>
 							{(url) => <VideoPlayer fileName={props.fileName} src={url()} />}
 						</Show>
 					</Match>
 					<Match when={mediaSource().type === "audio"}>
-						<Show
-							keyed
-							fallback={
-								<div class="bg-foreground px-8 py-6 text-background">
-									{t("mediaViewer.audioPreviewUnavailable")}
-								</div>
-							}
-							when={mediaUrl()}
-						>
+						<Show keyed when={mediaUrl()}>
 							{(url) => <AudioPreview src={url} />}
 						</Show>
 					</Match>
 					<Match when={true}>
-						<Show
-							fallback={
-								<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
-									<div class="max-w-image-preview truncate rounded-md border border-current/20 px-4 py-2 text-sm">
-										{props.fileName}
-									</div>
-								</div>
-							}
-							when={mediaUrl()}
-						>
+						<Show when={mediaUrl()}>
 							{(url) => (
 								<button
 									aria-label={t("mediaViewer.openValueImageViewer", {

@@ -1256,7 +1256,9 @@ export const ja = defineLocale({
 	"mediaViewer.imageControls": "画像の操作",
 	"mediaViewer.imageMovedValue": "画像を{value0}へ移動しました",
 	"mediaViewer.imagePanControls": "画像の移動操作",
+	"mediaViewer.imagePreviewUnavailable": "画像のプレビューを表示できません",
 	"mediaViewer.imageZoomControls": "画像のズーム操作",
+	"mediaViewer.loadingPreview": "メディアのプレビューを読み込み中",
 	"mediaViewer.openValueImageViewer": "{value0}の画像ビューアーを開く",
 	"mediaViewer.panImageValue": "画像を{value0}へ移動",
 	"mediaViewer.panValueUseArrowKeysToMoveTheEnlarged":
@@ -1495,6 +1497,8 @@ export const ja = defineLocale({
 	"presetManager.presetSaved": "プリセットを保存しました",
 	"presetManager.saveCurrentSearchConditions": "現在の検索条件を保存",
 	"presetManager.selectAPreset": "プリセットを選択...",
+	"presetManager.unsavedChangesDescription":
+		"入力中のプリセット名は保存されていません。変更を破棄しますか？",
 	"proSearchBuilder.aIGenerated": "AI生成",
 	"proSearchBuilder.atLeast": "以上 (>=)",
 	"proSearchBuilder.atMost": "以下 (<=)",
@@ -1627,6 +1631,8 @@ export const ja = defineLocale({
 	"searchComposer.pixivHint":
 		"スペースで AND、-タグで除外、~タグで OR。Danbooru タグを pixiv のタグに変換します。",
 	"searchComposer.removeValueValue": "{value0}:{value1}を解除",
+	"searchComposer.removedFilterValueValue":
+		"フィルター {value0}:{value1} を解除しました",
 	"searchComposer.search": " を検索",
 	"searchComposer.searchHelp": "検索の使い方",
 	"searchComposer.searchMedia": "メディアを検索",

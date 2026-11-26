@@ -1257,7 +1257,9 @@ export const en = defineMessages({
 	"mediaViewer.imageControls": "Image controls",
 	"mediaViewer.imageMovedValue": "Image moved {value0}",
 	"mediaViewer.imagePanControls": "Image pan controls",
+	"mediaViewer.imagePreviewUnavailable": "Image preview unavailable",
 	"mediaViewer.imageZoomControls": "Image zoom controls",
+	"mediaViewer.loadingPreview": "Loading media preview",
 	"mediaViewer.openValueImageViewer": "Open {value0} image viewer",
 	"mediaViewer.panImageValue": "Pan image {value0}",
 	"mediaViewer.panValueUseArrowKeysToMoveTheEnlarged":
@@ -1495,6 +1497,8 @@ export const en = defineMessages({
 	"presetManager.presetSaved": "Preset saved",
 	"presetManager.saveCurrentSearchConditions": "Save current search conditions",
 	"presetManager.selectAPreset": "Select a preset...",
+	"presetManager.unsavedChangesDescription":
+		"The preset name you entered has not been saved. Discard changes?",
 	"proSearchBuilder.aIGenerated": "AI generated",
 	"proSearchBuilder.atLeast": "at least (>=)",
 	"proSearchBuilder.atMost": "at most (<=)",
@@ -1629,6 +1633,7 @@ export const en = defineMessages({
 	"searchComposer.pixivHint":
 		"Space for AND, -tag to exclude, ~tag for OR. Converts Danbooru tags to pixiv tags.",
 	"searchComposer.removeValueValue": "Remove {value0}:{value1}",
+	"searchComposer.removedFilterValueValue": "Removed filter {value0}:{value1}",
 	"searchComposer.search": " search",
 	"searchComposer.searchHelp": "How to search",
 	"searchComposer.searchMedia": "Search media",

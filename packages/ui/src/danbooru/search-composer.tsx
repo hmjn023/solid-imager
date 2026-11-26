@@ -134,7 +134,7 @@ export function DanbooruSearchComposer(props: {
 							<Button
 								type="button"
 								variant="ghost"
-								class="h-6 w-6 shrink-0 p-0"
+								class="size-11 shrink-0 p-0 sm:size-6"
 								aria-label={t("pixivScreen.removeTag", { tag })}
 								onClick={() => remove(index())}
 							>

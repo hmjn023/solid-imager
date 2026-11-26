@@ -35,6 +35,11 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 	// This shared UI package is compiled without either app's router registration.
 	const history = router.history as RouterHistory;
 	const neighbors = () => findMediaNeighbors(props.media.id);
+	let unsubscribeReturnCleanup: (() => void) | undefined;
+	onCleanup(() => {
+		unsubscribeReturnCleanup?.();
+		unsubscribeReturnCleanup = undefined;
+	});
 
 	/** Replaces the detail entry while carrying a verified collection-return marker. */
 	const navigateToNeighbor = (direction: "next" | "previous") => {
@@ -73,7 +78,15 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 				history.location.state,
 				props.media,
 			);
-			clearMediaReturnPath();
+			const originPathname = history.location.pathname;
+			unsubscribeReturnCleanup?.();
+			unsubscribeReturnCleanup = router.subscribe("onResolved", () => {
+				if (history.location.pathname !== originPathname) {
+					unsubscribeReturnCleanup?.();
+					unsubscribeReturnCleanup = undefined;
+					clearMediaReturnPath();
+				}
+			});
 			// Reuse the collection history entry so its search and scroll state
 			// survive. Direct links have no preceding collection and use the fallback.
 			if (historyDelta !== undefined) {

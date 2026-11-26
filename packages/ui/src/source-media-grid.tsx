@@ -3,6 +3,10 @@ import { getLocale, t } from "@solid-imager/i18n";
 import type { SimilarityModel } from "@solid-imager/core/search";
 import type { Media } from "@solid-imager/core/media";
 import { useMenuContext } from "@kobalte/core/menu";
+import {
+	createVirtualizer,
+	createWindowVirtualizer,
+} from "@tanstack/solid-virtual";
 import Copy from "lucide-solid/icons/copy";
 import ExternalLink from "lucide-solid/icons/external-link";
 import FolderInput from "lucide-solid/icons/folder-input";
@@ -82,6 +86,9 @@ import {
 
 export type SourceMediaViewMode = "grid" | "list";
 const LIST_LOAD_MORE_THRESHOLD_PX = 480;
+const LIST_VIRTUALIZATION_THRESHOLD = 100;
+const LIST_ROW_ESTIMATE_PX = 56;
+const LIST_VIRTUAL_OVERSCAN = 8;
 
 type SourceMediaGridProps = {
 	detailBasePath?: string;
@@ -658,7 +665,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									aria-label={t("sourceList.actionsForValue", {
 										value0: String(media.fileName),
 									})}
-									class="absolute top-1.5 left-1.5 z-20 flex size-10 items-center justify-center rounded-md border border-border bg-background/90 text-foreground opacity-90 shadow-sm outline-none transition-opacity hover:bg-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring sm:size-7 sm:opacity-0 sm:group-focus-within/tile:opacity-100 sm:group-hover/tile:opacity-100"
+									class="absolute top-1.5 left-1.5 z-20 flex size-11 items-center justify-center rounded-md border border-border bg-background/90 text-foreground opacity-90 shadow-sm outline-none transition-opacity hover:bg-muted focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring sm:size-8 sm:opacity-0 sm:group-focus-within/tile:opacity-100 sm:group-hover/tile:opacity-100"
 									onClick={(event: MouseEvent) => event.stopPropagation()}
 									onPointerDown={(event: PointerEvent) =>
 										event.stopPropagation()
@@ -689,9 +696,78 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			value0: String((bytes / (1024 * 1024)).toFixed(1)),
 		});
 	};
+	const shouldVirtualizeList = createMemo(
+		() =>
+			Boolean(props.enableVirtualization) &&
+			viewMode() === "list" &&
+			props.mediaResults().length > LIST_VIRTUALIZATION_THRESHOLD,
+	);
+	const elementListVirtualizer = createVirtualizer<
+		HTMLElement,
+		HTMLTableRowElement
+	>({
+		get count() {
+			return props.mediaResults().length;
+		},
+		get enabled() {
+			return (
+				shouldVirtualizeList() &&
+				props.scrollMode === "element" &&
+				scrollElement() !== undefined
+			);
+		},
+		getScrollElement: () => scrollElement() ?? null,
+		estimateSize: () => LIST_ROW_ESTIMATE_PX,
+		getItemKey: (index) => props.mediaResults()[index]?.id ?? index,
+		overscan: LIST_VIRTUAL_OVERSCAN,
+	});
+	const windowListVirtualizer = createWindowVirtualizer<HTMLTableRowElement>({
+		get count() {
+			return props.mediaResults().length;
+		},
+		get enabled() {
+			return shouldVirtualizeList() && props.scrollMode !== "element";
+		},
+		estimateSize: () => LIST_ROW_ESTIMATE_PX,
+		getItemKey: (index) => props.mediaResults()[index]?.id ?? index,
+		overscan: LIST_VIRTUAL_OVERSCAN,
+	});
+	const activeListVirtualizer = () =>
+		props.scrollMode === "element"
+			? elementListVirtualizer
+			: windowListVirtualizer;
+	const listVirtualItems = createMemo(() =>
+		shouldVirtualizeList() ? activeListVirtualizer().getVirtualItems() : [],
+	);
+	const listPaddingTop = () => listVirtualItems()[0]?.start ?? 0;
+	const listPaddingBottom = () => {
+		const rows = listVirtualItems();
+		if (rows.length === 0) return 0;
+		const lastRow = rows[rows.length - 1];
+		return Math.max(0, activeListVirtualizer().getTotalSize() - lastRow.end);
+	};
+	const visibleListEntries = createMemo(() => {
+		const results = props.mediaResults();
+		if (!shouldVirtualizeList()) {
+			return results.map((media, index) => ({ media, index }));
+		}
+		const items = listVirtualItems();
+		if (items.length === 0) {
+			return results
+				.slice(0, Math.min(results.length, 24))
+				.map((media, index) => ({ media, index }));
+		}
+		return items.flatMap((row) => {
+			const media = results[row.index];
+			return media ? [{ media, index: row.index }] : [];
+		});
+	});
+	const listColumnCount = () =>
+		5 + (props.isBulkSelectMode?.() ? 1 : 0) + (!disableContextMenu() ? 1 : 0);
+
 	const ListContent = () => (
 		<div class="overflow-hidden rounded-md border border-border bg-card">
-			<Table class="min-w-table-extra-wide border-collapse text-left text-sm">
+			<Table class="w-full border-collapse text-left text-sm">
 				<TableCaption class="sr-only mt-0">
 					{t("sourceMediaGrid.mediaListValueItems", {
 						value0: String(totalCount().toLocaleString()),
@@ -707,16 +783,28 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 							{t("labels.name")}
 						</TableHead>
-						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+						<TableHead
+							class="hidden h-auto px-3 py-2 font-medium sm:table-cell"
+							scope="col"
+						>
 							{t("jobsScreen.type")}
 						</TableHead>
-						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+						<TableHead
+							class="hidden h-auto px-3 py-2 font-medium md:table-cell"
+							scope="col"
+						>
 							{t("sourceMediaGrid.dimensions")}
 						</TableHead>
-						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+						<TableHead
+							class="hidden h-auto px-3 py-2 font-medium md:table-cell"
+							scope="col"
+						>
 							{t("collectionInspector.size")}
 						</TableHead>
-						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+						<TableHead
+							class="hidden h-auto px-3 py-2 font-medium lg:table-cell"
+							scope="col"
+						>
 							{t("sourceMediaGrid.modified")}
 						</TableHead>
 						<Show when={!disableContextMenu()}>
@@ -732,234 +820,275 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						tableBodyRef = element;
 					}}
 				>
-					<For each={props.mediaResults()}>
-						{(media, index) => (
-							<TableRow
-								aria-label={t("sourceMediaGrid.valueValue", {
-									value0: String(media.fileName),
-									value1: String(media.filePath),
-								})}
-								aria-selected={
-									props.isBulkSelectMode?.()
-										? props.isSelected?.(media.id)
-										: isPreviewSelected(media.id)
-								}
-								class={
-									(
-										props.isBulkSelectMode?.()
-											? props.isSelected?.(media.id)
-											: isPreviewSelected(media.id)
-									)
-										? "bg-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-accent"
-										: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-muted"
-								}
-								data-media-id={media.id}
-								onClick={(event) => {
-									if (!isRowClickTarget(event.currentTarget, event.target))
-										return;
-									const bulk = props.isBulkSelectMode?.();
-									if (
-										props.onSelectMedia &&
-										isModifiedSelectionClick(event) &&
-										(bulk || isFineMediaPointer(event))
-									) {
-										event.preventDefault();
-										selectFromGesture(media, event);
-									} else if (!isPlainPrimaryClick(event)) {
-										return;
-									} else if (bulk) {
-										toggleRowSelection(media);
-									} else if (
-										props.onPreviewSelect &&
-										isFineMediaPointer(event)
-									) {
-										props.onPreviewSelect?.(media);
-									} else if (props.onOpenMediaDetail) {
-										prepareAndOpenMediaDetail(media);
-										return;
-									}
-									event.currentTarget.focus({ preventScroll: true });
-								}}
-								onContextMenu={onContextMenuHandler(media)}
-								onDblClick={(event) => {
-									if (
-										!isRowClickTarget(event.currentTarget, event.target) ||
-										props.isBulkSelectMode?.() ||
-										!props.onPreviewSelect ||
-										!isPlainPrimaryClick(event) ||
-										!isFineMediaPointer(event)
-									) {
-										return;
-									}
-									prepareAndOpenMediaDetail(media);
-								}}
-								onKeyDown={(event) => {
-									if (
-										event.target !== event.currentTarget ||
-										event.altKey ||
-										event.ctrlKey ||
-										event.metaKey
-									) {
-										return;
-									}
-									if (
-										event.key === "Delete" &&
-										!event.shiftKey &&
-										props.onDelete
-									) {
-										event.preventDefault();
-										if (!event.repeat) props.onDelete(media.id);
-										return;
-									}
-									if (
-										isCollectionNavigationKey(event.key) &&
-										event.key !== "ArrowLeft" &&
-										event.key !== "ArrowRight" &&
-										!event.shiftKey
-									) {
-										const nextIndex = getCollectionNavigationIndex({
-											columnCount: 1,
-											currentIndex: index(),
-											itemCount: props.mediaResults().length,
-											key: event.key,
-											pageRowCount: 10,
-										});
-										if (nextIndex !== null) {
-											const nextMedia = props.mediaResults()[nextIndex];
-											if (nextMedia) {
-												event.preventDefault();
-												props.onPreviewSelect?.(nextMedia);
-												tableBodyRef
-													?.querySelector<HTMLElement>(
-														`tr[data-media-id="${CSS.escape(nextMedia.id)}"]`,
-													)
-													?.focus({ preventScroll: true });
-											}
-										}
-										return;
-									}
-									if (event.shiftKey) return;
-									if (
-										event.key === "Enter" &&
-										(props.isBulkSelectMode?.() || props.onOpenMediaDetail)
-									) {
-										event.preventDefault();
-										if (event.repeat) return;
-										if (props.isBulkSelectMode?.()) toggleRowSelection(media);
-										else prepareAndOpenMediaDetail(media);
-									}
-									if (event.key === " ") event.preventDefault();
-								}}
-								onKeyUp={(event) => {
-									if (
-										event.target !== event.currentTarget ||
-										event.key !== " " ||
-										event.altKey ||
-										event.repeat
-									) {
-										return;
-									}
-									event.preventDefault();
-									if (
-										props.onSelectMedia &&
-										(event.shiftKey || event.ctrlKey || event.metaKey)
-									) {
-										selectFromGesture(media, event);
-									} else if (props.onToggleSelect || props.onSelectMedia) {
-										toggleRowSelection(media);
-									} else {
-										props.onPreviewSelect?.(media);
-									}
-								}}
-								tabIndex={
-									props.onPreviewSelect ||
-									props.onOpenMediaDetail ||
-									props.onToggleSelect ||
-									props.onSelectMedia
-										? 0
-										: undefined
-								}
-							>
-								<Show when={props.isBulkSelectMode?.()}>
-									<TableCell class="px-3 py-2">
-										<Checkbox
-											checked={props.isSelected?.(media.id) ?? false}
-											class="flex min-h-11 items-center justify-center sm:min-h-10"
-											data-collection-row-control=""
-											onChange={() => toggleRowSelection(media)}
-											onClick={(event: MouseEvent) => event.stopPropagation()}
-										>
-											<CheckboxControl />
-											<CheckboxLabel class="sr-only">
-												{t("sourceMediaGrid.selectValue", {
-													value0: String(media.fileName),
-												})}
-											</CheckboxLabel>
-										</Checkbox>
-									</TableCell>
-								</Show>
-								<TableHead
+					<Show when={shouldVirtualizeList() && listPaddingTop() > 0}>
+						<tr aria-hidden="true">
+							{/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- Decorative spacer cell for virtualized table rows. */}
+							<td class="p-0" colspan={listColumnCount()}>
+								<div
+									aria-hidden="true"
+									class="virtualized-media-grid"
+									style={{ "--media-grid-height": `${listPaddingTop()}px` }}
+								/>
+							</td>
+						</tr>
+					</Show>
+					<For each={visibleListEntries()}>
+						{(entry) => {
+							const media = entry.media;
+							const rowIndex = () => entry.index;
+							return (
+								<TableRow
 									aria-label={t("sourceMediaGrid.valueValue", {
 										value0: String(media.fileName),
 										value1: String(media.filePath),
 									})}
-									class="h-auto max-w-dialog-reading px-3 py-2 font-normal text-foreground"
-									scope="row"
+									aria-selected={
+										props.isBulkSelectMode?.()
+											? props.isSelected?.(media.id)
+											: isPreviewSelected(media.id)
+									}
+									class={
+										(
+											props.isBulkSelectMode?.()
+												? props.isSelected?.(media.id)
+												: isPreviewSelected(media.id)
+										)
+											? "bg-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-accent"
+											: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-muted"
+									}
+									data-media-id={media.id}
+									onClick={(event) => {
+										if (!isRowClickTarget(event.currentTarget, event.target))
+											return;
+										const bulk = props.isBulkSelectMode?.();
+										if (
+											props.onSelectMedia &&
+											isModifiedSelectionClick(event) &&
+											(bulk || isFineMediaPointer(event))
+										) {
+											event.preventDefault();
+											selectFromGesture(media, event);
+										} else if (!isPlainPrimaryClick(event)) {
+											return;
+										} else if (bulk) {
+											toggleRowSelection(media);
+										} else if (
+											props.onPreviewSelect &&
+											isFineMediaPointer(event)
+										) {
+											props.onPreviewSelect?.(media);
+										} else if (props.onOpenMediaDetail) {
+											prepareAndOpenMediaDetail(media);
+											return;
+										}
+										event.currentTarget.focus({ preventScroll: true });
+									}}
+									onContextMenu={onContextMenuHandler(media)}
+									onDblClick={(event) => {
+										if (
+											!isRowClickTarget(event.currentTarget, event.target) ||
+											props.isBulkSelectMode?.() ||
+											!props.onPreviewSelect ||
+											!isPlainPrimaryClick(event) ||
+											!isFineMediaPointer(event)
+										) {
+											return;
+										}
+										prepareAndOpenMediaDetail(media);
+									}}
+									onKeyDown={(event) => {
+										if (
+											event.target !== event.currentTarget ||
+											event.altKey ||
+											event.ctrlKey ||
+											event.metaKey
+										) {
+											return;
+										}
+										if (
+											event.key === "Delete" &&
+											!event.shiftKey &&
+											props.onDelete
+										) {
+											event.preventDefault();
+											if (!event.repeat) props.onDelete(media.id);
+											return;
+										}
+										if (
+											isCollectionNavigationKey(event.key) &&
+											event.key !== "ArrowLeft" &&
+											event.key !== "ArrowRight" &&
+											!event.shiftKey
+										) {
+											const nextIndex = getCollectionNavigationIndex({
+												columnCount: 1,
+												currentIndex: rowIndex(),
+												itemCount: props.mediaResults().length,
+												key: event.key,
+												pageRowCount: 10,
+											});
+											if (nextIndex !== null) {
+												const nextMedia = props.mediaResults()[nextIndex];
+												if (nextMedia) {
+													event.preventDefault();
+													props.onPreviewSelect?.(nextMedia);
+													if (shouldVirtualizeList()) {
+														activeListVirtualizer().scrollToIndex(nextIndex, {
+															align: "auto",
+														});
+													}
+													const focusNext = () =>
+														tableBodyRef
+															?.querySelector<HTMLElement>(
+																`tr[data-media-id="${CSS.escape(nextMedia.id)}"]`,
+															)
+															?.focus({ preventScroll: true });
+													if (!focusNext()) {
+														requestAnimationFrame(() => {
+															focusNext();
+														});
+													}
+												}
+											}
+											return;
+										}
+										if (event.shiftKey) return;
+										if (
+											event.key === "Enter" &&
+											(props.isBulkSelectMode?.() || props.onOpenMediaDetail)
+										) {
+											event.preventDefault();
+											if (event.repeat) return;
+											if (props.isBulkSelectMode?.()) toggleRowSelection(media);
+											else prepareAndOpenMediaDetail(media);
+										}
+										if (event.key === " ") event.preventDefault();
+									}}
+									onKeyUp={(event) => {
+										if (
+											event.target !== event.currentTarget ||
+											event.key !== " " ||
+											event.altKey ||
+											event.repeat
+										) {
+											return;
+										}
+										event.preventDefault();
+										if (
+											props.onSelectMedia &&
+											(event.shiftKey || event.ctrlKey || event.metaKey)
+										) {
+											selectFromGesture(media, event);
+										} else if (props.onToggleSelect || props.onSelectMedia) {
+											toggleRowSelection(media);
+										} else {
+											props.onPreviewSelect?.(media);
+										}
+									}}
+									tabIndex={
+										props.onPreviewSelect ||
+										props.onOpenMediaDetail ||
+										props.onToggleSelect ||
+										props.onSelectMedia
+											? 0
+											: undefined
+									}
 								>
-									<div class="min-h-10 w-full px-1 py-1 text-left">
-										<span
-											class="block truncate font-medium text-foreground"
-											title={media.fileName}
-										>
-											{media.fileName}
-										</span>
-										<span
-											class="mt-0.5 block truncate text-muted-foreground text-xs"
-											title={media.filePath}
-										>
-											{media.filePath}
-										</span>
-									</div>
-								</TableHead>
-								<TableCell class="px-3 py-2 text-muted-foreground">
-									{mediaTypeLabel(media.mediaType)}
-								</TableCell>
-								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
-									{media.width} × {media.height}
-								</TableCell>
-								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
-									{formatFileSize(media.fileSize)}
-								</TableCell>
-								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
-									{media.modifiedAt.toLocaleDateString(getLocale())}
-								</TableCell>
-								<Show when={!disableContextMenu()}>
-									<TableCell class="px-2 py-2 text-right">
-										<Show when={hasContextMenuActions(media)}>
-											<DropdownMenu placement="bottom-end">
-												<DropdownMenuTrigger
-													aria-label={t("sourceList.actionsForValue", {
+									<Show when={props.isBulkSelectMode?.()}>
+										<TableCell class="px-3 py-2">
+											<Checkbox
+												checked={props.isSelected?.(media.id) ?? false}
+												class="flex min-h-11 items-center justify-center sm:min-h-10"
+												data-collection-row-control=""
+												onChange={() => toggleRowSelection(media)}
+												onClick={(event: MouseEvent) => event.stopPropagation()}
+											>
+												<CheckboxControl />
+												<CheckboxLabel class="sr-only">
+													{t("sourceMediaGrid.selectValue", {
 														value0: String(media.fileName),
 													})}
-													class="flex size-11 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:size-8"
-													data-collection-row-control=""
-													onClick={(event: MouseEvent) =>
-														event.stopPropagation()
-													}
-													type="button"
-												>
-													<Ellipsis aria-hidden="true" size={14} />
-												</DropdownMenuTrigger>
-												<DropdownMenuContent class="workspace-theme min-w-56 max-w-80">
-													{renderMenuActionItems(media, "dropdown")}
-												</DropdownMenuContent>
-											</DropdownMenu>
-										</Show>
+												</CheckboxLabel>
+											</Checkbox>
+										</TableCell>
+									</Show>
+									<TableHead
+										aria-label={t("sourceMediaGrid.valueValue", {
+											value0: String(media.fileName),
+											value1: String(media.filePath),
+										})}
+										class="h-auto max-w-0 px-3 py-2 font-normal text-foreground sm:max-w-dialog-reading"
+										scope="row"
+									>
+										<div class="min-h-10 w-full min-w-0 px-1 py-1 text-left">
+											<span
+												class="block truncate font-medium text-foreground"
+												title={media.fileName}
+											>
+												{media.fileName}
+											</span>
+											<span
+												class="mt-0.5 block truncate text-muted-foreground text-xs"
+												title={media.filePath}
+											>
+												{media.filePath}
+											</span>
+										</div>
+									</TableHead>
+									<TableCell class="hidden px-3 py-2 text-muted-foreground sm:table-cell">
+										{mediaTypeLabel(media.mediaType)}
 									</TableCell>
-								</Show>
-							</TableRow>
-						)}
+									<TableCell class="hidden whitespace-nowrap px-3 py-2 text-muted-foreground md:table-cell">
+										{media.width && media.height
+											? `${media.width} × ${media.height}`
+											: "—"}
+									</TableCell>
+									<TableCell class="hidden whitespace-nowrap px-3 py-2 text-muted-foreground md:table-cell">
+										{formatFileSize(media.fileSize)}
+									</TableCell>
+									<TableCell class="hidden whitespace-nowrap px-3 py-2 text-muted-foreground lg:table-cell">
+										{media.modifiedAt.toLocaleDateString(getLocale())}
+									</TableCell>
+									<Show when={!disableContextMenu()}>
+										<TableCell class="px-2 py-2 text-right">
+											<Show when={hasContextMenuActions(media)}>
+												<DropdownMenu placement="bottom-end">
+													<DropdownMenuTrigger
+														aria-label={t("sourceList.actionsForValue", {
+															value0: String(media.fileName),
+														})}
+														class="flex size-11 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:size-8"
+														data-collection-row-control=""
+														onClick={(event: MouseEvent) =>
+															event.stopPropagation()
+														}
+														type="button"
+													>
+														<Ellipsis aria-hidden="true" size={14} />
+													</DropdownMenuTrigger>
+													<DropdownMenuContent class="workspace-theme min-w-56 max-w-80">
+														{renderMenuActionItems(media, "dropdown")}
+													</DropdownMenuContent>
+												</DropdownMenu>
+											</Show>
+										</TableCell>
+									</Show>
+								</TableRow>
+							);
+						}}
 					</For>
+					<Show when={shouldVirtualizeList() && listPaddingBottom() > 0}>
+						<tr aria-hidden="true">
+							{/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- Decorative spacer cell for virtualized table rows. */}
+							<td class="p-0" colspan={listColumnCount()}>
+								<div
+									aria-hidden="true"
+									class="virtualized-media-grid"
+									style={{ "--media-grid-height": `${listPaddingBottom()}px` }}
+								/>
+							</td>
+						</tr>
+					</Show>
 				</TableBody>
 			</Table>
 		</div>
