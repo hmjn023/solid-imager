@@ -67,10 +67,8 @@ export class JobWorker {
 	private stageIndex = 0;
 	private stageStartedAt?: Date;
 	private admittedLateSingle = false;
-	private needsOffload = false;
 	private stageClaims = 0;
 	private generalClaims = 0;
-	private offloading?: Promise<void>;
 	private activeThumbnailJobs = 0;
 	private activeExportJobs = 0;
 
@@ -89,7 +87,6 @@ export class JobWorker {
 	constructor(
 		jobRepo: IJobRepository,
 		processor: (job: Job) => Promise<unknown>,
-		private readonly offload: () => Promise<void> = async () => {},
 	) {
 		this.jobRepo = jobRepo;
 		this.processor = processor;
@@ -120,7 +117,6 @@ export class JobWorker {
 			clearInterval(this.recoverStaleJobsIntervalId);
 			this.recoverStaleJobsIntervalId = null;
 		}
-		this.releaseIfStopped();
 		logger.info("Job processing worker stopped");
 	}
 
@@ -159,7 +155,7 @@ export class JobWorker {
 
 		try {
 			try {
-				if (!this.offloading) await this.pollAiStage();
+				await this.pollAiStage();
 			} catch (error) {
 				logger.error({ err: error }, "Failed to advance AI job stage");
 			}
@@ -217,7 +213,6 @@ export class JobWorker {
 			logger.error({ err: error }, "Error polling for jobs");
 		} finally {
 			this.isPolling = false;
-			this.releaseIfStopped();
 			if (this.isRunning) {
 				const nextDelay = this.pollRequested ? 0 : this.pollIntervalMs;
 				this.pollRequested = false;
@@ -251,7 +246,6 @@ export class JobWorker {
 			if (work.length) {
 				this.stageStartedAt = cutoff;
 				this.stageClaims += work.length;
-				this.needsOffload = true;
 				for (const job of work) void this.processJob(job);
 				return;
 			}
@@ -269,13 +263,6 @@ export class JobWorker {
 					return;
 				}
 			}
-			if (this.needsOffload) {
-				void this.releaseStage().then(
-					() => this.requestPoll(),
-					(err) => logger.error({ err }, "Failed to offload AI job stage"),
-				);
-				return;
-			}
 			this.advanceStage();
 		}
 	}
@@ -285,31 +272,6 @@ export class JobWorker {
 		this.stageClaims = 0;
 		this.admittedLateSingle = false;
 		this.stageIndex = (this.stageIndex + 1) % importAiStages.length;
-	}
-
-	private releaseStage(): Promise<void> {
-		this.offloading ??= this.offload()
-			.then(() => {
-				this.needsOffload = false;
-				this.advanceStage();
-			})
-			.finally(() => {
-				this.offloading = undefined;
-			});
-		return this.offloading;
-	}
-
-	private releaseIfStopped() {
-		if (
-			!this.isRunning &&
-			!this.isPolling &&
-			!this.activeAiJobs &&
-			this.needsOffload
-		) {
-			void this.releaseStage().catch((err) =>
-				logger.error({ err }, "Failed to offload stopped job worker"),
-			);
-		}
 	}
 
 	private schedulePoll(delayMs: number): void {
@@ -406,7 +368,6 @@ export class JobWorker {
 			this.activeJobs--;
 			if (isAiJob) {
 				this.activeAiJobs--;
-				this.releaseIfStopped();
 			}
 			if (isThumbnailJob) {
 				this.activeThumbnailJobs--;

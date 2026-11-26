@@ -8,3 +8,13 @@ node_modules
 *.log
 .env
 .env.*
+
+.aws
+.codex
+**/.env
+**/.env.*
+config.json
+apps/server/config.json
+**/.cache
+**/.data
+apps/tauri/src-tauri/target

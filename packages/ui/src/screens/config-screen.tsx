@@ -46,7 +46,6 @@ import {
 	FormFieldMessage,
 	getFormErrorMessage,
 } from "../form-message";
-import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
 import { LanguageSettings } from "../language-settings";
 import { Label } from "../label";
@@ -637,7 +636,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												id={`${field().name}-example`}
 											>
 												{t("configScreen.remoteAiUrlExample", {
-													url: "http://power-machine:3000",
+													url: "http://inference:3001",
 												})}
 											</p>
 										</div>
@@ -661,31 +660,6 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												value={field().state.value ?? ""}
 											/>
 										</div>
-									)}
-								</form.Field>
-								<form.Field name="ai.provider">
-									{(providerField) => (
-										<form.Field name="ai.device">
-											{(deviceField) => (
-												<InferenceDeviceFields
-													device={deviceField().state.value}
-													deviceError={getFormErrorMessage(
-														deviceField().state.meta.errors[0],
-													)}
-													onDeviceChange={(device) =>
-														deviceField().handleChange(device || undefined)
-													}
-													onProviderChange={(provider) =>
-														providerField().handleChange(provider)
-													}
-													provider={providerField().state.value ?? "auto"}
-													providerError={getFormErrorMessage(
-														providerField().state.meta.errors[0],
-													)}
-													idPrefix="ai-inference"
-												/>
-											)}
-										</form.Field>
 									)}
 								</form.Field>
 							</fieldset>

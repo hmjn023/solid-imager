@@ -461,8 +461,8 @@ export const ja = defineLocale({
 	"configScreen.remote": "リモート",
 	"configScreen.remoteAiUrlExample": "入力例：{url}",
 	"configScreen.remoteAiUrlHelp":
-		"空欄の場合はローカルで処理します。別の solid-imager サーバーを使う場合は、そのベース URL を入力してください。",
-	"configScreen.remoteAIServerURLORPC": "リモートAIサーバーURL（oRPC）",
+		"推論サービスのベース URL を入力してください。空欄の場合、新しい推論は実行されません。実行デバイスは推論サービス側で設定します。",
+	"configScreen.remoteAIServerURLORPC": "推論サービス URL",
 	"configScreen.requestIntervalMs": "リクエスト間隔 (ms)",
 	"configScreen.settingsCategories": "設定カテゴリ",
 	"configScreen.shortcuts": "ショートカット",
@@ -742,38 +742,6 @@ export const ja = defineLocale({
 	"index.xtracter": "xtracter",
 	"index.xtracterAccountVerification": "xtracter アカウント確認",
 	"index.xtracterError": "xtracterのエラー",
-	"inferenceDeviceFields.0Or12": "0 (または 1, 2...)",
-	"inferenceDeviceFields.0OrGPU0": "0 または GPU.0",
-	"inferenceDeviceFields.0OrNPU0": "0 または NPU.0",
-	"inferenceDeviceFields.aMDGPU": "AMD GPU",
-	"inferenceDeviceFields.aMDNPU": "AMD NPU",
-	"inferenceDeviceFields.automatic": "自動選択 (Auto)",
-	"inferenceDeviceFields.automaticallySelectsAnAvailableProviderFallingBackToCPU":
-		"利用可能なプロバイダーを自動選択し、最後にCPUへフォールバックします。",
-	"inferenceDeviceFields.cPU": "CPU",
-	"inferenceDeviceFields.deviceOptional": "デバイス（任意）",
-	"inferenceDeviceFields.directML": "DirectML",
-	"inferenceDeviceFields.enterAnIntelGPUIndexLeaveEmptyToUse":
-		"Intel GPUの番号を指定できます。省略時はプロバイダーの既定値を使用します。",
-	"inferenceDeviceFields.enterAnIntelNPUIndexLeaveEmptyToUse":
-		"Intel NPUの番号を指定できます。省略時はプロバイダーの既定値を使用します。",
-	"inferenceDeviceFields.enterTheProviderSpecificDeviceIndexDefaultsTo0":
-		"プロバイダー固有のデバイス番号を指定できます。省略時は0を使用します。",
-	"inferenceDeviceFields.inferenceProvider": "推論プロバイダー",
-	"inferenceDeviceFields.intelGPU": "Intel GPU",
-	"inferenceDeviceFields.intelNPU": "Intel NPU",
-	"inferenceDeviceFields.notRequiredByThisProvider": "このプロバイダーでは不要",
-	"inferenceDeviceFields.nVIDIACUDA": "NVIDIA CUDA",
-	"inferenceDeviceFields.nVIDIATensorRT": "NVIDIA TensorRT",
-	"inferenceDeviceFields.openVINO": "OpenVINO",
-	"inferenceDeviceFields.selectAProviderForLocalInferenceRemoteAIServers":
-		"ローカル推論に使用するプロバイダーを選択します。リモートAIサーバー指定時はリモート側の設定が適用されます。",
-	"inferenceDeviceFields.specifyTheOpenVINODevicePolicySuchAsAUTOGPU":
-		"OpenVINOのデバイスポリシーを指定します。例: AUTO、GPU、NPU、HETERO:GPU,CPU。",
-	"inferenceDeviceFields.theSelectedProviderDoesNotUseADeviceSelector":
-		"現在のプロバイダーではdevice指定は使用されません。",
-	"inferenceDeviceFields.thisProviderDoesNotUseADeviceSelector":
-		"このプロバイダーはデバイス指定を使用しません。",
 	"jobs.failedToCancelJob": "ジョブのキャンセルに失敗しました",
 	"jobs.failedToDownloadArtifact": "成果物のダウンロードに失敗しました",
 	"jobs.failedToRetryJob": "ジョブの再試行に失敗しました",

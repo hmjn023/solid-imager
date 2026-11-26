@@ -1,29 +1,16 @@
 import { notifyJob } from "~/infrastructure/events/state-notifications";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
-import { tmpdir } from "node:os";
-import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import { implement, ORPCError } from "@orpc/server";
-import { createClient } from "@solid-imager/client";
-import { aiContract, appContract } from "@solid-imager/core/contract";
-import {
-	detectAndCropResponseSchema,
-	type NapiBBox,
-} from "@solid-imager/core/tagging";
+import { aiContract } from "@solid-imager/core/contract";
 import { localConnectionSchema } from "@solid-imager/core/sources";
-import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import { sql } from "drizzle-orm";
-import sharp from "sharp";
-import { inferenceLifecycle } from "~/infrastructure/ai/inference-lifecycle";
-import { nativeInferenceProcess } from "~/infrastructure/ai/native-inference-process";
-import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { db } from "~/infrastructure/db";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { taggingService } from "~/infrastructure/services/tagging-service";
 import { resolveVideoThumbnail } from "~/infrastructure/services/video-thumbnail";
-import { embeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker";
 import {
 	countCcipTargets,
 	countTaggingTargets,
@@ -33,107 +20,19 @@ import {
 	queueEmbeddingBatch,
 } from "~/infrastructure/jobs/embedding-jobs";
 
-function isRemoteServerLocal(url: string): boolean {
-	try {
-		const host = new URL(url).hostname;
-		return (
-			host === "localhost" ||
-			host === "127.0.0.1" ||
-			host === "::1" ||
-			host === "0.0.0.0"
+async function resolveCharacterCropPath(mediaId: string): Promise<string> {
+	const media = await services.getMediaRepository().findById(mediaId);
+	if (!media) throw new Error("Media not found");
+	const source = await services
+		.getSourceRepository()
+		.findById(media.mediaSourceId);
+	if (!source) throw new Error("Media source not found");
+	if (source.type !== "local")
+		throw new Error(
+			"Only local media sources are supported for character detection",
 		);
-	} catch {
-		return true;
-	}
-}
-
-function getRemoteServerUrl(): string | undefined {
-	const config = services.getConfigService().getConfig();
-	const url = config.ai.baseUrl;
-	if (!url || url.trim() === "") return undefined;
-	return url;
-}
-
-async function readFileBuffer(filePath: string): Promise<Buffer> {
-	const bytes = await Bun.file(filePath).bytes();
-	return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-}
-
-async function callRemoteCrop(
-	remoteUrl: string,
-	fileBuffer: Buffer,
-	fileName: string,
-	timeoutMs: number,
-): Promise<unknown> {
-	const file = new File([new Uint8Array(fileBuffer)], fileName);
-	const remoteOrpc = createClient(appContract, { url: remoteUrl, timeoutMs });
-	return remoteOrpc.ai.detectAndCropCharacters({ file });
-}
-
-async function cropDetection(
-	imagePath: string,
-	det: { bbox: NapiBBox; label: string; score: number },
-	idx: number,
-	transparent: boolean,
-	inferenceOptions: NapiInferenceOptions,
-) {
-	const { x1, y1, x2, y2 } = det.bbox;
-	const w = Math.round(x2 - x1);
-	const h = Math.round(y2 - y1);
-
-	let imageBase64: string;
-
-	if (transparent) {
-		const cropPath = path.join(
-			tmpdir(),
-			`crop-seg-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}.png`,
-		);
-		await sharp(imagePath)
-			.extract({
-				left: Math.round(x1),
-				top: Math.round(y1),
-				width: w,
-				height: h,
-			})
-			.png()
-			.toFile(cropPath);
-		try {
-			imageBase64 = await inferenceLifecycle.run("segmentation", async () =>
-				nativeInferenceProcess.call(
-					"segmentPngBase64",
-					cropPath,
-					undefined,
-					inferenceOptions,
-				),
-			);
-		} finally {
-			await Bun.file(cropPath)
-				.delete()
-				.catch(() => {});
-		}
-	} else {
-		const cropBuffer = await sharp(imagePath)
-			.extract({
-				left: Math.round(x1),
-				top: Math.round(y1),
-				width: w,
-				height: h,
-			})
-			.webp()
-			.toBuffer();
-		imageBase64 = cropBuffer.toString("base64");
-	}
-
-	return {
-		index: idx,
-		bbox: { x1, y1, x2, y2 },
-		label: det.label,
-		score: det.score,
-		imageBase64,
-		width: w,
-		height: h,
-		format: transparent ? ("png" as const) : ("webp" as const),
-	};
+	const connection = localConnectionSchema.parse(source.connectionInfo);
+	return path.join(connection.path, media.filePath);
 }
 
 const os = implement(aiContract);
@@ -157,7 +56,7 @@ function notifyBatchQueued(jobId: string): void {
 
 export const aiRouter = os.router({
 	offload: os.offload.handler(async () => {
-		await inferenceLifecycle.offload();
+		await services.getAiClient().offload();
 		return {};
 	}),
 	startEmbeddingExtraction: os.startEmbeddingExtraction.handler(
@@ -175,32 +74,11 @@ export const aiRouter = os.router({
 		},
 	),
 	embeddingText: os.embeddingText.handler(async ({ input }) => ({
-		feature: await embeddingGemmaWorker.encode(
-			"text",
-			input.text,
-			createNativeInferenceOptions(services.getConfigService().getConfig().ai),
-		),
+		feature: await services.getAiClient().extractTextEmbedding(input.text),
 	})),
-	embeddingImage: os.embeddingImage.handler(async ({ input }) => {
-		const directory = await mkdtemp(path.join(tmpdir(), "embeddinggemma-"));
-		try {
-			const filePath = path.join(directory, "image.png");
-			await sharp(new Uint8Array(await input.file.arrayBuffer()))
-				.png()
-				.toFile(filePath);
-			return {
-				feature: await embeddingGemmaWorker.encode(
-					"image",
-					filePath,
-					createNativeInferenceOptions(
-						services.getConfigService().getConfig().ai,
-					),
-				),
-			};
-		} finally {
-			await rm(directory, { recursive: true, force: true });
-		}
-	}),
+	embeddingImage: os.embeddingImage.handler(async ({ input }) => ({
+		feature: await services.getAiClient().extractImageEmbedding(input.file),
+	})),
 	scanBatchEmbeddingTargets: os.scanBatchEmbeddingTargets.handler(
 		async ({ input }) => ({ count: await countEmbeddingTargets(input) }),
 	),
@@ -299,6 +177,7 @@ export const aiRouter = os.router({
 				},
 				"AI tagging failed",
 			);
+			if (error instanceof ORPCError) throw error;
 			const message = error instanceof Error ? error.message : "Unknown error";
 			throw new ORPCError("UNPROCESSABLE_CONTENT", {
 				message: `AI tagging failed: ${message}`,
@@ -314,27 +193,14 @@ export const aiRouter = os.router({
 		);
 		try {
 			if ("file" in input) {
-				const buffer = await input.file.arrayBuffer();
-				const ext = path.extname(input.file.name) || ".png";
-				const tmpPath = path.join(
-					tmpdir(),
-					`oppai-oracle-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`,
+				const result = await services
+					.getAiClient()
+					.tagImageOppaiOracle(input.file);
+				logger.info(
+					{ durationMs: Date.now() - startedAt },
+					"OppaiOracle tagging completed",
 				);
-				await Bun.write(tmpPath, new Uint8Array(buffer));
-				try {
-					const result = await services
-						.getAiClient()
-						.tagImageOppaiOracleByPath(tmpPath);
-					logger.info(
-						{ durationMs: Date.now() - startedAt },
-						"OppaiOracle tagging completed",
-					);
-					return result;
-				} finally {
-					await Bun.file(tmpPath)
-						.delete()
-						.catch(() => {});
-				}
+				return result;
 			}
 
 			const { mediaSourceId, mediaId } = input;
@@ -380,6 +246,7 @@ export const aiRouter = os.router({
 				{ err: error, durationMs: Date.now() - startedAt },
 				"OppaiOracle tagging failed",
 			);
+			if (error instanceof ORPCError) throw error;
 			const message = error instanceof Error ? error.message : "Unknown error";
 			throw new ORPCError("UNPROCESSABLE_CONTENT", {
 				message: `OppaiOracle tagging failed: ${message}`,
@@ -595,132 +462,23 @@ export const aiRouter = os.router({
 			try {
 				const transparent = input.transparent ?? false;
 
-				if ("file" in input) {
-					const buffer = Buffer.from(await input.file.arrayBuffer());
-					const inferenceOptions = createNativeInferenceOptions(
-						services.getConfigService().getConfig().ai,
-					);
-					const tmpPath = path.join(
-						tmpdir(),
-						`crop-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-					);
-					await Bun.write(tmpPath, buffer);
-					try {
-						const detections = await inferenceLifecycle.run(
-							"detection",
-							async () =>
-								nativeInferenceProcess.call(
-									"detectPerson",
-									tmpPath,
-									undefined,
-									undefined,
-									undefined,
-									undefined,
-									inferenceOptions,
-								),
-						);
-
-						const resultDetections = await Promise.all(
-							detections.map(async (det, idx) =>
-								cropDetection(tmpPath, det, idx, transparent, inferenceOptions),
-							),
-						);
-
-						logger.info(
-							{
-								...logContext,
-								detectionCount: resultDetections.length,
-								durationMs: Date.now() - startedAt,
-							},
-							"Character detection and cropping completed",
-						);
-						return { detections: resultDetections };
-					} finally {
-						await Bun.file(tmpPath)
-							.delete()
-							.catch(() => {});
-					}
-				}
-
-				const { mediaId } = input;
-				const media = await services.getMediaRepository().findById(mediaId);
-				if (!media) {
-					throw new Error("Media not found");
-				}
-				const mediaSource = await services
-					.getSourceRepository()
-					.findById(media.mediaSourceId);
-				if (!mediaSource) {
-					throw new Error("Media source not found");
-				}
-				if (mediaSource.type !== "local") {
-					throw new Error(
-						"Only local media sources are supported for character detection",
-					);
-				}
-
-				const connectionInfo = mediaSource.connectionInfo as
-					| Record<string, unknown>
-					| null
-					| undefined;
-				if (!connectionInfo || typeof connectionInfo.path !== "string") {
-					throw new Error("Media source connection path is missing or invalid");
-				}
-				const fullPath = path.join(connectionInfo.path, media.filePath);
-
-				const remoteUrl = getRemoteServerUrl();
-				const config = services.getConfigService().getConfig();
-				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
-					const fileBuffer = await readFileBuffer(fullPath);
-					const result = detectAndCropResponseSchema.parse(
-						await callRemoteCrop(
-							remoteUrl,
-							fileBuffer,
-							path.basename(fullPath),
-							config.ai.timeoutMs,
-						),
-					);
-					logger.info(
-						{
-							...logContext,
-							execution: "remote",
-							detectionCount: result.detections.length,
-							durationMs: Date.now() - startedAt,
-						},
-						"Character detection and cropping completed",
-					);
-					return result;
-				}
-
-				const inferenceOptions = createNativeInferenceOptions(config.ai);
-				const detections = await inferenceLifecycle.run("detection", async () =>
-					nativeInferenceProcess.call(
-						"detectPerson",
-						fullPath,
-						undefined,
-						undefined,
-						undefined,
-						undefined,
-						inferenceOptions,
-					),
-				);
-
-				const resultDetections = await Promise.all(
-					detections.map(async (det, idx) =>
-						cropDetection(fullPath, det, idx, transparent, inferenceOptions),
-					),
-				);
-
+				const aiClient = services.getAiClient();
+				const result =
+					"file" in input
+						? await aiClient.detectAndCropCharacters(input.file, transparent)
+						: await aiClient.detectAndCropCharactersByPath(
+								await resolveCharacterCropPath(input.mediaId),
+								transparent,
+							);
 				logger.info(
 					{
 						...logContext,
-						execution: "local",
-						detectionCount: resultDetections.length,
+						detectionCount: result.detections.length,
 						durationMs: Date.now() - startedAt,
 					},
 					"Character detection and cropping completed",
 				);
-				return { detections: resultDetections };
+				return result;
 			} catch (error) {
 				logger.error(
 					{

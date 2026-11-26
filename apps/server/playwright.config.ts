@@ -26,10 +26,11 @@ const mode = getE2eMode();
 const runtimeDir = process.env.E2E_RUNTIME_DIR;
 const port = process.env.E2E_PORT;
 const tauriPort = process.env.E2E_TAURI_PORT;
+const inferencePort = process.env.E2E_INFERENCE_PORT;
 
-if (!(runtimeDir && port)) {
+if (!(runtimeDir && port && inferencePort)) {
 	throw new Error(
-		"E2E_RUNTIME_DIR and E2E_PORT must be set by the isolated E2E runner.",
+		"E2E_RUNTIME_DIR, E2E_PORT and E2E_INFERENCE_PORT must be set by the isolated E2E runner.",
 	);
 }
 
@@ -168,6 +169,21 @@ export default defineConfig({
 		},
 	],
 	webServer: [
+		{
+			command: "bun run start",
+			cwd: join(import.meta.dirname, "../inference"),
+			env: {
+				...getEnvironment(),
+				INFERENCE_HOST: "127.0.0.1",
+				INFERENCE_PORT: inferencePort,
+				INFERENCE_PROVIDER: process.env.E2E_INFERENCE_PROVIDER ?? "cpu",
+			},
+			port: Number(inferencePort),
+			reuseExistingServer: false,
+			gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
+			stdout: "pipe",
+			stderr: "pipe",
+		},
 		{
 			command: "bun scripts/e2e-server.ts",
 			cwd: process.cwd(),

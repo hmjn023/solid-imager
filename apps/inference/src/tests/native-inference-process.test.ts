@@ -2,10 +2,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, it, vi } from "vitest";
-import { NativeInferenceProcess } from "~/infrastructure/ai/native-inference-process";
+import { NativeInferenceProcess } from "../native-inference-process";
 
 const fixture = vi.hoisted(() => ({ modulePath: "" }));
-vi.mock("~/infrastructure/ai/dghs-imgutils-loader", () => ({
+vi.mock("../dghs-imgutils-loader", () => ({
 	resolveDghsImgutilsPath: () => fixture.modulePath,
 }));
 

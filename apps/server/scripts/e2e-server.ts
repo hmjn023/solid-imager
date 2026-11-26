@@ -66,6 +66,7 @@ function serverEnvironment(
 		DB_HOST: "pglite",
 		PGLITE_DATA_DIR: path.join(runtimeDir, "pglite"),
 		CONFIG_PATH: path.join(runtimeDir, "config.json"),
+		CONFIG_AI_BASE_URL: `http://127.0.0.1:${inherited.E2E_INFERENCE_PORT}`,
 		CHARACTER_CLUSTERING_DIR: path.join(runtimeDir, "character-clustering"),
 		NITRO_HOST: "127.0.0.1",
 		NITRO_PORT: port,

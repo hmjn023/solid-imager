@@ -368,7 +368,7 @@ export default defineConfig({
 			"isbot",
 			"seroval",
 		],
-		exclude: ["bun", "dghs-imgutils-rs"],
+		exclude: ["bun"],
 	},
 	customLogger: {
 		warn(msg, options) {
@@ -392,7 +392,6 @@ export default defineConfig({
 		rollupOptions: {
 			external: [
 				"bun",
-				"dghs-imgutils-rs",
 				"ffmpeg-static",
 				"fluent-ffmpeg",
 				"@electric-sql/pglite",
@@ -422,7 +421,6 @@ export default defineConfig({
 			"ffmpeg-static-static",
 			"fluent-ffmpeg",
 			"archiver",
-			"dghs-imgutils-rs",
 			"sharp",
 		],
 	},

@@ -1,7 +1,24 @@
-FROM oven/bun:1.4.4-debian
+FROM oven/bun:1.4.4-debian AS source
+WORKDIR /app
+COPY . .
 
+FROM source AS build
+RUN HUSKY=0 bun install --frozen-lockfile \
+    --filter solid-imager-monorepo --filter @solid-imager/server
+RUN bun run --cwd apps/server build
+
+FROM source AS runtime-dependencies
+RUN HUSKY=0 bun install --frozen-lockfile --production --filter @solid-imager/server
+
+FROM oven/bun:1.4.4-debian
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes ffmpeg ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && install -d -o bun -g bun /app/config /app/apps/server/.cache
+COPY --from=runtime-dependencies /app/node_modules /app/node_modules
+COPY --from=build /app/apps/server/.output /app/apps/server/.output
 
+WORKDIR /app/apps/server
+ENV CONFIG_PATH=/app/config/config.json
 USER bun
+CMD ["bun", "--bun", ".output/server/index.mjs"]

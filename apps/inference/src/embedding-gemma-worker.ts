@@ -1,16 +1,22 @@
-import { inferenceLifecycle } from "./inference-lifecycle";
-import { nativeInferenceProcess } from "./native-inference-process";
+import type { InferenceLifecycle } from "./inference-lifecycle";
+import type { NativeInferenceProcess } from "./native-inference-process";
 import {
+	EMBEDDING_GEMMA_DIMENSIONS,
 	EMBEDDING_GEMMA_MODEL,
 	embeddingVectorSchema,
 } from "@solid-imager/core/search";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
-import { logger } from "~/infrastructure/logger";
+import { logger } from "./logger";
 
 export class EmbeddingGemmaWorker {
 	private queue: Promise<void> = Promise.resolve();
 	private readonly initializedRequests = new Set<string>();
 	private generation = -1;
+
+	constructor(
+		private readonly lifecycle: InferenceLifecycle,
+		private readonly native: NativeInferenceProcess,
+	) {}
 
 	encode(
 		kind: "image" | "text",
@@ -18,7 +24,7 @@ export class EmbeddingGemmaWorker {
 		inferenceOptions: NapiInferenceOptions,
 	): Promise<number[]> {
 		const options = { ...inferenceOptions };
-		return inferenceLifecycle.run("embedding", () => {
+		return this.lifecycle.run("embedding", () => {
 			const pending = this.queue.then(() => this.run(kind, value, options));
 			this.queue = pending.then(
 				() => undefined,
@@ -33,8 +39,8 @@ export class EmbeddingGemmaWorker {
 		value: string,
 		options: NapiInferenceOptions,
 	) {
-		if (this.generation !== inferenceLifecycle.generation) {
-			this.generation = inferenceLifecycle.generation;
+		if (this.generation !== this.lifecycle.generation) {
+			this.generation = this.lifecycle.generation;
 			this.initializedRequests.clear();
 		}
 		const key = JSON.stringify({ kind, ...options });
@@ -56,16 +62,16 @@ export class EmbeddingGemmaWorker {
 				"EmbeddingGemma 2 first inference started (including model initialization)",
 			);
 		try {
-			const model = { dtype: "q8", dimensions: 768 };
+			const model = { dtype: "q8", dimensions: EMBEDDING_GEMMA_DIMENSIONS };
 			const vectors =
 				kind === "image"
-					? await nativeInferenceProcess.call(
+					? await this.native.call(
 							"embeddinggemma2ImageEncode",
 							[value],
 							model,
 							options,
 						)
-					: await nativeInferenceProcess.call(
+					: await this.native.call(
 							"embeddinggemma2TextEncode",
 							[value],
 							"SearchQuery",
@@ -95,4 +101,3 @@ export class EmbeddingGemmaWorker {
 		}
 	}
 }
-export const embeddingGemmaWorker = new EmbeddingGemmaWorker();

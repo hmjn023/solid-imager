@@ -497,14 +497,16 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 	await expect(saveButton).toBeEnabled();
 
 	await selectSettingsCategory(page, "AI");
-	const aiUrl = page.getByLabel("リモートAIサーバーURL（oRPC）", {
+	const aiUrl = page.getByLabel("推論サービス URL", {
 		exact: true,
 	});
-	await expect(aiUrl).toHaveValue("");
-	await expect(aiUrl).toHaveAccessibleDescription(/空欄の場合はローカルで処理/);
-	await expect(
-		page.getByText("入力例：http://power-machine:3000"),
-	).toBeVisible();
+	await expect(aiUrl).toHaveValue(
+		`http://127.0.0.1:${process.env.E2E_INFERENCE_PORT}`,
+	);
+	await expect(aiUrl).toHaveAccessibleDescription(
+		/空欄の場合、新しい推論は実行されません/,
+	);
+	await expect(page.getByText("入力例：http://inference:3001")).toBeVisible();
 
 	await selectSettingsCategory(page, "ストレージ");
 	const thumbnailDirectory = page.getByLabel("サムネイル保存先", {

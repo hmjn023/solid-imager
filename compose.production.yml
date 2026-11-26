@@ -3,10 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.runtime
-    image: ${APP_RUNTIME_IMAGE:-solid-imager-runtime:latest}
+    image: ${APP_IMAGE:-solid-imager-app:latest}
     container_name: solid-imager-app
     restart: always
-    working_dir: /app
     environment:
       DB_HOST: db
       PGPORT: 5432
@@ -16,15 +15,34 @@ services:
       DB_POSTGRES_DRIVER: ${DB_POSTGRES_DRIVER:-bun-sql}
       API_PUBLIC_ORIGIN: ${API_PUBLIC_ORIGIN:-}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
+      CONFIG_AI_BASE_URL: ${INFERENCE_BASE_URL:-http://inference:3001}
+      INFERENCE_TOKEN: ${INFERENCE_TOKEN:-}
       NITRO_HOST: 0.0.0.0
       NITRO_PORT: ${NITRO_PORT:-${PORT:-3000}}
     volumes:
-      # APP_ARTIFACT_DIR must point to the host directory that already
-      # contains node_modules and apps/server/.output.
-      - ${APP_ARTIFACT_DIR:-.}:/app
-    command: ["bun", "run", "start"]
+      - app-config:/app/config
+      - app-cache:/app/apps/server/.cache
     depends_on:
       - db
+
+  inference:
+    build:
+      context: .
+      dockerfile: Dockerfile.inference
+    image: ${INFERENCE_IMAGE:-solid-imager-inference:latest}
+    restart: always
+    environment:
+      INFERENCE_PROVIDER: ${INFERENCE_PROVIDER:-cpu}
+      INFERENCE_DEVICE: ${INFERENCE_DEVICE:-}
+      INFERENCE_TOKEN: ${INFERENCE_TOKEN:-}
+    volumes:
+      - type: bind
+        source: ${INFERENCE_ORT_DIR:-./onnxruntime/lib}
+        target: /opt/onnxruntime/lib
+        read_only: true
+        bind:
+          create_host_path: false
+      - inference-cache:/var/cache/inference
 
   nginx:
     image: docker.io/library/nginx:trixie
@@ -45,3 +63,8 @@ services:
       - ${HOME}/.config/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - app
+
+volumes:
+  app-config:
+  app-cache:
+  inference-cache:

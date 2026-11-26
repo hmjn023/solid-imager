@@ -13,7 +13,7 @@ import {
 } from "vitest";
 import { db } from "~/infrastructure/db/index";
 import { mediaSources } from "~/infrastructure/db/schema";
-import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
+import { InferenceClient } from "~/infrastructure/ai/inference-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import {
 	AuthorRepository,
@@ -39,7 +39,7 @@ describe("File System Access Denied Integration", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerAiClient(new RustAiClient());
+		services.registerAiClient(new InferenceClient());
 	});
 	let directory: string;
 	let sourceId: string;

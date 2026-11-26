@@ -4,6 +4,7 @@ export type {
 	SimilarityModel,
 } from "../domain/search/embedding";
 export {
+	EMBEDDING_GEMMA_DIMENSIONS,
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 	embeddingExtractionPayloadSchema,
