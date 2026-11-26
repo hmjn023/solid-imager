@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TAG_DICTIONARY_JOB } from "../tags/dictionary-job";
+import { importWorkProgressSchema } from "./import-batch";
 
 export const jobStatusSchema = z.enum([
 	"pending",
@@ -75,12 +76,20 @@ export function canRetryJob(job: {
 }
 
 /** Batch counts, or null when progress is unavailable for the job. */
-export const jobProgressSchema = z
-	.object({
-		processed: z.number().int().nonnegative(),
-		failed: z.number().int().nonnegative(),
-		cancelled: z.number().int().nonnegative().optional(),
-		total: z.number().int().nonnegative(),
+const jobProgressCountsSchema = z.object({
+	processed: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+	cancelled: z.number().int().nonnegative().optional(),
+	total: z.number().int().nonnegative(),
+});
+
+export const jobProgressSchema = jobProgressCountsSchema
+	.extend({
+		importWork: importWorkProgressSchema
+			.optional()
+			.describe(
+				"Scheduled work counts for an active import, in addition to the target counts.",
+			),
 	})
 	.nullable();
 
@@ -171,7 +180,7 @@ export const importStageTypeSchema = z.enum([
 	"extract_ccip_vector",
 ]);
 
-const importStageProgressSchema = jobProgressSchema.unwrap().extend({
+const importStageProgressSchema = jobProgressCountsSchema.extend({
 	type: importStageTypeSchema,
 	pending: z.number().int().nonnegative(),
 	running: z.number().int().nonnegative(),

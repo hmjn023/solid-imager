@@ -29,6 +29,7 @@ export {
 	importBatchContextSchema,
 	importAiStages,
 	importWorkOwner,
+	type ImportWorkProgress,
 	type ImportWorkOwner,
 	readImportBatch,
 	type ImportBatchContext,

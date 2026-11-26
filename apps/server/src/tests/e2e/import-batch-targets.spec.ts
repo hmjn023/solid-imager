@@ -60,6 +60,8 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	const uploadProgress = stages.getByRole("progressbar", {
 		name: /アップロード|Upload/i,
 	});
+	const overallProgress = page.locator("aside header").getByRole("progressbar");
+	await expect(overallProgress).toHaveAttribute("aria-valuenow", "0");
 	await expect(uploadProgress).toHaveAttribute("aria-valuenow", "0");
 	await expect(stages).toContainText(/待機 26|Queued 26/);
 	const upload = await page.request.post(
@@ -79,6 +81,11 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	expect(upload.ok()).toBe(true);
 	// The upload came from a separate API client. The open inspector updates via SSE.
 	await expect(uploadProgress).toHaveAttribute("aria-valuenow", "4");
+	await expect
+		.poll(async () =>
+			Number(await overallProgress.getAttribute("aria-valuenow")),
+		)
+		.toBeGreaterThan(0);
 	await expect(stages).toContainText(/待機 25|Queued 25/);
 	await expect(table.getByRole("row")).toHaveCount(26);
 	const firstPage = await table

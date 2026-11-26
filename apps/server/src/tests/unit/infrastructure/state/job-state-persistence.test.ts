@@ -411,7 +411,12 @@ describe("persisted import, attempt and batch transitions", () => {
 			expect.objectContaining({
 				id: batchId,
 				type: "import_batch_parent",
-				progress: { processed: 0, failed: 0, total: 3 },
+				progress: {
+					processed: 0,
+					failed: 0,
+					total: 3,
+					importWork: { settled: 0, total: 3 },
+				},
 			}),
 		]);
 		expect(await call(jobsRouter.types, undefined)).toEqual([
@@ -1063,6 +1068,42 @@ describe("persisted import, attempt and batch transitions", () => {
 			status: "completed",
 			finishedAt: expect.any(Date),
 			payload: { total: 2, processed: 2, failed: 0 },
+		});
+	});
+
+	it("reports settled import work before the target is finished", async () => {
+		const parent = await database.transaction((tx) =>
+			createImportBatch(tx, SOURCE_ID, [
+				{ label: "image", work: { type: "processMedia" } },
+			]),
+		);
+		const [preparation] = await repositories.job.claimPending(1);
+		await repositories.job.create({
+			type: "auto_tagging",
+			parentId: preparation.parentId,
+			payload: preparation.payload,
+		});
+		await repositories.job.finishAttempt(
+			preparation.id,
+			preparation.attemptCount ?? 0,
+			{
+				status: "completed",
+				result: null,
+			},
+		);
+
+		const progress = {
+			processed: 0,
+			failed: 0,
+			total: 1,
+			importWork: { settled: 1, total: 2 },
+		};
+		expect(await call(jobsRouter.get, { id: parent.id })).toMatchObject({
+			status: "in_progress",
+			progress,
+		});
+		expect(await call(jobsRouter.list, { limit: 1, offset: 0 })).toMatchObject({
+			items: [{ id: parent.id, progress }],
 		});
 	});
 
