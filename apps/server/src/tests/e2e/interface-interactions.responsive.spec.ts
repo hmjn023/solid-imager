@@ -140,6 +140,44 @@ for (const collection of [
 	{ name: "Library", path: searchPath, bulkBar: "search-bulk-actions-bar" },
 	{ name: "Source", path: sourcePath, bulkBar: "bulk-actions-bar" },
 ]) {
+	test(`${collection.name} keeps grid tile geometry in bulk selection mode`, async ({
+		page,
+	}) => {
+		await page.route(apiPathPattern("media/getThumbnail"), (route) =>
+			route.fulfill({ contentType: "image/webp", body: "" }),
+		);
+		await page.goto(collection.path);
+		await waitForAppHydration(page);
+		const tiles = page.locator("[data-media-grid] [data-media-id]");
+		const selectMode = page.getByRole("button", {
+			name: "複数選択",
+			exact: true,
+		});
+		const bulkBar = page.getByTestId(collection.bulkBar);
+		await expect(tiles.nth(1)).toBeVisible();
+		await expect(tiles.locator("img")).toHaveCount(0);
+		const geometry = () =>
+			tiles.evaluateAll((items) => {
+				const firstTop = items[0].getBoundingClientRect().top;
+				return items.slice(0, 4).map((item) => {
+					const { x, y, width, height } = item.getBoundingClientRect();
+					return { x, rowOffset: y - firstTop, width, height };
+				});
+			});
+		const original = await geometry();
+		await selectMode.click();
+		await expect(tiles.first()).toHaveRole("button");
+		await expect(bulkBar).toBeVisible();
+		expect(await geometry()).toEqual(original);
+
+		await tiles.first().press("Space");
+		await expect(tiles.first()).toHaveAttribute("aria-pressed", "true");
+		expect(await geometry()).toEqual(original);
+		await selectMode.click();
+		await expect(tiles.first()).toHaveRole("link");
+		expect(await geometry()).toEqual(original);
+	});
+
 	test(`${collection.name} opens media and selects it the same way in grid and list`, async ({
 		browserHealth,
 		page,
