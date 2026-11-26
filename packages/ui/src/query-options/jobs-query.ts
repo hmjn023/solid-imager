@@ -102,19 +102,23 @@ export function updateJobProgress(
 	let updated = false;
 	const items = data.items.map((job) => {
 		if (job.id !== event.jobId) return job;
-		updated = true;
-		return withProgress(job, event);
+		const next = withProgress(job, event);
+		updated ||= next !== job;
+		return next;
 	});
 
 	return updated ? { ...data, items } : data;
 }
 
 function withProgress(job: JobDto, event: JobProgressEvent): JobDto {
+	// A stage notification can arrive after the final job snapshot was fetched.
+	if (event.importWork && job.status !== "in_progress") return job;
 	return {
 		...job,
 		progress: {
 			...job.progress,
 			...(event.cancelled !== undefined && { cancelled: event.cancelled }),
+			...(event.importWork && { importWork: event.importWork }),
 			failed: event.failed ?? job.progress?.failed ?? 0,
 			processed: event.processed,
 			total: event.total,

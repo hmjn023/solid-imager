@@ -2,12 +2,40 @@ import {
 	batchTargetsSchema,
 	importAiStages,
 	importStageTypeSchema,
+	type ImportWorkProgress,
 	type JobStatus,
 } from "@solid-imager/core/jobs";
 import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
 import { jobs, medias } from "~/infrastructure/db/schema";
+
+/** Read the active batches' persisted work in one query, independently of target pagination. */
+export async function listImportWorkProgress(batchIds: string[]) {
+	if (batchIds.length === 0) return new Map<string, ImportWorkProgress>();
+	const work = alias(jobs, "import_work");
+	const rows = await db
+		.select({
+			batchId: jobs.parentId,
+			total: count(),
+			settled: sql<number>`count(*) FILTER (WHERE ${work.status} IN ('completed', 'failed', 'cancelled'))::int`,
+		})
+		.from(jobs)
+		.innerJoin(work, eq(work.parentId, jobs.id))
+		.where(
+			and(
+				eq(jobs.type, "import_batch_target"),
+				inArray(jobs.parentId, batchIds),
+				inArray(work.type, importStageTypeSchema.options),
+			),
+		)
+		.groupBy(jobs.parentId);
+	const progress = new Map<string, ImportWorkProgress>();
+	for (const { batchId, ...counts } of rows) {
+		if (batchId) progress.set(batchId, counts);
+	}
+	return progress;
+}
 
 async function listImportStages(id: string) {
 	const target = alias(jobs, "import_target");

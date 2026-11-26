@@ -2818,6 +2818,27 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
+                            },
+                            "importWork": {
+                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "type": "object",
+                              "properties": {
+                                "settled": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "settled",
+                                "total"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -3111,6 +3132,27 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
+                            },
+                            "importWork": {
+                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "type": "object",
+                              "properties": {
+                                "settled": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "settled",
+                                "total"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -18712,6 +18754,27 @@
                                 "type": "integer",
                                 "minimum": 0,
                                 "maximum": 9007199254740991
+                              },
+                              "importWork": {
+                                "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                                "type": "object",
+                                "properties": {
+                                  "settled": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "total": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "settled",
+                                  "total"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -19031,6 +19094,27 @@
                                     "type": "integer",
                                     "minimum": 0,
                                     "maximum": 9007199254740991
+                                  },
+                                  "importWork": {
+                                    "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                                    "type": "object",
+                                    "properties": {
+                                      "settled": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "total": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "settled",
+                                      "total"
+                                    ],
+                                    "additionalProperties": false
                                   }
                                 },
                                 "required": [
@@ -19309,6 +19393,27 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
+                            },
+                            "importWork": {
+                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "type": "object",
+                              "properties": {
+                                "settled": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "settled",
+                                "total"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -19626,6 +19731,27 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
+                            },
+                            "importWork": {
+                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "type": "object",
+                              "properties": {
+                                "settled": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "settled",
+                                "total"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -19901,6 +20027,27 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
+                            },
+                            "importWork": {
+                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "type": "object",
+                              "properties": {
+                                "settled": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "settled",
+                                "total"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -20047,6 +20194,26 @@
                                       "type": "integer",
                                       "minimum": 0,
                                       "maximum": 9007199254740991
+                                    },
+                                    "importWork": {
+                                      "type": "object",
+                                      "properties": {
+                                        "settled": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "total": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "settled",
+                                        "total"
+                                      ],
+                                      "additionalProperties": false
                                     }
                                   },
                                   "required": [

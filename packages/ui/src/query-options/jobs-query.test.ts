@@ -56,6 +56,27 @@ describe("updateJobProgress", () => {
 
 		expect(updated).toBe(jobList);
 	});
+
+	it("does not replace terminal import progress with a late stage notification", () => {
+		const data: JobListResponse = {
+			items: [
+				{
+					...jobList.items[0],
+					status: "completed",
+					type: "import_batch_parent",
+				},
+			],
+			total: 1,
+		};
+		expect(
+			updateJobProgress(data, {
+				jobId: data.items[0].id,
+				processed: 1,
+				total: 10,
+				importWork: { settled: 4, total: 10 },
+			}),
+		).toBe(data);
+	});
 });
 
 it("updates a linked inspector when its job is outside the current list page", () => {
@@ -66,9 +87,19 @@ it("updates a linked inspector when its job is outside the current list page", (
 	const emptyPage = { items: [], total: 1 };
 	client.setQueryData(list, emptyPage);
 	client.setQueryData(detail, job);
-	updateCachedJobProgress(client, { jobId: job.id, processed: 8, total: 12 });
+	updateCachedJobProgress(client, {
+		jobId: job.id,
+		processed: 1,
+		total: 10,
+		importWork: { settled: 8, total: 12 },
+	});
 	expect(client.getQueryData(detail)).toMatchObject({
-		progress: { failed: 2, processed: 8, total: 12 },
+		progress: {
+			failed: 2,
+			processed: 1,
+			total: 10,
+			importWork: { settled: 8, total: 12 },
+		},
 	});
 	expect(client.getQueryData(list)).toBe(emptyPage);
 });

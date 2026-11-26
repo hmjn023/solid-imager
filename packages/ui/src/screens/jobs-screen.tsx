@@ -233,8 +233,17 @@ function JobProgress(props: { progress: JobDto["progress"]; label?: string }) {
 				(props.progress.cancelled ?? 0)
 			: 0;
 	const percent = () => {
-		if (!props.progress || props.progress.total === 0) return 0;
-		return Math.min(100, Math.round((finished() / props.progress.total) * 100));
+		const progress = props.progress;
+		if (!progress || progress.total === 0) return 0;
+		const work = progress.importWork;
+		if (!work)
+			return Math.min(100, Math.round((finished() / progress.total) * 100));
+		// Each target also contributes once all of its work has settled. This
+		// leaves room for stages that have not been scheduled yet.
+		return Math.min(
+			99,
+			((finished() + work.settled) / (progress.total + work.total)) * 100,
+		);
 	};
 
 	return (
@@ -245,7 +254,7 @@ function JobProgress(props: { progress: JobDto["progress"]; label?: string }) {
 			{(progress) => (
 				<div class="min-w-28 space-y-1">
 					<div class="flex items-center justify-between gap-2 whitespace-nowrap text-xs tabular-nums">
-						<span>{percent()}%</span>
+						<span>{Math.round(percent())}%</span>
 						<span class="text-muted-foreground">
 							{finished().toLocaleString()}/{progress().total.toLocaleString()}
 						</span>
@@ -253,7 +262,9 @@ function JobProgress(props: { progress: JobDto["progress"]; label?: string }) {
 					<Progress
 						aria-label={
 							props.label ??
-							t("jobsScreen.valueComplete", { value0: String(percent()) })
+							t("jobsScreen.valueComplete", {
+								value0: String(Math.round(percent())),
+							})
 						}
 						class="h-1.5 bg-border [&>div]:bg-border [&>div>div]:rounded-full"
 						maxValue={100}
