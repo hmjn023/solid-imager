@@ -84,7 +84,8 @@ test("keeps search filters available when presets fail to load", async ({
 	).toBeVisible();
 	await expect(status).toHaveText("");
 	await expect(filename).toHaveValue(E2E_PRIMARY_FILE_NAME);
-	await filters.getByRole("button", { name: "適用", exact: true }).click();
+	await filters.getByRole("button", { name: "閉じる", exact: true }).click();
+	await expect(filters).toBeHidden();
 	await expect(page.getByText("1件", { exact: true })).toBeVisible();
 });
 
@@ -146,7 +147,11 @@ test("search keeps controls usable without horizontal overflow", async ({
 		0,
 	);
 	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
-	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
+	const closeFilters = filterDialog.getByRole("button", {
+		name: "閉じる",
+		exact: true,
+	});
+	await closeFilters.click();
 	await expect(filterDialog).toBeHidden();
 	await expect(page.getByText("1件", { exact: true })).toBeVisible();
 	await expect(primaryResult).toBeVisible();
@@ -174,10 +179,9 @@ test("search keeps controls usable without horizontal overflow", async ({
 	await expect(lastFilter).toBeFocused();
 	// Leave the combobox's suggestions before activating the footer.
 	await lastFilter.press("Tab");
-	const apply = filterDialog.getByRole("button", { name: "適用", exact: true });
-	await expect(apply).toBeInViewport();
+	await expect(closeFilters).toBeInViewport();
 	await expectNoHorizontalOverflow(page);
-	await apply.click();
+	await closeFilters.click();
 	await expect(filterDialog).toBeHidden();
 	await expect
 		.poll(async () =>

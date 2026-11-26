@@ -2820,7 +2820,7 @@
                               "maximum": 9007199254740991
                             },
                             "importWork": {
-                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "description": "Work counts and overall progress for an active import.",
                               "type": "object",
                               "properties": {
                                 "settled": {
@@ -2832,6 +2832,12 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 9007199254740991
+                                },
+                                "completionRatio": {
+                                  "description": "Target progress, with a fixed share reserved for each possible stage.",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
                                 }
                               },
                               "required": [
@@ -3134,7 +3140,7 @@
                               "maximum": 9007199254740991
                             },
                             "importWork": {
-                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "description": "Work counts and overall progress for an active import.",
                               "type": "object",
                               "properties": {
                                 "settled": {
@@ -3146,6 +3152,12 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 9007199254740991
+                                },
+                                "completionRatio": {
+                                  "description": "Target progress, with a fixed share reserved for each possible stage.",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
                                 }
                               },
                               "required": [
@@ -18756,7 +18768,7 @@
                                 "maximum": 9007199254740991
                               },
                               "importWork": {
-                                "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                                "description": "Work counts and overall progress for an active import.",
                                 "type": "object",
                                 "properties": {
                                   "settled": {
@@ -18768,6 +18780,12 @@
                                     "type": "integer",
                                     "minimum": 0,
                                     "maximum": 9007199254740991
+                                  },
+                                  "completionRatio": {
+                                    "description": "Target progress, with a fixed share reserved for each possible stage.",
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
                                   }
                                 },
                                 "required": [
@@ -19096,7 +19114,7 @@
                                     "maximum": 9007199254740991
                                   },
                                   "importWork": {
-                                    "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                                    "description": "Work counts and overall progress for an active import.",
                                     "type": "object",
                                     "properties": {
                                       "settled": {
@@ -19108,6 +19126,12 @@
                                         "type": "integer",
                                         "minimum": 0,
                                         "maximum": 9007199254740991
+                                      },
+                                      "completionRatio": {
+                                        "description": "Target progress, with a fixed share reserved for each possible stage.",
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1
                                       }
                                     },
                                     "required": [
@@ -19395,7 +19419,7 @@
                               "maximum": 9007199254740991
                             },
                             "importWork": {
-                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "description": "Work counts and overall progress for an active import.",
                               "type": "object",
                               "properties": {
                                 "settled": {
@@ -19407,6 +19431,12 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 9007199254740991
+                                },
+                                "completionRatio": {
+                                  "description": "Target progress, with a fixed share reserved for each possible stage.",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
                                 }
                               },
                               "required": [
@@ -19733,7 +19763,7 @@
                               "maximum": 9007199254740991
                             },
                             "importWork": {
-                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "description": "Work counts and overall progress for an active import.",
                               "type": "object",
                               "properties": {
                                 "settled": {
@@ -19745,6 +19775,12 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 9007199254740991
+                                },
+                                "completionRatio": {
+                                  "description": "Target progress, with a fixed share reserved for each possible stage.",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
                                 }
                               },
                               "required": [
@@ -20029,7 +20065,7 @@
                               "maximum": 9007199254740991
                             },
                             "importWork": {
-                              "description": "Scheduled work counts for an active import, in addition to the target counts.",
+                              "description": "Work counts and overall progress for an active import.",
                               "type": "object",
                               "properties": {
                                 "settled": {
@@ -20041,6 +20077,12 @@
                                   "type": "integer",
                                   "minimum": 0,
                                   "maximum": 9007199254740991
+                                },
+                                "completionRatio": {
+                                  "description": "Target progress, with a fixed share reserved for each possible stage.",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
                                 }
                               },
                               "required": [
@@ -20207,6 +20249,12 @@
                                           "type": "integer",
                                           "minimum": 0,
                                           "maximum": 9007199254740991
+                                        },
+                                        "completionRatio": {
+                                          "description": "Target progress, with a fixed share reserved for each possible stage.",
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
                                         }
                                       },
                                       "required": [

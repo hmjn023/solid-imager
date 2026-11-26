@@ -235,15 +235,10 @@ function JobProgress(props: { progress: JobDto["progress"]; label?: string }) {
 	const percent = () => {
 		const progress = props.progress;
 		if (!progress || progress.total === 0) return 0;
-		const work = progress.importWork;
-		if (!work)
-			return Math.min(100, Math.round((finished() / progress.total) * 100));
-		// Each target also contributes once all of its work has settled. This
-		// leaves room for stages that have not been scheduled yet.
-		return Math.min(
-			99,
-			((finished() + work.settled) / (progress.total + work.total)) * 100,
-		);
+		const completionRatio = progress.importWork?.completionRatio;
+		return completionRatio === undefined
+			? Math.min(100, Math.round((finished() / progress.total) * 100))
+			: Math.min(99, completionRatio * 100);
 	};
 
 	return (

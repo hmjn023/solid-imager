@@ -87,9 +87,7 @@ export const jobProgressSchema = jobProgressCountsSchema
 	.extend({
 		importWork: importWorkProgressSchema
 			.optional()
-			.describe(
-				"Scheduled work counts for an active import, in addition to the target counts.",
-			),
+			.describe("Work counts and overall progress for an active import."),
 	})
 	.nullable();
 

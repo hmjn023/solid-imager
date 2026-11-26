@@ -475,6 +475,7 @@ test("Workspace settings exposes device-local shortcut configuration", async ({
 	await waitForAppHydration(page);
 
 	await expect(page.locator("form")).toHaveCount(1);
+	await selectSettingsCategory(page, "ジョブ");
 	await expect(
 		page.getByRole("group", { name: "ジョブ処理", exact: true }),
 	).toBeVisible();

@@ -10,6 +10,14 @@ export type ImportBatchContext = z.infer<typeof importBatchContextSchema>;
 export const importWorkProgressSchema = z.object({
 	settled: z.number().int().nonnegative(),
 	total: z.number().int().nonnegative(),
+	completionRatio: z
+		.number()
+		.min(0)
+		.max(1)
+		.optional()
+		.describe(
+			"Target progress, with a fixed share reserved for each possible stage.",
+		),
 });
 export type ImportWorkProgress = z.infer<typeof importWorkProgressSchema>;
 

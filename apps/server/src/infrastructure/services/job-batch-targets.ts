@@ -4,32 +4,68 @@ import {
 	importStageTypeSchema,
 	type ImportWorkProgress,
 	type JobStatus,
+	jobTerminalStatusSchema,
 } from "@solid-imager/core/jobs";
 import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
 import { jobs, medias } from "~/infrastructure/db/schema";
 
+const IMPORT_WORK_STAGES = [
+	["downloadImage", "import_upload", "import_register"],
+	["processMedia"],
+	...importAiStages,
+] as const;
+const IMPORT_TARGET_PROGRESS_UNITS = IMPORT_WORK_STAGES.length + 1;
+
 /** Read the active batches' persisted work in one query, independently of target pagination. */
 export async function listImportWorkProgress(batchIds: string[]) {
 	if (batchIds.length === 0) return new Map<string, ImportWorkProgress>();
 	const work = alias(jobs, "import_work");
-	const rows = await db
+	const settledWork = inArray(work.status, jobTerminalStatusSchema.options);
+	const stages = IMPORT_WORK_STAGES.flatMap((types, index) =>
+		types.map((type) => sql`WHEN ${type} THEN ${index}::int`),
+	);
+	const stage = sql`CASE ${work.type} ${sql.join(stages, sql` `)} END`;
+	// Give every target a fixed budget so scheduling new work can't take
+	// credit away from finished stages. Settled targets fill unused slots.
+	const targets = db
 		.select({
 			batchId: jobs.parentId,
-			total: count(),
-			settled: sql<number>`count(*) FILTER (WHERE ${work.status} IN ('completed', 'failed', 'cancelled'))::int`,
+			total: count(work.id).as("work_total"),
+			settled: sql<number>`count(${work.id}) FILTER (WHERE ${settledWork})`.as(
+				"work_settled",
+			),
+			units: sql<number>`CASE
+				WHEN ${inArray(jobs.status, jobTerminalStatusSchema.options)} THEN ${IMPORT_TARGET_PROGRESS_UNITS}::int
+				ELSE count(DISTINCT ${stage}) FILTER (WHERE ${settledWork})
+			END`.as("progress_units"),
 		})
 		.from(jobs)
-		.innerJoin(work, eq(work.parentId, jobs.id))
+		.leftJoin(
+			work,
+			and(
+				eq(work.parentId, jobs.id),
+				inArray(work.type, IMPORT_WORK_STAGES.flat()),
+			),
+		)
 		.where(
 			and(
 				eq(jobs.type, "import_batch_target"),
 				inArray(jobs.parentId, batchIds),
-				inArray(work.type, importStageTypeSchema.options),
 			),
 		)
-		.groupBy(jobs.parentId);
+		.groupBy(jobs.id, jobs.parentId, jobs.status)
+		.as("import_targets");
+	const rows = await db
+		.select({
+			batchId: targets.batchId,
+			total: sql<number>`sum(${targets.total})::int`,
+			settled: sql<number>`sum(${targets.settled})::int`,
+			completionRatio: sql<number>`sum(${targets.units})::float8 / (count(*) * ${IMPORT_TARGET_PROGRESS_UNITS}::int)`,
+		})
+		.from(targets)
+		.groupBy(targets.batchId);
 	const progress = new Map<string, ImportWorkProgress>();
 	for (const { batchId, ...counts } of rows) {
 		if (batchId) progress.set(batchId, counts);
