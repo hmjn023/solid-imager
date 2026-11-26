@@ -84,8 +84,7 @@ export function Sidebar(props: SidebarProps) {
 		<Dynamic
 			aria-label={props["aria-label"]}
 			class={cn(
-				// oxlint-disable-next-line shadcn/no-arbitrary-values -- Uses canonical --workspace-surface-subtle token from theme.css (DESIGN.md sidebar).
-				"flex min-h-0 flex-col bg-[var(--workspace-surface-subtle)] text-foreground *:shrink-0",
+				"flex min-h-0 flex-col bg-surface-subtle text-foreground *:shrink-0",
 				props.inDrawer
 					? "h-auto min-h-full overflow-visible"
 					: "h-full overflow-y-auto overscroll-contain scrollbar-stable",
