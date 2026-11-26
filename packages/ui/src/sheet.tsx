@@ -59,7 +59,7 @@ const SheetOverlay = <T extends ValidComponent = "div">(
 };
 
 const sheetVariants = cva(
-	"fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:duration-300 motion-safe:data-[expanded]:duration-500",
+	"fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out motion-reduce:transition-none motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:duration-300 motion-safe:data-[expanded]:duration-500",
 	{
 		variants: {
 			position: {
@@ -106,7 +106,7 @@ const SheetContent = <T extends ValidComponent = "div">(
 				{local.children}
 				<SheetPrimitive.CloseButton
 					aria-label={t("actions.close")}
-					class="absolute top-2.5 right-2.5 z-20 grid size-11 place-items-center rounded-sm text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:text-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none sm:size-8"
+					class="absolute top-2.5 right-2.5 z-20 grid size-11 place-items-center rounded-sm text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:text-foreground hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none sm:size-8"
 				>
 					<svg
 						aria-hidden="true"

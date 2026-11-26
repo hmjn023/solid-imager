@@ -27,11 +27,11 @@ interface ToastOptions {
 
 const MAX_QUEUED_TOASTS = 20;
 const DURATION_BY_SEVERITY = {
-	error: 8000,
-	info: 4000,
+	error: 9000,
+	info: 7000,
 	message: 4000,
 	success: 4000,
-	warning: 6000,
+	warning: 8000,
 } as const;
 
 let sonnerToastModule: typeof SonnerToast | null = null;

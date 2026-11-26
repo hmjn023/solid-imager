@@ -1367,7 +1367,7 @@ export const en = defineMessages({
 	"pixivAccount.message": ".",
 	"pixivAccount.pHPSESSID": "PHPSESSID",
 	"pixivAccount.pixivAccount": "pixiv account",
-	"pixivAccount.pixivID": "pixiv ID ",
+	"pixivAccount.pixivID": "pixiv ID",
 	"pixivAccount.pixivIDValue": "pixiv ID {value0}",
 	"pixivAccount.setTheXtracterExtensionDestinationTo":
 		"Set the xtracter extension destination to ",
@@ -1694,7 +1694,7 @@ export const en = defineMessages({
 	"searchToolbar.sortCurrentlyValue": "Sort, currently {value0}",
 	"searchToolbar.textSearchValueResults": "Text search · {value0} results",
 	"searchToolbar.updating": "Updating...",
-	"searchToolbar.valueValue": "{value0}・{value1}",
+	"searchToolbar.valueValue": "{value0} · {value1}",
 	"select.check": "Check",
 	"servers.addOrSwitchServersAndCheckConnectionStatus":
 		"Add or switch servers and check connection status.",

@@ -166,7 +166,7 @@ export function MediaGridTile(
 					alt: props.title,
 					class: cn(
 						"h-full w-full object-cover",
-						"transition duration-200 group-hover:scale-105 motion-reduce:transition-none",
+						"transition duration-200 motion-safe:group-hover:scale-105 motion-reduce:transition-none",
 						props.thumbnailClass,
 					),
 					height: props.height,

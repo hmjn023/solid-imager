@@ -128,7 +128,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 							onClick={(event) => event.stopPropagation()}
 							onChange={() => props.onSelect?.(props.media.id)}
 						>
-							<CheckboxControl class="h-5 w-5 rounded border-input bg-white text-primary shadow-sm focus:ring-primary" />
+							<CheckboxControl class="h-5 w-5 rounded border-input bg-card text-primary shadow-sm focus:ring-primary" />
 							<CheckboxLabel class="sr-only">
 								{t("actions.selectMedia")}
 							</CheckboxLabel>

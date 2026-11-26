@@ -1366,7 +1366,7 @@ export const ja = defineLocale({
 	"pixivAccount.message": " に送信します。",
 	"pixivAccount.pHPSESSID": "PHPSESSID",
 	"pixivAccount.pixivAccount": "pixiv アカウント",
-	"pixivAccount.pixivID": "pixiv ID ",
+	"pixivAccount.pixivID": "pixiv ID",
 	"pixivAccount.pixivIDValue": "pixiv ID {value0}",
 	"pixivAccount.setTheXtracterExtensionDestinationTo":
 		"xtracter 拡張で接続先を ",
@@ -1690,7 +1690,7 @@ export const ja = defineLocale({
 	"searchToolbar.sortCurrentlyValue": "並び替え、現在は{value0}",
 	"searchToolbar.textSearchValueResults": "文章検索・{value0}件",
 	"searchToolbar.updating": "更新中...",
-	"searchToolbar.valueValue": "{value0} · {value1}",
+	"searchToolbar.valueValue": "{value0}・{value1}",
 	"select.check": "選択済み",
 	"servers.addOrSwitchServersAndCheckConnectionStatus":
 		"接続先サーバーを追加・切り替え、接続状態を確認します。",
