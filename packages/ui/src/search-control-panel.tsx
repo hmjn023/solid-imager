@@ -36,6 +36,7 @@ import {
 import { SortControls } from "./sort-controls";
 import {
 	clearSimilaritySearch,
+	getSearchFiltersRevision,
 	searchState,
 	setSearchState,
 } from "./stores/search-store";
@@ -67,6 +68,7 @@ export type SearchControlPanelProps = {
 	class?: string;
 	usePopover?: boolean;
 	registerSemanticCommit?: (commit: () => boolean) => void;
+	registerFilenameCommit?: (commit: (() => void) | undefined) => void;
 };
 
 export function SearchControlPanel(props: SearchControlPanelProps) {
@@ -201,11 +203,15 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				<SearchFilters
 					authors={props.filterData.authors}
 					characters={props.filterData.characters}
+					filenameResetRevision={
+						props.state ? undefined : getSearchFiltersRevision()
+					}
 					ips={props.filterData.ips}
 					onSearch={
 						props.showSearchButton === false ? undefined : props.onSearch
 					}
 					projects={props.filterData.projects}
+					registerFilenameCommit={props.registerFilenameCommit}
 					setState={updateState}
 					state={currentState()}
 					tags={props.filterData.tags}

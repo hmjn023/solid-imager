@@ -346,12 +346,16 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		openGeneration,
 		props.listSources,
 	);
-	const localSources = createMemo(() =>
-		(sources() ?? []).filter(
+	const sourcesFailed = () => sources.state === "errored";
+	const jobsFailed = () => pendingJobs.state === "errored";
+	const currentJobs = () => (jobsFailed() ? undefined : pendingJobs());
+	const localSources = createMemo(() => {
+		if (sourcesFailed()) return [];
+		return (sources() ?? []).filter(
 			(source): source is typeof source & { id: string } =>
 				source.type === "local" && !!source.id,
-		),
-	);
+		);
+	});
 	const sourceSelectionDisabled = () =>
 		sources.loading || !localSources().length || activeAction() !== null;
 
@@ -368,7 +372,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	);
 
 	createEffect(() => {
-		const jobs = pendingJobs();
+		const jobs = currentJobs();
 		if (jobs?.length) {
 			setSelectedJobIds(new Set(jobs.map((job) => job.id)));
 			return;
@@ -407,7 +411,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		setIsDirty(true);
 	};
 	const selectAll = () => {
-		const jobs = pendingJobs() ?? [];
+		const jobs = currentJobs() ?? [];
 		if (jobs.length === 0 || selectedJobIds().size === jobs.length) return;
 		setSelectedJobIds(new Set(jobs.map((job) => job.id)));
 		setIsDirty(true);
@@ -556,7 +560,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										portalMount={sourceField()}
 									/>
 								</Select>
-								<Show when={!sources.loading && Boolean(sources.error)}>
+								<Show when={sourcesFailed()}>
 									<div
 										class="flex flex-wrap items-center gap-2 text-destructive text-xs"
 										role="alert"
@@ -576,7 +580,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								<Show
 									when={
 										!sources.loading &&
-										!sources.error &&
+										!sourcesFailed() &&
 										localSources().length === 0
 									}
 								>
@@ -600,7 +604,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								<div class="text-muted-foreground text-sm" aria-live="polite">
 									{t("importReviewModal.valueOfValueValueSelected", {
 										value0: String(selectedJobIds().size),
-										value1: String(pendingJobs()?.length ?? 0),
+										value1: String(currentJobs()?.length ?? 0),
 									})}
 								</div>
 								<div class="flex items-center gap-1">
@@ -608,8 +612,8 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										class="min-h-11 px-2 text-xs sm:min-h-8"
 										disabled={
 											activeAction() !== null ||
-											(pendingJobs()?.length ?? 0) === 0 ||
-											selectedJobIds().size === (pendingJobs()?.length ?? 0)
+											(currentJobs()?.length ?? 0) === 0 ||
+											selectedJobIds().size === (currentJobs()?.length ?? 0)
 										}
 										onClick={selectAll}
 										size="sm"
@@ -639,14 +643,10 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								</div>
 							</Show>
 							<Show
-								when={
-									!pendingJobs.loading &&
-									!pendingJobs.error &&
-									(pendingJobs()?.length ?? 0) > 0
-								}
+								when={!pendingJobs.loading && (currentJobs()?.length ?? 0) > 0}
 							>
 								<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
-									<For each={pendingJobs()}>
+									<For each={currentJobs()}>
 										{(job) => (
 											<ImportReviewCard
 												checked={selectedJobIds().has(job.id)}
@@ -660,7 +660,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 									</For>
 								</div>
 							</Show>
-							<Show when={!pendingJobs.loading && Boolean(pendingJobs.error)}>
+							<Show when={jobsFailed()}>
 								<div class="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
 									<p class="text-destructive text-sm">
 										{t("importReviewModal.failedToLoadImportInbox")}
@@ -670,13 +670,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 									</Button>
 								</div>
 							</Show>
-							<Show
-								when={
-									!pendingJobs.loading &&
-									!pendingJobs.error &&
-									pendingJobs()?.length === 0
-								}
-							>
+							<Show when={!pendingJobs.loading && currentJobs()?.length === 0}>
 								<div class="flex min-h-48 flex-col items-center justify-center gap-1 text-center">
 									<p class="font-medium">
 										{t("importReviewModal.importInboxIsEmpty")}

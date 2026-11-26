@@ -4,6 +4,7 @@ import {
 	PendingDownloadsIndicatorCore,
 	PendingDownloadsProvider,
 } from "../pending-downloads-indicator-core";
+import { createSignal, Show } from "solid-js";
 import { renderComponent } from "./render-component";
 
 test("deduplicates pending import subscriptions and modal across multiple triggers", async ({
@@ -67,4 +68,51 @@ test("deduplicates pending import subscriptions and modal across multiple trigge
 	await expect
 		.element(page.getByTestId("shared-modal"))
 		.toHaveAttribute("data-open", "true");
+});
+
+test("ignores a count from the previous subscription owner after an ownership change", async ({
+	onTestFinished,
+}) => {
+	const previousCount = Promise.withResolvers<number>();
+	const countPending = vi
+		.fn()
+		.mockReturnValueOnce(previousCount.promise)
+		.mockResolvedValueOnce(7);
+	const [showFirst, setShowFirst] = createSignal(true);
+	const props = {
+		cancelPending: async () => ({ success: true }),
+		countPending,
+		listPending: async () => [],
+		listSources: async () => [],
+		processPending: async () => ({ success: true, processedCount: 0 }),
+		renderFallback: () => null,
+		renderModal: () => null,
+		subscribeImportEvents: (
+			_handler: unknown,
+			onConnected?: () => void | Promise<void>,
+		) => {
+			void onConnected?.();
+			return () => {};
+		},
+	};
+	onTestFinished(
+		renderComponent(() => (
+			<PendingDownloadsProvider>
+				<Show when={showFirst()}>
+					<PendingDownloadsIndicatorCore {...props} renderButton={() => null} />
+				</Show>
+				<PendingDownloadsIndicatorCore
+					{...props}
+					renderButton={({ pendingCount }) => <output>{pendingCount()}</output>}
+				/>
+			</PendingDownloadsProvider>
+		)),
+	);
+	await vi.waitFor(() => expect(countPending).toHaveBeenCalledTimes(1));
+	setShowFirst(false);
+	const count = page.getByRole("status");
+	await expect.element(count).toHaveTextContent("7");
+	previousCount.resolve(2);
+	await previousCount.promise;
+	expect(count.element().textContent).toBe("7");
 });

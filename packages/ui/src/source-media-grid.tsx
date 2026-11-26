@@ -746,20 +746,28 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const lastRow = rows[rows.length - 1];
 		return Math.max(0, activeListVirtualizer().getTotalSize() - lastRow.end);
 	};
-	const visibleListEntries = createMemo(() => {
+	const listEntriesById = createMemo(
+		() =>
+			new Map(
+				props
+					.mediaResults()
+					.map((media, index) => [media.id, { media, index }]),
+			),
+	);
+	const visibleListIds = createMemo(() => {
 		const results = props.mediaResults();
 		if (!shouldVirtualizeList()) {
-			return results.map((media, index) => ({ media, index }));
+			return results.map((media) => media.id);
 		}
 		const items = listVirtualItems();
 		if (items.length === 0) {
 			return results
 				.slice(0, Math.min(results.length, 24))
-				.map((media, index) => ({ media, index }));
+				.map((media) => media.id);
 		}
 		return items.flatMap((row) => {
 			const media = results[row.index];
-			return media ? [{ media, index: row.index }] : [];
+			return media ? [media.id] : [];
 		});
 	});
 	const listColumnCount = () =>
@@ -832,31 +840,35 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							</td>
 						</tr>
 					</Show>
-					<For each={visibleListEntries()}>
-						{(entry) => {
-							const media = entry.media;
-							const rowIndex = () => entry.index;
+					<For each={visibleListIds()}>
+						{(id) => {
+							const initialEntry = listEntriesById().get(id);
+							if (!initialEntry) return;
+							const entry = () => listEntriesById().get(id) ?? initialEntry;
+							const media = createMemo(() => entry().media);
+							const rowIndex = createMemo(() => entry().index);
 							return (
 								<TableRow
 									aria-label={t("sourceMediaGrid.valueValue", {
-										value0: String(media.fileName),
-										value1: String(media.filePath),
+										value0: String(media().fileName),
+										value1: String(media().filePath),
 									})}
 									aria-selected={
 										props.isBulkSelectMode?.()
-											? props.isSelected?.(media.id)
-											: isPreviewSelected(media.id)
+											? props.isSelected?.(id)
+											: isPreviewSelected(id)
 									}
 									class={
 										(
 											props.isBulkSelectMode?.()
-												? props.isSelected?.(media.id)
-												: isPreviewSelected(media.id)
+												? props.isSelected?.(id)
+												: isPreviewSelected(id)
 										)
 											? "bg-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-accent"
 											: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-muted"
 									}
-									data-media-id={media.id}
+									data-index={rowIndex()}
+									data-media-id={id}
 									onClick={(event) => {
 										if (!isRowClickTarget(event.currentTarget, event.target))
 											return;
@@ -867,23 +879,23 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											(bulk || isFineMediaPointer(event))
 										) {
 											event.preventDefault();
-											selectFromGesture(media, event);
+											selectFromGesture(media(), event);
 										} else if (!isPlainPrimaryClick(event)) {
 											return;
 										} else if (bulk) {
-											toggleRowSelection(media);
+											toggleRowSelection(media());
 										} else if (
 											props.onPreviewSelect &&
 											isFineMediaPointer(event)
 										) {
-											props.onPreviewSelect?.(media);
+											props.onPreviewSelect?.(media());
 										} else if (props.onOpenMediaDetail) {
-											prepareAndOpenMediaDetail(media);
+											prepareAndOpenMediaDetail(media());
 											return;
 										}
 										event.currentTarget.focus({ preventScroll: true });
 									}}
-									onContextMenu={onContextMenuHandler(media)}
+									onContextMenu={() => setContextMenuTarget(media())}
 									onDblClick={(event) => {
 										if (
 											!isRowClickTarget(event.currentTarget, event.target) ||
@@ -894,7 +906,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										) {
 											return;
 										}
-										prepareAndOpenMediaDetail(media);
+										prepareAndOpenMediaDetail(media());
 									}}
 									onKeyDown={(event) => {
 										if (
@@ -911,7 +923,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											props.onDelete
 										) {
 											event.preventDefault();
-											if (!event.repeat) props.onDelete(media.id);
+											if (!event.repeat) props.onDelete(id);
 											return;
 										}
 										if (
@@ -959,8 +971,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										) {
 											event.preventDefault();
 											if (event.repeat) return;
-											if (props.isBulkSelectMode?.()) toggleRowSelection(media);
-											else prepareAndOpenMediaDetail(media);
+											if (props.isBulkSelectMode?.())
+												toggleRowSelection(media());
+											else prepareAndOpenMediaDetail(media());
 										}
 										if (event.key === " ") event.preventDefault();
 									}}
@@ -978,12 +991,20 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											props.onSelectMedia &&
 											(event.shiftKey || event.ctrlKey || event.metaKey)
 										) {
-											selectFromGesture(media, event);
+											selectFromGesture(media(), event);
 										} else if (props.onToggleSelect || props.onSelectMedia) {
-											toggleRowSelection(media);
+											toggleRowSelection(media());
 										} else {
-											props.onPreviewSelect?.(media);
+											props.onPreviewSelect?.(media());
 										}
+									}}
+									ref={(element: HTMLTableRowElement) => {
+										createEffect(() => {
+											void rowIndex();
+											if (shouldVirtualizeList()) {
+												activeListVirtualizer().measureElement(element);
+											}
+										});
 									}}
 									tabIndex={
 										props.onPreviewSelect ||
@@ -997,16 +1018,16 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									<Show when={props.isBulkSelectMode?.()}>
 										<TableCell class="px-3 py-2">
 											<Checkbox
-												checked={props.isSelected?.(media.id) ?? false}
+												checked={props.isSelected?.(id) ?? false}
 												class="flex min-h-11 items-center justify-center sm:min-h-10"
 												data-collection-row-control=""
-												onChange={() => toggleRowSelection(media)}
+												onChange={() => toggleRowSelection(media())}
 												onClick={(event: MouseEvent) => event.stopPropagation()}
 											>
 												<CheckboxControl />
 												<CheckboxLabel class="sr-only">
 													{t("sourceMediaGrid.selectValue", {
-														value0: String(media.fileName),
+														value0: String(media().fileName),
 													})}
 												</CheckboxLabel>
 											</Checkbox>
@@ -1014,8 +1035,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									</Show>
 									<TableHead
 										aria-label={t("sourceMediaGrid.valueValue", {
-											value0: String(media.fileName),
-											value1: String(media.filePath),
+											value0: String(media().fileName),
+											value1: String(media().filePath),
 										})}
 										class="h-auto max-w-0 px-3 py-2 font-normal text-foreground sm:max-w-dialog-reading"
 										scope="row"
@@ -1023,39 +1044,39 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										<div class="min-h-10 w-full min-w-0 px-1 py-1 text-left">
 											<span
 												class="block truncate font-medium text-foreground"
-												title={media.fileName}
+												title={media().fileName}
 											>
-												{media.fileName}
+												{media().fileName}
 											</span>
 											<span
 												class="mt-0.5 block truncate text-muted-foreground text-xs"
-												title={media.filePath}
+												title={media().filePath}
 											>
-												{media.filePath}
+												{media().filePath}
 											</span>
 										</div>
 									</TableHead>
 									<TableCell class="hidden px-3 py-2 text-muted-foreground sm:table-cell">
-										{mediaTypeLabel(media.mediaType)}
+										{mediaTypeLabel(media().mediaType)}
 									</TableCell>
 									<TableCell class="hidden whitespace-nowrap px-3 py-2 text-muted-foreground md:table-cell">
-										{media.width && media.height
-											? `${media.width} × ${media.height}`
+										{media().width && media().height
+											? `${media().width} × ${media().height}`
 											: "—"}
 									</TableCell>
 									<TableCell class="hidden whitespace-nowrap px-3 py-2 text-muted-foreground md:table-cell">
-										{formatFileSize(media.fileSize)}
+										{formatFileSize(media().fileSize)}
 									</TableCell>
 									<TableCell class="hidden whitespace-nowrap px-3 py-2 text-muted-foreground lg:table-cell">
-										{media.modifiedAt.toLocaleDateString(getLocale())}
+										{media().modifiedAt.toLocaleDateString(getLocale())}
 									</TableCell>
 									<Show when={!disableContextMenu()}>
 										<TableCell class="px-2 py-2 text-right">
-											<Show when={hasContextMenuActions(media)}>
+											<Show when={hasContextMenuActions(media())}>
 												<DropdownMenu placement="bottom-end">
 													<DropdownMenuTrigger
 														aria-label={t("sourceList.actionsForValue", {
-															value0: String(media.fileName),
+															value0: String(media().fileName),
 														})}
 														class="flex size-11 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:size-8"
 														data-collection-row-control=""
@@ -1067,7 +1088,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 														<Ellipsis aria-hidden="true" size={14} />
 													</DropdownMenuTrigger>
 													<DropdownMenuContent class="workspace-theme min-w-56 max-w-80">
-														{renderMenuActionItems(media, "dropdown")}
+														{renderMenuActionItems(media(), "dropdown")}
 													</DropdownMenuContent>
 												</DropdownMenu>
 											</Show>

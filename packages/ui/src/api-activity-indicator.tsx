@@ -69,13 +69,9 @@ export function ApiActivityIndicator() {
 	});
 
 	return (
-		<Show when={isVisible()}>
-			<div
-				aria-atomic="true"
-				aria-live="polite"
-				class="pointer-events-none fixed top-16 left-1/2 z-api-indicator max-w-viewport-gutter -translate-x-1/2 rounded-md border border-border bg-popover px-3 py-2 text-popover-foreground text-sm shadow-lg md:top-3"
-			>
-				<div class="flex items-center gap-2">
+		<div aria-atomic="true" aria-live="polite">
+			<Show when={isVisible()}>
+				<div class="pointer-events-none fixed top-16 left-1/2 z-api-indicator flex max-w-viewport-gutter -translate-x-1/2 items-center gap-2 rounded-md border border-border bg-popover px-3 py-2 text-popover-foreground text-sm shadow-lg md:top-3">
 					<Show when={isOnline()}>
 						<span
 							aria-hidden="true"
@@ -92,7 +88,7 @@ export function ApiActivityIndicator() {
 						{getStatusText(isOnline(), activeCount())}
 					</span>
 				</div>
-			</div>
-		</Show>
+			</Show>
+		</div>
 	);
 }

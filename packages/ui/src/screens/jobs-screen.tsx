@@ -486,6 +486,7 @@ function JobsTable(props: {
 										aria-pressed={props.selectedJobId === job.id}
 										variant="ghost"
 										class="h-auto w-full flex-col items-start gap-0 px-2 py-2 text-left"
+										data-job-id={job.id}
 										onClick={() => props.onSelect(job)}
 										type="button"
 									>
@@ -1575,13 +1576,15 @@ export function JobsScreen(props: JobsScreenProps) {
 						buildThumbnailUrl={props.buildThumbnailUrl}
 						job={selectedJob()}
 						onBack={() => {
+							const id = selectedId();
 							setDetailOpen(false);
 							if (props.inspection) props.inspection.clear?.();
 							else setLocalSelection(null);
+							if (!id) return;
 							queueMicrotask(() =>
 								scrollRoot()
 									?.querySelector<HTMLButtonElement>(
-										"button[aria-pressed=true]",
+										`button[data-job-id="${CSS.escape(id)}"]`,
 									)
 									?.focus({ preventScroll: true }),
 							);

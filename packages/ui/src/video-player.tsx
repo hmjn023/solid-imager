@@ -14,6 +14,7 @@ import { RefreshCw } from "./workspace/icons";
 interface VideoPlayerProps {
 	src: string;
 	fileName: string;
+	onError?: () => void;
 }
 
 /** Shared playback UI for the Web and Tauri media viewers. */
@@ -75,6 +76,7 @@ export function VideoPlayer(props: VideoPlayerProps) {
 				aria-label={props.fileName}
 				controls={!controlsReady()}
 				loop={isLooping()}
+				onError={() => props.onError?.()}
 				playsinline
 				preload="metadata"
 				ref={(element) => {

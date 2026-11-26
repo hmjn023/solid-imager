@@ -36,7 +36,12 @@ export interface MediaViewerProps {
 	height?: number;
 }
 
-function AudioPreview(props: { src: string }) {
+type ResolvedMedia = {
+	source: MediaSource;
+	url: string;
+};
+
+function AudioPreview(props: { src: string; onError: () => void }) {
 	let audio: HTMLAudioElement | undefined;
 	onCleanup(() => {
 		if (!audio) return;
@@ -48,6 +53,7 @@ function AudioPreview(props: { src: string }) {
 		<audio
 			class="max-w-full"
 			controls
+			onError={props.onError}
 			preload="metadata"
 			ref={(element) => {
 				audio = element;
@@ -92,23 +98,26 @@ const PAN_DIRECTIONS = [
 
 export function MediaViewer(props: MediaViewerProps) {
 	const mediaSource = createMemo(() => props.source);
-	const [resolvedMedia, setResolvedMedia] = createSignal<{
-		source: MediaSource;
-		url: string;
-	}>();
+	const [resolvedMedia, setResolvedMedia] = createSignal<ResolvedMedia>();
 	const [viewerLoadState, setViewerLoadState] = createSignal<
 		"loading" | "ready" | "error"
 	>("loading");
 	const [retryCount, setRetryCount] = createSignal(0);
-	const mediaUrl = () => {
+	const currentMedia = () => {
 		const resolved = resolvedMedia();
-		return resolved?.source === mediaSource() ? resolved.url : undefined;
+		return resolved?.source === mediaSource() ? resolved : undefined;
 	};
 	const [zoom, setZoom] = createSignal(1);
 	const [pan, setPan] = createSignal({ x: 0, y: 0 });
 	const [isPanning, setIsPanning] = createSignal(false);
 	const [isFullscreen, setIsFullscreen] = createSignal(false);
 	const [isViewerOpen, setIsViewerOpen] = createSignal(false);
+	const handleMediaError = (media: ResolvedMedia) => {
+		if (media !== currentMedia()) return;
+		setResolvedMedia(undefined);
+		setViewerLoadState("error");
+		setIsViewerOpen(false);
+	};
 	const [panAnnouncement, setPanAnnouncement] = createSignal("");
 	const pointers = new Map<number, { x: number; y: number }>();
 	let viewer: HTMLElement | undefined;
@@ -347,7 +356,9 @@ export function MediaViewer(props: MediaViewerProps) {
 		<>
 			<section
 				class={`group/viewer media-viewer-aspect relative flex min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:aspect-auto lg:h-full ${
-					mediaSource().type === "image" && mediaUrl() ? "cursor-zoom-in" : ""
+					mediaSource().type === "image" && currentMedia()
+						? "cursor-zoom-in"
+						: ""
 				}`}
 				data-media-viewer
 				style={{
@@ -366,7 +377,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							<Skeleton class="h-full w-full rounded-none" />
 						</LoadingRegion>
 					</Match>
-					<Match when={viewerLoadState() === "error" || !mediaUrl()}>
+					<Match when={viewerLoadState() === "error" || !currentMedia()?.url}>
 						<div class="flex h-full w-full flex-col items-center justify-center gap-3 bg-muted px-6 text-center text-muted-foreground">
 							<p class="text-sm font-medium text-foreground">
 								{mediaSource().type === "video"
@@ -393,18 +404,29 @@ export function MediaViewer(props: MediaViewerProps) {
 						</div>
 					</Match>
 					<Match when={mediaSource().type === "video"}>
-						<Show when={mediaUrl()}>
-							{(url) => <VideoPlayer fileName={props.fileName} src={url()} />}
+						<Show keyed when={currentMedia()}>
+							{(media) => (
+								<VideoPlayer
+									fileName={props.fileName}
+									onError={() => handleMediaError(media)}
+									src={media.url}
+								/>
+							)}
 						</Show>
 					</Match>
 					<Match when={mediaSource().type === "audio"}>
-						<Show keyed when={mediaUrl()}>
-							{(url) => <AudioPreview src={url} />}
+						<Show keyed when={currentMedia()}>
+							{(media) => (
+								<AudioPreview
+									onError={() => handleMediaError(media)}
+									src={media.url}
+								/>
+							)}
 						</Show>
 					</Match>
 					<Match when={true}>
-						<Show when={mediaUrl()}>
-							{(url) => (
+						<Show keyed when={currentMedia()}>
+							{(media) => (
 								<button
 									aria-label={t("mediaViewer.openValueImageViewer", {
 										value0: String(props.fileName),
@@ -422,7 +444,8 @@ export function MediaViewer(props: MediaViewerProps) {
 										draggable={false}
 										fetchpriority="high"
 										height={props.height}
-										src={url()}
+										onError={() => handleMediaError(media)}
+										src={media.url}
 										width={props.width}
 									/>
 								</button>
@@ -504,18 +527,19 @@ export function MediaViewer(props: MediaViewerProps) {
 							}}
 							type="button"
 						/>
-						<Show when={mediaUrl()}>
-							{(url) => (
+						<Show keyed when={currentMedia()}>
+							{(media) => (
 								<img
 									alt={props.fileName}
 									class="media-viewer-transform pointer-events-none h-full w-full select-none object-contain motion-safe:transition-transform"
 									draggable={false}
 									height={props.height}
+									onError={() => handleMediaError(media)}
 									onLoad={() => setPan((current) => clampPan(current))}
 									ref={(element) => {
 										viewerImage = element;
 									}}
-									src={url()}
+									src={media.url}
 									style={{
 										"--media-pan-x": `${pan().x}px`,
 										"--media-pan-y": `${pan().y}px`,

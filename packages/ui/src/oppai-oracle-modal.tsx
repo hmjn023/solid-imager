@@ -53,9 +53,10 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 					}
 				} catch (err) {
 					if (!isCancelled) {
+						const message = err instanceof Error ? err.message : err;
 						setError(
-							err instanceof Error && err.message
-								? err.message
+							typeof message === "string" && message.trim()
+								? message
 								: t("characterCropModal.unknownErrorOccurred"),
 						);
 					}

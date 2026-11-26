@@ -90,7 +90,11 @@ export function PendingDownloadsIndicatorCore(
 	const isModalOpen = shared ? shared.isModalOpen : localModalOpen;
 	const setIsModalOpen = shared ? shared.setIsModalOpen : setLocalModalOpen;
 
-	const isOwner = () => !shared || shared.ownerId() === instanceId;
+	let mounted = true;
+	onCleanup(() => {
+		mounted = false;
+	});
+	const isOwner = () => mounted && (!shared || shared.ownerId() === instanceId);
 
 	if (shared) {
 		createEffect(() => {
@@ -107,7 +111,8 @@ export function PendingDownloadsIndicatorCore(
 	let refreshRequested = false;
 	let refreshInFlight: Promise<void> | undefined;
 
-	const refreshPendingCount = () => {
+	const refreshPendingCount = async () => {
+		if (!isOwner()) return;
 		refreshRequested = true;
 		if (refreshInFlight) {
 			return refreshInFlight;
@@ -119,12 +124,14 @@ export function PendingDownloadsIndicatorCore(
 				const requestEventVersion = eventVersion;
 				try {
 					const count = await props.countPending();
+					if (!isOwner()) return;
 					if (requestEventVersion === eventVersion) {
 						setPendingCount(count);
 					} else {
 						refreshRequested = true;
 					}
 				} catch (error) {
+					if (!isOwner()) return;
 					toast.error(
 						t("pendingDownloadsIndicatorCore.failedToCheckInboxValue", {
 							value0: String(getErrorMessage(error)),
@@ -148,6 +155,7 @@ export function PendingDownloadsIndicatorCore(
 		void Promise.resolve(
 			props.subscribeImportEvents(
 				(event) => {
+					if (disposed || !isOwner()) return;
 					eventVersion += 1;
 					const currentCount = pendingCount();
 					if (currentCount !== undefined) {

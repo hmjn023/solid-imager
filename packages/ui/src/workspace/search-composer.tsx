@@ -90,8 +90,9 @@ export function SearchComposer(props: SearchComposerProps) {
 					(token) => token.removable !== false,
 				);
 				if (!last) return;
+				const wasHidden = hiddenTokens().includes(last);
 				props.onRemoveToken(last);
-				if (hiddenTokens().length > 0) {
+				if (wasHidden) {
 					setRemovedAnnouncement(
 						t("searchComposer.removedFilterValueValue", {
 							value0: String(last.prefix),

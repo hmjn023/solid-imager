@@ -40,6 +40,8 @@ type SearchFiltersProps = {
 	onSearch?: () => void;
 	className?: string;
 	usePopover?: boolean;
+	filenameResetRevision?: number;
+	registerFilenameCommit?: (commit: (() => void) | undefined) => void;
 };
 
 function FilterSection<T>(props: {
@@ -150,40 +152,44 @@ export function SearchFilters(props: SearchFiltersProps) {
 	let isComposingFilename = false;
 	let filenameDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
+	const cancelFilenameQuery = () => {
+		if (filenameDebounceTimer !== undefined) {
+			clearTimeout(filenameDebounceTimer);
+			filenameDebounceTimer = undefined;
+		}
+	};
+
 	createEffect(() => {
 		const externalQuery = props.state.searchQuery;
-		if (!isComposingFilename && filenameDebounceTimer === undefined) {
+		void props.filenameResetRevision;
+		cancelFilenameQuery();
+		if (!isComposingFilename) {
 			setFilenameDraft(externalQuery);
 		}
 	});
 
 	const flushFilenameQuery = (value: string) => {
-		if (filenameDebounceTimer !== undefined) {
-			clearTimeout(filenameDebounceTimer);
-			filenameDebounceTimer = undefined;
-		}
+		cancelFilenameQuery();
 		if (props.state.searchQuery !== value) {
 			props.setState("searchQuery", value);
 		}
 	};
 
 	const scheduleFilenameQuery = (value: string) => {
-		if (filenameDebounceTimer !== undefined) {
-			clearTimeout(filenameDebounceTimer);
-		}
+		cancelFilenameQuery();
 		filenameDebounceTimer = setTimeout(() => {
-			filenameDebounceTimer = undefined;
-			if (props.state.searchQuery !== value) {
-				props.setState("searchQuery", value);
-			}
+			flushFilenameQuery(value);
 		}, FILENAME_DEBOUNCE_MS);
 	};
 
+	const commitFilename = () => {
+		if (!isComposingFilename) flushFilenameQuery(filenameDraft());
+	};
+	const registerFilenameCommit = props.registerFilenameCommit;
+	registerFilenameCommit?.(commitFilename);
 	onCleanup(() => {
-		if (filenameDebounceTimer !== undefined) {
-			clearTimeout(filenameDebounceTimer);
-			filenameDebounceTimer = undefined;
-		}
+		cancelFilenameQuery();
+		registerFilenameCommit?.(undefined);
 	});
 
 	const addTag = (tagName: string) => {
@@ -217,9 +223,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 			<TextField class="space-y-2">
 				<TextFieldLabel>{t("searchFilters.filenameSearch")}</TextFieldLabel>
 				<TextFieldInput
-					onBlur={() => flushFilenameQuery(filenameDraft())}
+					onBlur={commitFilename}
 					onCompositionStart={() => {
 						isComposingFilename = true;
+						cancelFilenameQuery();
 					}}
 					onCompositionEnd={(e) => {
 						isComposingFilename = false;

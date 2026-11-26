@@ -4,7 +4,10 @@ import {
 	getSearchConditionCount,
 	getSearchExecutionKind,
 } from "../search-execution";
-import type { SearchState } from "@solid-imager/core/search";
+import {
+	encodeSearchSession,
+	type SearchState,
+} from "@solid-imager/core/search";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
 import ChevronDown from "lucide-solid/icons/chevron-down";
@@ -289,7 +292,24 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	const [pendingRemovals, setPendingRemovals] = createSignal<SearchToken[]>([]);
 	const [filterOpen, setFilterOpen] = createSignal(false);
 	const [sortOpen, setSortOpen] = createSignal(false);
+	let filtersOnOpen: string | undefined;
+	let commitFilenameDraft: (() => void) | undefined;
 	let commitSemanticDraft: (() => boolean) | undefined;
+	const applyAndCloseFilters = () => {
+		if (!filterOpen()) return;
+		batch(() => {
+			if (
+				state().mode === "simple" &&
+				getSearchExecutionKind(state()) === "ordinary"
+			) {
+				commitFilenameDraft?.();
+			}
+			commitSemanticDraft?.();
+		});
+		const changed = encodeSearchSession(state()) !== filtersOnOpen;
+		setFilterOpen(false);
+		if (changed) props.onSearch();
+	};
 	const tokens = createMemo(() => {
 		const removalIds = new Set(pendingRemovals().map(tokenId));
 		return [
@@ -509,10 +529,12 @@ export function SearchToolbar(props: SearchToolbarProps) {
 
 				<Popover
 					onOpenChange={(open) => {
-						if (!open && commitSemanticDraft?.()) {
-							props.onSearch();
+						if (open) {
+							filtersOnOpen = encodeSearchSession(state());
+							setFilterOpen(true);
+						} else {
+							applyAndCloseFilters();
 						}
-						setFilterOpen(open);
 					}}
 					open={filterOpen()}
 					placement="bottom-end"
@@ -551,6 +573,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								class="min-h-11 px-2 text-xs sm:h-7 sm:min-h-7"
 								onClick={() => {
 									clearPresetFilters();
+									filtersOnOpen = encodeSearchSession(state());
 									props.onSearch();
 								}}
 								size="sm"
@@ -569,6 +592,9 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								}}
 								onSelectSource={props.onSelectSource}
 								presetClient={props.presetClient}
+								registerFilenameCommit={(commit) => {
+									commitFilenameDraft = commit;
+								}}
 								registerSemanticCommit={(commit) => {
 									commitSemanticDraft = commit;
 								}}
@@ -582,12 +608,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						<div class="flex shrink-0 justify-end gap-2 border-border border-t bg-card p-3">
 							<Button
 								class="min-h-11 sm:min-h-9"
-								onClick={() => {
-									if (commitSemanticDraft?.()) {
-										props.onSearch();
-									}
-									setFilterOpen(false);
-								}}
+								onClick={applyAndCloseFilters}
 								size="sm"
 								variant="outline"
 							>
