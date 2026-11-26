@@ -142,7 +142,7 @@ export function SortControls(props: SortControlsProps) {
 						</Label>
 						<Show when={props.onClearSimilarity}>
 							<Button
-								class="h-7 px-2 text-xs"
+								class="min-h-11 px-2 text-xs sm:h-7 sm:min-h-7"
 								onClick={props.onClearSimilarity}
 								size="sm"
 								variant="ghost"

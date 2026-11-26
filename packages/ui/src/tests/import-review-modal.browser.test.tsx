@@ -44,6 +44,49 @@ const JOBS: PendingImportJob[] = [
 	},
 ];
 
+test("retries failed inbox and destination requests inside the dialog", async ({
+	onTestFinished,
+}) => {
+	const listPending = vi
+		.fn<ImportReviewModalProps["listPending"]>()
+		.mockRejectedValueOnce(new Error("Inbox failure"))
+		.mockResolvedValueOnce(JOBS);
+	const listSources = vi
+		.fn<ImportReviewModalProps["listSources"]>()
+		.mockRejectedValueOnce(new Error("Sources failure"))
+		.mockResolvedValueOnce(SOURCES);
+	onTestFinished(
+		renderComponent(() => (
+			<ImportReviewModal
+				cancelPending={vi.fn()}
+				isOpen
+				listPending={listPending}
+				listSources={listSources}
+				onClose={vi.fn()}
+				onImportCompleted={vi.fn()}
+				processPending={vi.fn()}
+			/>
+		)),
+	);
+	const destinationError = page.getByRole("alert").filter({
+		hasText: t("importReviewModal.failedToLoadSources"),
+	});
+	const inboxError = page.getByText(
+		t("importReviewModal.failedToLoadImportInbox"),
+	);
+	await expect.element(destinationError).toBeVisible();
+	await expect.element(inboxError).toBeVisible();
+
+	const retry = { name: t("actions.retry"), exact: true };
+	await destinationError.getByRole("button", retry).click();
+	await expect.element(destinationError).not.toBeInTheDocument();
+	await page.getByRole("button", retry).click();
+	await expect.element(inboxError).not.toBeInTheDocument();
+	await expect.element(page.getByText("Landscape.png")).toBeVisible();
+	expect(listPending).toHaveBeenCalledTimes(2);
+	expect(listSources).toHaveBeenCalledTimes(2);
+});
+
 test("chooses a local import destination when the remembered default is remote", async ({
 	onTestFinished,
 }) => {

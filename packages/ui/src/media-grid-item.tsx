@@ -126,7 +126,7 @@ export function MediaGridTile(
 	return (
 		<LinkComponent
 			class={cn(
-				"group relative block aspect-landscape overflow-hidden rounded-md bg-muted outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring",
+				"group relative block aspect-landscape w-full overflow-hidden rounded-md bg-muted text-start outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring",
 				props.isSelected
 					? "ring-2 ring-primary"
 					: props.isPreviewSelected
@@ -166,7 +166,7 @@ export function MediaGridTile(
 					alt: props.title,
 					class: cn(
 						"h-full w-full object-cover",
-						"transition duration-200 group-hover:scale-105 motion-reduce:transition-none",
+						"transition duration-200 motion-safe:group-hover:scale-105 motion-reduce:transition-none",
 						props.thumbnailClass,
 					),
 					height: props.height,

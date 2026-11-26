@@ -14,7 +14,15 @@ import {
 } from "@solid-imager/ui/source-media-page";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
-import { type Accessor, createSignal, type JSX, onMount, Show } from "solid-js";
+import {
+	type Accessor,
+	createEffect,
+	createSignal,
+	type JSX,
+	on,
+	onMount,
+	Show,
+} from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { createServerTransport } from "~/hooks/use-media-source-events";
@@ -104,6 +112,20 @@ export function SourceMediaPageController(
 		setIsBulkSelectMode(false);
 		selection.clear();
 	};
+	createEffect(
+		on(
+			mediaSourceId,
+			() => {
+				handleCancelSelect();
+			},
+			{ defer: true },
+		),
+	);
+	createEffect(() => {
+		if (visibleMediaIds().length === 0 && isBulkSelectMode()) {
+			setIsBulkSelectMode(false);
+		}
+	});
 
 	// 一括操作成功時のコールバック
 	const handleBulkSuccess = (partial: boolean, succeededMediaIds: string[]) => {

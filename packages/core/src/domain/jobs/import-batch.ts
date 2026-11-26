@@ -7,6 +7,20 @@ export const importBatchContextSchema = z.object({
 });
 export type ImportBatchContext = z.infer<typeof importBatchContextSchema>;
 
+export const importWorkProgressSchema = z.object({
+	settled: z.number().int().nonnegative(),
+	total: z.number().int().nonnegative(),
+	completionRatio: z
+		.number()
+		.min(0)
+		.max(1)
+		.optional()
+		.describe(
+			"Target progress, with a fixed share reserved for each possible stage.",
+		),
+});
+export type ImportWorkProgress = z.infer<typeof importWorkProgressSchema>;
+
 export function readImportBatch(job: Pick<Job, "payload" | "parentId">) {
 	if (!job.parentId) return undefined;
 	let payload = job.payload;

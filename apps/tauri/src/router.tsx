@@ -18,7 +18,10 @@ export function createAppRouter() {
 		history: createHashHistory(),
 		context: { queryClient },
 		scrollRestoration: true,
-		defaultPreload: "intent",
+		// Loader-heavy routes opt into intent preloading individually. Keeping the
+		// global default disabled avoids stale matches from aborted preloads and
+		// matches the web router.
+		defaultPreload: false,
 		defaultPreloadStaleTime: 0,
 		defaultPendingComponent: RoutePendingScreen,
 		defaultErrorComponent: RouteErrorScreen,

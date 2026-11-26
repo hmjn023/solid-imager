@@ -47,7 +47,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 				} catch (err) {
 					if (!isCancelled) {
 						setError(
-							err instanceof Error
+							err instanceof Error && err.message
 								? err.message
 								: t("characterCropModal.unknownErrorOccurred"),
 						);
@@ -109,7 +109,10 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 
 					<Show when={error()}>
 						<div class="rounded-md bg-error p-4 text-destructive" role="alert">
-							{t("useManagerPage.errorValue", { value0: String(error()) })}
+							<h4 class="font-semibold">
+								{t("aiTaggingModal.failedToExtractTags")}
+							</h4>
+							<p class="mt-1 text-sm">{error()}</p>
 						</div>
 					</Show>
 

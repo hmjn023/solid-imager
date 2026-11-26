@@ -3,6 +3,7 @@ import {
 	type IJobRepository,
 } from "@solid-imager/core/jobs";
 import { logger } from "~/infrastructure/logger";
+import { listImportWorkProgress } from "~/infrastructure/services/job-batch-targets";
 import { notifyJob } from "./state-notifications";
 
 export async function notifyBatchState(
@@ -21,7 +22,11 @@ export async function notifyBatchState(
 			notifyJob("job-cancelled", { jobId: id, message: "Batch cancelled" });
 		else {
 			const progress = jobProgressSchema.safeParse(job.payload);
-			if (progress.success && progress.data)
+			if (progress.success && progress.data) {
+				const importWork =
+					job.type === "import_batch_parent"
+						? (await listImportWorkProgress([id])).get(id)
+						: undefined;
 				notifyJob("job-progress", {
 					jobId: id,
 					...options,
@@ -29,7 +34,9 @@ export async function notifyBatchState(
 					total: progress.data.total,
 					failed: progress.data.failed,
 					cancelled: progress.data.cancelled,
+					...(importWork && { importWork }),
 				});
+			}
 		}
 	} catch (err) {
 		logger.error({ err, jobId: id }, "Failed to notify batch state");

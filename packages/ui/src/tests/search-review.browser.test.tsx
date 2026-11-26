@@ -172,3 +172,91 @@ test("explains the UTC calendar used by date search", async ({
 		.element(page.getByText(t("proSearchBuilder.utcDateHint")))
 		.toBeVisible();
 });
+
+test("measures mobile bulk rows and preserves DOM for rows that stay in the virtual range", async ({
+	onTestFinished,
+}) => {
+	await page.viewport(390, 640);
+	const mediaResults: Media[] = Array.from({ length: 140 }, (_, index) => ({
+		id: `media-${index}`,
+		mediaSourceId: "source",
+		filePath: `image-${index}.png`,
+		fileName: `image-${index}.png`,
+		mediaType: "image",
+		width: 100,
+		height: 100,
+		fileSize: 100,
+		description: null,
+		createdAt: new Date(0),
+		modifiedAt: new Date(0),
+		indexedAt: new Date(0),
+		status: "active",
+	}));
+	const [results, setResults] = createSignal(mediaResults.slice(0, 99));
+	const [bulk, setBulk] = createSignal(false);
+	onTestFinished(
+		renderComponent(() => (
+			<div
+				class="h-72 overflow-y-auto"
+				data-media-scroll
+				data-testid="list-scroll"
+			>
+				<SourceMediaGrid
+					enableVirtualization
+					isBulkSelectMode={bulk}
+					isFetchingNextPage={false}
+					mediaResults={results}
+					mediaSourceId={() => "source"}
+					onOpenMediaDetail={() => {}}
+					renderItem={() => null}
+					scrollMode="element"
+					setLoadMoreRef={() => {}}
+					state={() => ({
+						phase: "data",
+						fetchState: "idle",
+						data: results(),
+						error: undefined,
+					})}
+					viewMode={() => "list"}
+				/>
+			</div>
+		)),
+	);
+	const scroll = page.getByTestId("list-scroll").element();
+	const rows = () => [
+		...scroll.querySelectorAll<HTMLTableRowElement>("tr[data-index]"),
+	];
+	const retainedRow = () =>
+		scroll.querySelector<HTMLTableRowElement>('tr[data-media-id="media-4"]');
+	await expect.poll(() => rows().length).toBe(99);
+	const row = retainedRow();
+	row?.focus();
+	expect(document.activeElement).toBe(row);
+
+	setResults(mediaResults.slice(0, 100));
+	await expect.poll(() => rows().length).toBe(100);
+	expect(retainedRow()).toBe(row);
+	setResults(mediaResults);
+	await expect.poll(() => rows().length).toBeLessThan(30);
+	expect(retainedRow()).toBe(row);
+
+	setBulk(true);
+	await expect
+		.poll(() => row?.getBoundingClientRect().height)
+		.toBeGreaterThan(56);
+	const lastIndexBeforeScroll = rows().at(-1)?.dataset.index;
+	scroll.scrollTop = 300;
+	await expect
+		.poll(() => rows().at(-1)?.dataset.index)
+		.not.toBe(lastIndexBeforeScroll);
+	expect(retainedRow()).toBe(row);
+	expect(document.activeElement).toBe(row);
+
+	scroll.scrollTop = 1500;
+	await expect.poll(() => Number(rows()[0]?.dataset.index)).toBeGreaterThan(10);
+	const firstIndex = Number(rows()[0]?.dataset.index);
+	const spacerHeight = scroll
+		.querySelector("tbody tr[aria-hidden] div")
+		?.getBoundingClientRect().height;
+	expect(spacerHeight).toBeGreaterThan(firstIndex * 56);
+});

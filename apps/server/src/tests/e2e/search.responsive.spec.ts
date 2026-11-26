@@ -1,5 +1,7 @@
 import type { Page } from "@playwright/test";
-import { E2E_PRIMARY_FILE_NAME } from "./support/fixture";
+import { apiPathPattern, apiRequest } from "./support/api";
+import { expectDomPreserved } from "./support/dom";
+import { E2E_PRIMARY_FILE_NAME, sourcePath } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
@@ -10,6 +12,82 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	);
 	expect(overflow).toBeLessThanOrEqual(1);
 }
+
+test("loads a preset without optional settings in the source list", async ({
+	page,
+	request,
+}, testInfo) => {
+	const presetName = `E2E preset ${testInfo.project.name}`;
+	const response = await apiRequest(request, "presets/create", {
+		name: presetName,
+		value: { type: "group", operator: "and", children: [] },
+	});
+	expect(response.ok(), await response.text()).toBe(true);
+	const { id } = await response.json();
+
+	try {
+		await page.goto(sourcePath());
+		await waitForAppHydration(page);
+		await page.getByRole("button", { name: /^検索フィルター、/ }).click();
+		const filters = page.getByRole("dialog", { name: "検索フィルター" });
+		await filters.getByRole("button", { name: "プリセットを選択..." }).click();
+		await expect(page.getByRole("option", { name: presetName })).toBeVisible();
+	} finally {
+		await apiRequest(request, "presets/delete", { id });
+	}
+});
+
+test("keeps search filters available when presets fail to load", async ({
+	page,
+	browserHealth,
+}) => {
+	const presetsEndpoint = apiPathPattern("presets/list");
+	const releaseFailure = Promise.withResolvers<void>();
+	browserHealth.allowResponseFailure(presetsEndpoint);
+	browserHealth.allowRequestFailure(presetsEndpoint, "net::ERR_ABORTED");
+	browserHealth.allowConsole(
+		"Failed to load resource: the server responded with a status of 503",
+	);
+	await page.route(
+		presetsEndpoint,
+		async (route) => {
+			await releaseFailure.promise;
+			await route.fulfill({
+				status: 503,
+				contentType: "text/plain",
+				body: "Service Unavailable",
+			});
+		},
+		{ times: 1 },
+	);
+	await page.goto("/search");
+	await waitForAppHydration(page);
+	await page.getByRole("button", { name: /^検索フィルター、/ }).click();
+	const filters = page.getByRole("dialog", { name: "検索フィルター" });
+	const status = filters.getByRole("status");
+	try {
+		await expect(status).toHaveText("");
+		await expectDomPreserved({ status }, async () => {
+			releaseFailure.resolve();
+			await expect(status).toHaveText("プリセットを取得できませんでした");
+			await expect(status).toBeVisible();
+		});
+	} finally {
+		releaseFailure.resolve();
+	}
+	const filename = filters.getByRole("textbox", { name: "ファイル名検索" });
+	await filename.fill(E2E_PRIMARY_FILE_NAME);
+
+	await filters.getByRole("button", { name: "再試行" }).click();
+	await expect(
+		filters.getByRole("button", { name: "プリセットを選択..." }),
+	).toBeVisible();
+	await expect(status).toHaveText("");
+	await expect(filename).toHaveValue(E2E_PRIMARY_FILE_NAME);
+	await filters.getByRole("button", { name: "閉じる", exact: true }).click();
+	await expect(filters).toBeHidden();
+	await expect(page.getByText("1件", { exact: true })).toBeVisible();
+});
 
 test("search keeps controls usable without horizontal overflow", async ({
 	page,
@@ -69,7 +147,11 @@ test("search keeps controls usable without horizontal overflow", async ({
 		0,
 	);
 	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
-	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
+	const closeFilters = filterDialog.getByRole("button", {
+		name: "閉じる",
+		exact: true,
+	});
+	await closeFilters.click();
 	await expect(filterDialog).toBeHidden();
 	await expect(page.getByText("1件", { exact: true })).toBeVisible();
 	await expect(primaryResult).toBeVisible();
@@ -97,10 +179,9 @@ test("search keeps controls usable without horizontal overflow", async ({
 	await expect(lastFilter).toBeFocused();
 	// Leave the combobox's suggestions before activating the footer.
 	await lastFilter.press("Tab");
-	const apply = filterDialog.getByRole("button", { name: "適用", exact: true });
-	await expect(apply).toBeInViewport();
+	await expect(closeFilters).toBeInViewport();
 	await expectNoHorizontalOverflow(page);
-	await apply.click();
+	await closeFilters.click();
 	await expect(filterDialog).toBeHidden();
 	await expect
 		.poll(async () =>

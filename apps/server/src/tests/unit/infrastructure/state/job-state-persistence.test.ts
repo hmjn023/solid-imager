@@ -1,4 +1,5 @@
 import { call } from "@orpc/server";
+import { notifyBatchState } from "~/infrastructure/events/batch-state";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { randomUUID } from "node:crypto";
 import {
@@ -411,7 +412,12 @@ describe("persisted import, attempt and batch transitions", () => {
 			expect.objectContaining({
 				id: batchId,
 				type: "import_batch_parent",
-				progress: { processed: 0, failed: 0, total: 3 },
+				progress: {
+					processed: 0,
+					failed: 0,
+					total: 3,
+					importWork: { settled: 0, total: 3, completionRatio: 0 },
+				},
 			}),
 		]);
 		expect(await call(jobsRouter.types, undefined)).toEqual([
@@ -1064,6 +1070,120 @@ describe("persisted import, attempt and batch transitions", () => {
 			finishedAt: expect.any(Date),
 			payload: { total: 2, processed: 2, failed: 0 },
 		});
+	});
+
+	it("reports settled import work before the target is finished", async () => {
+		const parent = await database.transaction((tx) =>
+			createImportBatch(tx, SOURCE_ID, [
+				{ label: "image", work: { type: "processMedia" } },
+			]),
+		);
+		const [preparation] = await repositories.job.claimPending(1);
+		await repositories.job.create({
+			type: "auto_tagging",
+			parentId: preparation.parentId,
+			payload: preparation.payload,
+		});
+		await repositories.job.finishAttempt(
+			preparation.id,
+			preparation.attemptCount ?? 0,
+			{
+				status: "completed",
+				result: null,
+			},
+		);
+
+		const progress = {
+			processed: 0,
+			failed: 0,
+			total: 1,
+			importWork: { settled: 1, total: 2, completionRatio: 1 / 6 },
+		};
+		expect(await call(jobsRouter.get, { id: parent.id })).toMatchObject({
+			status: "in_progress",
+			progress,
+		});
+		expect(await call(jobsRouter.list, { limit: 1, offset: 0 })).toMatchObject({
+			items: [{ id: parent.id, progress }],
+		});
+	});
+
+	it("keeps overall progress when metadata processing queues more work", async () => {
+		const parent = await database.transaction((tx) =>
+			createImportBatch(tx, SOURCE_ID, [
+				...Array.from({ length: 8 }, (_, index) => ({
+					label: `duplicate ${index}`,
+					skipped: true,
+					work: { type: "downloadImage" },
+				})),
+				{ label: "new image", work: { type: "downloadImage" } },
+			]),
+		);
+		const [download] = await repositories.job.claimPending(1);
+		await repositories.job.create({
+			type: "processMedia",
+			parentId: download.parentId,
+			payload: download.payload,
+		});
+		await repositories.job.finishAttempt(
+			download.id,
+			download.attemptCount ?? 0,
+			{
+				status: "completed",
+				result: null,
+			},
+		);
+		const before = await call(jobsRouter.get, { id: parent.id });
+		expect(before.progress?.importWork).toEqual({
+			settled: 1,
+			total: 2,
+			completionRatio: 49 / 54,
+		});
+
+		const [processing] = await repositories.job.claimPending(1);
+		for (const type of [
+			"auto_tagging",
+			"extract_embedding_vector",
+			"extract_ccip_vector",
+		]) {
+			await repositories.job.create({
+				type,
+				parentId: processing.parentId,
+				payload: processing.payload,
+			});
+		}
+		const afterScheduling = await call(jobsRouter.get, { id: parent.id });
+		expect(afterScheduling.progress?.importWork).toEqual({
+			settled: 1,
+			total: 5,
+			completionRatio: 49 / 54,
+		});
+
+		await repositories.job.finishAttempt(
+			processing.id,
+			processing.attemptCount ?? 0,
+			{
+				status: "completed",
+				result: null,
+			},
+		);
+		const afterCompletion = await call(jobsRouter.get, { id: parent.id });
+		const completion = { settled: 2, total: 5, completionRatio: 50 / 54 };
+		expect(afterCompletion.progress?.importWork).toEqual(completion);
+		const onEvent = vi.fn();
+		const unsubscribe = RealtimeEventBus.subscribeToJobs(onEvent);
+		try {
+			await notifyBatchState(repositories.job, parent.id);
+			expect(onEvent).toHaveBeenCalledWith({
+				event: "job-progress",
+				data: expect.objectContaining({
+					jobId: parent.id,
+					importWork: completion,
+				}),
+			});
+		} finally {
+			unsubscribe();
+		}
 	});
 
 	it("rolls back stale child cancellation when its parent cannot be finalized", async () => {

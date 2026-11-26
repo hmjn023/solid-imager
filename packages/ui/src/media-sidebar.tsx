@@ -86,14 +86,17 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [editingTags, setEditingTags] = createSignal(false);
 	const [tagsDirty, setTagsDirty] = createSignal(false);
+	const [relationsDirty, setRelationsDirty] = createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
+	const [isSavingDescription, setIsSavingDescription] = createSignal(false);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
 	);
 	const descriptionDirty = () =>
 		isEditingDescription() &&
 		descriptionValue() !== (props.media.description ?? "");
-	const hasUnsavedChanges = () => descriptionDirty() || tagsDirty();
+	const hasUnsavedChanges = () =>
+		descriptionDirty() || tagsDirty() || relationsDirty();
 	const navigationBlocker = useBlocker({
 		shouldBlockFn: hasUnsavedChanges,
 		enableBeforeUnload: hasUnsavedChanges,
@@ -119,6 +122,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const genInfo = createMemo(() => props.media.generationInfo);
 
 	const handleSaveDescription = async () => {
+		if (isSavingDescription()) return;
+		setIsSavingDescription(true);
 		try {
 			await props.onDescriptionUpdate(descriptionValue());
 			setIsEditingDescription(false);
@@ -129,10 +134,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					value0: String(getErrorMessage(error)),
 				}),
 			);
+		} finally {
+			setIsSavingDescription(false);
 		}
 	};
 
 	const handleCancelEdit = () => {
+		if (isSavingDescription()) return;
 		setDescriptionValue(props.media.description || "");
 		setIsEditingDescription(false);
 	};
@@ -171,6 +179,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						when={isEditingDescription()}
 					>
 						<TextField
+							disabled={isSavingDescription()}
 							onChange={setDescriptionValue}
 							value={descriptionValue()}
 						>
@@ -179,22 +188,26 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							</TextFieldLabel>
 							<TextFieldTextArea
 								class="scroll-mb-24 text-base sm:text-sm"
+								disabled={isSavingDescription()}
 								placeholder={t("mediaSidebar.enterDescription")}
 								rows={6}
 							/>
 						</TextField>
 						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
 							<Button
+								aria-busy={isSavingDescription()}
 								class="min-h-11 w-full lg:min-h-8 lg:w-auto"
+								disabled={isSavingDescription()}
 								onClick={() => {
 									void handleSaveDescription();
 								}}
 								size="sm"
 							>
-								{t("actions.save")}
+								{isSavingDescription() ? t("status.saving") : t("actions.save")}
 							</Button>
 							<Button
 								class="min-h-11 w-full lg:min-h-8 lg:w-auto"
+								disabled={isSavingDescription()}
 								onClick={handleCancelEdit}
 								size="sm"
 								variant="outline"
@@ -264,6 +277,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							props.isAllCharactersLoading ||
 							props.isUpdating?.()
 						}
+						onDirtyChange={setRelationsDirty}
 						onUpdate={props.onUpdate}
 						groups={{
 							projects: {
@@ -513,7 +527,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							{t(
 								tagsDirty()
 									? "mediaTagEditor.leaveWithoutSaving"
-									: "mediaSidebar.youHaveUnsavedChangesToThisDescriptionLeaveWithout",
+									: relationsDirty()
+										? "relationsEditor.yourRelationChangesHaveNotBeenSaved"
+										: "mediaSidebar.youHaveUnsavedChangesToThisDescriptionLeaveWithout",
 							)}
 						</AlertDialogDescription>
 					</AlertDialogHeader>

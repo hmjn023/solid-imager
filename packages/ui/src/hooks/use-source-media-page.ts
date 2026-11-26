@@ -133,6 +133,7 @@ export type UseSourceMediaPageOptions = {
 	sortOrder: () => "asc" | "desc";
 	itemsPerPage?: number;
 	onThumbnailReady?: (mediaId: string) => void;
+	onViewJobs?: () => void;
 	isSearchStateRestored?: Accessor<boolean>;
 	commitSearchHistory?: () => void;
 	historyEntryKey?: Accessor<string | undefined>;
@@ -210,11 +211,25 @@ export function useSourceMediaPage(
 		sortOrder,
 		itemsPerPage = SOURCE_MEDIA_ITEMS_PER_PAGE,
 		onThumbnailReady,
+		onViewJobs,
 		isSearchStateRestored = () => true,
 		commitSearchHistory,
 		historyEntryKey,
 		enableVirtualization = false,
 	} = options;
+
+	const navigateToJobs = () => {
+		if (onViewJobs) {
+			onViewJobs();
+			return;
+		}
+		if (typeof window === "undefined") return;
+		if (window.location.hash.startsWith("#/")) {
+			window.location.hash = "#/jobs";
+			return;
+		}
+		window.location.assign("/jobs");
+	};
 
 	const id = mediaSourceId;
 	const initialSearch = useInitialSearch()?.initial;
@@ -578,7 +593,13 @@ export function useSourceMediaPage(
 			}
 
 			await actions.startDownloadJobs(id() || "", items);
-			toast.success(t("useSourceMediaPage.bulkDownloadStarted"));
+			toast.success(t("useSourceMediaPage.bulkDownloadStarted"), {
+				duration: 7_000,
+				action: {
+					label: t("actions.viewJobs"),
+					onClick: navigateToJobs,
+				},
+			});
 		} catch (error) {
 			toast.error(
 				t("useSourceMediaPage.failedToStartDownloadValue", {

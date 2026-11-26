@@ -101,6 +101,8 @@ function CommaSeparatedTextarea(props: {
 	id: string;
 	value: string[] | undefined;
 	placeholder?: string;
+	"aria-describedby"?: string;
+	"aria-invalid"?: boolean;
 	onChange: (value: string[]) => void;
 	onBlur: () => void;
 }) {
@@ -115,6 +117,8 @@ function CommaSeparatedTextarea(props: {
 
 	return (
 		<Textarea
+			aria-describedby={props["aria-describedby"]}
+			aria-invalid={props["aria-invalid"]}
 			id={props.id}
 			onBlur={() => {
 				setDraft((props.value ?? []).join(", "));
@@ -235,6 +239,42 @@ const SETTINGS_CATEGORIES = [
 	},
 ] as const;
 
+type SettingsCategoryValue = (typeof SETTINGS_CATEGORIES)[number]["value"];
+
+function fieldPathToCategory(path: string): SettingsCategoryValue | null {
+	if (path.startsWith("jobs.")) return "jobs";
+	if (path.startsWith("ai.")) return "ai";
+	if (path.startsWith("downloads.")) return "downloads";
+	if (path.startsWith("storage.")) return "storage";
+	if (path.startsWith("media.") || path.startsWith("tagDictionary."))
+		return "media";
+	if (path === "mcp" || path.startsWith("mcp.")) return "mcp";
+	if (path.startsWith("logging.")) return "logging";
+	return null;
+}
+
+function getInvalidCategories(
+	fieldMeta: Record<string, { errors?: readonly unknown[] } | undefined>,
+	onChangeError: unknown,
+): Set<SettingsCategoryValue> {
+	const categories = new Set<SettingsCategoryValue>();
+	for (const [path, meta] of Object.entries(fieldMeta)) {
+		if (meta?.errors && meta.errors.length > 0) {
+			const category = fieldPathToCategory(path);
+			if (category) categories.add(category);
+		}
+	}
+	if (onChangeError && typeof onChangeError === "object") {
+		for (const [path, issues] of Object.entries(onChangeError)) {
+			if (Array.isArray(issues) && issues.length > 0) {
+				const category = fieldPathToCategory(path);
+				if (category) categories.add(category);
+			}
+		}
+	}
+	return categories;
+}
+
 function toFormValues(data: AppConfig): AppConfigFormValues {
 	return data;
 }
@@ -265,7 +305,7 @@ export type ConfigScreenProps = {
 export function ConfigScreen(props: ConfigScreenProps) {
 	const queryClient = useQueryClient();
 	const [isDesktop, setIsDesktop] = createSignal(true);
-	const [activeTab, setActiveTab] = createSignal("jobs");
+	const [activeTab, setActiveTab] = createSignal("interface");
 
 	onMount(() => {
 		const media = window.matchMedia("(min-width: 1024px)");
@@ -280,6 +320,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const sectionClass = "min-w-0 space-y-5 border-b border-border pb-8";
 	let baseline = props.data;
+	const [baselineAi, setBaselineAi] = createSignal(props.data.ai);
 	const form = createForm(() => ({
 		defaultValues: toFormValues(props.data),
 		validators: {
@@ -300,6 +341,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					});
 				}
 				baseline = saved;
+				setBaselineAi(saved.ai);
 				form.reset(toFormValues(baseline));
 				props.onSubmitSuccess?.();
 				toast.success(t("configScreen.configurationSavedSuccessfully"));
@@ -339,6 +381,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 		const data = props.data;
 		if (!form.state.isDirty) {
 			baseline = data;
+			setBaselineAi(data.ai);
 			form.reset(toFormValues(data));
 		}
 	});
@@ -360,29 +403,49 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					orientation={isDesktop() ? "vertical" : "horizontal"}
 					value={activeTab()}
 				>
-					<TabsList
-						aria-label={t("configScreen.settingsCategories")}
-						class="sticky top-0 z-10 flex h-auto w-full min-w-0 flex-nowrap items-center justify-start gap-1 overflow-x-auto rounded-none border-border border-b bg-background py-1.5 lg:top-5 lg:flex-col lg:items-stretch lg:self-start lg:overflow-visible lg:border-b-0 lg:bg-transparent lg:py-0"
+					<form.Subscribe
+						selector={(state) =>
+							getInvalidCategories(state.fieldMeta, state.errorMap.onChange)
+						}
 					>
-						<For each={SETTINGS_CATEGORIES}>
-							{(category) => {
-								const Icon = category.icon;
-								return (
-									<TabsTrigger
-										class="min-h-11 shrink-0 gap-2.5 whitespace-nowrap rounded-md px-2.5 text-muted-foreground shadow-none hover:bg-muted data-[selected]:bg-accent data-[selected]:text-primary data-[selected]:hover:bg-accent lg:min-h-10 lg:w-full lg:justify-start lg:whitespace-normal"
-										type="button"
-										value={category.value}
-									>
-										<CategoryLabel
-											description={category.description}
-											icon={<Icon aria-hidden="true" size={16} />}
-											label={category.label}
-										/>
-									</TabsTrigger>
-								);
-							}}
-						</For>
-					</TabsList>
+						{(invalidCategories) => (
+							<TabsList
+								aria-label={t("configScreen.settingsCategories")}
+								class="sticky top-0 z-10 flex h-auto w-full min-w-0 flex-nowrap items-center justify-start gap-1 overflow-x-auto rounded-none border-border border-b bg-background py-1.5 lg:top-5 lg:flex-col lg:items-stretch lg:self-start lg:overflow-visible lg:border-b-0 lg:bg-transparent lg:py-0"
+							>
+								<For each={SETTINGS_CATEGORIES}>
+									{(category) => {
+										const Icon = category.icon;
+										const hasError = () =>
+											invalidCategories().has(category.value);
+										return (
+											<TabsTrigger
+												aria-invalid={hasError() || undefined}
+												class="min-h-11 shrink-0 gap-2.5 whitespace-nowrap rounded-md px-2.5 text-muted-foreground shadow-none hover:bg-muted data-[selected]:bg-accent data-[selected]:text-primary data-[selected]:hover:bg-accent lg:min-h-10 lg:w-full lg:justify-start lg:whitespace-normal"
+												type="button"
+												value={category.value}
+											>
+												<CategoryLabel
+													description={category.description}
+													icon={<Icon aria-hidden="true" size={16} />}
+													label={category.label}
+												/>
+												<Show when={hasError()}>
+													<span
+														aria-hidden="true"
+														class="ml-auto size-2 shrink-0 rounded-full bg-destructive"
+													/>
+													<span class="sr-only">
+														{t("configScreen.hasValidationErrors")}
+													</span>
+												</Show>
+											</TabsTrigger>
+										);
+									}}
+								</For>
+							</TabsList>
+						)}
+					</form.Subscribe>
 
 					<div class="min-w-0 space-y-6">
 						<TabsContent value="interface">
@@ -406,6 +469,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												aria-describedby={`${field().name}-error`}
 												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
+												min={1}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
 													field().handleChange(
@@ -440,6 +504,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												aria-describedby={`${field().name}-error`}
 												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
+												min={1}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
 													field().handleChange(
@@ -472,6 +537,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												aria-describedby={`${field().name}-error`}
 												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
+												min={100}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
 													field().handleChange(
@@ -550,13 +616,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									{t("configScreen.aIService")}
 								</legend>
 								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted px-3 py-2.5">
-									<div>
+									<div aria-atomic="true" aria-live="polite">
 										<div class="font-medium text-sm">
 											{t("configScreen.connectionStatus")}
 										</div>
 										<Show
 											fallback={
-												<div class="text-muted-foreground text-xs">
+												<div
+													class={
+														aiHealthError()
+															? "text-destructive text-xs"
+															: "text-muted-foreground text-xs"
+													}
+												>
 													{aiHealthError() ?? t("configScreen.notCheckedYet")}
 												</div>
 											}
@@ -564,8 +636,6 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										>
 											{(health) => (
 												<div
-													aria-atomic="true"
-													aria-live="polite"
 													class={
 														health().status === "available"
 															? "text-primary text-xs"
@@ -592,6 +662,20 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												</div>
 											)}
 										</Show>
+										<form.Subscribe
+											selector={(state) =>
+												JSON.stringify(state.values.ai) !==
+												JSON.stringify(baselineAi())
+											}
+										>
+											{(aiDirty) => (
+												<Show when={aiDirty()}>
+													<p class="mt-1 text-muted-foreground text-xs">
+														{t("configScreen.healthCheckUsesSavedSettings")}
+													</p>
+												</Show>
+											)}
+										</form.Subscribe>
 									</div>
 									<Button
 										aria-busy={isCheckingAiHealth()}
@@ -599,6 +683,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										disabled={isCheckingAiHealth()}
 										onClick={() => void checkAiHealth()}
 										size="sm"
+										type="button"
 										variant="outline"
 									>
 										{isCheckingAiHealth()
@@ -650,7 +735,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												{t("configScreen.timeoutMs")}
 											</Label>
 											<Input
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
+												min={1000}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
 													field().handleChange(
@@ -659,6 +747,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												}}
 												type="number"
 												value={field().state.value ?? ""}
+											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
 											/>
 										</div>
 									)}
@@ -760,10 +854,18 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												{t("configScreen.thumbnailDirectory")}
 											</Label>
 											<Input
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => field().handleChange(e.target.value)}
 												value={field().state.value ?? ""}
+											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
 											/>
 										</div>
 									)}
@@ -777,7 +879,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													{t("configScreen.thumbnailSizePx")}
 												</Label>
 												<Input
+													aria-describedby={`${field().name}-error`}
+													aria-invalid={field().state.meta.errors.length > 0}
 													id={field().name}
+													max={4096}
+													min={64}
 													onBlur={field().handleBlur}
 													onInput={(e) => {
 														field().handleChange(
@@ -786,6 +892,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													}}
 													type="number"
 													value={field().state.value ?? ""}
+												/>
+												<FormFieldMessage
+													id={`${field().name}-error`}
+													message={getFormErrorMessage(
+														field().state.meta.errors[0],
+													)}
 												/>
 											</div>
 										)}
@@ -797,7 +909,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													{t("configScreen.thumbnailQuality1100")}
 												</Label>
 												<Input
+													aria-describedby={`${field().name}-error`}
+													aria-invalid={field().state.meta.errors.length > 0}
 													id={field().name}
+													max={100}
+													min={1}
 													onBlur={field().handleBlur}
 													onInput={(e) => {
 														field().handleChange(
@@ -806,6 +922,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													}}
 													type="number"
 													value={field().state.value ?? ""}
+												/>
+												<FormFieldMessage
+													id={`${field().name}-error`}
+													message={getFormErrorMessage(
+														field().state.meta.errors[0],
+													)}
 												/>
 											</div>
 										)}
@@ -855,11 +977,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													{t("configScreen.imageExtensions")}
 												</Label>
 												<CommaSeparatedTextarea
+													aria-describedby={`${field().name}-error`}
+													aria-invalid={field().state.meta.errors.length > 0}
 													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
 													placeholder={t("configScreen.jpgPng")}
 													value={field().state.value}
+												/>
+												<FormFieldMessage
+													id={`${field().name}-error`}
+													message={getFormErrorMessage(
+														field().state.meta.errors[0],
+													)}
 												/>
 												<div class="text-muted-foreground text-xs">
 													{t("configScreen.commaSeparated")}
@@ -874,11 +1004,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													{t("configScreen.videoExtensions")}
 												</Label>
 												<CommaSeparatedTextarea
+													aria-describedby={`${field().name}-error`}
+													aria-invalid={field().state.meta.errors.length > 0}
 													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
 													placeholder={t("configScreen.mp4Webm")}
 													value={field().state.value}
+												/>
+												<FormFieldMessage
+													id={`${field().name}-error`}
+													message={getFormErrorMessage(
+														field().state.meta.errors[0],
+													)}
 												/>
 											</div>
 										)}
@@ -890,11 +1028,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													{t("configScreen.audioExtensions")}
 												</Label>
 												<CommaSeparatedTextarea
+													aria-describedby={`${field().name}-error`}
+													aria-invalid={field().state.meta.errors.length > 0}
 													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
 													placeholder={t("configScreen.mp3Wav")}
 													value={field().state.value}
+												/>
+												<FormFieldMessage
+													id={`${field().name}-error`}
+													message={getFormErrorMessage(
+														field().state.meta.errors[0],
+													)}
 												/>
 											</div>
 										)}
@@ -911,10 +1057,18 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												{t("configScreen.positiveNodeTypes")}
 											</Label>
 											<CommaSeparatedTextarea
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}
 												value={field().state.value}
+											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
 											/>
 										</div>
 									)}
@@ -927,10 +1081,18 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												{t("configScreen.negativeKeywords")}
 											</Label>
 											<CommaSeparatedTextarea
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}
 												value={field().state.value}
+											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
 											/>
 										</div>
 									)}
@@ -943,10 +1105,18 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												{t("configScreen.negativeTags")}
 											</Label>
 											<CommaSeparatedTextarea
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}
 												value={field().state.value}
+											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
 											/>
 										</div>
 									)}
@@ -967,35 +1137,45 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												(option) => option.value === field().state.value,
 											) ?? null;
 										return (
-											<Select<LogLevelOption>
-												class="space-y-2"
-												disallowEmptySelection
-												itemComponent={(itemProps) => (
-													<SelectItem item={itemProps.item}>
-														{itemProps.item.rawValue.label}
-													</SelectItem>
-												)}
-												onChange={(option) => {
-													if (option) {
-														field().handleChange(option.value);
-													}
-												}}
-												options={options}
-												optionTextValue="label"
-												optionValue="value"
-												value={selectedOption()}
-											>
-												<SelectLabel>{t("configScreen.logLevel")}</SelectLabel>
-												<SelectTrigger
-													class="w-full text-base sm:text-sm"
-													id={field().name}
+											<div class="space-y-2">
+												<Select<LogLevelOption>
+													class="space-y-2"
+													disallowEmptySelection
+													itemComponent={(itemProps) => (
+														<SelectItem item={itemProps.item}>
+															{itemProps.item.rawValue.label}
+														</SelectItem>
+													)}
+													onChange={(option) => {
+														if (option) {
+															field().handleChange(option.value);
+														}
+													}}
+													options={options}
+													optionTextValue="label"
+													optionValue="value"
+													value={selectedOption()}
 												>
-													<SelectValue<LogLevelOption>>
-														{(state) => state.selectedOption()?.label ?? ""}
-													</SelectValue>
-												</SelectTrigger>
-												<SelectContent />
-											</Select>
+													<SelectLabel>
+														{t("configScreen.logLevel")}
+													</SelectLabel>
+													<SelectTrigger
+														class="w-full text-base sm:text-sm"
+														id={field().name}
+													>
+														<SelectValue<LogLevelOption>>
+															{(state) => state.selectedOption()?.label ?? ""}
+														</SelectValue>
+													</SelectTrigger>
+													<SelectContent />
+												</Select>
+												<FormFieldMessage
+													id={`${field().name}-error`}
+													message={getFormErrorMessage(
+														field().state.meta.errors[0],
+													)}
+												/>
+											</div>
 										);
 									}}
 								</form.Field>
@@ -1026,41 +1206,63 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				<form.Subscribe
 					selector={(state) => ({
 						canSubmit: state.canSubmit,
+						invalidCategories: getInvalidCategories(
+							state.fieldMeta,
+							state.errorMap.onChange,
+						),
 						isDirty: state.isDirty,
 						isSubmitting: state.isSubmitting,
 					})}
 				>
-					{(state) => (
-						<Show when={state().isDirty}>
-							<div class="sticky bottom-3 z-20 ml-auto flex w-fit max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border bg-card p-2 shadow-lg backdrop-blur">
-								<span class="px-2 text-muted-foreground text-sm">
-									{t("configScreen.unsavedChanges")}
-								</span>
-								<Button
-									class="min-h-11 sm:min-h-9"
-									disabled={state().isSubmitting}
-									onClick={() => {
-										setSubmitError(null);
-										baseline = props.data;
-										form.reset(toFormValues(baseline));
-									}}
-									type="button"
-									variant="outline"
-								>
-									{t("actions.discard")}
-								</Button>
-								<Button
-									class="min-h-11 sm:min-h-9"
-									disabled={!state().canSubmit || state().isSubmitting}
-									type="submit"
-								>
-									{state().isSubmitting
-										? t("status.saving")
-										: t("actions.saveChanges")}
-								</Button>
-							</div>
-						</Show>
-					)}
+					{(state) => {
+						const invalidLabels = () =>
+							SETTINGS_CATEGORIES.filter((category) =>
+								state().invalidCategories.has(category.value),
+							).map((category) => category.label);
+						return (
+							<Show when={state().isDirty}>
+								<div class="sticky bottom-3 z-20 ml-auto flex w-fit max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border bg-card p-2 shadow-lg backdrop-blur">
+									<Show
+										fallback={
+											<span class="px-2 text-muted-foreground text-sm">
+												{t("configScreen.unsavedChanges")}
+											</span>
+										}
+										when={invalidLabels().length > 0}
+									>
+										<span class="px-2 text-destructive text-sm" role="alert">
+											{t("configScreen.fixErrorsInCategories", {
+												categories: invalidLabels().join(", "),
+											})}
+										</span>
+									</Show>
+									<Button
+										class="min-h-11 sm:min-h-9"
+										disabled={state().isSubmitting}
+										onClick={() => {
+											setSubmitError(null);
+											baseline = props.data;
+											setBaselineAi(baseline.ai);
+											form.reset(toFormValues(baseline));
+										}}
+										type="button"
+										variant="outline"
+									>
+										{t("actions.discard")}
+									</Button>
+									<Button
+										class="min-h-11 sm:min-h-9"
+										disabled={!state().canSubmit || state().isSubmitting}
+										type="submit"
+									>
+										{state().isSubmitting
+											? t("status.saving")
+											: t("actions.saveChanges")}
+									</Button>
+								</div>
+							</Show>
+						);
+					}}
 				</form.Subscribe>
 			</form>
 			<AlertDialog
@@ -1092,6 +1294,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								const resolver = navigationBlocker();
 								if (resolver.status !== "blocked") return;
 								baseline = props.data;
+								setBaselineAi(baseline.ai);
 								form.reset(toFormValues(baseline));
 								resolver.proceed?.();
 							}}

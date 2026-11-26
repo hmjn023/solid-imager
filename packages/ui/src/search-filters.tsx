@@ -5,7 +5,14 @@ import type { Ip } from "@solid-imager/core/ips";
 import type { Project } from "@solid-imager/core/projects";
 import type { SearchState } from "@solid-imager/core/search";
 import type { TagResponse } from "@solid-imager/core/tags";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	onCleanup,
+	Show,
+} from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Badge } from "./badge";
 import { Button } from "./button";
@@ -33,6 +40,8 @@ type SearchFiltersProps = {
 	onSearch?: () => void;
 	className?: string;
 	usePopover?: boolean;
+	filenameResetRevision?: number;
+	registerFilenameCommit?: (commit: (() => void) | undefined) => void;
 };
 
 function FilterSection<T>(props: {
@@ -80,7 +89,7 @@ function FilterSection<T>(props: {
 										aria-label={t("searchFilters.removeFilterValue", {
 											value0: labelText(),
 										})}
-										class="ml-1 inline-flex size-5 items-center justify-center rounded-full opacity-80 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										class="ml-1 inline-flex size-11 items-center justify-center rounded-full opacity-80 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-5"
 										onClick={() => props.onRemove(id)}
 										type="button"
 									>
@@ -134,7 +143,55 @@ const getAuthorLabel = (author: Author) =>
 			})
 		: author.name;
 
+const FILENAME_DEBOUNCE_MS = 250;
+
 export function SearchFilters(props: SearchFiltersProps) {
+	const [filenameDraft, setFilenameDraft] = createSignal(
+		props.state.searchQuery,
+	);
+	let isComposingFilename = false;
+	let filenameDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+	const cancelFilenameQuery = () => {
+		if (filenameDebounceTimer !== undefined) {
+			clearTimeout(filenameDebounceTimer);
+			filenameDebounceTimer = undefined;
+		}
+	};
+
+	createEffect(() => {
+		const externalQuery = props.state.searchQuery;
+		void props.filenameResetRevision;
+		cancelFilenameQuery();
+		if (!isComposingFilename) {
+			setFilenameDraft(externalQuery);
+		}
+	});
+
+	const flushFilenameQuery = (value: string) => {
+		cancelFilenameQuery();
+		if (props.state.searchQuery !== value) {
+			props.setState("searchQuery", value);
+		}
+	};
+
+	const scheduleFilenameQuery = (value: string) => {
+		cancelFilenameQuery();
+		filenameDebounceTimer = setTimeout(() => {
+			flushFilenameQuery(value);
+		}, FILENAME_DEBOUNCE_MS);
+	};
+
+	const commitFilename = () => {
+		if (!isComposingFilename) flushFilenameQuery(filenameDraft());
+	};
+	const registerFilenameCommit = props.registerFilenameCommit;
+	registerFilenameCommit?.(commitFilename);
+	onCleanup(() => {
+		cancelFilenameQuery();
+		registerFilenameCommit?.(undefined);
+	});
+
 	const addTag = (tagName: string) => {
 		if (!props.state.selectedTags.includes(tagName)) {
 			props.setState("selectedTags", [...props.state.selectedTags, tagName]);
@@ -166,10 +223,32 @@ export function SearchFilters(props: SearchFiltersProps) {
 			<TextField class="space-y-2">
 				<TextFieldLabel>{t("searchFilters.filenameSearch")}</TextFieldLabel>
 				<TextFieldInput
-					onInput={(e) => props.setState("searchQuery", e.currentTarget.value)}
+					onBlur={commitFilename}
+					onCompositionStart={() => {
+						isComposingFilename = true;
+						cancelFilenameQuery();
+					}}
+					onCompositionEnd={(e) => {
+						isComposingFilename = false;
+						const next = e.currentTarget.value;
+						setFilenameDraft(next);
+						scheduleFilenameQuery(next);
+					}}
+					onInput={(e) => {
+						const next = e.currentTarget.value;
+						setFilenameDraft(next);
+						if (!isComposingFilename && !e.isComposing) {
+							scheduleFilenameQuery(next);
+						}
+					}}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" && !isComposingFilename && !e.isComposing) {
+							flushFilenameQuery(e.currentTarget.value);
+						}
+					}}
 					placeholder={t("searchFilters.enterAFilename")}
 					type="text"
-					value={props.state.searchQuery}
+					value={filenameDraft()}
 				/>
 			</TextField>
 

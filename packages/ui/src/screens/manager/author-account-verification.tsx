@@ -5,6 +5,16 @@ import type {
 } from "@solid-imager/core/authors";
 import { createQuery } from "@tanstack/solid-query";
 import { createSignal, onCleanup, Show } from "solid-js";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../../alert-dialog";
 import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
 import {
@@ -31,6 +41,7 @@ export function AuthorAccountVerificationPanel(props: {
 		null,
 	);
 	const [open, setOpen] = createSignal(false);
+	const [discardOpen, setDiscardOpen] = createSignal(false);
 	const [confirmed, setConfirmed] = createSignal(false);
 	const [busy, setBusy] = createSignal(false);
 	const [error, setError] = createSignal("");
@@ -117,6 +128,22 @@ export function AuthorAccountVerificationPanel(props: {
 			setBusy(false);
 		}
 	};
+	const isDirty = () => Boolean(result.data?.profile) || confirmed();
+	const closeDialog = () => {
+		setDiscardOpen(false);
+		setOpen(false);
+		clearTimeout(timeout);
+		setPreview(null);
+		setConfirmed(false);
+	};
+	const requestClose = () => {
+		if (busy()) return;
+		if (isDirty()) {
+			setDiscardOpen(true);
+			return;
+		}
+		closeDialog();
+	};
 	return (
 		<div class="mt-3 space-y-2">
 			<Show when={props.account?.remoteId}>
@@ -166,17 +193,25 @@ export function AuthorAccountVerificationPanel(props: {
 			<Dialog
 				open={open()}
 				onOpenChange={(value) => {
-					if (!busy()) {
-						setOpen(value);
-						if (!value) {
-							clearTimeout(timeout);
-							setPreview(null);
-							setConfirmed(false);
-						}
+					if (value) {
+						setOpen(true);
+						return;
 					}
+					requestClose();
 				}}
 			>
-				<DialogContent class="max-w-lg">
+				<DialogContent
+					class="max-w-lg"
+					closeDisabled={busy()}
+					onEscapeKeyDown={(event) => {
+						event.preventDefault();
+						requestClose();
+					}}
+					onPointerDownOutside={(event) => {
+						event.preventDefault();
+						requestClose();
+					}}
+				>
 					<DialogHeader>
 						<DialogTitle>
 							{t("authorAccountVerification.verifyXAccount")}
@@ -284,11 +319,7 @@ export function AuthorAccountVerificationPanel(props: {
 						</Button>
 					</Show>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							disabled={busy()}
-							onClick={() => setOpen(false)}
-						>
+						<Button variant="outline" disabled={busy()} onClick={requestClose}>
 							{t("actions.cancel")}
 						</Button>
 						<Button
@@ -305,6 +336,26 @@ export function AuthorAccountVerificationPanel(props: {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+			<AlertDialog open={discardOpen()} onOpenChange={setDiscardOpen}>
+				<AlertDialogContent class="workspace-theme">
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t("authorAccountVerification.discardVerificationTitle")}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{t("authorAccountVerification.discardVerificationDescription")}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>
+							{t("configScreen.keepEditing")}
+						</AlertDialogCancel>
+						<AlertDialogAction variant="destructive" onClick={closeDialog}>
+							{t("actions.discard")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

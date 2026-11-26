@@ -123,6 +123,22 @@ describe("media detail context", () => {
 		);
 	});
 
+	it("centers the 500-item window around activeMediaId for large collections", () => {
+		const items = Array.from({ length: 650 }, (_, index) => ({
+			id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+			mediaSourceId: sourceId,
+		}));
+		const activeItem = items[550];
+		saveMediaContext("/search", items, activeItem.id);
+
+		const stored = readMediaContext();
+		expect(stored?.items).toHaveLength(500);
+		expect(findMediaNeighbors(activeItem.id)).toEqual({
+			previous: items[549],
+			next: items[551],
+		});
+	});
+
 	const firstMedia = { id: firstMediaId, mediaSourceId: sourceId };
 	const secondMedia = { id: secondMediaId, mediaSourceId: sourceId };
 	const collectionContext = {

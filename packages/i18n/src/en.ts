@@ -192,10 +192,14 @@ export const en = defineMessages({
 		"Destination path is required.",
 	"bulkActionCommand.noMediaItemsAreSelected": "No media items are selected.",
 	"bulkActionCommand.targetSourceIsRequired": "Target source is required.",
+	"bulkActionDialog.actionFailed": "Bulk action failed",
 	"bulkActionDialog.bulkDelete": "Bulk delete",
 	"bulkActionDialog.confirm": "Confirm",
 	"bulkActionDialog.copyToAnotherSource": "Copy (to another source)",
 	"bulkActionDialog.destinationFolderPath": "Destination folder path",
+	"bulkActionDialog.discardChangesDescription":
+		"Your selected action and destination inputs will be discarded.",
+	"bulkActionDialog.discardChangesTitle": "Discard bulk action changes?",
 	"bulkActionDialog.discardRetryDescription":
 		"Some items failed or were not processed yet. Closing now discards the retry list.",
 	"bulkActionDialog.discardRetryTitle": "Discard pending retry?",
@@ -1257,7 +1261,9 @@ export const en = defineMessages({
 	"mediaViewer.imageControls": "Image controls",
 	"mediaViewer.imageMovedValue": "Image moved {value0}",
 	"mediaViewer.imagePanControls": "Image pan controls",
+	"mediaViewer.imagePreviewUnavailable": "Image preview unavailable",
 	"mediaViewer.imageZoomControls": "Image zoom controls",
+	"mediaViewer.loadingPreview": "Loading media preview",
 	"mediaViewer.openValueImageViewer": "Open {value0} image viewer",
 	"mediaViewer.panImageValue": "Pan image {value0}",
 	"mediaViewer.panValueUseArrowKeysToMoveTheEnlarged":
@@ -1307,6 +1313,9 @@ export const en = defineMessages({
 		"There are no available destination sources.",
 	"navigation.importInbox": "Import inbox",
 	"navigation.jobs": "Jobs",
+	"navigation.jobsActive": "Jobs, {active} active",
+	"navigation.jobsActiveAndFailed": "Jobs, {active} active, {failed} failed",
+	"navigation.jobsFailed": "Jobs, {failed} failed",
 	"navigation.library": "Library",
 	"navigation.manager": "Manager",
 	"navigation.managerCategories": "Manager categories",
@@ -1367,7 +1376,7 @@ export const en = defineMessages({
 	"pixivAccount.message": ".",
 	"pixivAccount.pHPSESSID": "PHPSESSID",
 	"pixivAccount.pixivAccount": "pixiv account",
-	"pixivAccount.pixivID": "pixiv ID ",
+	"pixivAccount.pixivID": "pixiv ID",
 	"pixivAccount.pixivIDValue": "pixiv ID {value0}",
 	"pixivAccount.setTheXtracterExtensionDestinationTo":
 		"Set the xtracter extension destination to ",
@@ -1484,6 +1493,7 @@ export const en = defineMessages({
 	"pixivScreen.searchDestinationDoesNotMatch":
 		"Search destination does not match",
 	"presetManager.couldNotDeletePreset": "Could not delete preset",
+	"presetManager.couldNotLoadPresets": "Could not load presets",
 	"presetManager.couldNotSavePreset": "Could not save preset",
 	"presetManager.deleteThisPresetThisActionCannotBeUndone":
 		"Delete this preset? This action cannot be undone.",
@@ -1494,6 +1504,8 @@ export const en = defineMessages({
 	"presetManager.presetSaved": "Preset saved",
 	"presetManager.saveCurrentSearchConditions": "Save current search conditions",
 	"presetManager.selectAPreset": "Select a preset...",
+	"presetManager.unsavedChangesDescription":
+		"The preset name you entered has not been saved. Discard changes?",
 	"proSearchBuilder.aIGenerated": "AI generated",
 	"proSearchBuilder.atLeast": "at least (>=)",
 	"proSearchBuilder.atMost": "at most (<=)",
@@ -1628,6 +1640,7 @@ export const en = defineMessages({
 	"searchComposer.pixivHint":
 		"Space for AND, -tag to exclude, ~tag for OR. Converts Danbooru tags to pixiv tags.",
 	"searchComposer.removeValueValue": "Remove {value0}:{value1}",
+	"searchComposer.removedFilterValueValue": "Removed filter {value0}:{value1}",
 	"searchComposer.search": " search",
 	"searchComposer.searchHelp": "How to search",
 	"searchComposer.searchMedia": "Search media",
@@ -1693,7 +1706,7 @@ export const en = defineMessages({
 	"searchToolbar.sortCurrentlyValue": "Sort, currently {value0}",
 	"searchToolbar.textSearchValueResults": "Text search · {value0} results",
 	"searchToolbar.updating": "Updating...",
-	"searchToolbar.valueValue": "{value0}・{value1}",
+	"searchToolbar.valueValue": "{value0} · {value1}",
 	"select.check": "Check",
 	"servers.addOrSwitchServersAndCheckConnectionStatus":
 		"Add or switch servers and check connection status.",
@@ -2042,11 +2055,15 @@ export const en = defineMessages({
 	"useSourcesEvents.unknown": "unknown",
 	"useSourcesEvents.watcherErrorForValueValue":
 		"Watcher Error for {value0}...: {value1}",
+	"useSourcesPage.failedToDeleteSource": "Failed to delete source",
 	"useSourcesPage.failedToDeleteSourceValue":
 		"Failed to delete source: {value0}",
+	"useSourcesPage.failedToSaveSource": "Failed to save source",
 	"useSourcesPage.failedToSaveSourceValue": "Failed to save source: {value0}",
+	"useSourcesPage.failedToSyncAllSources": "Failed to sync all sources",
 	"useSourcesPage.failedToSyncAllSourcesValue":
 		"Failed to sync all sources: {value0}",
+	"useSourcesPage.failedToSyncSource": "Failed to sync {value0}",
 	"useSourcesPage.failedToSyncValueValue": "Failed to sync {value0}: {value1}",
 	"useSourcesPage.noSynchronizationResultReturned":
 		"No synchronization result returned",
@@ -2066,4 +2083,20 @@ export const en = defineMessages({
 	"workspace.loadingPosts": "Loading posts",
 	"workspace.openSite": "Open site ↗",
 	"workspace.showingValueResults": "Showing {value0} results",
+	"aiTaggingModal.failedToExtractTags": "Failed to run AI tagging",
+	"authorAccountVerification.discardVerificationTitle":
+		"Discard fetched profile?",
+	"authorAccountVerification.discardVerificationDescription":
+		"Closing now will discard the fetched X profile and confirmation state.",
+	"configScreen.fixErrorsInCategories":
+		"Fix validation errors in: {categories}",
+	"configScreen.hasValidationErrors": "Contains validation errors",
+	"configScreen.healthCheckUsesSavedSettings":
+		"Connection check tests the saved AI settings, not unsaved edits.",
+	"importReviewModal.failedToLoadSources":
+		"Failed to load destination sources.",
+	"importReviewModal.noLocalSourcesAvailable":
+		"No local sources are available. Create a local source in the sidebar before importing.",
+	"jobsScreen.couldNotLoadBatchTargets": "Could not load batch targets",
+	"oppaiOracleModal.failedToAnalyzeImage": "Failed to run OppaiOracle analysis",
 });

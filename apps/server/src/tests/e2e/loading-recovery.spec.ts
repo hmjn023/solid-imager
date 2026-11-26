@@ -66,6 +66,41 @@ async function openLibraryFromAbout(page: Page) {
 }
 
 test.describe("loading and recovery", () => {
+	test("keeps the current screen visible while the destination code loads", async ({
+		page,
+	}) => {
+		await page.goto("/about");
+		await waitForAppHydration(page);
+		const release = Promise.withResolvers<void>();
+		await page.route(
+			(url) =>
+				/\/assets\/search-[\w-]+\.js$/.test(url.pathname) ||
+				(url.pathname.endsWith("/routes/search.tsx") &&
+					url.searchParams.has("tsr-split")),
+			async (route) => {
+				await release.promise;
+				await route.continue();
+			},
+		);
+
+		try {
+			await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
+			await expect(
+				page.getByRole("progressbar", { name: "画面を読み込んでいます" }),
+			).toBeVisible();
+			await expect(
+				page.getByRole("heading", { name: "Solid Imagerについて", level: 1 }),
+			).toBeVisible();
+			await expect(page.locator("[data-screen-skeleton]")).toHaveCount(0);
+		} finally {
+			release.resolve();
+		}
+
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
+	});
+
 	test("keeps the app shell visible while the initial search response is delayed", async ({
 		page,
 	}) => {
@@ -104,6 +139,13 @@ test.describe("loading and recovery", () => {
 			skeletonGrid,
 			":scope > div",
 		);
+		const placeholder = await skeletonGrid
+			.locator(':scope > div > [aria-hidden="true"]')
+			.first()
+			.evaluate((element) => {
+				const { width, height } = element.getBoundingClientRect();
+				return { width, height };
+			});
 		expect(skeletonColumnCount).toBeGreaterThan(1);
 		expect(
 			await getVisibleSkeletonItemCount(skeletonGrid),
@@ -124,6 +166,15 @@ test.describe("loading and recovery", () => {
 					.length;
 			});
 		expect(firstRowItems).toBe(skeletonColumnCount);
+		const tile = await page
+			.locator("[data-media-grid] [data-media-id]")
+			.first()
+			.evaluate((element) => {
+				const { width, height } = element.getBoundingClientRect();
+				return { width, height };
+			});
+		expect(Math.abs(tile.width - placeholder.width)).toBeLessThan(1);
+		expect(Math.abs(tile.height - placeholder.height)).toBeLessThan(1);
 		await expect(screenSkeleton).toHaveCount(0);
 	});
 

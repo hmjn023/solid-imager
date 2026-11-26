@@ -124,8 +124,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					</Show>
 				}
 				bulkSelection={
-					props.onEnterBulkSelectMode &&
-					(page().mediaResults().length > 0 || props.isBulkSelectMode?.())
+					props.onEnterBulkSelectMode && page().mediaResults().length > 0
 						? {
 								active: props.isBulkSelectMode?.() ?? false,
 								onEnter: props.onEnterBulkSelectMode,
@@ -282,7 +281,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					})()}
 				</Show>
 			</div>
-			<Show when={props.isBulkSelectMode?.()}>
+			<Show
+				when={props.isBulkSelectMode?.() && page().mediaResults().length > 0}
+			>
 				<CollectionBulkActions
 					loadedCount={page().mediaResults().length}
 					selectedCount={props.selectedCount?.() ?? 0}

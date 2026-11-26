@@ -100,13 +100,9 @@ export function useSourcesPage(
 			invalidate();
 			setShowFormModal(false);
 		} catch (error) {
-			toast.error(
-				t("useSourcesPage.failedToSaveSourceValue", {
-					value0: String(
-						error instanceof Error ? error.message : String(error),
-					),
-				}),
-			);
+			toast.error(t("useSourcesPage.failedToSaveSource"), {
+				description: error instanceof Error ? error.message : String(error),
+			});
 			throw error;
 		}
 	};
@@ -130,13 +126,9 @@ export function useSourcesPage(
 				setDeletingSource(null);
 			}
 		} catch (error) {
-			toast.error(
-				t("useSourcesPage.failedToDeleteSourceValue", {
-					value0: String(
-						error instanceof Error ? error.message : String(error),
-					),
-				}),
-			);
+			toast.error(t("useSourcesPage.failedToDeleteSource"), {
+				description: error instanceof Error ? error.message : String(error),
+			});
 		} finally {
 			setIsDeleting(false);
 		}
@@ -157,13 +149,15 @@ export function useSourcesPage(
 			const result = results.find((item) => item.id === source.id);
 			if (!result || !result.success) {
 				toast.error(
-					t("useSourcesPage.failedToSyncValueValue", {
+					t("useSourcesPage.failedToSyncSource", {
 						value0: String(source.name),
-						value1: String(
+					}),
+					{
+						description: String(
 							result?.error ??
 								t("useSourcesPage.noSynchronizationResultReturned"),
 						),
-					}),
+					},
 				);
 			} else {
 				toast.success(
@@ -175,12 +169,12 @@ export function useSourcesPage(
 			invalidate();
 		} catch (error) {
 			toast.error(
-				t("useSourcesPage.failedToSyncValueValue", {
+				t("useSourcesPage.failedToSyncSource", {
 					value0: String(source.name),
-					value1: String(
-						error instanceof Error ? error.message : String(error),
-					),
 				}),
+				{
+					description: error instanceof Error ? error.message : String(error),
+				},
 			);
 		} finally {
 			setIsSyncing(false);
@@ -214,13 +208,9 @@ export function useSourcesPage(
 			}
 			invalidate();
 		} catch (error) {
-			toast.error(
-				t("useSourcesPage.failedToSyncAllSourcesValue", {
-					value0: String(
-						error instanceof Error ? error.message : String(error),
-					),
-				}),
-			);
+			toast.error(t("useSourcesPage.failedToSyncAllSources"), {
+				description: error instanceof Error ? error.message : String(error),
+			});
 		} finally {
 			setIsSyncing(false);
 		}

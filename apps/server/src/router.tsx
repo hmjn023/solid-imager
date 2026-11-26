@@ -1,11 +1,6 @@
 import { isTransientApiError } from "@solid-imager/client";
 import { createAppQueryClientConfig } from "@solid-imager/ui/query";
-import {
-	ROUTE_PENDING_DELAY_MS,
-	ROUTE_PENDING_MIN_DURATION_MS,
-	RouteErrorScreen,
-	RoutePendingScreen,
-} from "@solid-imager/ui/router-status";
+import { RouteErrorScreen } from "@solid-imager/ui/router-status";
 import { NotFoundScreen } from "@solid-imager/ui/screens/not-found";
 import { QueryClient } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
@@ -67,6 +62,8 @@ export function getRouter() {
 				? createAppQueryClient()
 				: clientQueryClient;
 
+		// Keep the current screen visible during navigation. The app shell
+		// indicates route loading and each screen owns its data placeholders.
 		const router = createTanStackRouter({
 			routeTree,
 			context: { queryClient },
@@ -75,14 +72,8 @@ export function getRouter() {
 			// global default disabled avoids stale matches from aborted preloads.
 			defaultPreload: false,
 			defaultPreloadStaleTime: 0,
-			// A route with `ssr: false` renders its pending component on the server,
-			// but its route component immediately on the client. Keep the server
-			// fallback empty so the hydration trees remain identical.
-			defaultPendingComponent: isServer ? undefined : RoutePendingScreen,
 			defaultErrorComponent: RouteErrorScreen,
 			defaultNotFoundComponent: NotFoundScreen,
-			defaultPendingMs: ROUTE_PENDING_DELAY_MS,
-			defaultPendingMinMs: ROUTE_PENDING_MIN_DURATION_MS,
 		});
 		setupRouterSsrQueryIntegration({ router, queryClient });
 		return router;

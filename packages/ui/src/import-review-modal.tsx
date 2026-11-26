@@ -342,13 +342,20 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		openGeneration,
 		props.listPending,
 	);
-	const [sources] = createResource(openGeneration, props.listSources);
-	const localSources = createMemo(() =>
-		(sources() ?? []).filter(
+	const [sources, { refetch: refetchSources }] = createResource(
+		openGeneration,
+		props.listSources,
+	);
+	const sourcesFailed = () => sources.state === "errored";
+	const jobsFailed = () => pendingJobs.state === "errored";
+	const currentJobs = () => (jobsFailed() ? undefined : pendingJobs());
+	const localSources = createMemo(() => {
+		if (sourcesFailed()) return [];
+		return (sources() ?? []).filter(
 			(source): source is typeof source & { id: string } =>
 				source.type === "local" && !!source.id,
-		),
-	);
+		);
+	});
 	const sourceSelectionDisabled = () =>
 		sources.loading || !localSources().length || activeAction() !== null;
 
@@ -365,7 +372,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	);
 
 	createEffect(() => {
-		const jobs = pendingJobs();
+		const jobs = currentJobs();
 		if (jobs?.length) {
 			setSelectedJobIds(new Set(jobs.map((job) => job.id)));
 			return;
@@ -404,7 +411,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		setIsDirty(true);
 	};
 	const selectAll = () => {
-		const jobs = pendingJobs() ?? [];
+		const jobs = currentJobs() ?? [];
 		if (jobs.length === 0 || selectedJobIds().size === jobs.length) return;
 		setSelectedJobIds(new Set(jobs.map((job) => job.id)));
 		setIsDirty(true);
@@ -429,6 +436,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	};
 
 	const handleProcess = async () => {
+		if (activeAction() !== null) return;
 		const jobIds = Array.from(selectedJobIds());
 		const sourceId = selectedSourceOption()?.id;
 		if (!jobIds.length || !sourceId) {
@@ -469,6 +477,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		sourceOptions().find((option) => option.id === selectedSourceId()) ?? null;
 
 	const confirmDelete = async () => {
+		if (activeAction() !== null) return;
 		try {
 			setActiveAction("delete");
 			await props.cancelPending(Array.from(selectedJobIds()));
@@ -476,6 +485,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			setSelectedJobIds(createEmptySelection());
 			setIsDirty(false);
 			setIsDeleteDialogOpen(false);
+			props.onImportCompleted();
 			toast.success(t("importReviewModal.requestsDeleted"));
 		} catch (error) {
 			toast.error(
@@ -550,6 +560,34 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										portalMount={sourceField()}
 									/>
 								</Select>
+								<Show when={sourcesFailed()}>
+									<div
+										class="flex flex-wrap items-center gap-2 text-destructive text-xs"
+										role="alert"
+									>
+										<span>{t("importReviewModal.failedToLoadSources")}</span>
+										<Button
+											class="min-h-11 px-2 text-xs sm:min-h-8"
+											onClick={() => void refetchSources()}
+											size="sm"
+											type="button"
+											variant="outline"
+										>
+											{t("actions.retry")}
+										</Button>
+									</div>
+								</Show>
+								<Show
+									when={
+										!sources.loading &&
+										!sourcesFailed() &&
+										localSources().length === 0
+									}
+								>
+									<output class="block text-muted-foreground text-xs">
+										{t("importReviewModal.noLocalSourcesAvailable")}
+									</output>
+								</Show>
 								<Checkbox
 									checked={rememberSource()}
 									class="flex items-center gap-2"
@@ -566,16 +604,16 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								<div class="text-muted-foreground text-sm" aria-live="polite">
 									{t("importReviewModal.valueOfValueValueSelected", {
 										value0: String(selectedJobIds().size),
-										value1: String(pendingJobs()?.length ?? 0),
+										value1: String(currentJobs()?.length ?? 0),
 									})}
 								</div>
 								<div class="flex items-center gap-1">
 									<Button
-										class="h-8 px-2 text-xs"
+										class="min-h-11 px-2 text-xs sm:min-h-8"
 										disabled={
 											activeAction() !== null ||
-											(pendingJobs()?.length ?? 0) === 0 ||
-											selectedJobIds().size === (pendingJobs()?.length ?? 0)
+											(currentJobs()?.length ?? 0) === 0 ||
+											selectedJobIds().size === (currentJobs()?.length ?? 0)
 										}
 										onClick={selectAll}
 										size="sm"
@@ -584,7 +622,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										{t("importReviewModal.selectAll")}
 									</Button>
 									<Button
-										class="h-8 px-2 text-xs"
+										class="min-h-11 px-2 text-xs sm:min-h-8"
 										disabled={
 											activeAction() !== null || selectedJobIds().size === 0
 										}
@@ -605,14 +643,10 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								</div>
 							</Show>
 							<Show
-								when={
-									!pendingJobs.loading &&
-									!pendingJobs.error &&
-									(pendingJobs()?.length ?? 0) > 0
-								}
+								when={!pendingJobs.loading && (currentJobs()?.length ?? 0) > 0}
 							>
 								<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
-									<For each={pendingJobs()}>
+									<For each={currentJobs()}>
 										{(job) => (
 											<ImportReviewCard
 												checked={selectedJobIds().has(job.id)}
@@ -626,7 +660,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 									</For>
 								</div>
 							</Show>
-							<Show when={!pendingJobs.loading && Boolean(pendingJobs.error)}>
+							<Show when={jobsFailed()}>
 								<div class="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
 									<p class="text-destructive text-sm">
 										{t("importReviewModal.failedToLoadImportInbox")}
@@ -636,13 +670,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 									</Button>
 								</div>
 							</Show>
-							<Show
-								when={
-									!pendingJobs.loading &&
-									!pendingJobs.error &&
-									pendingJobs()?.length === 0
-								}
-							>
+							<Show when={!pendingJobs.loading && currentJobs()?.length === 0}>
 								<div class="flex min-h-48 flex-col items-center justify-center gap-1 text-center">
 									<p class="font-medium">
 										{t("importReviewModal.importInboxIsEmpty")}
@@ -730,7 +758,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 				}}
 				open={isDeleteDialogOpen()}
 			>
-				<AlertDialogContent>
+				<AlertDialogContent class="workspace-theme">
 					<AlertDialogHeader>
 						<AlertDialogTitle>
 							{t("importReviewModal.areYouSure")}

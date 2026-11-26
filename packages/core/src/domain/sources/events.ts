@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { importWorkProgressSchema } from "../jobs/import-batch";
 import { thumbnailSizeSchema } from "../thumbnails/schemas";
 import { mediaSourceSyncStateSchema } from "./schemas";
 
@@ -82,6 +83,7 @@ export const jobProgressEventSchema = z.object({
 	total: z.number(),
 	failed: z.number().int().nonnegative().optional(),
 	cancelled: z.number().int().nonnegative().optional(),
+	importWork: importWorkProgressSchema.optional(),
 });
 export type JobProgressEvent = z.infer<typeof jobProgressEventSchema>;
 

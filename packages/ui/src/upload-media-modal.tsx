@@ -332,78 +332,35 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 				}}
 				open={props.isOpen}
 			>
-				<Show when={props.isOpen}>
-					<DialogContent
-						class="sm:max-w-dialog-md"
-						closeDisabled={isSubmitting()}
-					>
-						<DialogHeader>
-							<DialogTitle>{t("uploadMediaModal.uploadMedia")}</DialogTitle>
-							<DialogDescription>
-								{t("uploadMediaModal.enterDetailsForTheMediaYouWantToUpload")}
-							</DialogDescription>
-						</DialogHeader>
+				<DialogContent
+					class="sm:max-w-dialog-md"
+					closeDisabled={isSubmitting()}
+				>
+					<DialogHeader>
+						<DialogTitle>{t("uploadMediaModal.uploadMedia")}</DialogTitle>
+						<DialogDescription>
+							{t("uploadMediaModal.enterDetailsForTheMediaYouWantToUpload")}
+						</DialogDescription>
+					</DialogHeader>
 
-						<form
-							onSubmit={(event) => {
-								event.preventDefault();
-								event.stopPropagation();
-								void form.handleSubmit();
-							}}
-						>
-							<div class="grid gap-4 py-4">
-								<Show
-									when={selectedFiles().length > 0}
-									fallback={
-										<button
-											class="rounded-lg border-2 border-dashed p-6 text-center transition-colors"
-											classList={{
-												"border-primary bg-primary/5": isDragging(),
-												"border-muted": !isDragging(),
-											}}
-											onClick={() => openFilePicker("replace")}
-											onDragEnter={(event) => {
-												event.preventDefault();
-												setIsDragging(true);
-											}}
-											onDragLeave={(event) => {
-												event.preventDefault();
-												if (
-													!event.currentTarget.contains(
-														event.relatedTarget as Node | null,
-													)
-												) {
-													setIsDragging(false);
-												}
-											}}
-											onDragOver={(event) => event.preventDefault()}
-											onDrop={(event) => {
-												event.preventDefault();
-												setIsDragging(false);
-												handleDroppedFiles(
-													event.dataTransfer?.files,
-													"replace",
-												);
-											}}
-											type="button"
-										>
-											<p class="font-medium text-sm">
-												{t("uploadMediaModal.dragAndDropFiles")}
-											</p>
-											<p class="mt-1 text-muted-foreground text-xs">
-												{t("uploadMediaModal.orAddFilesUsingTheFilePicker")}
-											</p>
-											<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-												{t("uploadMediaModal.chooseFiles")}
-											</span>
-										</button>
-									}
-								>
-									<div
-										class="rounded-md border p-3 transition-colors"
+					<form
+						onSubmit={(event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							void form.handleSubmit();
+						}}
+					>
+						<div class="grid gap-4 py-4">
+							<Show
+								when={selectedFiles().length > 0}
+								fallback={
+									<button
+										class="rounded-lg border-2 border-dashed p-6 text-center transition-colors"
 										classList={{
 											"border-primary bg-primary/5": isDragging(),
+											"border-muted": !isDragging(),
 										}}
+										onClick={() => openFilePicker("replace")}
 										onDragEnter={(event) => {
 											event.preventDefault();
 											setIsDragging(true);
@@ -422,125 +379,130 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 										onDrop={(event) => {
 											event.preventDefault();
 											setIsDragging(false);
-											handleDroppedFiles(event.dataTransfer?.files, "append");
+											handleDroppedFiles(event.dataTransfer?.files, "replace");
 										}}
+										type="button"
 									>
-										<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-											<p class="font-medium text-sm">
-												{t("uploadMediaModal.selectedFiles")} (
-												{selectedFiles().length})
-											</p>
-											<div class="flex flex-wrap gap-2">
-												<Button
-													class="min-h-11 sm:min-h-9"
-													disabled={isSubmitting()}
-													onClick={() => openFilePicker("append")}
-													size="sm"
-													type="button"
-													variant="outline"
-												>
-													{t("uploadMediaModal.addFiles")}
-												</Button>
-												<Button
-													class="min-h-11 sm:min-h-9"
-													disabled={isSubmitting()}
-													onClick={() => openFilePicker("replace")}
-													size="sm"
-													type="button"
-													variant="outline"
-												>
-													{t("uploadMediaModal.changeFiles")}
-												</Button>
-											</div>
+										<p class="font-medium text-sm">
+											{t("uploadMediaModal.dragAndDropFiles")}
+										</p>
+										<p class="mt-1 text-muted-foreground text-xs">
+											{t("uploadMediaModal.orAddFilesUsingTheFilePicker")}
+										</p>
+										<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+											{t("uploadMediaModal.chooseFiles")}
+										</span>
+									</button>
+								}
+							>
+								<div
+									class="rounded-md border p-3 transition-colors"
+									classList={{
+										"border-primary bg-primary/5": isDragging(),
+									}}
+									onDragEnter={(event) => {
+										event.preventDefault();
+										setIsDragging(true);
+									}}
+									onDragLeave={(event) => {
+										event.preventDefault();
+										if (
+											!event.currentTarget.contains(
+												event.relatedTarget as Node | null,
+											)
+										) {
+											setIsDragging(false);
+										}
+									}}
+									onDragOver={(event) => event.preventDefault()}
+									onDrop={(event) => {
+										event.preventDefault();
+										setIsDragging(false);
+										handleDroppedFiles(event.dataTransfer?.files, "append");
+									}}
+								>
+									<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+										<p class="font-medium text-sm">
+											{t("uploadMediaModal.selectedFiles")} (
+											{selectedFiles().length})
+										</p>
+										<div class="flex flex-wrap gap-2">
+											<Button
+												class="min-h-11 sm:min-h-9"
+												disabled={isSubmitting()}
+												onClick={() => openFilePicker("append")}
+												size="sm"
+												type="button"
+												variant="outline"
+											>
+												{t("uploadMediaModal.addFiles")}
+											</Button>
+											<Button
+												class="min-h-11 sm:min-h-9"
+												disabled={isSubmitting()}
+												onClick={() => openFilePicker("replace")}
+												size="sm"
+												type="button"
+												variant="outline"
+											>
+												{t("uploadMediaModal.changeFiles")}
+											</Button>
 										</div>
-										<ul class="max-h-40 space-y-1 overflow-y-auto overscroll-contain pr-1">
-											<For each={selectedFiles()}>
-												{(file, index) => (
-													<li class="flex items-center justify-between gap-2 text-sm">
-														<span class="min-w-0 flex-1 truncate">
-															{file.name}
-														</span>
-														<span class="shrink-0 text-muted-foreground text-xs">
-															{fileSizeLabel(file)}
-														</span>
-														<Button
-															aria-label={t(
-																"uploadMediaModal.removeFileValue",
-																{
-																	value0: file.name,
-																},
-															)}
-															class="size-11 shrink-0 sm:size-8"
-															disabled={isSubmitting()}
-															onClick={() => removeFileAt(index())}
-															size="icon"
-															type="button"
-															variant="ghost"
-														>
-															<X aria-hidden="true" class="size-4" />
-														</Button>
-													</li>
-												)}
-											</For>
-										</ul>
 									</div>
-								</Show>
-								<input
-									class="hidden"
-									multiple
-									onChange={(event) => {
-										handleDroppedFiles(
-											event.currentTarget.files,
-											filePickMode(),
-										);
-										event.currentTarget.value = "";
-									}}
-									ref={(element) => {
-										fileInputRef = element;
-									}}
-									type="file"
-								/>
-								<form.Field name="filename">
-									{(field) => (
-										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-											<Label class="sm:text-right" for={field().name}>
-												{t("uploadMediaModal.filename")}
-											</Label>
-											<div class="space-y-2 sm:col-span-3">
-												<Input
-													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
-													id={field().name}
-													onBlur={field().handleBlur}
-													onInput={(event) =>
-														field().handleChange(event.currentTarget.value)
-													}
-													value={field().state.value}
-												/>
-												<Show when={selectedFiles().length > 1}>
-													<p class="text-muted-foreground text-xs">
-														{t("uploadMediaModal.firstFileScopeHint")}
-													</p>
-												</Show>
-												<FormFieldMessage
-													id={`${field().name}-error`}
-													message={getFormErrorMessage(
-														field().state.meta.errors[0],
-													)}
-												/>
-											</div>
-										</div>
-									)}
-								</form.Field>
-
-								<form.Field name="description">
-									{(field) => (
-										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-											<Label class="sm:text-right" for={field().name}>
-												{t("labels.description")}
-											</Label>
+									<ul class="max-h-40 space-y-1 overflow-y-auto overscroll-contain pr-1">
+										<For each={selectedFiles()}>
+											{(file, index) => (
+												<li class="flex items-center justify-between gap-2 text-sm">
+													<span
+														class="min-w-0 flex-1 truncate"
+														title={file.name}
+													>
+														{file.name}
+													</span>
+													<span class="shrink-0 text-muted-foreground text-xs">
+														{fileSizeLabel(file)}
+													</span>
+													<Button
+														aria-label={t("uploadMediaModal.removeFileValue", {
+															value0: file.name,
+														})}
+														class="size-11 shrink-0 sm:size-8"
+														disabled={isSubmitting()}
+														onClick={() => removeFileAt(index())}
+														size="icon"
+														type="button"
+														variant="ghost"
+													>
+														<X aria-hidden="true" class="size-4" />
+													</Button>
+												</li>
+											)}
+										</For>
+									</ul>
+								</div>
+							</Show>
+							<input
+								class="hidden"
+								multiple
+								onChange={(event) => {
+									handleDroppedFiles(event.currentTarget.files, filePickMode());
+									event.currentTarget.value = "";
+								}}
+								ref={(element) => {
+									fileInputRef = element;
+								}}
+								type="file"
+							/>
+							<form.Field name="filename">
+								{(field) => (
+									<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+										<Label class="sm:text-right" for={field().name}>
+											{t("uploadMediaModal.filename")}
+										</Label>
+										<div class="space-y-2 sm:col-span-3">
 											<Input
-												class="sm:col-span-3"
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(event) =>
@@ -548,197 +510,226 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 												}
 												value={field().state.value}
 											/>
+											<Show when={selectedFiles().length > 1}>
+												<p class="text-muted-foreground text-xs">
+													{t("uploadMediaModal.firstFileScopeHint")}
+												</p>
+											</Show>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
+											/>
 										</div>
-									)}
-								</form.Field>
+									</div>
+								)}
+							</form.Field>
 
-								<form.Field name="sourceUrl">
-									{(field) => (
-										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-											<Label class="sm:text-right" for={field().name}>
-												{t("uploadMediaModal.sourceURL")}
-											</Label>
-											<div class="relative space-y-2 sm:col-span-3">
-												<Input
-													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
-													id={field().name}
-													onBlur={field().handleBlur}
-													onInput={(event) =>
-														field().handleChange(event.currentTarget.value)
-													}
-													value={field().state.value}
-												/>
-												<Show when={isFetchingUrl()}>
-													<div class="-translate-y-1/2 absolute top-1/2 right-2 text-muted-foreground text-xs">
-														{t("status.loading")}
-													</div>
-												</Show>
-												<Show when={selectedFiles().length > 1}>
-													<p class="text-muted-foreground text-xs">
-														{t("uploadMediaModal.firstFileScopeHint")}
-													</p>
-												</Show>
-												<FormFieldMessage
-													id={`${field().name}-error`}
-													message={getFormErrorMessage(
-														field().state.meta.errors[0],
-													)}
-												/>
-											</div>
-											<Show
-												when={
-													previewUrl() &&
-													selectedFiles()[0]?.type.startsWith("image/")
+							<form.Field name="description">
+								{(field) => (
+									<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+										<Label class="sm:text-right" for={field().name}>
+											{t("labels.description")}
+										</Label>
+										<Input
+											class="sm:col-span-3"
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) =>
+												field().handleChange(event.currentTarget.value)
+											}
+											value={field().state.value}
+										/>
+									</div>
+								)}
+							</form.Field>
+
+							<form.Field name="sourceUrl">
+								{(field) => (
+									<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+										<Label class="sm:text-right" for={field().name}>
+											{t("uploadMediaModal.sourceURL")}
+										</Label>
+										<div class="relative space-y-2 sm:col-span-3">
+											<Input
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) =>
+													field().handleChange(event.currentTarget.value)
 												}
-											>
-												<div class="mt-2 flex justify-center sm:col-span-4">
-													<img
-														alt={t("uploadMediaModal.fetchedPreview")}
-														class="max-h-48 rounded-md object-contain"
-														src={previewUrl() || undefined}
-													/>
+												value={field().state.value}
+											/>
+											<Show when={isFetchingUrl()}>
+												<div class="-translate-y-1/2 absolute top-1/2 right-2 text-muted-foreground text-xs">
+													{t("status.loading")}
 												</div>
 											</Show>
+											<Show when={selectedFiles().length > 1}>
+												<p class="text-muted-foreground text-xs">
+													{t("uploadMediaModal.firstFileScopeHint")}
+												</p>
+											</Show>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
+											/>
 										</div>
-									)}
-								</form.Field>
-
-								<form.Field name="conflictResolution">
-									{(field) => (
-										<div class="space-y-2">
-											<Label id="conflict-resolution-label">
-												{t("uploadMediaModal.onFilenameConflict")}
-											</Label>
-											<RadioGroup
-												aria-labelledby="conflict-resolution-label"
-												class="grid gap-2 sm:grid-cols-3"
-												name={field().name}
-												onChange={(value) => {
-													if (isUploadConflictResolution(value)) {
-														field().handleChange(value);
-													}
-												}}
-												value={field().state.value}
-											>
-												<For each={resolutionOptions}>
-													{(option) => (
-														<RadioGroupItem
-															class="items-start rounded-md border p-3 text-sm data-[checked]:border-primary data-[checked]:bg-primary/5"
-															value={option.value}
-														>
-															<RadioGroupItemLabel class="block cursor-pointer space-y-1 font-normal leading-normal">
-																<span class="block font-medium leading-none">
-																	{option.label}
-																</span>
-																<span class="block text-muted-foreground text-xs">
-																	{option.description}
-																</span>
-															</RadioGroupItemLabel>
-														</RadioGroupItem>
-													)}
-												</For>
-											</RadioGroup>
-										</div>
-									)}
-								</form.Field>
-
-								<Show when={(props.conflicts?.length ?? 0) > 0}>
-									<Alert variant="warning">
-										<AlertTitle>
-											{t("uploadMediaModal.aFileWithThisNameAlreadyExists")}
-										</AlertTitle>
-										<AlertDescription>
-											<ul class="mt-2 list-disc space-y-1 pl-5">
-												<For each={props.conflicts}>
-													{(conflict) => (
-														<li>
-															{conflict.filename}
-															<Show when={conflict.suggestedName}>
-																<span> → {conflict.suggestedName}</span>
-															</Show>
-														</li>
-													)}
-												</For>
-											</ul>
-										</AlertDescription>
-									</Alert>
-								</Show>
-
-								<Show when={props.uploadProgress}>
-									{(progress) => (
-										<div class="rounded-md border p-3 text-sm">
-											<div class="flex justify-between gap-3">
-												<span>
-													{progress().filename ||
-														t("uploadMediaModal.uploading")}
-												</span>
-												<span class="text-muted-foreground">
-													{progress().status ||
-														(progress().total
-															? t("uploadMediaModal.valueValue", {
-																	value0: String(progress().current ?? 0),
-																	value1: String(progress().total),
-																})
-															: t("uploadMediaModal.processing"))}
-												</span>
-											</div>
-											<div class="mt-2 h-2 overflow-hidden rounded bg-muted">
-												<div
-													class="upload-progress-fill h-full bg-primary transition-all"
-													style={{
-														"--upload-progress-width": (() => {
-															const total = progress().total;
-															return total
-																? `${Math.min(100, ((progress().current ?? 0) / total) * 100)}%`
-																: "35%";
-														})(),
-													}}
+										<Show
+											when={
+												previewUrl() &&
+												selectedFiles()[0]?.type.startsWith("image/")
+											}
+										>
+											<div class="mt-2 flex justify-center sm:col-span-4">
+												<img
+													alt={t("uploadMediaModal.fetchedPreview")}
+													class="max-h-48 rounded-md object-contain"
+													src={previewUrl() || undefined}
 												/>
 											</div>
-										</div>
-									)}
-								</Show>
+										</Show>
+									</div>
+								)}
+							</form.Field>
 
-								<FormError message={asyncError()} />
-								<FormError message={submitError()} />
-							</div>
-
-							<DialogFooter>
-								<Button
-									disabled={isSubmitting()}
-									onClick={requestClose}
-									type="button"
-									variant="outline"
-								>
-									{t("actions.cancel")}
-								</Button>
-								<form.Subscribe
-									selector={(state) => ({
-										canSubmit: state.canSubmit,
-										isSubmitting: state.isSubmitting,
-									})}
-								>
-									{(state) => (
-										<Button
-											aria-busy={state().isSubmitting}
-											disabled={
-												!state().canSubmit ||
-												state().isSubmitting ||
-												isFetchingUrl()
-											}
-											type="submit"
+							<form.Field name="conflictResolution">
+								{(field) => (
+									<div class="space-y-2">
+										<Label id="conflict-resolution-label">
+											{t("uploadMediaModal.onFilenameConflict")}
+										</Label>
+										<RadioGroup
+											aria-labelledby="conflict-resolution-label"
+											class="grid gap-2 sm:grid-cols-3"
+											name={field().name}
+											onChange={(value) => {
+												if (isUploadConflictResolution(value)) {
+													field().handleChange(value);
+												}
+											}}
+											value={field().state.value}
 										>
-											{state().isSubmitting
-												? t("uploadMediaModal.uploading2")
-												: t("uploadMediaModal.upload")}
-										</Button>
-									)}
-								</form.Subscribe>
-							</DialogFooter>
-						</form>
-					</DialogContent>
-				</Show>
+											<For each={resolutionOptions}>
+												{(option) => (
+													<RadioGroupItem
+														class="items-start rounded-md border p-3 text-sm data-[checked]:border-primary data-[checked]:bg-primary/5"
+														value={option.value}
+													>
+														<RadioGroupItemLabel class="block cursor-pointer space-y-1 font-normal leading-normal">
+															<span class="block font-medium leading-none">
+																{option.label}
+															</span>
+															<span class="block text-muted-foreground text-xs">
+																{option.description}
+															</span>
+														</RadioGroupItemLabel>
+													</RadioGroupItem>
+												)}
+											</For>
+										</RadioGroup>
+									</div>
+								)}
+							</form.Field>
+
+							<Show when={(props.conflicts?.length ?? 0) > 0}>
+								<Alert variant="warning">
+									<AlertTitle>
+										{t("uploadMediaModal.aFileWithThisNameAlreadyExists")}
+									</AlertTitle>
+									<AlertDescription>
+										<ul class="mt-2 list-disc space-y-1 pl-5">
+											<For each={props.conflicts}>
+												{(conflict) => (
+													<li>
+														{conflict.filename}
+														<Show when={conflict.suggestedName}>
+															<span> → {conflict.suggestedName}</span>
+														</Show>
+													</li>
+												)}
+											</For>
+										</ul>
+									</AlertDescription>
+								</Alert>
+							</Show>
+
+							<Show when={props.uploadProgress}>
+								{(progress) => (
+									<div class="rounded-md border p-3 text-sm">
+										<div class="flex justify-between gap-3">
+											<span>
+												{progress().filename || t("uploadMediaModal.uploading")}
+											</span>
+											<span class="text-muted-foreground">
+												{progress().status ||
+													(progress().total
+														? t("uploadMediaModal.valueValue", {
+																value0: String(progress().current ?? 0),
+																value1: String(progress().total),
+															})
+														: t("uploadMediaModal.processing"))}
+											</span>
+										</div>
+										<div class="mt-2 h-2 overflow-hidden rounded bg-muted">
+											<div
+												class="upload-progress-fill h-full bg-primary transition-all"
+												style={{
+													"--upload-progress-width": (() => {
+														const total = progress().total;
+														return total
+															? `${Math.min(100, ((progress().current ?? 0) / total) * 100)}%`
+															: "35%";
+													})(),
+												}}
+											/>
+										</div>
+									</div>
+								)}
+							</Show>
+
+							<FormError message={asyncError()} />
+							<FormError message={submitError()} />
+						</div>
+
+						<DialogFooter>
+							<Button
+								disabled={isSubmitting()}
+								onClick={requestClose}
+								type="button"
+								variant="outline"
+							>
+								{t("actions.cancel")}
+							</Button>
+							<form.Subscribe
+								selector={(state) => ({
+									canSubmit: state.canSubmit,
+									isSubmitting: state.isSubmitting,
+								})}
+							>
+								{(state) => (
+									<Button
+										aria-busy={state().isSubmitting}
+										disabled={
+											!state().canSubmit ||
+											state().isSubmitting ||
+											isFetchingUrl()
+										}
+										type="submit"
+									>
+										{state().isSubmitting
+											? t("uploadMediaModal.uploading2")
+											: t("uploadMediaModal.upload")}
+									</Button>
+								)}
+							</form.Subscribe>
+						</DialogFooter>
+					</form>
+				</DialogContent>
 			</Dialog>
 			<AlertDialog
 				onOpenChange={setShowDiscardDialog}

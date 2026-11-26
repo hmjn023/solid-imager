@@ -4,6 +4,14 @@ import { createQuery } from "@tanstack/solid-query";
 import { createMemo, type Accessor } from "solid-js";
 import { jobsQueryKeys } from "../query-options/jobs-query";
 
+export type JobInspection = {
+	select: (jobId: string) => void;
+	clear?: () => void;
+	job: () => JobDto | undefined;
+	failed: () => boolean;
+	retry: () => void;
+};
+
 // A linked job can be outside the loaded page. Prefer the live row when it is available.
 /** Uses the live list row when available, otherwise fetches the selected job independently of pagination. */
 export function useJobInspection(
@@ -11,7 +19,8 @@ export function useJobInspection(
 	list: { data: JobListResponse | undefined; isPending: boolean },
 	getJob: (id: string, signal: AbortSignal) => Promise<JobDto>,
 	select: (jobId: string) => void,
-) {
+	clear?: () => void,
+): JobInspection {
 	const row = createMemo(() => list.data?.items.find((job) => job.id === id()));
 	const detail = createQuery(() => {
 		const jobId = id();
@@ -26,6 +35,7 @@ export function useJobInspection(
 	});
 	return {
 		select,
+		clear,
 		job: () => row() ?? (detail.data?.id === id() ? detail.data : undefined),
 		failed: () => !!id() && !row() && detail.isError,
 		retry: () => {
