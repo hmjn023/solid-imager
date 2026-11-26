@@ -11,8 +11,6 @@ import type { SourceRepository } from "@solid-imager/core/sources";
 import type { TagRepository } from "@solid-imager/core/tags";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const MOCK_BUFFER_DATA = [1, 2, 3];
-
 describe("createTaggingService", () => {
 	let taggingService: ITaggingService;
 	let mockAiClient: IAiClient;
@@ -22,7 +20,6 @@ describe("createTaggingService", () => {
 	let mockCharacterRepo: CharacterRepository;
 	let mockIpRepo: IIpRepository;
 	let mockSseSendEvent: ReturnType<typeof vi.fn>;
-	let mockReadFileBuffer: ReturnType<typeof vi.fn>;
 	let resolveVideoThumbnail: ReturnType<typeof vi.fn<ResolveVideoThumbnail>>;
 
 	beforeEach(() => {
@@ -101,9 +98,6 @@ describe("createTaggingService", () => {
 		} as unknown as CharacterRepository;
 
 		mockSseSendEvent = vi.fn();
-		mockReadFileBuffer = vi.fn(() =>
-			Promise.resolve(new Uint8Array(MOCK_BUFFER_DATA).buffer as ArrayBuffer),
-		);
 		resolveVideoThumbnail = vi.fn().mockResolvedValue("/cache/video.webp");
 
 		const deps: TaggingServiceDeps = {
@@ -117,7 +111,6 @@ describe("createTaggingService", () => {
 			characterRepo: mockCharacterRepo,
 			ipRepo: mockIpRepo,
 			publishSourceEvent: mockSseSendEvent as any,
-			readFileBuffer: mockReadFileBuffer as any,
 			resolveVideoThumbnail,
 		};
 
@@ -161,22 +154,6 @@ describe("createTaggingService", () => {
 			"media-changed",
 			expect.objectContaining({ mediaId: "media-1", filePath: "clip.mp4" }),
 		);
-	});
-
-	it("uses thumbnail bytes for remote tagging and CCIP, never video bytes", async () => {
-		vi.mocked(mockMediaRepo.findById).mockResolvedValue(video as any);
-		mockAiClient.getBaseUrl = () => "https://ai.example.test";
-		vi.mocked(mockAiClient.tagImage).mockResolvedValue(emptyTags);
-		vi.mocked(mockAiClient.extractCcipFeature).mockResolvedValue({
-			feature: [1, 2, 3],
-		});
-		await taggingService.getTagsForMedia("source-1", "media-1");
-		await taggingService.getCcipFeatureForMedia("source-1", "media-1");
-		expect(mockReadFileBuffer).toHaveBeenCalledTimes(2);
-		expect(mockReadFileBuffer).toHaveBeenNthCalledWith(1, "/cache/video.webp");
-		expect(mockReadFileBuffer).toHaveBeenNthCalledWith(2, "/cache/video.webp");
-		expect(mockAiClient.tagImageByPath).not.toHaveBeenCalled();
-		expect(mockAiClient.extractCcipFeatureByPath).not.toHaveBeenCalled();
 	});
 
 	it("extracts local video CCIP from the thumbnail and propagates generation errors", async () => {

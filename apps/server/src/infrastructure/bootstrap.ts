@@ -1,4 +1,4 @@
-import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
+import { InferenceClient } from "~/infrastructure/ai/inference-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
@@ -83,16 +83,21 @@ export function initServices() {
 	services.registerFileSystem(new NodeFileSystem());
 	services.registerImageProcessor(ImageProcessor);
 
-	// Initialize RustAiClient with config values
-	const rustAiClient = new RustAiClient(config.ai);
-	services.registerAiClient(rustAiClient);
+	// Initialize InferenceClient with config values
+	const token = process.env.INFERENCE_TOKEN;
+	const configuredInferenceUrl = process.env.CONFIG_AI_BASE_URL;
+	const inferenceClient = new InferenceClient(
+		config.ai,
+		token && configuredInferenceUrl
+			? { baseUrl: configuredInferenceUrl, token }
+			: undefined,
+	);
+	services.registerAiClient(inferenceClient);
 	configService.onChange((newConfig) =>
-		rustAiClient.updateConfig(newConfig.ai),
+		inferenceClient.updateConfig(newConfig.ai),
 	);
 
-	const jobWorker = new JobWorker(jobRepo, processJob, () =>
-		rustAiClient.offload(),
-	);
+	const jobWorker = new JobWorker(jobRepo, processJob);
 	// Initialize worker with current config and subscribe to changes
 	jobWorker.updateConfig(configService.getConfig());
 	configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));

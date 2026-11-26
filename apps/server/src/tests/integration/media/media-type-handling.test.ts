@@ -10,7 +10,7 @@ import {
 	vi,
 } from "vitest";
 import { FIXTURES_DIR, MIGRATIONS_DIR } from "~/tests/paths";
-import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
+import { InferenceClient } from "~/infrastructure/ai/inference-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import {
 	AuthorRepository,
@@ -85,7 +85,7 @@ describe("Media Type Handling Integration", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerAiClient(new RustAiClient());
+		services.registerAiClient(new InferenceClient());
 
 		try {
 			const migratorModule = await import("drizzle-orm/pglite/migrator");

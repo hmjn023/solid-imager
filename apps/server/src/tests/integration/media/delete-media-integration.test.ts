@@ -4,7 +4,7 @@ import path from "node:path";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
-import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
+import { InferenceClient } from "~/infrastructure/ai/inference-client";
 import { db } from "~/infrastructure/db/index";
 import {
 	CCIP_VECTOR_DIMENSIONS,
@@ -88,7 +88,7 @@ describe("deleteMedia Integration", () => {
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
 		services.registerJobRepository(JobRepository);
-		services.registerAiClient(new RustAiClient());
+		services.registerAiClient(new InferenceClient());
 
 		await db.delete(medias);
 

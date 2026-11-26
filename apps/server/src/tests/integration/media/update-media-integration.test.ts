@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
+import { InferenceClient } from "~/infrastructure/ai/inference-client";
 import { db } from "~/infrastructure/db/index";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
@@ -37,7 +37,7 @@ describe("updateMedia Integration", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerAiClient(new RustAiClient());
+		services.registerAiClient(new InferenceClient());
 	});
 	let testMediaId: string;
 	const testSourceId = crypto.randomUUID();

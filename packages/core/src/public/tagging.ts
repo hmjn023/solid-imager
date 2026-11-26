@@ -4,6 +4,7 @@ export type {
 	CcipDifferenceResponse,
 	CcipFeatureResponse,
 	CcipVectorStatus,
+	CharacterCrop,
 	DetectAndCropResponse,
 	NapiBBox,
 	OppaiOracleResponse,
@@ -23,3 +24,9 @@ export {
 	tagImageRequestSchema,
 	taggingResponseSchema,
 } from "../domain/tagging/schemas";
+
+export {
+	CCIP_DIMENSIONS,
+	CCIP_EMBEDDING_VERSION,
+	CCIP_MODEL,
+} from "../domain/tagging/ccip";

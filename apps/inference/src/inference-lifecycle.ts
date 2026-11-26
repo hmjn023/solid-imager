@@ -1,5 +1,3 @@
-import { nativeInferenceProcess } from "./native-inference-process";
-
 type Model =
 	| "tagging"
 	| "embedding"
@@ -60,7 +58,3 @@ export class InferenceLifecycle {
 		return this.run(null, async () => {});
 	}
 }
-
-export const inferenceLifecycle = new InferenceLifecycle(() =>
-	nativeInferenceProcess.offload(),
-);

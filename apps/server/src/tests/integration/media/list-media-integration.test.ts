@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
+import { InferenceClient } from "~/infrastructure/ai/inference-client";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
@@ -72,7 +72,7 @@ describe("listMedia Integration", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerAiClient(new RustAiClient());
+		services.registerAiClient(new InferenceClient());
 
 		await db.delete(medias);
 

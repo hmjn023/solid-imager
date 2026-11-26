@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { similarityModelSchema } from "../search/embedding";
+import { CCIP_DIMENSIONS } from "./ccip";
 
 /** AI service availability, connection mode, latency and check time. */
 export const aiHealthResponseSchema = z.object({
@@ -66,8 +67,8 @@ export const ccipDifferenceRequestSchema = z.object({
 
 /** A 768-dimensional feature and candidate vectors to compare against it. */
 export const ccipDistancesRequestSchema = z.object({
-	feature: z.array(z.number()).length(768),
-	candidates: z.array(z.array(z.number()).length(768)),
+	feature: z.array(z.number()).length(CCIP_DIMENSIONS),
+	candidates: z.array(z.array(z.number()).length(CCIP_DIMENSIONS)),
 });
 
 /** Distances corresponding to the request candidates. */

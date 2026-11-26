@@ -90,7 +90,13 @@ async function createEnvironment(
 	const portNames =
 		mode === "components"
 			? ["E2E_GALLERY_PORT"]
-			: ["E2E_PORT", "E2E_HMR_PORT", "E2E_TAURI_PORT", "E2E_TAURI_HMR_PORT"];
+			: [
+					"E2E_PORT",
+					"E2E_HMR_PORT",
+					"E2E_TAURI_PORT",
+					"E2E_TAURI_HMR_PORT",
+					"E2E_INFERENCE_PORT",
+				];
 	// Playwright collects specs without launching webServer in list mode.
 	const ports = await Promise.all(
 		portNames.map(

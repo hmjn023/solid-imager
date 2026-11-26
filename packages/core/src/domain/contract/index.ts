@@ -9,6 +9,7 @@ export { danbooruContract } from "./danbooru.contract";
 export { directoriesContract } from "./directories.contract";
 export { downloadsContract } from "./downloads.contract";
 export { importsContract } from "./imports.contract";
+export { inferenceContract } from "./inference.contract";
 export { ipsContract } from "./ips.contract";
 export { jobsContract } from "./jobs.contract";
 export { mediaToolsContract } from "./media-tools.contract";

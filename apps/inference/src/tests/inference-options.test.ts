@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
+import { createNativeInferenceOptions } from "../inference-options";
 
 describe("createNativeInferenceOptions", () => {
 	it.each([

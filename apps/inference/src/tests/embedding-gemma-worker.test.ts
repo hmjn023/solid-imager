@@ -1,10 +1,11 @@
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { inferenceLifecycle } from "~/infrastructure/ai/inference-lifecycle";
+import { InferenceLifecycle } from "../inference-lifecycle";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
-import { EmbeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker";
+import { createNativeInferenceOptions } from "../inference-options";
+import { EmbeddingGemmaWorker } from "../embedding-gemma-worker";
+import { NativeInferenceProcess } from "../native-inference-process";
 
 const mocks = vi.hoisted(() => ({
 	modulePath: "",
@@ -12,16 +13,18 @@ const mocks = vi.hoisted(() => ({
 	info: vi.fn(),
 	error: vi.fn(),
 }));
-vi.mock("~/infrastructure/logger", () => ({
+vi.mock("../logger", () => ({
 	logger: { info: mocks.info, error: mocks.error },
 }));
-vi.mock("~/infrastructure/ai/dghs-imgutils-loader", () => ({
+vi.mock("../dghs-imgutils-loader", () => ({
 	resolveDghsImgutilsPath: () => mocks.modulePath,
 }));
 describe("EmbeddingGemma worker inference settings", () => {
+	const native = new NativeInferenceProcess();
+	const lifecycle = new InferenceLifecycle(() => native.offload());
 	let directory: string;
 	afterEach(async () => {
-		await inferenceLifecycle.offload();
+		await lifecycle.offload();
 		if (directory) await rm(directory, { recursive: true, force: true });
 		vi.clearAllMocks();
 	});
@@ -51,7 +54,7 @@ describe("EmbeddingGemma worker inference settings", () => {
       };
     `,
 		);
-		const worker = new EmbeddingGemmaWorker();
+		const worker = new EmbeddingGemmaWorker(lifecycle, native);
 		const cuda = createNativeInferenceOptions({
 			provider: "cuda",
 			device: "1",

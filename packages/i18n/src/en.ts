@@ -468,8 +468,8 @@ export const en = defineMessages({
 	"configScreen.remote": "Remote",
 	"configScreen.remoteAiUrlExample": "Example: {url}",
 	"configScreen.remoteAiUrlHelp":
-		"Leave empty to process locally. To use another solid-imager server, enter its base URL.",
-	"configScreen.remoteAIServerURLORPC": "Remote AI Server URL (oRPC)",
+		"Enter the inference service base URL. A blank URL disables new inference requests. Configure the device on the inference service.",
+	"configScreen.remoteAIServerURLORPC": "Inference service URL",
 	"configScreen.requestIntervalMs": "Request interval (ms)",
 	"configScreen.settingsCategories": "Settings categories",
 	"configScreen.shortcuts": "Shortcuts",
@@ -746,39 +746,6 @@ export const en = defineMessages({
 	"index.xtracter": "xtracter",
 	"index.xtracterAccountVerification": "xtracter account verification",
 	"index.xtracterError": "xtracter Error",
-	"inferenceDeviceFields.0Or12": "0 (or 1, 2...)",
-	"inferenceDeviceFields.0OrGPU0": "0 or GPU.0",
-	"inferenceDeviceFields.0OrNPU0": "0 or NPU.0",
-	"inferenceDeviceFields.aMDGPU": "AMD GPU",
-	"inferenceDeviceFields.aMDNPU": "AMD NPU",
-	"inferenceDeviceFields.automatic": "Automatic",
-	"inferenceDeviceFields.automaticallySelectsAnAvailableProviderFallingBackToCPU":
-		"Automatically selects an available provider, falling back to CPU.",
-	"inferenceDeviceFields.cPU": "CPU",
-	"inferenceDeviceFields.deviceOptional": "Device (optional)",
-	"inferenceDeviceFields.directML": "DirectML",
-	"inferenceDeviceFields.enterAnIntelGPUIndexLeaveEmptyToUse":
-		"Enter an Intel GPU index. Leave empty to use the provider default.",
-	"inferenceDeviceFields.enterAnIntelNPUIndexLeaveEmptyToUse":
-		"Enter an Intel NPU index. Leave empty to use the provider default.",
-	"inferenceDeviceFields.enterTheProviderSpecificDeviceIndexDefaultsTo0":
-		"Enter the provider-specific device index. Defaults to 0.",
-	"inferenceDeviceFields.inferenceProvider": "Inference provider",
-	"inferenceDeviceFields.intelGPU": "Intel GPU",
-	"inferenceDeviceFields.intelNPU": "Intel NPU",
-	"inferenceDeviceFields.notRequiredByThisProvider":
-		"Not required by this provider",
-	"inferenceDeviceFields.nVIDIACUDA": "NVIDIA CUDA",
-	"inferenceDeviceFields.nVIDIATensorRT": "NVIDIA TensorRT",
-	"inferenceDeviceFields.openVINO": "OpenVINO",
-	"inferenceDeviceFields.selectAProviderForLocalInferenceRemoteAIServers":
-		"Select a provider for local inference. Remote AI servers use their own settings.",
-	"inferenceDeviceFields.specifyTheOpenVINODevicePolicySuchAsAUTOGPU":
-		"Specify the OpenVINO device policy, such as AUTO, GPU, NPU, or HETERO:GPU,CPU.",
-	"inferenceDeviceFields.theSelectedProviderDoesNotUseADeviceSelector":
-		"The selected provider does not use a device selector.",
-	"inferenceDeviceFields.thisProviderDoesNotUseADeviceSelector":
-		"This provider does not use a device selector.",
 	"jobs.failedToCancelJob": "Failed to cancel job",
 	"jobs.failedToDownloadArtifact": "Failed to download artifact",
 	"jobs.failedToRetryJob": "Failed to retry job",

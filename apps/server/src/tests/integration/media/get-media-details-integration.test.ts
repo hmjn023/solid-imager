@@ -12,7 +12,7 @@ import {
 	vi,
 } from "vitest";
 import { FIXTURES_DIR, MIGRATIONS_DIR } from "~/tests/paths";
-import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
+import { InferenceClient } from "~/infrastructure/ai/inference-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import {
 	AuthorRepository,
@@ -60,7 +60,7 @@ describe("getMediaDetails", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerAiClient(new RustAiClient());
+		services.registerAiClient(new InferenceClient());
 
 		// Dynamically import dependencies
 		const drizzleOrmModule = await import("drizzle-orm/pglite");

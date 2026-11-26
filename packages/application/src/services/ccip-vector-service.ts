@@ -1,3 +1,4 @@
+import { CCIP_EMBEDDING_VERSION, CCIP_MODEL } from "@solid-imager/core/tagging";
 import type {
 	Media,
 	SimilarMediaSearchResponse,
@@ -13,10 +14,7 @@ import type {
 import type { ILogger } from "../ports/logger";
 import type { ITaggingService } from "../ports/tagging-service";
 
-/** Model identifier used to partition current CCIP vectors. */
-export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
-/** Version of the current CCIP embedding space. */
-export const CCIP_EMBEDDING_VERSION = 1;
+export { CCIP_EMBEDDING_VERSION, CCIP_MODEL } from "@solid-imager/core/tagging";
 
 /** Storage, inference and media dependencies used for CCIP extraction and search. */
 export type CcipVectorServiceDeps = {

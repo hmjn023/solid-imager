@@ -33,7 +33,6 @@ export type TaggingServiceDeps = {
 	ipRepo: IIpRepository;
 	logger?: ILogger;
 	publishSourceEvent: SourceEventPublisher;
-	readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
 	resolveVideoThumbnail: ResolveVideoThumbnail;
 };
 
@@ -46,7 +45,6 @@ class TaggingServiceImpl implements ITaggingService {
 	private readonly characterRepo: CharacterRepository;
 	private readonly ipRepo: IIpRepository;
 	private readonly publishSourceEvent: SourceEventPublisher;
-	private readonly readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
 	private readonly resolveVideoThumbnail: ResolveVideoThumbnail;
 	private readonly logger?: ILogger;
 
@@ -61,7 +59,6 @@ class TaggingServiceImpl implements ITaggingService {
 		this.characterRepo = deps.characterRepo;
 		this.ipRepo = deps.ipRepo;
 		this.publishSourceEvent = deps.publishSourceEvent;
-		this.readFileBuffer = deps.readFileBuffer;
 		this.resolveVideoThumbnail = deps.resolveVideoThumbnail;
 		this.logger = deps.logger;
 	}
@@ -181,15 +178,7 @@ class TaggingServiceImpl implements ITaggingService {
 				? await this.resolveVideoThumbnail(media)
 				: path.join(connectionParse.data.path, media.filePath);
 
-		let response: TaggingResponse;
-		const canUsePathApi = this.isAiServiceLocal();
-
-		if (canUsePathApi) {
-			response = await this.aiClient.tagImageByPath(fullPath);
-		} else {
-			const buffer = await this.readFileBuffer(fullPath);
-			response = await this.aiClient.tagImage(buffer);
-		}
+		const response = await this.aiClient.tagImageByPath(fullPath);
 
 		// Save to DB
 		await this.transactionManager.transaction(async (tx) => {
@@ -373,13 +362,7 @@ class TaggingServiceImpl implements ITaggingService {
 				? await this.resolveVideoThumbnail(media)
 				: path.join(connectionParse.data.path, media.filePath);
 
-		const canUsePathApi = this.isAiServiceLocal();
-
-		if (canUsePathApi) {
-			return await this.aiClient.extractCcipFeatureByPath(fullPath);
-		}
-		const buffer = await this.readFileBuffer(fullPath);
-		return await this.aiClient.extractCcipFeature(buffer);
+		return this.aiClient.extractCcipFeatureByPath(fullPath);
 	}
 
 	async getCcipDifference(
@@ -398,30 +381,6 @@ class TaggingServiceImpl implements ITaggingService {
 		candidates: number[][],
 	): Promise<number[]> {
 		return await this.aiClient.calculateCcipDistances(feature, candidates);
-	}
-
-	/**
-	 * Check if AI service is running on localhost
-	 * Path-based API only works when AI service can access the file system
-	 */
-	private isAiServiceLocal(): boolean {
-		const baseUrl = this.aiClient.getBaseUrl?.();
-		if (!baseUrl) {
-			return true; // Fallback: assume local
-		}
-
-		try {
-			const url = new URL(baseUrl);
-			const host = url.hostname.toLowerCase();
-			return (
-				host === "localhost" ||
-				host === "127.0.0.1" ||
-				host === "::1" ||
-				host === "0.0.0.0"
-			);
-		} catch {
-			return true; // Fallback: assume local if URL parsing fails
-		}
 	}
 }
 

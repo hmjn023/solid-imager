@@ -644,7 +644,7 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 		page.getByRole("group", { name: "AIサービス", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByLabel("リモートAIサーバーURL（oRPC）", { exact: true }),
+		page.getByLabel("推論サービス URL", { exact: true }),
 	).toBeVisible();
 	const checkAiButton = page.getByRole("button", {
 		name: "接続を確認",

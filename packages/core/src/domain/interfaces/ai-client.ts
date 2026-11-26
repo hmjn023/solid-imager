@@ -1,6 +1,7 @@
 import type {
 	CcipDifferenceResponse,
 	CcipFeatureResponse,
+	DetectAndCropResponse,
 	OppaiOracleResponse,
 	TaggingResponse,
 } from "../tagging/schemas";
@@ -9,7 +10,7 @@ import type {
 export type IAiClient = {
 	healthCheck(): Promise<boolean>;
 
-	extractImageEmbedding(imageBuffer: ArrayBuffer): Promise<number[]>;
+	extractImageEmbedding(image: File | ArrayBuffer): Promise<number[]>;
 
 	extractImageEmbeddingByPath(path: string): Promise<number[]>;
 
@@ -18,6 +19,8 @@ export type IAiClient = {
 	tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse>;
 
 	tagImageByPath(path: string): Promise<TaggingResponse>;
+
+	tagImageOppaiOracle(file: File): Promise<OppaiOracleResponse>;
 
 	tagImageOppaiOracleByPath(path: string): Promise<OppaiOracleResponse>;
 
@@ -35,5 +38,15 @@ export type IAiClient = {
 		candidates: number[][],
 	): Promise<number[]>;
 
-	getBaseUrl?: () => string;
+	detectAndCropCharacters(
+		file: File,
+		transparent: boolean,
+	): Promise<DetectAndCropResponse>;
+
+	detectAndCropCharactersByPath(
+		path: string,
+		transparent: boolean,
+	): Promise<DetectAndCropResponse>;
+
+	offload(): Promise<void>;
 };

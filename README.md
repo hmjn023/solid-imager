@@ -63,9 +63,9 @@ WebMCP で `ai_startCcipExtraction` を公開すると、`showJob: true` を指�
 2. 検索バーに `text:赤い服のキャラクター` と入力して Enter を押すか、フィルター内「自然言語検索」に文章を入力します。画像詳細の More actions → Find similar (EmbeddingGemma 2) からは画像を基準に検索できます。Web と Tauri で共通です。
 3. 新規登録画像も自動で索引化する場合は、Settings → Jobs の **Enable Auto EmbeddingGemma 2 Extraction** を有効にします（初期値は無効）。
 
-画像と検索文は dghs の Q8・768 次元モデルで符号化し、専用ワーカーで実行します。推論先は全モデル共通の Settings → AI Service の Provider / Device 設定に従い、GPU も同じ設定を使います。Q8 はモデルの重み形式で、CPU/GPU の選択とは独立しています。初回はモデルがダウンロードされます。AI のリモート URL を設定している場合は、同じ API に対応したサーバーへ推論を委譲し、推論サーバー側の共通 Provider / Device 設定を使います。検索にはソースと結果件数を適用し、通常のタグ・ファイル名条件は適用しません。索引作成後に更新された画像は、再抽出されるまで検索結果から除外します。CCIP の索引とは独立しています。
+画像と検索文は dghs の Q8・768 次元モデルで符号化し、専用ワーカーで実行します。全モデルは推論サービスの `INFERENCE_PROVIDER` と `INFERENCE_DEVICE` を使います。Q8 はモデルの重み形式で、CPU/GPU の選択とは独立しています。初回はモデルがダウンロードされます。アプリは Settings → AI Service の推論サービス URL に接続します。検索にはソースと結果件数を適用し、通常のタグ・ファイル名条件は適用しません。索引作成後に更新された画像は、再抽出されるまで検索結果から除外します。CCIP の索引とは独立しています。
 
-Intel GPU で実行する場合は、推論サーバーに OpenVINO 対応の ONNX Runtime と OpenVINO C ライブラリ（`openvino_c`）を用意し、Settings → AI Service の Provider で **Intel GPU**（`intel_gpu`）を選択します。Q8 モデルは初回推論時に自動変換されるため、手動変換や Python は不要です。変換には時間と追加のディスク容量が必要です。生成物は `IU_HOME/embeddinggemma2/openvino`（既定では `~/.cache/dghs-imgutils/embeddinggemma2/openvino`）に保存され、次回以降は再利用されます。
+Intel GPU で実行する場合は、推論サーバーに OpenVINO 対応の ONNX Runtime と OpenVINO C ライブラリ（`openvino_c`）を用意し、`INFERENCE_PROVIDER=intel_gpu` を設定します。Q8 モデルは初回推論時に自動変換されるため、手動変換や Python は不要です。変換には時間と追加のディスク容量が必要です。生成物は `IU_HOME/embeddinggemma2/openvino`（既定では `~/.cache/dghs-imgutils/embeddinggemma2/openvino`）に保存され、次回以降は再利用されます。
 
 ## 技術スタック
 
@@ -85,6 +85,7 @@ Tooling: Vite / Oxlint / Oxfmt
 ### プロジェクト構成（モノレポ）
 
 - `apps/server/`: メインサーバー (TanStack Start + oRPC)。バックエンドAPIとWeb UIを統合。
+- `apps/inference/`: 推論サービス (Bun + oRPC + ONNX Runtime)。
 - `apps/tauri/`: Tauri アプリ。`src/` はWebと共通のワークスペース部品を使う独立 SPA、`src-tauri/` は Rust 実装。
 - `apps/cli/`: メディア管理・同期用CLIツール。
 - `apps/xtracter/`: メディア収集用ブラウザ拡張機能。
@@ -94,7 +95,7 @@ Tooling: Vite / Oxlint / Oxfmt
 - `packages/ui/`: 共通UIコンポーネントライブラリ。
 - `packages/client/`: oRPC client factory などの共有クライアント基盤。
 
-oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定しています。更新時は Web とサーバー、Tauri、CLI、xtracter、およびリモート推論先の Solid Imager を同じリリースに揃えてください。
+oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定しています。更新時は Web とサーバー、Tauri、CLI、xtracter、および推論サービスを同じリリースに揃えてください。
 
 ## セットアップ
 
@@ -141,57 +142,34 @@ BUN_SQL_TEST_DATABASE_URL=postgres://user:password@localhost:5432/solid_imager \
   bun run --cwd apps/server validate:bun-sql
 ```
 
-### AI ネイティブ依存（GPU 対応）
+### 推論サービス
 
-AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。インストール時に GitHub Releases からビルド済みバイナリを取得し、チェックサムを検証します。Rust toolchain は不要です。対応プラットフォームは Linux x64 (glibc)、Windows x64、macOS x64/arm64 です。
+アプリはメディアの保存・検索とジョブを管理し、`apps/inference` が自動タグ付け、CCIP、EmbeddingGemma 2、人物検出と切り抜きを実行します。Web・Tauri・CLI は従来のアプリ API に接続します。
 
-```bash
-bun install
-```
-
-Aube を使う場合:
+推論側の `dghs-imgutils-rs` はチェックサム検証済みの N-API バイナリをインストールします。推論イメージは Linux x64 (glibc) 向けです。推論環境に対応する ONNX Runtime を用意し、ローカルでは次のように起動します。
 
 ```bash
-aube i
+ORT_DYLIB_PATH=/opt/onnxruntime/lib/libonnxruntime.so \
+INFERENCE_PROVIDER=cpu bun run --cwd apps/inference start
 ```
 
-推論には対応する ONNX Runtime の共有ライブラリが実行環境に必要です。`ORT_DYLIB_PATH` にそのファイルを指定し、プロバイダーとその依存ライブラリを動的ローダーから参照できるようにします。例えば Linux では次のように設定します。
-
-```bash
-export ORT_DYLIB_PATH=/opt/onnxruntime/lib/libonnxruntime.so
-export LD_LIBRARY_PATH=/opt/onnxruntime/lib:${LD_LIBRARY_PATH:-}
-```
-
-CUDA を使用する場合は CUDA 対応の ONNX Runtime、NVIDIA ドライバー、CUDA および cuDNN が必要です。
+別のターミナルで `CONFIG_AI_BASE_URL=http://127.0.0.1:3001 bun run dev` を実行するか、設定画面に同じベース URL を保存します。推論サービスの既定の待ち受けは `127.0.0.1:3001` で、接続先の `/api/inference/health` から実行環境を確認できます。初回の推論にはモデルのダウンロード時間が加わります。GPU を使う場合はサービス側で `INFERENCE_PROVIDER` と必要に応じて `INFERENCE_DEVICE` を変更し、同じ配布元の ONNX Runtime、provider ライブラリ、対応ドライバーを用意します。
 
 ### 本番コンテナ
 
-本番の `app` コンテナは FFmpeg を含む `Dockerfile.runtime` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。アプリケーション依存関係の `bun install` はコンテナ内で実行しません。
-
-ビルドホストで一度だけ実行します。
+Compose は `app` と `inference` を独立してビルドします。ルートの `.env` に `INFERENCE_ORT_DIR` を指定し、そのディレクトリに `libonnxruntime.so` と使用する provider のライブラリを置きます。CPU プロバイダーが既定です。メディアのマウントは `compose.production.override.yml.example` を参考に `app` に追加してください。
 
 ```bash
-bun install --frozen-lockfile
-bun run --cwd apps/server build
+docker compose -f compose.yml -f compose.production.yml -f compose.production.override.yml up -d --build
 ```
 
-デプロイホストからその成果物が見える状態にして、`APP_ARTIFACT_DIR` にプロジェクトルートを指定します。
+配布済みのイメージを使う場合は `APP_IMAGE` と `INFERENCE_IMAGE` にタグを指定し、`--no-build` で起動します。画像・DB は既存ストレージにあり、アプリ設定は `app-config`、サムネイルは `app-cache`、推論モデルは `inference-cache` に保存されます。
 
-```bash
-if [ -n "${APP_RUNTIME_IMAGE:-}" ]; then
-  APP_ARTIFACT_DIR=/srv/solid-imager \
-    docker compose -f compose.yml -f compose.production.yml -f compose.production.override.yml up -d --no-build
-else
-  docker compose -f compose.yml -f compose.production.yml build app
-  APP_ARTIFACT_DIR=/srv/solid-imager \
-    docker compose -f compose.yml -f compose.production.yml -f compose.production.override.yml up -d
-fi
-```
+GPU が別ホストにある場合は、そのホストのプライベートアドレスを `INFERENCE_HOST` に指定して推論サービスを起動し、アプリ側の `INFERENCE_BASE_URL` に到達可能なベース URL を指定します。Compose で別ホストを利用する場合や AI 機能を使わない場合は、起動対象を `app nginx` に指定できます。別ホストとの接続にはプライベートネットワークを使い、認証する場合は両方に同じ `INFERENCE_TOKEN` を設定します。Compose 以外の起動ではアプリ側に `CONFIG_AI_BASE_URL` も環境変数で指定してください。
 
-`APP_ARTIFACT_DIR` には `node_modules/` と `apps/server/.output/` を含む、ビルドホストのプロジェクトディレクトリを指定してください。
-`APP_RUNTIME_IMAGE` を指定した場合は、Python 3 がインストール済みの互換イメージを使用してください。この場合、`app` はローカルビルドせず、指定イメージをそのまま使用します。
+既存 Compose から移行する場合は、従来の `APP_ARTIFACT_DIR` にある `apps/server/config.json` を `app-config` の `config.json` に移します。既存の `ai.provider` と `ai.device` は推論サービス側の環境変数に設定し直します。Solid Imager の旧サーバーへ推論を委譲している構成では、先に専用の推論サービスを起動してから URL を更新します。同じモデルと埋め込みバージョンであれば、既存の索引を引き続き使用できます。
 
-mise Daemons で PostgreSQL・Bun・nginx を起動する場合は、[開発環境と管理スクリプト](docs/development.md#mise-でサービスを起動)を参照してください。
+mise Daemons で PostgreSQL・Bun・nginx を起動する手順は開発環境のドキュメントを参照してください。[開発環境と管理スクリプト](docs/development.md#mise-でサービスを起動)
 
 ## 主要スクリプト
 

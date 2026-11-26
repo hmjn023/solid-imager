@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { InferenceLifecycle } from "~/infrastructure/ai/inference-lifecycle";
+import { InferenceLifecycle } from "../inference-lifecycle";
 
 it("drains concurrent users before switching models and releases the final session once", async () => {
 	const order: string[] = [];

@@ -302,28 +302,22 @@ describe("JobWorker", () => {
 			for (const job of available) backlog.splice(backlog.indexOf(job), 1);
 			return available;
 		});
-		worker = new JobWorker(
-			jobRepo,
-			async (job) => {
-				order.push(job.id);
-				if (job.id === "0")
-					backlog.push({
-						id: "late-single",
-						type: "auto_tagging",
-						parentId: null,
-						createdAt: new Date(Date.now() + 1),
-					} as Job);
-			},
-			async () => {
-				order.push("offload");
-			},
-		);
+		worker = new JobWorker(jobRepo, async (job) => {
+			order.push(job.id);
+			if (job.id === "0")
+				backlog.push({
+					id: "late-single",
+					type: "auto_tagging",
+					parentId: null,
+					createdAt: new Date(Date.now() + 1),
+				} as Job);
+		});
 		worker.start();
 		await vi.advanceTimersByTimeAsync(100);
 		expect(order.indexOf("late-single")).toBe(16);
-		expect(order.slice(-3)).toEqual(["offload", "embedding", "offload"]);
+		expect(order.at(-1)).toBe("embedding");
 	});
-	it("processes a new single download while the next AI stage waits for offload", async () => {
+	it("processes downloads while an AI request is pending and advances after an inference failure", async () => {
 		const tagging = [{ id: "tag", type: "auto_tagging" } as Job];
 		const embeddings = [
 			{ id: "embed", type: "extract_embedding_vector" } as Job,
@@ -337,21 +331,22 @@ describe("JobWorker", () => {
 			return opts?.excludeTypes ? downloads.splice(0, limit) : [];
 		});
 		const barrier = Promise.withResolvers<void>();
-		const offload = vi
-			.fn()
-			.mockReturnValueOnce(barrier.promise)
-			.mockResolvedValue(undefined);
-		worker = new JobWorker(jobRepo, processor, offload);
+		const inference = vi.fn(async (job: Job) => {
+			if (job.id === "tag") await barrier.promise;
+		});
+		worker = new JobWorker(jobRepo, inference);
 		worker.start();
 		await vi.advanceTimersByTimeAsync(100);
-		expect(offload).toHaveBeenCalledOnce();
+		expect(inference).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "tag" }),
+		);
 		downloads.push({ id: "single", type: "downloadImage" } as Job);
 		await vi.advanceTimersByTimeAsync(1000);
-		expect(processor).toHaveBeenCalledWith(
+		expect(inference).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "single" }),
 		);
 		expect(embeddings).toHaveLength(1);
-		barrier.resolve();
+		barrier.reject(new Error("Inference is unavailable"));
 		await vi.advanceTimersByTimeAsync(100);
 		expect(embeddings).toHaveLength(0);
 	});
