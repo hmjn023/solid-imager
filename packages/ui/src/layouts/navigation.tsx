@@ -44,7 +44,10 @@ export const NAVIGATION_ITEMS = [
 ] as const;
 
 export function NavigationItem(props: {
+	accessibleLabel?: string;
+	badge?: JSX.Element;
 	children?: JSX.Element;
+	collapsedBadge?: JSX.Element;
 	expanded: boolean;
 	icon: typeof Library;
 	label: string;
@@ -57,21 +60,22 @@ export function NavigationItem(props: {
 			(props.to !== "/search" && pathname.startsWith(`${props.to}/`)),
 	});
 	const Icon = props.icon;
+	const accessibleLabel = () => props.accessibleLabel ?? props.label;
 
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton
 				aria-current={active() ? "page" : undefined}
-				aria-label={props.label}
+				aria-label={accessibleLabel()}
 				as={Link}
 				class={
 					props.expanded
-						? "h-11 px-3 font-medium text-muted-foreground md:h-10"
-						: "h-11 justify-center px-0 font-medium text-muted-foreground md:h-10"
+						? "relative h-11 px-3 font-medium text-muted-foreground md:h-10"
+						: "relative h-11 justify-center px-0 font-medium text-muted-foreground md:h-10"
 				}
 				isActive={active()}
 				onClick={props.onClick}
-				tooltip={props.label}
+				tooltip={accessibleLabel()}
 				tooltipDisabled={props.expanded}
 				to={props.to}
 			>
@@ -82,6 +86,8 @@ export function NavigationItem(props: {
 				>
 					{props.label}
 				</span>
+				<Show when={props.expanded}>{props.badge}</Show>
+				<Show when={!props.expanded}>{props.collapsedBadge}</Show>
 				<Show when={props.expanded}>{props.children}</Show>
 			</SidebarMenuButton>
 		</SidebarMenuItem>

@@ -32,11 +32,18 @@ import { NAVIGATION_ITEMS, NavigationItem } from "./navigation";
 import { SidebarTooltip } from "./sidebar-tooltip";
 import { SourceList } from "./source-list";
 
+export type JobsBadgeCounts = {
+	active: number;
+	failed: number;
+};
+
 export type SidebarProps = {
 	"aria-label"?: string;
 	as?: "aside" | "div";
 	class?: string;
 	apiDocsHref?: string;
+	inDrawer?: boolean;
+	jobsCounts?: JobsBadgeCounts;
 	serverConnectionsHref?: string;
 	expanded: boolean;
 	mediaSources: SafeMediaSource[];
@@ -50,12 +57,38 @@ export type SidebarProps = {
 	renderPendingDownloadsIndicator?: (compact: Accessor<boolean>) => JSX.Element;
 };
 
+function formatBadgeCount(count: number): string {
+	return count > 99 ? "99+" : String(count);
+}
+
+function getJobsAccessibleLabel(counts?: JobsBadgeCounts): string {
+	const active = counts?.active ?? 0;
+	const failed = counts?.failed ?? 0;
+	if (active > 0 && failed > 0) {
+		return t("navigation.jobsActiveAndFailed", {
+			active: String(active),
+			failed: String(failed),
+		});
+	}
+	if (active > 0) {
+		return t("navigation.jobsActive", { active: String(active) });
+	}
+	if (failed > 0) {
+		return t("navigation.jobsFailed", { failed: String(failed) });
+	}
+	return t("navigation.jobs");
+}
+
 export function Sidebar(props: SidebarProps) {
 	return (
 		<Dynamic
 			aria-label={props["aria-label"]}
 			class={cn(
-				"flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain bg-background text-foreground scrollbar-stable *:shrink-0",
+				// oxlint-disable-next-line shadcn/no-arbitrary-values -- Uses canonical --workspace-surface-subtle token from theme.css (DESIGN.md sidebar).
+				"flex min-h-0 flex-col bg-[var(--workspace-surface-subtle)] text-foreground *:shrink-0",
+				props.inDrawer
+					? "h-auto min-h-full overflow-visible"
+					: "h-full overflow-y-auto overscroll-contain scrollbar-stable",
 				props.class,
 			)}
 			component={props.as ?? "div"}
@@ -63,11 +96,12 @@ export function Sidebar(props: SidebarProps) {
 		>
 			<SidebarHeader>
 				<div
-					class={
+					class={cn(
 						props.expanded
 							? "group flex h-12 items-center gap-2 px-2"
-							: "group flex flex-col items-center gap-1.5 py-1"
-					}
+							: "group flex flex-col items-center gap-1.5 py-1",
+						props.inDrawer && props.expanded && "pr-12",
+					)}
 				>
 					<SidebarTooltip disabled={props.expanded}>
 						<TooltipTrigger
@@ -103,7 +137,7 @@ export function Sidebar(props: SidebarProps) {
 									class={cn(
 										"size-11 shrink-0 p-0 text-muted-foreground md:size-8",
 										props.expanded &&
-											"opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100",
+											"opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none",
 									)}
 									onClick={onCollapseToggle()}
 									size="icon"
@@ -210,24 +244,79 @@ export function Sidebar(props: SidebarProps) {
 				<nav aria-label={t("sidebar.managementNavigation")}>
 					<SidebarMenu>
 						<For each={NAVIGATION_ITEMS.slice(1)}>
-							{(item) => (
-								<NavigationItem
-									expanded={props.expanded}
-									icon={item.icon}
-									label={t(item.labelKey)}
-									onClick={props.onNavigate}
-									to={item.to}
-								>
-									<Show when={item.shortcutId}>
-										{(id) => (
-											<ShortcutKbd
-												class="min-h-5 text-label-xs"
-												shortcutId={id()}
-											/>
-										)}
-									</Show>
-								</NavigationItem>
-							)}
+							{(item) => {
+								const isJobs = item.to === "/jobs";
+								const activeCount = () =>
+									isJobs ? (props.jobsCounts?.active ?? 0) : 0;
+								const failedCount = () =>
+									isJobs ? (props.jobsCounts?.failed ?? 0) : 0;
+								const hasJobsBadge = () =>
+									activeCount() > 0 || failedCount() > 0;
+								return (
+									<NavigationItem
+										accessibleLabel={
+											isJobs
+												? getJobsAccessibleLabel(props.jobsCounts)
+												: undefined
+										}
+										badge={
+											<Show when={hasJobsBadge()}>
+												<span class="flex shrink-0 items-center gap-1">
+													<Show when={activeCount() > 0}>
+														<span
+															aria-hidden="true"
+															class="rounded-full bg-accent px-1.5 py-0.5 font-medium text-label-xs text-primary tabular-nums"
+														>
+															{formatBadgeCount(activeCount())}
+														</span>
+													</Show>
+													<Show when={failedCount() > 0}>
+														<span
+															aria-hidden="true"
+															class="rounded-full bg-error px-1.5 py-0.5 font-medium text-destructive text-label-xs tabular-nums"
+														>
+															{formatBadgeCount(failedCount())}
+														</span>
+													</Show>
+												</span>
+											</Show>
+										}
+										collapsedBadge={
+											<Show when={hasJobsBadge()}>
+												<span
+													aria-hidden="true"
+													class={cn(
+														"absolute top-0.5 right-0.5 rounded-full px-1 py-0.5 font-medium text-micro leading-none tabular-nums",
+														failedCount() > 0
+															? "bg-error text-destructive"
+															: "bg-accent text-primary",
+													)}
+												>
+													{formatBadgeCount(
+														failedCount() > 0 ? failedCount() : activeCount(),
+													)}
+												</span>
+											</Show>
+										}
+										expanded={props.expanded}
+										icon={item.icon}
+										label={t(item.labelKey)}
+										onClick={props.onNavigate}
+										to={item.to}
+									>
+										<Show when={item.shortcutId && !hasJobsBadge()}>
+											<Show when={item.shortcutId}>
+												{(id) => (
+													<ShortcutKbd
+														class="min-h-5 text-label-xs"
+														shortcutId={id()}
+													/>
+												)}
+											</Show>
+										</Show>
+									</NavigationItem>
+								);
+							}}
 						</For>
 					</SidebarMenu>
 				</nav>

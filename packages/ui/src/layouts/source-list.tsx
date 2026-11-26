@@ -183,7 +183,10 @@ export function SourceList(props: SourceListProps) {
 										params={{ mediaSourceId: source.id ?? "" }}
 										to="/sources/$mediaSourceId"
 									>
-										<span class="block truncate font-medium text-foreground text-xs">
+										<span
+											class="block truncate font-medium text-foreground text-xs"
+											title={source.name}
+										>
 											{source.name}
 										</span>
 										<span class="mt-0.5 block text-label-xs text-muted-foreground">

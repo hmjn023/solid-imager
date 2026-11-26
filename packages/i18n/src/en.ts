@@ -192,10 +192,14 @@ export const en = defineMessages({
 		"Destination path is required.",
 	"bulkActionCommand.noMediaItemsAreSelected": "No media items are selected.",
 	"bulkActionCommand.targetSourceIsRequired": "Target source is required.",
+	"bulkActionDialog.actionFailed": "Bulk action failed",
 	"bulkActionDialog.bulkDelete": "Bulk delete",
 	"bulkActionDialog.confirm": "Confirm",
 	"bulkActionDialog.copyToAnotherSource": "Copy (to another source)",
 	"bulkActionDialog.destinationFolderPath": "Destination folder path",
+	"bulkActionDialog.discardChangesDescription":
+		"Your selected action and destination inputs will be discarded.",
+	"bulkActionDialog.discardChangesTitle": "Discard bulk action changes?",
 	"bulkActionDialog.discardRetryDescription":
 		"Some items failed or were not processed yet. Closing now discards the retry list.",
 	"bulkActionDialog.discardRetryTitle": "Discard pending retry?",
@@ -1309,6 +1313,9 @@ export const en = defineMessages({
 		"There are no available destination sources.",
 	"navigation.importInbox": "Import inbox",
 	"navigation.jobs": "Jobs",
+	"navigation.jobsActive": "Jobs, {active} active",
+	"navigation.jobsActiveAndFailed": "Jobs, {active} active, {failed} failed",
+	"navigation.jobsFailed": "Jobs, {failed} failed",
 	"navigation.library": "Library",
 	"navigation.manager": "Manager",
 	"navigation.managerCategories": "Manager categories",
@@ -2048,11 +2055,15 @@ export const en = defineMessages({
 	"useSourcesEvents.unknown": "unknown",
 	"useSourcesEvents.watcherErrorForValueValue":
 		"Watcher Error for {value0}...: {value1}",
+	"useSourcesPage.failedToDeleteSource": "Failed to delete source",
 	"useSourcesPage.failedToDeleteSourceValue":
 		"Failed to delete source: {value0}",
+	"useSourcesPage.failedToSaveSource": "Failed to save source",
 	"useSourcesPage.failedToSaveSourceValue": "Failed to save source: {value0}",
+	"useSourcesPage.failedToSyncAllSources": "Failed to sync all sources",
 	"useSourcesPage.failedToSyncAllSourcesValue":
 		"Failed to sync all sources: {value0}",
+	"useSourcesPage.failedToSyncSource": "Failed to sync {value0}",
 	"useSourcesPage.failedToSyncValueValue": "Failed to sync {value0}: {value1}",
 	"useSourcesPage.noSynchronizationResultReturned":
 		"No synchronization result returned",

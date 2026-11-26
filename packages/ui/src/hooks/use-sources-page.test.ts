@@ -78,7 +78,8 @@ describe("source synchronization feedback", () => {
 			await page.handleSyncSource(source("one"));
 			expect(toast.success).not.toHaveBeenCalled();
 			expect(toast.error).toHaveBeenCalledExactlyOnceWith(
-				`oneの同期に失敗しました: ${outcome.error}`,
+				"oneの同期に失敗しました",
+				{ description: outcome.error },
 			);
 			expect(invalidate).toHaveBeenCalledOnce();
 			expect(page.isSyncing()).toBe(false);
@@ -102,9 +103,9 @@ describe("source synchronization feedback", () => {
 		vi.mocked(actions.syncMediaSources).mockResolvedValueOnce({ results: [] });
 		await page.handleSyncSource(source("one"));
 		expect(toast.success).not.toHaveBeenCalled();
-		expect(toast.error).toHaveBeenCalledWith(
-			"oneの同期に失敗しました: 同期結果が返されませんでした",
-		);
+		expect(toast.error).toHaveBeenCalledWith("oneの同期に失敗しました", {
+			description: "同期結果が返されませんでした",
+		});
 	});
 
 	it("keeps the pending guard until all outcomes arrive and clears it on success", async () => {

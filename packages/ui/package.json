@@ -8,6 +8,7 @@
     "./ai-tagging-modal": "./src/ai-tagging-modal.tsx",
     "./alert": "./src/alert.tsx",
     "./alert-dialog": "./src/alert-dialog.tsx",
+    "./api-activity-indicator": "./src/api-activity-indicator.tsx",
     "./app-shell": "./src/layouts/app-shell.tsx",
     "./async-state": "./src/async-state.tsx",
     "./badge": "./src/badge.tsx",

@@ -190,10 +190,14 @@ export const ja = defineLocale({
 	"bulkActionCommand.destinationPathIsRequired": "保存先のパスが必要です。",
 	"bulkActionCommand.noMediaItemsAreSelected": "メディアが選択されていません。",
 	"bulkActionCommand.targetSourceIsRequired": "保存先ソースが必要です。",
+	"bulkActionDialog.actionFailed": "一括操作に失敗しました",
 	"bulkActionDialog.bulkDelete": "一括削除",
 	"bulkActionDialog.confirm": "確定",
 	"bulkActionDialog.copyToAnotherSource": "コピー (別ソースへ)",
 	"bulkActionDialog.destinationFolderPath": "移動先フォルダパス",
+	"bulkActionDialog.discardChangesDescription":
+		"選択した操作や移動先の入力内容は破棄されます。",
+	"bulkActionDialog.discardChangesTitle": "一括操作の入力を破棄しますか？",
 	"bulkActionDialog.discardRetryDescription":
 		"一部の項目が失敗または未処理のままです。このまま閉じると再試行リストが破棄されます。",
 	"bulkActionDialog.discardRetryTitle": "未完了の再試行を破棄しますか？",
@@ -1308,6 +1312,10 @@ export const ja = defineLocale({
 		"選択できる保存先ソースがありません。",
 	"navigation.importInbox": "取り込み待ち",
 	"navigation.jobs": "ジョブ",
+	"navigation.jobsActive": "ジョブ（進行中 {active}件）",
+	"navigation.jobsActiveAndFailed":
+		"ジョブ（進行中 {active}件、失敗 {failed}件）",
+	"navigation.jobsFailed": "ジョブ（失敗 {failed}件）",
 	"navigation.library": "ライブラリ",
 	"navigation.manager": "管理",
 	"navigation.managerCategories": "管理カテゴリ",
@@ -2050,12 +2058,16 @@ export const ja = defineLocale({
 	"useSourcesEvents.unknown": "不明",
 	"useSourcesEvents.watcherErrorForValueValue":
 		"{value0}...の監視エラー: {value1}",
+	"useSourcesPage.failedToDeleteSource": "ソースの削除に失敗しました",
 	"useSourcesPage.failedToDeleteSourceValue":
 		"ソースの削除に失敗しました: {value0}",
+	"useSourcesPage.failedToSaveSource": "ソースの保存に失敗しました",
 	"useSourcesPage.failedToSaveSourceValue":
 		"ソースの保存に失敗しました: {value0}",
+	"useSourcesPage.failedToSyncAllSources": "ソースの一括同期に失敗しました",
 	"useSourcesPage.failedToSyncAllSourcesValue":
 		"ソースの一括同期に失敗しました: {value0}",
+	"useSourcesPage.failedToSyncSource": "{value0}の同期に失敗しました",
 	"useSourcesPage.failedToSyncValueValue":
 		"{value0}の同期に失敗しました: {value1}",
 	"useSourcesPage.noSynchronizationResultReturned":

@@ -2,14 +2,64 @@ import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	type Accessor,
+	createContext,
+	createEffect,
 	createSignal,
+	createUniqueId,
 	ErrorBoundary,
 	type JSX,
 	onCleanup,
-	onMount,
+	type ParentProps,
+	Show,
+	useContext,
 } from "solid-js";
 import type { PendingDownloadsIndicatorProps } from "./pending-downloads-indicator.types";
 import { toast } from "./toast";
+
+type PendingDownloadsSharedState = {
+	pendingCount: Accessor<number | undefined>;
+	setPendingCount: (count: number | undefined) => void;
+	isModalOpen: Accessor<boolean>;
+	setIsModalOpen: (open: boolean) => void;
+	ownerId: Accessor<string | null>;
+	claimOwner: (id: string) => void;
+	releaseOwner: (id: string) => void;
+};
+
+const PendingDownloadsContext = createContext<PendingDownloadsSharedState>();
+
+/**
+ * Shares a single inbox count, event subscription, and review modal across
+ * multiple indicator trigger locations (desktop sidebar, mobile header, drawer).
+ */
+export function PendingDownloadsProvider(props: ParentProps) {
+	const [pendingCount, setPendingCount] = createSignal<number>();
+	const [isModalOpen, setIsModalOpen] = createSignal(false);
+	const [ownerId, setOwnerId] = createSignal<string | null>(null);
+
+	const claimOwner = (id: string) => {
+		setOwnerId((current) => current ?? id);
+	};
+	const releaseOwner = (id: string) => {
+		setOwnerId((current) => (current === id ? null : current));
+	};
+
+	return (
+		<PendingDownloadsContext.Provider
+			value={{
+				pendingCount,
+				setPendingCount,
+				isModalOpen,
+				setIsModalOpen,
+				ownerId,
+				claimOwner,
+				releaseOwner,
+			}}
+		>
+			{props.children}
+		</PendingDownloadsContext.Provider>
+	);
+}
 
 export type PendingDownloadsIndicatorCoreProps =
 	PendingDownloadsIndicatorProps & {
@@ -28,8 +78,31 @@ export type PendingDownloadsIndicatorCoreProps =
 export function PendingDownloadsIndicatorCore(
 	props: PendingDownloadsIndicatorCoreProps,
 ) {
-	const [isModalOpen, setIsModalOpen] = createSignal(false);
-	const [pendingCount, setPendingCount] = createSignal<number>();
+	const shared = useContext(PendingDownloadsContext);
+	const instanceId = createUniqueId();
+	const [localModalOpen, setLocalModalOpen] = createSignal(false);
+	const [localPendingCount, setLocalPendingCount] = createSignal<number>();
+
+	const pendingCount = shared ? shared.pendingCount : localPendingCount;
+	const setPendingCount = shared
+		? shared.setPendingCount
+		: setLocalPendingCount;
+	const isModalOpen = shared ? shared.isModalOpen : localModalOpen;
+	const setIsModalOpen = shared ? shared.setIsModalOpen : setLocalModalOpen;
+
+	const isOwner = () => !shared || shared.ownerId() === instanceId;
+
+	if (shared) {
+		createEffect(() => {
+			if (shared.ownerId() === null) {
+				shared.claimOwner(instanceId);
+			}
+		});
+		onCleanup(() => {
+			shared.releaseOwner(instanceId);
+		});
+	}
+
 	let eventVersion = 0;
 	let refreshRequested = false;
 	let refreshInFlight: Promise<void> | undefined;
@@ -66,7 +139,9 @@ export function PendingDownloadsIndicatorCore(
 		return refreshInFlight;
 	};
 
-	onMount(() => {
+	createEffect(() => {
+		if (!isOwner()) return;
+
 		let disposed = false;
 		let cleanup: (() => void) | undefined;
 
@@ -126,13 +201,15 @@ export function PendingDownloadsIndicatorCore(
 				onOpen: () => setIsModalOpen(true),
 				pendingCount,
 			})}
-			{props.renderModal({
-				isOpen: isModalOpen(),
-				onClose: () => setIsModalOpen(false),
-				onImportCompleted: () => {
-					void refreshPendingCount();
-				},
-			})}
+			<Show when={isOwner()}>
+				{props.renderModal({
+					isOpen: isModalOpen(),
+					onClose: () => setIsModalOpen(false),
+					onImportCompleted: () => {
+						void refreshPendingCount();
+					},
+				})}
+			</Show>
 		</ErrorBoundary>
 	);
 }

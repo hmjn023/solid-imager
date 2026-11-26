@@ -1,7 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { createEffect, createSignal, Show } from "solid-js";
-import { Alert, AlertDescription } from "./alert";
+import { Alert, AlertDescription, AlertTitle } from "./alert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -75,6 +75,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	const [targetSourceId, setTargetSourceId] = createSignal("");
 	const [destinationPath, setDestinationPath] = createSignal("");
 	const [isSubmitting, setIsSubmitting] = createSignal(false);
+	const [errorTitle, setErrorTitle] = createSignal("");
 	const [errorMsg, setErrorMsg] = createSignal("");
 	const [retryCommand, setRetryCommand] =
 		createSignal<BulkActionCommand | null>(null);
@@ -91,6 +92,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 			setDestinationPath("");
 			setRetryCommand(null);
 			setUncertainItems([]);
+			setErrorTitle("");
 			setErrorMsg("");
 			setShowDiscardConfirm(false);
 		}
@@ -148,9 +150,13 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 		});
 		return options;
 	};
+	const hasUnsavedInputs = () =>
+		action() !== "copy-source" ||
+		targetSourceId() !== "" ||
+		destinationPath().trim().length > 0;
 	const requestClose = () => {
 		if (isSubmitting()) return;
-		if (retryCommand() !== null) {
+		if (retryCommand() !== null || hasUnsavedInputs()) {
 			setShowDiscardConfirm(true);
 			return;
 		}
@@ -174,6 +180,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	const handleConfirm = async () => {
 		if (!canSubmit()) return;
 		setIsSubmitting(true);
+		setErrorTitle("");
 		setErrorMsg("");
 		try {
 			const command =
@@ -196,6 +203,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 					value1: String(outcome.retryItems.length),
 					value2: String(unknown.length),
 				};
+				setErrorTitle("");
 				setErrorMsg(
 					unknown.length
 						? t("bulkActionDialog.partialOutcomeWithUnknown", outcomeCounts)
@@ -206,6 +214,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 				props.onOpenChange(false);
 			}
 		} catch (error) {
+			setErrorTitle(t("bulkActionDialog.actionFailed"));
 			setErrorMsg(
 				error instanceof Error ? error.message : t("feedback.unexpectedError"),
 			);
@@ -315,9 +324,14 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 							</Alert>
 						</Show>
 
-						<Show when={errorMsg()}>
+						<Show when={errorMsg() || errorTitle()}>
 							<Alert variant="destructive">
-								<AlertDescription>{errorMsg()}</AlertDescription>
+								<Show when={errorTitle()}>
+									<AlertTitle>{errorTitle()}</AlertTitle>
+								</Show>
+								<Show when={errorMsg()}>
+									<AlertDescription>{errorMsg()}</AlertDescription>
+								</Show>
 							</Alert>
 						</Show>
 						<DialogFooter>
@@ -353,10 +367,14 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 				<AlertDialogContent class="workspace-theme rounded-lg sm:max-w-dialog-xs">
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							{t("bulkActionDialog.discardRetryTitle")}
+							{retryCommand() !== null
+								? t("bulkActionDialog.discardRetryTitle")
+								: t("bulkActionDialog.discardChangesTitle")}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							{t("bulkActionDialog.discardRetryDescription")}
+							{retryCommand() !== null
+								? t("bulkActionDialog.discardRetryDescription")
+								: t("bulkActionDialog.discardChangesDescription")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
