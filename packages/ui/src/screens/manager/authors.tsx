@@ -706,7 +706,7 @@ export function AuthorManagementPanel(props: {
 					if (!open && !busy()) setConfirmation(null);
 				}}
 			>
-				<DialogContent>
+				<DialogContent closeDisabled={busy()}>
 					<DialogHeader>
 						<DialogTitle>
 							{confirmation() === "merge"

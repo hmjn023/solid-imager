@@ -16,6 +16,16 @@ import {
 	onMount,
 	Show,
 } from "solid-js";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../alert-dialog";
 import { Button, buttonVariants } from "../button";
 import {
 	Dialog,
@@ -191,10 +201,23 @@ export function PixivAccountDialog(props: {
 	const [code, setCode] = createSignal("");
 	const [busy, setBusy] = createSignal(false);
 	const [useCookie, setUseCookie] = createSignal(false);
+	const [confirmDiscard, setConfirmDiscard] = createSignal(false);
+	const isDirty = () => !account.session() && code().trim().length > 0;
+	const forceClose = () => {
+		setConfirmDiscard(false);
+		setCode("");
+		setUseCookie(false);
+		props.onOpenChange(false);
+	};
 	const close = (value: boolean) => {
 		if (!value && busy()) return;
+		if (!value && isDirty()) {
+			setConfirmDiscard(true);
+			return;
+		}
 		props.onOpenChange(value);
 		if (!value) {
+			setConfirmDiscard(false);
 			setCode("");
 			setUseCookie(false);
 		}
@@ -219,140 +242,169 @@ export function PixivAccountDialog(props: {
 		} finally {
 			setBusy(false);
 		}
-		close(false);
+		forceClose();
 	}
 	return (
-		<Dialog open={props.open} onOpenChange={close}>
-			<DialogContent
-				class="workspace-theme"
-				closeDisabled={busy()}
-				onCloseAutoFocus={props.onCloseAutoFocus}
-			>
-				<DialogHeader>
-					<DialogTitle>{t("pixivAccount.pixivAccount")}</DialogTitle>
-					<DialogDescription>
-						{account.session()
-							? t("pixivAccount.theAccountUsedByThisTabSViewer")
-							: t("pixivAccount.connectTheAccountSignedInOnTheOfficialPixiv")}
-					</DialogDescription>
-				</DialogHeader>
-				<Show when={!account.session()}>
-					<p class="text-sm text-muted-foreground">
-						{t("pixivScreen.followLogin")}
-					</p>
-				</Show>
-				<form
-					class="grid gap-4"
-					onSubmit={(event) => {
-						event.preventDefault();
-						void submit();
-					}}
+		<>
+			<Dialog open={props.open} onOpenChange={close}>
+				<DialogContent
+					class="workspace-theme"
+					closeDisabled={busy()}
+					onCloseAutoFocus={props.onCloseAutoFocus}
 				>
-					<Show
-						when={account.session()}
-						fallback={
-							<>
-								<Show
-									keyed
-									when={props.openPixivLogin}
-									fallback={
-										<a
-											class={buttonVariants({ variant: "outline" })}
-											href="https://accounts.pixiv.net/login"
-											target="_blank"
-											rel="noopener noreferrer"
-										>
-											{t("pixivAccount.logInOnPixiv")}
-										</a>
-									}
-								>
-									{(openLogin) => (
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => {
-												void openLogin().catch(() => {
-													account.setNotice(
-														t(
-															"pixivAccount.couldNotOpenPixivInYourDefaultBrowser",
-														),
-													);
-												});
-											}}
-										>
-											{t("pixivAccount.logInOnPixiv")}
-										</Button>
-									)}
-								</Show>
-								<p class="break-all text-sm text-muted-foreground">
-									{useCookie()
-										? t(
-												"pixivAccount.enterThePHPSESSIDFromYourBrowserCookiesToSend",
-											) +
-											account.base +
-											t("pixivAccount.message")
-										: t("pixivAccount.setTheXtracterExtensionDestinationTo") +
-											account.base +
-											t("pixivAccount.andGenerateAConnectionCode")}
-								</p>
-								<div class="grid gap-2">
-									<Label for="pixiv-code">
-										{useCookie()
-											? t("pixivAccount.pHPSESSID")
-											: t("pixivAccount.connectionCode")}
-									</Label>
-									<Input
-										id="pixiv-code"
-										type="password"
-										autocomplete="off"
-										spellcheck={false}
-										value={code()}
-										onInput={(e) => setCode(e.currentTarget.value)}
-										required
-									/>
-								</div>
-								<Button
-									type="button"
-									variant="link"
-									disabled={busy()}
-									onClick={() => {
-										setCode("");
-										setUseCookie(!useCookie());
-										account.setNotice("");
-									}}
-								>
-									{useCookie()
-										? t("pixivAccount.useConnectionCode")
-										: t("pixivAccount.connectWithoutTheExtension")}
-								</Button>
-							</>
-						}
-					>
-						{(connected) => (
-							<p>
-								{t("pixivAccount.pixivIDValue", {
-									value0: String(connected().userId),
-								})}
-							</p>
-						)}
-					</Show>
-					<Show when={account.notice()}>
-						<p role="alert" class="text-sm text-destructive">
-							{account.notice()}
+					<DialogHeader>
+						<DialogTitle>{t("pixivAccount.pixivAccount")}</DialogTitle>
+						<DialogDescription>
+							{account.session()
+								? t("pixivAccount.theAccountUsedByThisTabSViewer")
+								: t("pixivAccount.connectTheAccountSignedInOnTheOfficialPixiv")}
+						</DialogDescription>
+					</DialogHeader>
+					<Show when={!account.session()}>
+						<p class="text-sm text-muted-foreground">
+							{t("pixivScreen.followLogin")}
 						</p>
 					</Show>
-					<Button
-						type="submit"
-						disabled={busy() || (!account.session() && !code().trim())}
+					<form
+						class="grid gap-4"
+						onSubmit={(event) => {
+							event.preventDefault();
+							void submit();
+						}}
 					>
-						{busy()
-							? t("status.processing")
-							: account.session()
-								? t("pixivAccount.logOutOfThisViewer")
-								: t("pixivAccount.connect")}
-					</Button>
-				</form>
-			</DialogContent>
-		</Dialog>
+						<Show
+							when={account.session()}
+							fallback={
+								<>
+									<Show
+										keyed
+										when={props.openPixivLogin}
+										fallback={
+											<a
+												class={buttonVariants({ variant: "outline" })}
+												href="https://accounts.pixiv.net/login"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												{t("pixivAccount.logInOnPixiv")}
+											</a>
+										}
+									>
+										{(openLogin) => (
+											<Button
+												type="button"
+												variant="outline"
+												onClick={() => {
+													void openLogin().catch(() => {
+														account.setNotice(
+															t(
+																"pixivAccount.couldNotOpenPixivInYourDefaultBrowser",
+															),
+														);
+													});
+												}}
+											>
+												{t("pixivAccount.logInOnPixiv")}
+											</Button>
+										)}
+									</Show>
+									<p class="break-all text-sm text-muted-foreground">
+										{useCookie()
+											? t(
+													"pixivAccount.enterThePHPSESSIDFromYourBrowserCookiesToSend",
+												) +
+												account.base +
+												t("pixivAccount.message")
+											: t("pixivAccount.setTheXtracterExtensionDestinationTo") +
+												account.base +
+												t("pixivAccount.andGenerateAConnectionCode")}
+									</p>
+									<div class="grid gap-2">
+										<Label for="pixiv-code">
+											{useCookie()
+												? t("pixivAccount.pHPSESSID")
+												: t("pixivAccount.connectionCode")}
+										</Label>
+										<Input
+											id="pixiv-code"
+											type="password"
+											autocomplete="off"
+											spellcheck={false}
+											value={code()}
+											onInput={(e) => setCode(e.currentTarget.value)}
+											required
+										/>
+									</div>
+									<Button
+										type="button"
+										variant="link"
+										disabled={busy()}
+										onClick={() => {
+											setCode("");
+											setUseCookie(!useCookie());
+											account.setNotice("");
+										}}
+									>
+										{useCookie()
+											? t("pixivAccount.useConnectionCode")
+											: t("pixivAccount.connectWithoutTheExtension")}
+									</Button>
+								</>
+							}
+						>
+							{(connected) => (
+								<p>
+									{t("pixivAccount.pixivIDValue", {
+										value0: String(connected().userId),
+									})}
+								</p>
+							)}
+						</Show>
+						<Show when={account.notice()}>
+							<p role="alert" class="text-sm text-destructive">
+								{account.notice()}
+							</p>
+						</Show>
+						<Button
+							type="submit"
+							disabled={busy() || (!account.session() && !code().trim())}
+						>
+							{busy()
+								? t("status.processing")
+								: account.session()
+									? t("pixivAccount.logOutOfThisViewer")
+									: t("pixivAccount.connect")}
+						</Button>
+					</form>
+				</DialogContent>
+			</Dialog>
+			<AlertDialog
+				onOpenChange={setConfirmDiscard}
+				open={props.open && confirmDiscard()}
+			>
+				<AlertDialogContent class="workspace-theme rounded-lg sm:max-w-dialog-xs">
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t("dialogs.discardUnsavedChanges")}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{t("dialogs.theChangesInThisFormHaveNotBeenSaved")}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel class="min-h-11 sm:min-h-9">
+							{t("configScreen.keepEditing")}
+						</AlertDialogCancel>
+						<AlertDialogAction
+							class="min-h-11 sm:min-h-9"
+							onClick={forceClose}
+							variant="destructive"
+						>
+							{t("actions.discard")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }

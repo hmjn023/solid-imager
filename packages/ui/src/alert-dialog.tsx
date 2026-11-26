@@ -51,18 +51,18 @@ const AlertDialogContent: Component<
 > = (props) => {
 	const [, rest] = splitProps(props, ["class", "children"]);
 	return (
-		<AlertDialogPrimitivePortal>
+		<AlertDialogPortal>
 			<AlertDialogOverlay />
 			<AlertDialogPrimitiveContent
 				class={cn(
-					"fixed top-1/2 left-1/2 z-50 grid max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 overflow-y-auto overscroll-contain rounded-lg border bg-background p-6 shadow-lg duration-200 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[expanded]:zoom-in-95 sm:max-h-dialog-safe",
+					"fixed top-1/2 left-1/2 z-50 grid max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 overflow-y-auto overscroll-contain scrollbar-stable rounded-lg border bg-background p-6 shadow-lg duration-200 motion-safe:data-[closed]:animate-out motion-safe:data-[expanded]:animate-in motion-safe:data-[closed]:fade-out-0 motion-safe:data-[expanded]:fade-in-0 motion-safe:data-[closed]:zoom-out-95 motion-safe:data-[expanded]:zoom-in-95 sm:max-h-dialog-safe",
 					props.class,
 				)}
 				{...rest}
 			>
 				{props.children}
 			</AlertDialogPrimitiveContent>
-		</AlertDialogPrimitivePortal>
+		</AlertDialogPortal>
 	);
 };
 
@@ -71,7 +71,7 @@ const AlertDialogHeader: Component<ComponentProps<"div">> = (props) => {
 	return (
 		<div
 			class={cn(
-				"sticky top-0 z-10 shrink-0 space-y-2 bg-background text-center sm:text-left",
+				"sticky top-0 z-10 -mt-6 shrink-0 space-y-2 bg-background pt-6 text-center sm:text-left",
 				props.class,
 			)}
 			{...rest}
@@ -84,7 +84,7 @@ const AlertDialogFooter: Component<ComponentProps<"div">> = (props) => {
 	return (
 		<div
 			class={cn(
-				"sticky bottom-0 z-10 flex shrink-0 flex-col-reverse gap-2 bg-background sm:flex-row sm:justify-end [&>button]:min-h-11 [&>button]:w-full sm:[&>button]:w-auto",
+				"sticky bottom-0 z-10 -mb-6 flex shrink-0 flex-col-reverse gap-2 bg-background pb-6 sm:flex-row sm:justify-end [&>button]:min-h-11 [&>button]:w-full sm:[&>button]:w-auto",
 				props.class,
 			)}
 			{...rest}

@@ -191,8 +191,7 @@ export function SearchScreen(props: SearchScreenProps) {
 		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<SearchToolbar
 				bulkSelection={
-					props.onEnterBulkSelectMode &&
-					(page().searchResults().length > 0 || props.isBulkSelectMode?.())
+					props.onEnterBulkSelectMode && page().searchResults().length > 0
 						? {
 								active: props.isBulkSelectMode?.() ?? false,
 								onEnter: props.onEnterBulkSelectMode,
@@ -360,7 +359,9 @@ export function SearchScreen(props: SearchScreenProps) {
 					})()}
 				</Show>
 			</div>
-			<Show when={props.isBulkSelectMode?.()}>
+			<Show
+				when={props.isBulkSelectMode?.() && page().searchResults().length > 0}
+			>
 				<CollectionBulkActions
 					loadedCount={page().searchResults().length}
 					selectedCount={props.selectedCount?.() ?? 0}

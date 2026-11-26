@@ -1,10 +1,10 @@
-import type {
-	CreatePresetRequest,
-	Preset,
-	UpdatePresetRequest,
-	PresetRepository,
+import {
+	type CreatePresetRequest,
+	type Preset,
+	type PresetRepository,
+	presetSchema,
+	type UpdatePresetRequest,
 } from "@solid-imager/core/presets";
-import { searchGroupSchema } from "@solid-imager/core/search";
 import { eq, type InferSelectModel } from "drizzle-orm";
 import { presets } from "../schema";
 import type { DrizzleExecutor } from "../types";
@@ -13,15 +13,15 @@ export function createPresetRepository(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
 ): PresetRepository {
 	function mapToEntity(row: InferSelectModel<typeof presets>): Preset {
-		return {
+		return presetSchema.parse({
 			id: row.id,
 			name: row.name,
-			value: searchGroupSchema.parse(row.value),
-			sort: row.sort as Preset["sort"],
-			order: row.order as Preset["order"],
-			mode: row.mode as Preset["mode"],
+			value: row.value,
+			sort: row.sort ?? undefined,
+			order: row.order ?? undefined,
+			mode: row.mode ?? undefined,
 			createdAt: row.createdAt,
-		};
+		});
 	}
 
 	return {

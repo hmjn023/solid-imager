@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
-import { createEffect, createMemo, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "../button";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import { SearchComposerField } from "./search-composer-field";
@@ -41,7 +41,7 @@ function SearchTokenChip(props: {
 }) {
 	return (
 		<span
-			class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-label-sm ${props.token.destructive ? "bg-muted text-destructive" : "bg-accent text-primary"}`}
+			class={`inline-flex min-h-11 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-label-sm sm:h-6 sm:min-h-6 ${props.token.destructive ? "bg-muted text-destructive" : "bg-accent text-primary"}`}
 		>
 			<span class="truncate">
 				{props.token.prefix}:{props.token.value}
@@ -52,7 +52,7 @@ function SearchTokenChip(props: {
 						value0: String(props.token.prefix),
 						value1: String(props.token.value),
 					})}
-					class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-foreground/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="flex size-11 shrink-0 items-center justify-center rounded hover:bg-foreground/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-4"
 					onClick={() => props.onRemove(props.token)}
 					type="button"
 				>
@@ -65,6 +65,7 @@ function SearchTokenChip(props: {
 
 export function SearchComposer(props: SearchComposerProps) {
 	const [suggestionDraft, setSuggestionDraft] = createDebouncedSignal("", 150);
+	const [removedAnnouncement, setRemovedAnnouncement] = createSignal("");
 	createEffect(() => setSuggestionDraft(props.draft));
 	const suggestions = createMemo(() => {
 		if (!props.draft.trim() || suggestionDraft() !== props.draft) return [];
@@ -88,7 +89,17 @@ export function SearchComposer(props: SearchComposerProps) {
 				const last = props.tokens.findLast(
 					(token) => token.removable !== false,
 				);
-				if (last) props.onRemoveToken(last);
+				if (!last) return;
+				const wasHidden = hiddenTokens().includes(last);
+				props.onRemoveToken(last);
+				if (wasHidden) {
+					setRemovedAnnouncement(
+						t("searchComposer.removedFilterValueValue", {
+							value0: String(last.prefix),
+							value1: String(last.value),
+						}),
+					);
+				}
 			}}
 			onSelect={(suggestion) => {
 				props.onSelectSuggestion(suggestion);
@@ -110,7 +121,7 @@ export function SearchComposer(props: SearchComposerProps) {
 					<PopoverTrigger
 						aria-label={t("searchComposer.inspectMoreFilters")}
 						as={Button}
-						class="h-6 min-h-6 px-2 font-medium text-label-sm text-muted-foreground"
+						class="min-h-11 px-2 font-medium text-label-sm text-muted-foreground sm:h-6 sm:min-h-6"
 						size="sm"
 						type="button"
 						variant="secondary"
@@ -138,6 +149,9 @@ export function SearchComposer(props: SearchComposerProps) {
 					</PopoverContent>
 				</Popover>
 			</Show>
+			<output class="sr-only" aria-live="polite">
+				{removedAnnouncement()}
+			</output>
 		</SearchComposerField>
 	);
 }

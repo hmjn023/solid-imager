@@ -190,10 +190,14 @@ export const ja = defineLocale({
 	"bulkActionCommand.destinationPathIsRequired": "保存先のパスが必要です。",
 	"bulkActionCommand.noMediaItemsAreSelected": "メディアが選択されていません。",
 	"bulkActionCommand.targetSourceIsRequired": "保存先ソースが必要です。",
+	"bulkActionDialog.actionFailed": "一括操作に失敗しました",
 	"bulkActionDialog.bulkDelete": "一括削除",
 	"bulkActionDialog.confirm": "確定",
 	"bulkActionDialog.copyToAnotherSource": "コピー (別ソースへ)",
 	"bulkActionDialog.destinationFolderPath": "移動先フォルダパス",
+	"bulkActionDialog.discardChangesDescription":
+		"選択した操作や移動先の入力内容は破棄されます。",
+	"bulkActionDialog.discardChangesTitle": "一括操作の入力を破棄しますか？",
 	"bulkActionDialog.discardRetryDescription":
 		"一部の項目が失敗または未処理のままです。このまま閉じると再試行リストが破棄されます。",
 	"bulkActionDialog.discardRetryTitle": "未完了の再試行を破棄しますか？",
@@ -1256,7 +1260,9 @@ export const ja = defineLocale({
 	"mediaViewer.imageControls": "画像の操作",
 	"mediaViewer.imageMovedValue": "画像を{value0}へ移動しました",
 	"mediaViewer.imagePanControls": "画像の移動操作",
+	"mediaViewer.imagePreviewUnavailable": "画像のプレビューを表示できません",
 	"mediaViewer.imageZoomControls": "画像のズーム操作",
+	"mediaViewer.loadingPreview": "メディアのプレビューを読み込み中",
 	"mediaViewer.openValueImageViewer": "{value0}の画像ビューアーを開く",
 	"mediaViewer.panImageValue": "画像を{value0}へ移動",
 	"mediaViewer.panValueUseArrowKeysToMoveTheEnlarged":
@@ -1306,6 +1312,10 @@ export const ja = defineLocale({
 		"選択できる保存先ソースがありません。",
 	"navigation.importInbox": "取り込み待ち",
 	"navigation.jobs": "ジョブ",
+	"navigation.jobsActive": "ジョブ（進行中 {active}件）",
+	"navigation.jobsActiveAndFailed":
+		"ジョブ（進行中 {active}件、失敗 {failed}件）",
+	"navigation.jobsFailed": "ジョブ（失敗 {failed}件）",
 	"navigation.library": "ライブラリ",
 	"navigation.manager": "管理",
 	"navigation.managerCategories": "管理カテゴリ",
@@ -1366,7 +1376,7 @@ export const ja = defineLocale({
 	"pixivAccount.message": " に送信します。",
 	"pixivAccount.pHPSESSID": "PHPSESSID",
 	"pixivAccount.pixivAccount": "pixiv アカウント",
-	"pixivAccount.pixivID": "pixiv ID ",
+	"pixivAccount.pixivID": "pixiv ID",
 	"pixivAccount.pixivIDValue": "pixiv ID {value0}",
 	"pixivAccount.setTheXtracterExtensionDestinationTo":
 		"xtracter 拡張で接続先を ",
@@ -1484,6 +1494,7 @@ export const ja = defineLocale({
 	"pixivScreen.pixivValue": "pixiv #{value0}",
 	"pixivScreen.searchDestinationDoesNotMatch": "検索先が一致しません",
 	"presetManager.couldNotDeletePreset": "プリセットの削除に失敗しました",
+	"presetManager.couldNotLoadPresets": "プリセットを取得できませんでした",
 	"presetManager.couldNotSavePreset": "プリセットの保存に失敗しました",
 	"presetManager.deleteThisPresetThisActionCannotBeUndone":
 		"本当にこのプリセットを削除しますか？この操作は取り消せません。",
@@ -1494,6 +1505,8 @@ export const ja = defineLocale({
 	"presetManager.presetSaved": "プリセットを保存しました",
 	"presetManager.saveCurrentSearchConditions": "現在の検索条件を保存",
 	"presetManager.selectAPreset": "プリセットを選択...",
+	"presetManager.unsavedChangesDescription":
+		"入力中のプリセット名は保存されていません。変更を破棄しますか？",
 	"proSearchBuilder.aIGenerated": "AI生成",
 	"proSearchBuilder.atLeast": "以上 (>=)",
 	"proSearchBuilder.atMost": "以下 (<=)",
@@ -1626,6 +1639,8 @@ export const ja = defineLocale({
 	"searchComposer.pixivHint":
 		"スペースで AND、-タグで除外、~タグで OR。Danbooru タグを pixiv のタグに変換します。",
 	"searchComposer.removeValueValue": "{value0}:{value1}を解除",
+	"searchComposer.removedFilterValueValue":
+		"フィルター {value0}:{value1} を解除しました",
 	"searchComposer.search": " を検索",
 	"searchComposer.searchHelp": "検索の使い方",
 	"searchComposer.searchMedia": "メディアを検索",
@@ -1689,7 +1704,7 @@ export const ja = defineLocale({
 	"searchToolbar.sortCurrentlyValue": "並び替え、現在は{value0}",
 	"searchToolbar.textSearchValueResults": "文章検索・{value0}件",
 	"searchToolbar.updating": "更新中...",
-	"searchToolbar.valueValue": "{value0} · {value1}",
+	"searchToolbar.valueValue": "{value0}・{value1}",
 	"select.check": "選択済み",
 	"servers.addOrSwitchServersAndCheckConnectionStatus":
 		"接続先サーバーを追加・切り替え、接続状態を確認します。",
@@ -2043,12 +2058,16 @@ export const ja = defineLocale({
 	"useSourcesEvents.unknown": "不明",
 	"useSourcesEvents.watcherErrorForValueValue":
 		"{value0}...の監視エラー: {value1}",
+	"useSourcesPage.failedToDeleteSource": "ソースの削除に失敗しました",
 	"useSourcesPage.failedToDeleteSourceValue":
 		"ソースの削除に失敗しました: {value0}",
+	"useSourcesPage.failedToSaveSource": "ソースの保存に失敗しました",
 	"useSourcesPage.failedToSaveSourceValue":
 		"ソースの保存に失敗しました: {value0}",
+	"useSourcesPage.failedToSyncAllSources": "ソースの一括同期に失敗しました",
 	"useSourcesPage.failedToSyncAllSourcesValue":
 		"ソースの一括同期に失敗しました: {value0}",
+	"useSourcesPage.failedToSyncSource": "{value0}の同期に失敗しました",
 	"useSourcesPage.failedToSyncValueValue":
 		"{value0}の同期に失敗しました: {value1}",
 	"useSourcesPage.noSynchronizationResultReturned":
@@ -2070,4 +2089,21 @@ export const ja = defineLocale({
 	"workspace.loadingPosts": "投稿を読み込み中",
 	"workspace.openSite": "サイトを開く ↗",
 	"workspace.showingValueResults": "{value0}件を表示",
+	"aiTaggingModal.failedToExtractTags": "AIタグ付けの実行に失敗しました",
+	"authorAccountVerification.discardVerificationTitle":
+		"取得したプロフィールを破棄しますか？",
+	"authorAccountVerification.discardVerificationDescription":
+		"今閉じると、取得したXプロフィールと確認状態が破棄されます。",
+	"configScreen.fixErrorsInCategories":
+		"次のカテゴリの入力エラーを修正してください: {categories}",
+	"configScreen.hasValidationErrors": "入力エラーがあります",
+	"configScreen.healthCheckUsesSavedSettings":
+		"接続チェックは未保存の編集ではなく、保存済みのAI設定に対して実行されます。",
+	"importReviewModal.failedToLoadSources":
+		"保存先ソースの読み込みに失敗しました。",
+	"importReviewModal.noLocalSourcesAvailable":
+		"利用可能なローカルソースがありません。インポートする前にサイドバーからローカルソースを作成してください。",
+	"jobsScreen.couldNotLoadBatchTargets": "バッチ対象を読み込めませんでした",
+	"oppaiOracleModal.failedToAnalyzeImage":
+		"OppaiOracle解析の実行に失敗しました",
 });

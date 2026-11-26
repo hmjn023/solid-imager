@@ -121,15 +121,18 @@ function writeStorageValue(
 }
 
 /**
- * Saves up to 500 valid, unique media IDs and the return route in session storage
- * for detail navigation. Storage failures are ignored.
+ * Saves up to 500 valid, unique media IDs (centered around activeMediaId when
+ * the list exceeds 500) and the return route in session storage for detail
+ * navigation. Storage failures are ignored.
  *
  * @param returnPath - Route to restore when leaving the detail view.
  * @param items - Ordered collection used to determine neighboring media.
+ * @param activeMediaId - Currently opened media ID used to center the window.
  */
 export function saveMediaContext(
 	returnPath: string,
 	items: readonly MediaContextItem[],
+	activeMediaId?: string,
 ): void {
 	const storage = getStorage();
 	if (!storage) return;
@@ -145,7 +148,26 @@ export function saveMediaContext(
 				mediaSourceId: item.mediaSourceId,
 			});
 		}
-		if (uniqueItems.size >= MAX_CONTEXT_ITEMS) break;
+	}
+	const orderedItems = [...uniqueItems.values()];
+	let windowItems = orderedItems;
+	if (orderedItems.length > MAX_CONTEXT_ITEMS) {
+		const activeIndex = activeMediaId
+			? orderedItems.findIndex((item) => item.id === activeMediaId)
+			: -1;
+		if (activeIndex >= 0) {
+			const halfWindow = Math.floor(MAX_CONTEXT_ITEMS / 2);
+			const start = Math.max(
+				0,
+				Math.min(
+					activeIndex - halfWindow,
+					orderedItems.length - MAX_CONTEXT_ITEMS,
+				),
+			);
+			windowItems = orderedItems.slice(start, start + MAX_CONTEXT_ITEMS);
+		} else {
+			windowItems = orderedItems.slice(0, MAX_CONTEXT_ITEMS);
+		}
 	}
 
 	const historyState: unknown =
@@ -155,7 +177,7 @@ export function saveMediaContext(
 			? historyState.__TSR_index
 			: undefined;
 	const context: StoredMediaContext = {
-		items: [...uniqueItems.values()],
+		items: windowItems,
 		returnPath,
 		...(typeof returnHistoryIndex === "number" && returnHistoryIndex >= 0
 			? { returnHistoryIndex }

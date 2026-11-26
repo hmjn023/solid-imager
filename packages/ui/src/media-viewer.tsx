@@ -19,12 +19,13 @@ import {
 } from "./dialog";
 import { clampMediaPan, type MediaPan } from "./media-viewer-pan";
 import { Separator } from "./separator";
+import { LoadingRegion, Skeleton } from "./skeleton";
 import { VideoPlayer } from "./video-player";
 import { Maximize2, Minus, Plus, RotateCcw } from "./workspace/icons";
 
 export interface MediaSource {
 	type: "image" | "video" | "audio";
-	getUrl(): string | Promise<string>;
+	getUrl(signal?: AbortSignal): string | Promise<string>;
 	revokeUrl?(url: string): void;
 }
 
@@ -35,7 +36,12 @@ export interface MediaViewerProps {
 	height?: number;
 }
 
-function AudioPreview(props: { src: string }) {
+type ResolvedMedia = {
+	source: MediaSource;
+	url: string;
+};
+
+function AudioPreview(props: { src: string; onError: () => void }) {
 	let audio: HTMLAudioElement | undefined;
 	onCleanup(() => {
 		if (!audio) return;
@@ -47,6 +53,7 @@ function AudioPreview(props: { src: string }) {
 		<audio
 			class="max-w-full"
 			controls
+			onError={props.onError}
 			preload="metadata"
 			ref={(element) => {
 				audio = element;
@@ -91,19 +98,26 @@ const PAN_DIRECTIONS = [
 
 export function MediaViewer(props: MediaViewerProps) {
 	const mediaSource = createMemo(() => props.source);
-	const [resolvedMedia, setResolvedMedia] = createSignal<{
-		source: MediaSource;
-		url: string;
-	}>();
-	const mediaUrl = () => {
+	const [resolvedMedia, setResolvedMedia] = createSignal<ResolvedMedia>();
+	const [viewerLoadState, setViewerLoadState] = createSignal<
+		"loading" | "ready" | "error"
+	>("loading");
+	const [retryCount, setRetryCount] = createSignal(0);
+	const currentMedia = () => {
 		const resolved = resolvedMedia();
-		return resolved?.source === mediaSource() ? resolved.url : undefined;
+		return resolved?.source === mediaSource() ? resolved : undefined;
 	};
 	const [zoom, setZoom] = createSignal(1);
 	const [pan, setPan] = createSignal({ x: 0, y: 0 });
 	const [isPanning, setIsPanning] = createSignal(false);
 	const [isFullscreen, setIsFullscreen] = createSignal(false);
 	const [isViewerOpen, setIsViewerOpen] = createSignal(false);
+	const handleMediaError = (media: ResolvedMedia) => {
+		if (media !== currentMedia()) return;
+		setResolvedMedia(undefined);
+		setViewerLoadState("error");
+		setIsViewerOpen(false);
+	};
 	const [panAnnouncement, setPanAnnouncement] = createSignal("");
 	const pointers = new Map<number, { x: number; y: number }>();
 	let viewer: HTMLElement | undefined;
@@ -291,29 +305,35 @@ export function MediaViewer(props: MediaViewerProps) {
 
 	createEffect(() => {
 		const source = mediaSource();
+		void retryCount();
+		const controller = new AbortController();
 		let currentUrl: string | null = null;
 		let disposed = false;
 		setResolvedMedia(undefined);
+		setViewerLoadState("loading");
 		resetView();
 
 		void (async () => {
 			try {
-				const url = await source.getUrl();
+				const url = await source.getUrl(controller.signal);
 				if (disposed) {
 					source.revokeUrl?.(url);
 					return;
 				}
 				currentUrl = url;
 				setResolvedMedia({ source, url });
+				setViewerLoadState("ready");
 			} catch {
 				if (!disposed) {
 					setResolvedMedia(undefined);
+					setViewerLoadState("error");
 				}
 			}
 		})();
 
 		onCleanup(() => {
 			disposed = true;
+			controller.abort();
 			if (currentUrl && source.revokeUrl) {
 				source.revokeUrl(currentUrl);
 			}
@@ -336,7 +356,9 @@ export function MediaViewer(props: MediaViewerProps) {
 		<>
 			<section
 				class={`group/viewer media-viewer-aspect relative flex min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:aspect-auto lg:h-full ${
-					mediaSource().type === "image" && mediaUrl() ? "cursor-zoom-in" : ""
+					mediaSource().type === "image" && currentMedia()
+						? "cursor-zoom-in"
+						: ""
 				}`}
 				data-media-viewer
 				style={{
@@ -347,43 +369,64 @@ export function MediaViewer(props: MediaViewerProps) {
 				}}
 			>
 				<Switch>
-					<Match when={mediaSource().type === "video"}>
-						<Show
-							fallback={
-								<div class="flex h-full max-h-full w-full items-center justify-center bg-foreground text-background">
-									{t("mediaViewer.videoPreviewUnavailable")}
-								</div>
-							}
-							when={mediaUrl()}
+					<Match when={viewerLoadState() === "loading"}>
+						<LoadingRegion
+							class="h-full w-full"
+							label={t("mediaViewer.loadingPreview")}
 						>
-							{(url) => <VideoPlayer fileName={props.fileName} src={url()} />}
+							<Skeleton class="h-full w-full rounded-none" />
+						</LoadingRegion>
+					</Match>
+					<Match when={viewerLoadState() === "error" || !currentMedia()?.url}>
+						<div class="flex h-full w-full flex-col items-center justify-center gap-3 bg-muted px-6 text-center text-muted-foreground">
+							<p class="text-sm font-medium text-foreground">
+								{mediaSource().type === "video"
+									? t("mediaViewer.videoPreviewUnavailable")
+									: mediaSource().type === "audio"
+										? t("mediaViewer.audioPreviewUnavailable")
+										: t("mediaViewer.imagePreviewUnavailable")}
+							</p>
+							<p
+								class="max-w-image-preview truncate rounded-md border border-current/20 px-4 py-1.5 text-xs"
+								title={props.fileName}
+							>
+								{props.fileName}
+							</p>
+							<Button
+								class="min-h-11 sm:min-h-9"
+								onClick={() => setRetryCount((count) => count + 1)}
+								size="sm"
+								type="button"
+								variant="outline"
+							>
+								{t("actions.retry")}
+							</Button>
+						</div>
+					</Match>
+					<Match when={mediaSource().type === "video"}>
+						<Show keyed when={currentMedia()}>
+							{(media) => (
+								<VideoPlayer
+									fileName={props.fileName}
+									onError={() => handleMediaError(media)}
+									src={media.url}
+								/>
+							)}
 						</Show>
 					</Match>
 					<Match when={mediaSource().type === "audio"}>
-						<Show
-							keyed
-							fallback={
-								<div class="bg-foreground px-8 py-6 text-background">
-									{t("mediaViewer.audioPreviewUnavailable")}
-								</div>
-							}
-							when={mediaUrl()}
-						>
-							{(url) => <AudioPreview src={url} />}
+						<Show keyed when={currentMedia()}>
+							{(media) => (
+								<AudioPreview
+									onError={() => handleMediaError(media)}
+									src={media.url}
+								/>
+							)}
 						</Show>
 					</Match>
 					<Match when={true}>
-						<Show
-							fallback={
-								<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
-									<div class="max-w-image-preview truncate rounded-md border border-current/20 px-4 py-2 text-sm">
-										{props.fileName}
-									</div>
-								</div>
-							}
-							when={mediaUrl()}
-						>
-							{(url) => (
+						<Show keyed when={currentMedia()}>
+							{(media) => (
 								<button
 									aria-label={t("mediaViewer.openValueImageViewer", {
 										value0: String(props.fileName),
@@ -401,7 +444,8 @@ export function MediaViewer(props: MediaViewerProps) {
 										draggable={false}
 										fetchpriority="high"
 										height={props.height}
-										src={url()}
+										onError={() => handleMediaError(media)}
+										src={media.url}
 										width={props.width}
 									/>
 								</button>
@@ -483,18 +527,19 @@ export function MediaViewer(props: MediaViewerProps) {
 							}}
 							type="button"
 						/>
-						<Show when={mediaUrl()}>
-							{(url) => (
+						<Show keyed when={currentMedia()}>
+							{(media) => (
 								<img
 									alt={props.fileName}
 									class="media-viewer-transform pointer-events-none h-full w-full select-none object-contain motion-safe:transition-transform"
 									draggable={false}
 									height={props.height}
+									onError={() => handleMediaError(media)}
 									onLoad={() => setPan((current) => clampPan(current))}
 									ref={(element) => {
 										viewerImage = element;
 									}}
-									src={url()}
+									src={media.url}
 									style={{
 										"--media-pan-x": `${pan().x}px`,
 										"--media-pan-y": `${pan().y}px`,

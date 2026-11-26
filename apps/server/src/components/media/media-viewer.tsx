@@ -5,7 +5,7 @@ import {
 	type MediaSource,
 	MediaViewer as SharedMediaViewer,
 } from "@solid-imager/ui/media-viewer";
-import { createEffect, createSignal, onCleanup } from "solid-js";
+import { createMemo, onCleanup } from "solid-js";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
 	mp4: "video/mp4",
@@ -29,11 +29,16 @@ function resolveMimeType(fileName: string) {
 	);
 }
 
+type MediaSourceIdentity = Pick<
+	MediaDetails,
+	"id" | "mediaSourceId" | "mediaType" | "fileName"
+>;
+
 class ApiMediaSource implements MediaSource {
-	type: "image" | "video" | "audio";
+	readonly type: "image" | "video" | "audio";
 	private urls: string[] = [];
 
-	constructor(private media: MediaDetails) {
+	constructor(private readonly media: MediaSourceIdentity) {
 		this.type =
 			media.mediaType === "video"
 				? "video"
@@ -42,11 +47,11 @@ class ApiMediaSource implements MediaSource {
 					: "image";
 	}
 
-	async getUrl() {
+	async getUrl(signal?: AbortSignal) {
 		const url = mediaContentPath(this.media.mediaSourceId, this.media.id);
 		// Native media loading can request metadata/ranges without downloading the entire file first.
 		if (this.type !== "image") return url;
-		const response = await fetch(url, { cache: "no-store" });
+		const response = await fetch(url, { cache: "no-store", signal });
 		if (!response.ok) {
 			throw new Error(
 				t("mediaViewer.failedToFetchMediaValue", {
@@ -78,15 +83,14 @@ class ApiMediaSource implements MediaSource {
 }
 
 export function MediaViewer(props: { media: MediaDetails }) {
-	const [source, setSource] = createSignal<ApiMediaSource>(
-		new ApiMediaSource(props.media),
-	);
-
-	createEffect((prev: ApiMediaSource | undefined) => {
+	const source = createMemo((prev: ApiMediaSource | undefined) => {
 		prev?.cleanup();
-		const next = new ApiMediaSource(props.media);
-		setSource(next);
-		return next;
+		return new ApiMediaSource({
+			id: props.media.id,
+			mediaSourceId: props.media.mediaSourceId,
+			mediaType: props.media.mediaType,
+			fileName: props.media.fileName,
+		});
 	});
 
 	onCleanup(() => source().cleanup());

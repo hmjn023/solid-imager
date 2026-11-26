@@ -22,7 +22,7 @@ import {
 	useParams,
 	useRouter,
 } from "@tanstack/solid-router";
-import { createSignal } from "solid-js";
+import { createEffect, createSignal, on } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
@@ -91,13 +91,27 @@ export function SourceMediaPage() {
 		setIsBulkSelectMode(false);
 		selection.clear();
 	};
+	createEffect(
+		on(
+			mediaSourceId,
+			() => {
+				clearSelection();
+			},
+			{ defer: true },
+		),
+	);
+	createEffect(() => {
+		if (visibleMediaIds().length === 0 && isBulkSelectMode()) {
+			setIsBulkSelectMode(false);
+		}
+	});
 	const currentReturnPath = () => {
 		const current = location();
 		return `${current.pathname}${current.searchStr}${current.hash}`;
 	};
 	const rememberMediaReturn = (media: Media, context?: Media[]) => {
 		const returnPath = currentReturnPath();
-		saveMediaContext(returnPath, context ?? [media]);
+		saveMediaContext(returnPath, context ?? [media], media.id);
 	};
 
 	return (

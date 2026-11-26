@@ -268,7 +268,10 @@ export function DuplicateToolPanel(props: {
 																</span>
 															</TableHead>
 															<Show when={showSourceColumn()}>
-																<TableCell class="max-w-40 truncate px-3 py-2 text-muted-foreground">
+																<TableCell
+																	class="max-w-40 truncate px-3 py-2 text-muted-foreground"
+																	title={sourceLabel(item.mediaSourceId)}
+																>
 																	{sourceLabel(item.mediaSourceId)}
 																</TableCell>
 															</Show>

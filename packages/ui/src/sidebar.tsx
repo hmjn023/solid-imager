@@ -220,7 +220,7 @@ const Sidebar: Component<SidebarProps> = (rawProps) => {
 				>
 					<div
 						class={cn(
-							"relative h-dvh w-64 bg-transparent transition-width duration-200 ease-linear",
+							"relative h-dvh w-64 bg-transparent transition-width duration-200 ease-linear motion-reduce:transition-none",
 							"group-data-[collapsible=offcanvas]:w-0",
 							"group-data-[side=right]:rotate-180",
 							local.variant === "floating" || local.variant === "inset"
@@ -230,7 +230,7 @@ const Sidebar: Component<SidebarProps> = (rawProps) => {
 					/>
 					<div
 						class={cn(
-							"fixed inset-y-0 z-10 hidden h-dvh w-64 transition-all duration-200 ease-linear md:flex",
+							"fixed inset-y-0 z-10 hidden h-dvh w-64 transition-all duration-200 ease-linear motion-reduce:transition-none md:flex",
 							local.side === "left"
 								? "left-0 group-data-[collapsible=offcanvas]:-left-64"
 								: "right-0 group-data-[collapsible=offcanvas]:-right-64",
@@ -308,7 +308,7 @@ const SidebarRail: Component<ComponentProps<"button">> = (props) => {
 		<button
 			aria-label={t("definitions.toggleSidebar")}
 			class={cn(
-				"group-data-[collapsible=offcanvas]:hover:bg-accent group-data-[side=left]:-right-4 group-data-[collapsible=offcanvas]:translate-x-0 group-data-[side=right]:left-0 group-data-[collapsible=offcanvas]:after:left-full absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 hover:after:bg-border sm:flex",
+				"group-data-[collapsible=offcanvas]:hover:bg-accent group-data-[side=left]:-right-4 group-data-[collapsible=offcanvas]:translate-x-0 group-data-[side=right]:left-0 group-data-[collapsible=offcanvas]:after:left-full absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear motion-reduce:transition-none after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 hover:after:bg-border sm:flex",
 				"group-data-[side=left]:cursor-w-resize group-data-[side=right]:cursor-e-resize",
 				"group-data-[side=left]:group-data-[state=collapsed]:cursor-e-resize group-data-[side=right]:group-data-[state=collapsed]:cursor-w-resize",
 				"group-data-[side=left]:group-data-[collapsible=offcanvas]:-right-2 group-data-[side=right]:group-data-[collapsible=offcanvas]:-left-2",
@@ -436,7 +436,7 @@ const SidebarGroupLabel = <T extends ValidComponent = "div">(
 		<Polymorphic<SidebarGroupLabelProps>
 			as="div"
 			class={cn(
-				"flex h-8 shrink-0 items-center rounded-md px-2 font-medium text-muted-foreground text-xs outline-none ring-ring transition-all duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+				"flex h-8 shrink-0 items-center rounded-md px-2 font-medium text-muted-foreground text-xs outline-none ring-ring transition-all duration-200 ease-linear motion-reduce:transition-none focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
 				"group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
 				local.class,
 			)}
@@ -459,7 +459,7 @@ const SidebarGroupAction = <T extends ValidComponent = "button">(
 		<Polymorphic<SidebarGroupActionProps>
 			as="button"
 			class={cn(
-				"absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground outline-none ring-ring transition-transform hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+				"absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground outline-none ring-ring transition-transform motion-reduce:transition-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
 				"after:absolute after:-inset-2 after:md:hidden",
 				"group-data-[collapsible=icon]:hidden",
 				local.class,
@@ -504,7 +504,7 @@ const SidebarMenuItem: Component<ComponentProps<"li">> = (props) => {
 };
 
 const sidebarMenuButtonVariants = cva(
-	"peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-ring transition-all hover:bg-muted hover:text-foreground focus-visible:ring-2 active:bg-accent active:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-accent data-[active=true]:font-medium data-[active=true]:text-accent-foreground data-[state=open]:hover:bg-muted data-[state=open]:hover:text-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+	"peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-ring transition-all motion-reduce:transition-none hover:bg-muted hover:text-foreground focus-visible:ring-2 active:bg-accent active:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-accent data-[active=true]:font-medium data-[active=true]:text-accent-foreground data-[state=open]:hover:bg-muted data-[state=open]:hover:text-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
 	{
 		variants: {
 			variant: {
@@ -631,7 +631,7 @@ const SidebarMenuAction = <T extends ValidComponent = "button">(
 		<Polymorphic<SidebarMenuActionProps>
 			as="button"
 			class={cn(
-				"absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground outline-none ring-ring transition-transform hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
+				"absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-foreground outline-none ring-ring transition-transform motion-reduce:transition-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
 				"after:absolute after:-inset-2 after:md:hidden",
 				"peer-data-[size=sm]/menu-button:top-1",
 				"peer-data-[size=default]/menu-button:top-1.5",

@@ -1,5 +1,8 @@
 import { jobListOrder } from "./job-list-order";
-import { listBatchTargets } from "~/infrastructure/services/job-batch-targets";
+import {
+	listBatchTargets,
+	listImportWorkProgress,
+} from "~/infrastructure/services/job-batch-targets";
 import { implement, ORPCError } from "@orpc/server";
 import type { ResponseHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { jobsContract } from "@solid-imager/core/contract";
@@ -12,6 +15,7 @@ import {
 	jobStatusSchema,
 	readImportBatch,
 	type Job,
+	type ImportWorkProgress,
 } from "@solid-imager/core/jobs";
 import type { JobEvent } from "@solid-imager/core/events";
 import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
@@ -114,7 +118,16 @@ function getTargetMediaModifiedAt(
 		: null;
 }
 
-export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
+function isActiveImport(job: Job) {
+	return job.type === "import_batch_parent" && job.status === "in_progress";
+}
+
+export function toJobDto(
+	job: Job,
+	targetMediaModifiedAt: Date | null = null,
+	importWork?: ImportWorkProgress,
+) {
+	const progress = readProgress(job.payload);
 	return {
 		id: job.id,
 		type: job.type,
@@ -131,7 +144,7 @@ export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
 		finishedAt: job.finishedAt ?? null,
 		targetMediaId: readTargetMediaId(job.payload),
 		targetMediaModifiedAt,
-		progress: readProgress(job.payload),
+		progress: progress && { ...progress, ...(importWork && { importWork }) },
 		artifact:
 			job.status === "completed" &&
 			job.artifactPath &&
@@ -205,11 +218,18 @@ export const jobsRouter = os.router({
 			db.select({ total: count() }).from(jobs).where(where),
 		]);
 
-		const targetMediaModifiedAtById = await findTargetMediaModifiedAtById(rows);
+		const [targetMediaModifiedAtById, importWork] = await Promise.all([
+			findTargetMediaModifiedAtById(rows),
+			listImportWorkProgress(rows.filter(isActiveImport).map((job) => job.id)),
+		]);
 
 		return {
 			items: rows.map((job) =>
-				toJobDto(job, getTargetMediaModifiedAt(job, targetMediaModifiedAtById)),
+				toJobDto(
+					job,
+					getTargetMediaModifiedAt(job, targetMediaModifiedAtById),
+					importWork.get(job.id),
+				),
 			),
 			total: Number(totalRows[0]?.total ?? 0),
 		};
@@ -220,7 +240,11 @@ export const jobsRouter = os.router({
 		if (!job) {
 			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
 		}
-		return toJobDto(job, await findTargetMediaModifiedAt(job));
+		const [modifiedAt, importWork] = await Promise.all([
+			findTargetMediaModifiedAt(job),
+			listImportWorkProgress(isActiveImport(job) ? [job.id] : []),
+		]);
+		return toJobDto(job, modifiedAt, importWork.get(job.id));
 	}),
 
 	downloadArtifact: os.downloadArtifact.handler(async ({ input, context }) => {

@@ -233,8 +233,12 @@ function JobProgress(props: { progress: JobDto["progress"]; label?: string }) {
 				(props.progress.cancelled ?? 0)
 			: 0;
 	const percent = () => {
-		if (!props.progress || props.progress.total === 0) return 0;
-		return Math.min(100, Math.round((finished() / props.progress.total) * 100));
+		const progress = props.progress;
+		if (!progress || progress.total === 0) return 0;
+		const completionRatio = progress.importWork?.completionRatio;
+		return completionRatio === undefined
+			? Math.min(100, Math.round((finished() / progress.total) * 100))
+			: Math.min(99, completionRatio * 100);
 	};
 
 	return (
@@ -245,7 +249,7 @@ function JobProgress(props: { progress: JobDto["progress"]; label?: string }) {
 			{(progress) => (
 				<div class="min-w-28 space-y-1">
 					<div class="flex items-center justify-between gap-2 whitespace-nowrap text-xs tabular-nums">
-						<span>{percent()}%</span>
+						<span>{Math.round(percent())}%</span>
 						<span class="text-muted-foreground">
 							{finished().toLocaleString()}/{progress().total.toLocaleString()}
 						</span>
@@ -253,7 +257,9 @@ function JobProgress(props: { progress: JobDto["progress"]; label?: string }) {
 					<Progress
 						aria-label={
 							props.label ??
-							t("jobsScreen.valueComplete", { value0: String(percent()) })
+							t("jobsScreen.valueComplete", {
+								value0: String(Math.round(percent())),
+							})
 						}
 						class="h-1.5 bg-border [&>div]:bg-border [&>div>div]:rounded-full"
 						maxValue={100}
@@ -475,6 +481,7 @@ function JobsTable(props: {
 										aria-pressed={props.selectedJobId === job.id}
 										variant="ghost"
 										class="h-auto w-full flex-col items-start gap-0 px-2 py-2 text-left"
+										data-job-id={job.id}
 										onClick={() => props.onSelect(job)}
 										type="button"
 									>
@@ -671,15 +678,22 @@ function BatchTargetList(props: {
 			aria-label={t("jobsScreen.batchTargets")}
 		>
 			<Show when={inputError()}>
-				{(error) => <p role="alert">{error()}</p>}
+				{(error) => (
+					<Alert class="mb-3" variant="destructive">
+						<CircleAlert aria-hidden="true" size={16} />
+						<AlertDescription class="break-words">{error()}</AlertDescription>
+					</Alert>
+				)}
 			</Show>
 			<Show when={query.isPending}>
 				<p role="status">{t("status.loading")}</p>
 			</Show>
 			<Show when={query.isError}>
-				<Button variant="outline" onClick={() => void query.refetch()}>
-					{t("actions.retry")}
-				</Button>
+				<ErrorState
+					description={t("jobsScreen.checkYourConnectionAndTryAgain")}
+					onRetry={() => void query.refetch()}
+					title={t("jobsScreen.couldNotLoadBatchTargets")}
+				/>
 			</Show>
 			<Show when={query.data}>
 				{(data) => (
@@ -898,7 +912,7 @@ function JobsInspector(props: {
 										<JobProgress progress={progress()} />
 
 										<Show when={progress().cancelled}>
-											<p>
+											<p class="mt-1 text-xs text-muted-foreground tabular-nums">
 												{t("jobsScreen.cancelledCount", {
 													count: String(progress().cancelled),
 												})}
@@ -1504,7 +1518,7 @@ export function JobsScreen(props: JobsScreenProps) {
 										}
 										when={props.jobs().length > 0}
 									>
-										<Show when={retryableJobIds().length > 0}>
+										<Show when={!detailOpen() && retryableJobIds().length > 0}>
 											<JobsBulkActions
 												action={bulkAction()}
 												allSelected={
@@ -1557,11 +1571,15 @@ export function JobsScreen(props: JobsScreenProps) {
 						buildThumbnailUrl={props.buildThumbnailUrl}
 						job={selectedJob()}
 						onBack={() => {
+							const id = selectedId();
 							setDetailOpen(false);
+							if (props.inspection) props.inspection.clear?.();
+							else setLocalSelection(null);
+							if (!id) return;
 							queueMicrotask(() =>
 								scrollRoot()
 									?.querySelector<HTMLButtonElement>(
-										"button[aria-pressed=true]",
+										`button[data-job-id="${CSS.escape(id)}"]`,
 									)
 									?.focus({ preventScroll: true }),
 							);

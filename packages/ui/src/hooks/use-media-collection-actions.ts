@@ -1,7 +1,12 @@
 import type { Media } from "@solid-imager/core/media";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { t } from "@solid-imager/i18n";
-import { type Accessor, createMemo, createSignal } from "solid-js";
+import {
+	type Accessor,
+	createEffect,
+	createMemo,
+	createSignal,
+} from "solid-js";
 import {
 	type MediaCollectionSelectionMode,
 	useMediaCollectionSelection,
@@ -189,6 +194,11 @@ export function useMediaCollectionActions(
 	const selection = useMediaCollectionSelection(visibleIds);
 	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
 	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
+	createEffect(() => {
+		if (visibleIds().length === 0 && isBulkSelectMode()) {
+			setIsBulkSelectMode(false);
+		}
+	});
 	const selectedMediaItems = createMemo(() =>
 		options
 			.media()

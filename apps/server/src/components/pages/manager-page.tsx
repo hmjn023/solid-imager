@@ -90,7 +90,12 @@ const managerActions = {
 		}),
 };
 
-function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
+const JOB_SUBMISSION_TOAST_DURATION_MS = 7000;
+
+function createTransferActions(
+	queryClient: ReturnType<typeof useQueryClient>,
+	openJobs: (jobId?: string) => void,
+) {
 	return {
 		exportSource: async (input: {
 			format: ManagerTransferFormat;
@@ -109,6 +114,13 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 					t("manager.exportStartedValueDownloadingWhenReady", {
 						value0: String(job.id.slice(0, 8)),
 					}),
+					{
+						duration: JOB_SUBMISSION_TOAST_DURATION_MS,
+						action: {
+							label: t("actions.viewJobs"),
+							onClick: () => openJobs(job.id),
+						},
+					},
 				);
 				return {
 					fileName: `source-${input.sourceId}-dump.${
@@ -117,9 +129,9 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 					jobId: job.id,
 				};
 			} catch (error) {
-				toast.error(
-					error instanceof Error ? error.message : t("manager.exportFailed"),
-				);
+				toast.error(t("manager.exportFailed"), {
+					description: error instanceof Error ? error.message : undefined,
+				});
 				throw error;
 			}
 		},
@@ -136,12 +148,19 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 					t("manager.restoreQueuedValueTrackItInJobs", {
 						value0: String(job.id.slice(0, 8)),
 					}),
+					{
+						duration: JOB_SUBMISSION_TOAST_DURATION_MS,
+						action: {
+							label: t("actions.viewJobs"),
+							onClick: () => openJobs(job.id),
+						},
+					},
 				);
 				return { jobId: job.id };
 			} catch (error) {
-				toast.error(
-					error instanceof Error ? error.message : t("manager.restoreFailed"),
-				);
+				toast.error(t("manager.restoreFailed"), {
+					description: error instanceof Error ? error.message : undefined,
+				});
 				throw error;
 			}
 		},
@@ -160,11 +179,9 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 					t("manager.downloadedValue", { value0: String(input.fileName) }),
 				);
 			} catch (error) {
-				toast.error(
-					error instanceof Error
-						? error.message
-						: t("manager.failedToDownloadExport"),
-				);
+				toast.error(t("manager.failedToDownloadExport"), {
+					description: error instanceof Error ? error.message : undefined,
+				});
 				throw error;
 			}
 		},
@@ -174,11 +191,15 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 export function ManagerPage(): JSX.Element {
 	const navigate = useNavigate({ from: "/manager" });
 	const queryClient = useQueryClient();
+	const openJobs = (jobId?: string) => {
+		void navigate({ to: "/jobs", search: jobId ? { jobId } : {} });
+	};
 	const manager = useManagerPage({
 		queryClient,
 		queryOptions: managerQueryOptions,
 		actions: managerActions,
 		useBatchJobEvents,
+		onOpenJobs: openJobs,
 	});
 
 	return (
@@ -253,7 +274,7 @@ export function ManagerPage(): JSX.Element {
 						cacheKey: new Date(item.modifiedAt).getTime(),
 					}),
 			}}
-			transferActions={createTransferActions(queryClient)}
+			transferActions={createTransferActions(queryClient, openJobs)}
 		/>
 	);
 }

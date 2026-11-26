@@ -666,7 +666,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						<AlertDialogCancel>
 							{t("configScreen.keepEditing")}
 						</AlertDialogCancel>
-						<AlertDialogAction onClick={discardAndClose}>
+						<AlertDialogAction onClick={discardAndClose} variant="destructive">
 							{t("sourceFormModal.discardChanges")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
