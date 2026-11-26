@@ -11,6 +11,7 @@ import { jobsQueryKeys } from "@solid-imager/ui/query";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
+import { useRouter } from "@tanstack/solid-router";
 import { buildThumbnailUrl } from "~/components/media/thumbnail-image";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
@@ -20,11 +21,13 @@ export function JobsPage(props: { replaySince?: number }) {
 	const jobsList = useJobsList(orpc.jobs);
 	const jobsQuery = jobsList.query;
 	const workspace = useWorkspaceNavigation();
+	const router = useRouter();
 	const inspection = useJobInspection(
 		workspace.selectedJobId,
 		jobsList.list,
 		(id, signal) => orpc.jobs.get({ id }, { signal }),
 		(jobId) => void workspace.open({ kind: "job", jobId }),
+		() => void router.navigate({ to: "/jobs", search: { jobId: undefined } }),
 	);
 	useWorkspaceView(() => ({
 		kind: "jobs",
@@ -62,9 +65,9 @@ export function JobsPage(props: { replaySince?: number }) {
 					});
 					toast.success(t("jobs.jobQueuedForRetry"));
 				} catch (error) {
-					toast.error(
-						error instanceof Error ? error.message : t("jobs.failedToRetryJob"),
-					);
+					toast.error(t("jobs.failedToRetryJob"), {
+						description: error instanceof Error ? error.message : undefined,
+					});
 					throw error;
 				}
 			}}
@@ -99,6 +102,10 @@ export function JobsPage(props: { replaySince?: number }) {
 							value0: String(failedCount),
 							value1: String(jobIds.length),
 						}),
+						{
+							description:
+								firstError instanceof Error ? firstError.message : undefined,
+						},
 					);
 					throw firstError instanceof Error
 						? firstError
@@ -116,11 +123,9 @@ export function JobsPage(props: { replaySince?: number }) {
 					});
 					toast.success(t("jobs.jobCancellationRequested"));
 				} catch (error) {
-					toast.error(
-						error instanceof Error
-							? error.message
-							: t("jobs.failedToCancelJob"),
-					);
+					toast.error(t("jobs.failedToCancelJob"), {
+						description: error instanceof Error ? error.message : undefined,
+					});
 					throw error;
 				}
 			}}
@@ -144,11 +149,9 @@ export function JobsPage(props: { replaySince?: number }) {
 							}),
 						);
 					} catch (error) {
-						toast.error(
-							error instanceof Error
-								? error.message
-								: t("jobs.failedToDownloadArtifact"),
-						);
+						toast.error(t("jobs.failedToDownloadArtifact"), {
+							description: error instanceof Error ? error.message : undefined,
+						});
 						throw error;
 					}
 				})();

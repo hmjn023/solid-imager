@@ -682,15 +682,22 @@ function BatchTargetList(props: {
 			aria-label={t("jobsScreen.batchTargets")}
 		>
 			<Show when={inputError()}>
-				{(error) => <p role="alert">{error()}</p>}
+				{(error) => (
+					<Alert class="mb-3" variant="destructive">
+						<CircleAlert aria-hidden="true" size={16} />
+						<AlertDescription class="break-words">{error()}</AlertDescription>
+					</Alert>
+				)}
 			</Show>
 			<Show when={query.isPending}>
 				<p role="status">{t("status.loading")}</p>
 			</Show>
 			<Show when={query.isError}>
-				<Button variant="outline" onClick={() => void query.refetch()}>
-					{t("actions.retry")}
-				</Button>
+				<ErrorState
+					description={t("jobsScreen.checkYourConnectionAndTryAgain")}
+					onRetry={() => void query.refetch()}
+					title={t("jobsScreen.couldNotLoadBatchTargets")}
+				/>
 			</Show>
 			<Show when={query.data}>
 				{(data) => (
@@ -909,7 +916,7 @@ function JobsInspector(props: {
 										<JobProgress progress={progress()} />
 
 										<Show when={progress().cancelled}>
-											<p>
+											<p class="mt-1 text-xs text-muted-foreground tabular-nums">
 												{t("jobsScreen.cancelledCount", {
 													count: String(progress().cancelled),
 												})}
@@ -1515,7 +1522,7 @@ export function JobsScreen(props: JobsScreenProps) {
 										}
 										when={props.jobs().length > 0}
 									>
-										<Show when={retryableJobIds().length > 0}>
+										<Show when={!detailOpen() && retryableJobIds().length > 0}>
 											<JobsBulkActions
 												action={bulkAction()}
 												allSelected={
@@ -1569,6 +1576,8 @@ export function JobsScreen(props: JobsScreenProps) {
 						job={selectedJob()}
 						onBack={() => {
 							setDetailOpen(false);
+							if (props.inspection) props.inspection.clear?.();
+							else setLocalSelection(null);
 							queueMicrotask(() =>
 								scrollRoot()
 									?.querySelector<HTMLButtonElement>(

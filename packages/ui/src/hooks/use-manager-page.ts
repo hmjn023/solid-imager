@@ -149,6 +149,7 @@ export type UseManagerPageOptions = {
 		options?: UseBatchJobEventsOptions,
 	) => void;
 	onBatchTaggingStart?: (result: StartBatchTaggingResult) => void;
+	onOpenJobs?: (jobId?: string) => void;
 };
 
 export function prefetchManagerPageQueries(
@@ -196,6 +197,7 @@ export type UseManagerPageResult = {
 	formData: Accessor<ManagerFormData>;
 	setFormData: Setter<ManagerFormData>;
 	isSavingEntity: Accessor<boolean>;
+	isDeletingEntity: Accessor<boolean>;
 	entitySaveError: Accessor<string | null>;
 	selectedSourceId: Accessor<string | undefined>;
 	setSelectedSourceId: Setter<string | undefined>;
@@ -296,6 +298,7 @@ export function useManagerPage(
 		queryOptions,
 		useBatchJobEvents,
 		onBatchTaggingStart,
+		onOpenJobs,
 	} = options;
 	const projects = createQuery<Project[]>(queryOptions.projects);
 	const ipsQuery = createQuery<Ip[]>(() => ({
@@ -333,6 +336,7 @@ export function useManagerPage(
 		ipIds: [],
 	});
 	const [isSavingEntity, setIsSavingEntity] = createSignal(false);
+	const [isDeletingEntity, setIsDeletingEntity] = createSignal(false);
 	const [entitySaveError, setEntitySaveError] = createSignal<string | null>(
 		null,
 	);
@@ -596,10 +600,11 @@ export function useManagerPage(
 
 	const handleConfirmDelete = async () => {
 		const item = itemToDelete();
-		if (!item) {
+		if (!item || isDeletingEntity()) {
 			return;
 		}
 
+		setIsDeletingEntity(true);
 		try {
 			if (activeTab() === "projects") {
 				await actions.deleteProject(item.id);
@@ -617,6 +622,7 @@ export function useManagerPage(
 				}),
 			);
 		} finally {
+			setIsDeletingEntity(false);
 			setIsDeleteDialogOpen(false);
 			setItemToDelete(null);
 		}
@@ -677,7 +683,15 @@ export function useManagerPage(
 			if (result.success && result.jobId) {
 				batches.acceptStart(request, result.jobId);
 				if (context.tab === "tagging") onBatchTaggingStart?.(result);
-				toast.success(result.message);
+				toast.success(result.message, {
+					duration: 7000,
+					action: onOpenJobs
+						? {
+								label: t("actions.viewJobs"),
+								onClick: () => onOpenJobs(result.jobId),
+							}
+						: undefined,
+				});
 			} else {
 				const message =
 					result.message || t("useManagerPage.failedToStartBatchOperation");
@@ -809,6 +823,7 @@ export function useManagerPage(
 		formData,
 		setFormData,
 		isSavingEntity,
+		isDeletingEntity,
 		entitySaveError,
 		selectedSourceId,
 		setSelectedSourceId: changeSelectedSourceId,

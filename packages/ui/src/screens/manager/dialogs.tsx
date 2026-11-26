@@ -286,6 +286,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 							{t("configScreen.keepEditing")}
 						</AlertDialogCancel>
 						<AlertDialogAction
+							variant="destructive"
 							onClick={() => {
 								setDiscardDialogOpen(false);
 								props.manager.setIsDialogOpen(false);
@@ -298,7 +299,11 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 			</AlertDialog>
 
 			<AlertDialog
-				onOpenChange={props.manager.setIsDeleteDialogOpen}
+				onOpenChange={(open) => {
+					if (!open && !props.manager.isDeletingEntity()) {
+						props.manager.setIsDeleteDialogOpen(false);
+					}
+				}}
 				open={props.manager.isDeleteDialogOpen()}
 			>
 				<AlertDialogContent>
@@ -313,21 +318,32 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+						<AlertDialogCancel disabled={props.manager.isDeletingEntity()}>
+							{t("actions.cancel")}
+						</AlertDialogCancel>
 						<AlertDialogAction
-							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							onClick={() => {
+							aria-busy={props.manager.isDeletingEntity()}
+							disabled={props.manager.isDeletingEntity()}
+							variant="destructive"
+							onClick={(event) => {
+								event.preventDefault();
 								void props.manager.handleConfirmDelete();
 							}}
 						>
-							{t("actions.delete")}
+							{props.manager.isDeletingEntity()
+								? t("status.deleting")
+								: t("actions.delete")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
 
 			<AlertDialog
-				onOpenChange={props.manager.setIsDuplicateDeleteDialogOpen}
+				onOpenChange={(open) => {
+					if (!open && !props.manager.isDeletingDuplicates()) {
+						props.manager.setIsDuplicateDeleteDialogOpen(false);
+					}
+				}}
 				open={props.manager.isDuplicateDeleteDialogOpen()}
 			>
 				<AlertDialogContent>
@@ -358,6 +374,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 							{t("actions.cancel")}
 						</AlertDialogCancel>
 						<Button
+							aria-busy={props.manager.isDeletingDuplicates()}
 							class="min-h-11 sm:min-h-9"
 							variant="destructive"
 							disabled={
@@ -368,9 +385,11 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 								void props.manager.handleConfirmDeleteDuplicates();
 							}}
 						>
-							{t("duplicates.deleteValue", {
-								value0: String(props.manager.duplicatesToDelete().length),
-							})}
+							{props.manager.isDeletingDuplicates()
+								? t("status.deleting")
+								: t("duplicates.deleteValue", {
+										value0: String(props.manager.duplicatesToDelete().length),
+									})}
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

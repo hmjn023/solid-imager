@@ -39,11 +39,9 @@ async function downloadJobArtifact(job: JobDto): Promise<void> {
 			t("manager.downloadedValue", { value0: String(job.artifact.fileName) }),
 		);
 	} catch (error) {
-		toast.error(
-			error instanceof Error
-				? error.message
-				: t("jobs.failedToDownloadArtifact"),
-		);
+		toast.error(t("jobs.failedToDownloadArtifact"), {
+			description: error instanceof Error ? error.message : undefined,
+		});
 		throw error;
 	}
 }
@@ -58,6 +56,7 @@ function JobsRoute() {
 		jobsList.list,
 		(id, signal) => orpc.jobs.get({ id }, { signal }),
 		(jobId) => void navigate({ search: { jobId } }),
+		() => void navigate({ search: { jobId: undefined } }),
 	);
 	const queryClient = useQueryClient();
 
@@ -85,9 +84,9 @@ function JobsRoute() {
 					});
 					toast.success(t("jobs.jobQueuedForRetry"));
 				} catch (error) {
-					toast.error(
-						error instanceof Error ? error.message : t("jobs.failedToRetryJob"),
-					);
+					toast.error(t("jobs.failedToRetryJob"), {
+						description: error instanceof Error ? error.message : undefined,
+					});
 					throw error;
 				}
 			}}
@@ -122,6 +121,10 @@ function JobsRoute() {
 							value0: String(failedCount),
 							value1: String(jobIds.length),
 						}),
+						{
+							description:
+								firstError instanceof Error ? firstError.message : undefined,
+						},
 					);
 					throw firstError instanceof Error
 						? firstError
@@ -139,11 +142,9 @@ function JobsRoute() {
 					});
 					toast.success(t("jobs.jobCancellationRequested"));
 				} catch (error) {
-					toast.error(
-						error instanceof Error
-							? error.message
-							: t("jobs.failedToCancelJob"),
-					);
+					toast.error(t("jobs.failedToCancelJob"), {
+						description: error instanceof Error ? error.message : undefined,
+					});
 					throw error;
 				}
 			}}

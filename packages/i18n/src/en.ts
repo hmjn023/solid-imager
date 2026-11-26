@@ -2072,4 +2072,20 @@ export const en = defineMessages({
 	"workspace.loadingPosts": "Loading posts",
 	"workspace.openSite": "Open site ↗",
 	"workspace.showingValueResults": "Showing {value0} results",
+	"aiTaggingModal.failedToExtractTags": "Failed to run AI tagging",
+	"authorAccountVerification.discardVerificationTitle":
+		"Discard fetched profile?",
+	"authorAccountVerification.discardVerificationDescription":
+		"Closing now will discard the fetched X profile and confirmation state.",
+	"configScreen.fixErrorsInCategories":
+		"Fix validation errors in: {categories}",
+	"configScreen.hasValidationErrors": "Contains validation errors",
+	"configScreen.healthCheckUsesSavedSettings":
+		"Connection check tests the saved AI settings, not unsaved edits.",
+	"importReviewModal.failedToLoadSources":
+		"Failed to load destination sources.",
+	"importReviewModal.noLocalSourcesAvailable":
+		"No local sources are available. Create a local source in the sidebar before importing.",
+	"jobsScreen.couldNotLoadBatchTargets": "Could not load batch targets",
+	"oppaiOracleModal.failedToAnalyzeImage": "Failed to run OppaiOracle analysis",
 });

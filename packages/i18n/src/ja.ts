@@ -2077,4 +2077,21 @@ export const ja = defineLocale({
 	"workspace.loadingPosts": "投稿を読み込み中",
 	"workspace.openSite": "サイトを開く ↗",
 	"workspace.showingValueResults": "{value0}件を表示",
+	"aiTaggingModal.failedToExtractTags": "AIタグ付けの実行に失敗しました",
+	"authorAccountVerification.discardVerificationTitle":
+		"取得したプロフィールを破棄しますか？",
+	"authorAccountVerification.discardVerificationDescription":
+		"今閉じると、取得したXプロフィールと確認状態が破棄されます。",
+	"configScreen.fixErrorsInCategories":
+		"次のカテゴリの入力エラーを修正してください: {categories}",
+	"configScreen.hasValidationErrors": "入力エラーがあります",
+	"configScreen.healthCheckUsesSavedSettings":
+		"接続チェックは未保存の編集ではなく、保存済みのAI設定に対して実行されます。",
+	"importReviewModal.failedToLoadSources":
+		"保存先ソースの読み込みに失敗しました。",
+	"importReviewModal.noLocalSourcesAvailable":
+		"利用可能なローカルソースがありません。インポートする前にサイドバーからローカルソースを作成してください。",
+	"jobsScreen.couldNotLoadBatchTargets": "バッチ対象を読み込めませんでした",
+	"oppaiOracleModal.failedToAnalyzeImage":
+		"OppaiOracle解析の実行に失敗しました",
 });

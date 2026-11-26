@@ -54,7 +54,7 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 				} catch (err) {
 					if (!isCancelled) {
 						setError(
-							err instanceof Error
+							err instanceof Error && err.message
 								? err.message
 								: t("characterCropModal.unknownErrorOccurred"),
 						);
@@ -135,7 +135,10 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 
 					<Show when={error()}>
 						<div class="rounded-md bg-error p-4 text-destructive" role="alert">
-							{t("useManagerPage.errorValue", { value0: String(error()) })}
+							<h4 class="font-semibold">
+								{t("oppaiOracleModal.failedToAnalyzeImage")}
+							</h4>
+							<p class="mt-1 text-sm">{error()}</p>
 						</div>
 					</Show>
 

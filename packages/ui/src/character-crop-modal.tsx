@@ -57,7 +57,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 		} catch (err) {
 			if (currentRequestId !== requestId) return;
 			setError(
-				err instanceof Error
+				err instanceof Error && err.message
 					? err.message
 					: t("characterCropModal.unknownErrorOccurred"),
 			);

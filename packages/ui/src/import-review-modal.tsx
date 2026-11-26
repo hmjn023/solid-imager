@@ -342,7 +342,10 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		openGeneration,
 		props.listPending,
 	);
-	const [sources] = createResource(openGeneration, props.listSources);
+	const [sources, { refetch: refetchSources }] = createResource(
+		openGeneration,
+		props.listSources,
+	);
 	const localSources = createMemo(() =>
 		(sources() ?? []).filter(
 			(source): source is typeof source & { id: string } =>
@@ -429,6 +432,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	};
 
 	const handleProcess = async () => {
+		if (activeAction() !== null) return;
 		const jobIds = Array.from(selectedJobIds());
 		const sourceId = selectedSourceOption()?.id;
 		if (!jobIds.length || !sourceId) {
@@ -469,6 +473,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		sourceOptions().find((option) => option.id === selectedSourceId()) ?? null;
 
 	const confirmDelete = async () => {
+		if (activeAction() !== null) return;
 		try {
 			setActiveAction("delete");
 			await props.cancelPending(Array.from(selectedJobIds()));
@@ -476,6 +481,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			setSelectedJobIds(createEmptySelection());
 			setIsDirty(false);
 			setIsDeleteDialogOpen(false);
+			props.onImportCompleted();
 			toast.success(t("importReviewModal.requestsDeleted"));
 		} catch (error) {
 			toast.error(
@@ -550,6 +556,34 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										portalMount={sourceField()}
 									/>
 								</Select>
+								<Show when={!sources.loading && Boolean(sources.error)}>
+									<div
+										class="flex flex-wrap items-center gap-2 text-destructive text-xs"
+										role="alert"
+									>
+										<span>{t("importReviewModal.failedToLoadSources")}</span>
+										<Button
+											class="min-h-11 px-2 text-xs sm:min-h-8"
+											onClick={() => void refetchSources()}
+											size="sm"
+											type="button"
+											variant="outline"
+										>
+											{t("actions.retry")}
+										</Button>
+									</div>
+								</Show>
+								<Show
+									when={
+										!sources.loading &&
+										!sources.error &&
+										localSources().length === 0
+									}
+								>
+									<output class="block text-muted-foreground text-xs">
+										{t("importReviewModal.noLocalSourcesAvailable")}
+									</output>
+								</Show>
 								<Checkbox
 									checked={rememberSource()}
 									class="flex items-center gap-2"
@@ -571,7 +605,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								</div>
 								<div class="flex items-center gap-1">
 									<Button
-										class="h-8 px-2 text-xs"
+										class="min-h-11 px-2 text-xs sm:min-h-8"
 										disabled={
 											activeAction() !== null ||
 											(pendingJobs()?.length ?? 0) === 0 ||
@@ -584,7 +618,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										{t("importReviewModal.selectAll")}
 									</Button>
 									<Button
-										class="h-8 px-2 text-xs"
+										class="min-h-11 px-2 text-xs sm:min-h-8"
 										disabled={
 											activeAction() !== null || selectedJobIds().size === 0
 										}
@@ -730,7 +764,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 				}}
 				open={isDeleteDialogOpen()}
 			>
-				<AlertDialogContent>
+				<AlertDialogContent class="workspace-theme">
 					<AlertDialogHeader>
 						<AlertDialogTitle>
 							{t("importReviewModal.areYouSure")}
