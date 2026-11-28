@@ -319,7 +319,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				controller={filePicker}
 				multiple
 				onValueChange={(files, details) => {
-					// A scoped drop updates the controller without applying the picker's filter.
+					// The upload flow owns the files. Keep the picker empty for the next selection.
+					details.cancel();
+					// A scoped drop bypasses the picker's filter.
 					if (details.reason === "imperative") {
 						page().openUploadWithFiles(files);
 					}

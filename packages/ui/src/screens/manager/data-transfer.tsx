@@ -285,6 +285,7 @@ export function DataTransferPanel(props: {
 								}
 							}}
 							onValueChange={([file], details) => {
+								details.cancel();
 								if (details.reason === "picker") chooseRestoreFile(file);
 							}}
 							value={EMPTY_FILE_SELECTION}
@@ -322,12 +323,12 @@ export function DataTransferPanel(props: {
 							{t("dataTransfer.confirmRestoreTitle")}
 						</AlertDialogTitle>
 						<AlertDialogDescription class="break-words">
-							<Show when={pendingRestoreFile()}>
+							<Show keyed when={pendingRestoreFile()}>
 								{(pending) =>
 									t("dataTransfer.confirmRestoreDescription", {
-										file: pending().file.name,
-										format: formatOptionLabel(pending().format),
-										source: pending().sourceName,
+										file: pending.file.name,
+										format: formatOptionLabel(pending.format),
+										source: pending.sourceName,
 									})
 								}
 							</Show>

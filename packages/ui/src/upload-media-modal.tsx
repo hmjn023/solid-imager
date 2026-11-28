@@ -248,16 +248,13 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 		files: File[],
 		details: FileInputValueChangeDetails,
 	) => {
-		if (details.reason !== "picker" && details.reason !== "drop") {
-			details.cancel();
-			return;
-		}
+		details.cancel();
+		if (details.reason !== "picker" && details.reason !== "drop") return;
 		if (
 			details.reason === "drop" &&
 			details.event?.target instanceof Node &&
 			!details.event.target.isConnected
 		) {
-			details.cancel();
 			return;
 		}
 
