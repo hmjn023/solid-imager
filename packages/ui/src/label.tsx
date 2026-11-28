@@ -1,23 +1,17 @@
-import type { Component } from "solid-js";
+// Adapted from the Solid UI v2 label registry recipe.
 import type { ComponentProps } from "@solidjs/web";
-
 import { cn } from "./utils/cn";
 
-const Label: Component<ComponentProps<"label">> = (props) => {
-	const local = props,
-		others = omit(props, "class");
+export function Label(props: ComponentProps<"label">) {
 	return (
 		// oxlint-disable-next-line jsx-a11y/label-has-associated-control -- Generic Label component
 		<label
+			data-slot="label"
+			{...props}
 			class={cn(
-				"font-medium text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-				local.class,
+				"select-none font-medium text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+				props.class,
 			)}
-			{...others}
 		/>
 	);
-};
-
-export { Label };
-
-import { omit } from "solid-js";
+}

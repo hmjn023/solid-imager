@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 popover registry recipe.
 import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
 import {
 	popupAlign,
@@ -5,9 +6,13 @@ import {
 	type PopupPlacement,
 } from "./utils/popup-placement";
 import {
-	Popover as Primitive,
-	PopoverTrigger as TriggerPrimitive,
-	PopoverContent as ContentPrimitive,
+	Popover as SdkPopover,
+	PopoverArrow as SdkPopoverArrow,
+	PopoverClose as SdkPopoverClose,
+	PopoverTrigger as SdkPopoverTrigger,
+	PopoverContent as SdkPopoverContent,
+	PopoverDescription as SdkPopoverDescription,
+	PopoverTitle as SdkPopoverTitle,
 } from "@ui-sdk/solid/popover";
 import { createContext, useContext } from "solid-js";
 import type { ComponentProps, ValidComponent } from "@solidjs/web";
@@ -15,7 +20,7 @@ import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
-type PopoverProps = ComponentProps<typeof Primitive> & {
+type PopoverProps = ComponentProps<typeof SdkPopover> & {
 	placement?: PopupPlacement;
 	gutter?: number;
 };
@@ -26,18 +31,18 @@ const PopoverContext = createContext<
 function Popover(props: PopoverProps) {
 	return (
 		<PopoverContext value={props}>
-			<Primitive {...omit(props, "placement", "gutter")} />
+			<SdkPopover {...omit(props, "placement", "gutter")} />
 		</PopoverContext>
 	);
 }
 
 function PopoverTrigger<Tag extends ValidComponent = "button">(
-	props: PolymorphicProps<Tag, ComponentProps<typeof TriggerPrimitive>>,
+	props: PolymorphicProps<Tag, ComponentProps<typeof SdkPopoverTrigger>>,
 ) {
-	const partProps: ComponentProps<typeof TriggerPrimitive> & { as?: Tag } =
+	const partProps: ComponentProps<typeof SdkPopoverTrigger> & { as?: Tag } =
 		props;
 	return (
-		<TriggerPrimitive
+		<SdkPopoverTrigger
 			{...omit(partProps, "as")}
 			render={props.as ? renderAs(() => props.as) : props.render}
 		/>
@@ -45,7 +50,7 @@ function PopoverTrigger<Tag extends ValidComponent = "button">(
 }
 
 type PopoverContentProps = Omit<
-	ComponentProps<typeof ContentPrimitive>,
+	ComponentProps<typeof SdkPopoverContent>,
 	"class"
 > & { class?: string | undefined };
 
@@ -53,10 +58,10 @@ const PopoverContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, PopoverContentProps>,
 ) => {
 	const partProps: PopoverContentProps & { as?: ValidComponent } = props;
-	const others = omit(partProps, "class", "as", "render");
+	const others = omit(partProps, "class", "as", "render", "children");
 	const context = useContext(PopoverContext);
 	return (
-		<ContentPrimitive
+		<SdkPopoverContent
 			side={popupSide(context.placement)}
 			align={popupAlign(context.placement)}
 			sideOffset={context.gutter ?? 4}
@@ -66,8 +71,55 @@ const PopoverContent = <T extends ValidComponent = "div">(
 				props.class,
 			)}
 			{...others}
-		/>
+		>
+			{props.children}
+		</SdkPopoverContent>
 	);
 };
 
-export { Popover, PopoverContent, PopoverTrigger };
+type ClassProps<T> = Omit<T, "class"> & { class?: string };
+
+const PopoverCloseButton = (
+	props: ClassProps<ComponentProps<typeof SdkPopoverClose>>,
+) => <SdkPopoverClose {...props} />;
+
+const PopoverHeader = (props: ComponentProps<"div">) => (
+	<div
+		data-slot="popover-header"
+		{...omit(props, "class")}
+		class={cn("flex flex-col gap-0.5 text-sm", props.class)}
+	/>
+);
+
+const PopoverTitle = (
+	props: ClassProps<ComponentProps<typeof SdkPopoverTitle>>,
+) => (
+	<SdkPopoverTitle
+		{...omit(props, "class")}
+		class={cn("font-medium", props.class)}
+	/>
+);
+
+const PopoverDescription = (
+	props: ClassProps<ComponentProps<typeof SdkPopoverDescription>>,
+) => (
+	<SdkPopoverDescription
+		{...omit(props, "class")}
+		class={cn("text-muted-foreground", props.class)}
+	/>
+);
+
+const PopoverArrow = (
+	props: ClassProps<ComponentProps<typeof SdkPopoverArrow>>,
+) => <SdkPopoverArrow {...props} />;
+
+export {
+	Popover,
+	PopoverArrow,
+	PopoverCloseButton,
+	PopoverContent,
+	PopoverDescription,
+	PopoverHeader,
+	PopoverTitle,
+	PopoverTrigger,
+};

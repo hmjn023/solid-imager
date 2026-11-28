@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 accordion registry recipe.
 import {
 	Accordion as AccordionPrimitiveRoot,
 	AccordionHeader,
@@ -7,11 +8,20 @@ import {
 } from "@ui-sdk/solid/accordion";
 import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
-import { omit } from "solid-js";
+import { merge, omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
-const Accordion = AccordionPrimitiveRoot;
+type AccordionProps = Omit<
+	ComponentProps<typeof AccordionPrimitiveRoot>,
+	"class"
+> & {
+	class?: string;
+};
+
+const Accordion = (props: AccordionProps) => (
+	<AccordionPrimitiveRoot {...props} class={props.class} />
+);
 
 type AccordionItemProps = Omit<
 	ComponentProps<typeof AccordionPrimitiveItem>,
@@ -56,10 +66,22 @@ const AccordionTrigger = <T extends ValidComponent = "button">(
 		"class",
 		"children",
 	);
+	const renderComponent = renderAs(() => props.as);
+	const renderTrigger: AccordionTriggerProps["render"] = (part, state) => {
+		const attributes = merge(part, () =>
+			state.disabled ? { tabindex: -1 } : {},
+		);
+		if (props.as) return renderComponent(attributes);
+		return props.render ? (
+			props.render(attributes, state)
+		) : (
+			<button {...attributes} />
+		);
+	};
 	return (
 		<AccordionHeader class="flex">
 			<AccordionPrimitiveTrigger
-				render={props.as ? renderAs(() => props.as) : props.render}
+				render={renderTrigger}
 				class={cn(
 					"flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-open]>svg]:rotate-180",
 					props.class,
@@ -69,7 +91,8 @@ const AccordionTrigger = <T extends ValidComponent = "button">(
 				{props.children}
 				<svg
 					aria-hidden="true"
-					class="size-4 shrink-0 transition-transform duration-200"
+					class="pointer-events-none size-4 shrink-0 transition-transform duration-200"
+					data-slot="accordion-trigger-icon"
 					fill="none"
 					stroke="currentColor"
 					stroke-linecap="round"
@@ -78,7 +101,7 @@ const AccordionTrigger = <T extends ValidComponent = "button">(
 					viewBox="0 0 24 24"
 					xmlns="http://www.w3.org/2000/svg"
 				>
-					<path d="M6 9l6 6l6 -6" />
+					<path d="m6 9 6 6 6-6" />
 				</svg>
 			</AccordionPrimitiveTrigger>
 		</AccordionHeader>
@@ -112,7 +135,9 @@ const AccordionContent = <T extends ValidComponent = "div">(
 			)}
 			{...others}
 		>
-			<div class="pt-0 pb-4">{props.children}</div>
+			<div data-slot="accordion-content-inner" class="pt-0 pb-4">
+				{props.children}
+			</div>
 		</AccordionPanel>
 	);
 };

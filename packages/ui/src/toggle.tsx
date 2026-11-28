@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 toggle registry recipe.
 import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
 import { Toggle as ToggleButtonPrimitive } from "@ui-sdk/solid/toggle";
 import type { VariantProps } from "class-variance-authority";
@@ -48,17 +49,18 @@ const Toggle = <T extends ValidComponent = "button">(
 		"size",
 		"onChange",
 		"as",
+		"render",
 	);
 	return (
 		<ToggleButtonPrimitive
-			render={props.as ? renderAs(() => props.as) : undefined}
-			onPressedChange={props.onChange}
 			class={cn(
 				toggleVariants({ variant: props.variant, size: props.size }),
 				props["data-toggle-group-item"] !== undefined &&
 					"hover:bg-muted hover:text-muted-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground",
 				props.class,
 			)}
+			render={props.as ? renderAs(() => props.as) : props.render}
+			onPressedChange={props.onChange}
 			{...others}
 		/>
 	);

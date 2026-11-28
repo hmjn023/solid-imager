@@ -1,11 +1,15 @@
-import { Button as ButtonPrimitive } from "@ui-sdk/solid/button";
-import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
-import type { VariantProps } from "class-variance-authority";
-import { cva } from "class-variance-authority";
-import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
-import { omit } from "solid-js";
+// Adapted from the Solid UI v2 button registry recipe.
+import {
+	dynamic,
+	type ComponentProps,
+	type JSX,
+	type ValidComponent,
+} from "@solidjs/web";
+import { cva, type VariantProps } from "class-variance-authority";
+import { isStatic, omit, untrack } from "solid-js";
 
 import { cn } from "./utils/cn";
+import type { PolymorphicProps } from "./utils/polymorphic";
 
 /**
  * Defines the styles for the button component using `class-variance-authority`.
@@ -52,10 +56,20 @@ type ButtonProps<T extends ValidComponent = "button"> = Omit<
 		class?: string | undefined;
 		children?: JSX.Element;
 	};
-const Button = <T extends ValidComponent = "button">(
+function ariaBoolean(
+	value: Exclude<BooleanAria[keyof BooleanAria], boolean> | boolean,
+) {
+	if (typeof value === "boolean") return value ? "true" : "false";
+	return value;
+}
+
+function Button<T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, ButtonProps<T>>,
-) => {
-	const others = omit(
+) {
+	const Element = dynamic<ValidComponent>(() => props.as ?? "button", {
+		static: untrack(() => isStatic(props, "as")),
+	});
+	const rest = omit(
 		props as ButtonProps & { as?: ValidComponent },
 		"variant",
 		"size",
@@ -64,49 +78,24 @@ const Button = <T extends ValidComponent = "button">(
 		"aria-busy",
 		"aria-expanded",
 		"aria-pressed",
-		"style",
-		"disabled",
-		"type",
 	);
 	return (
-		<ButtonPrimitive
-			style={props.style || undefined}
-			disabled={props.disabled === "" || props.disabled === true}
-			type={
-				props.type === "submit" || props.type === "reset"
-					? props.type
-					: "button"
-			}
-			aria-busy={
-				typeof props["aria-busy"] === "boolean"
-					? props["aria-busy"]
-						? "true"
-						: "false"
-					: props["aria-busy"]
-			}
-			aria-expanded={
-				typeof props["aria-expanded"] === "boolean"
-					? props["aria-expanded"]
-						? "true"
-						: "false"
-					: props["aria-expanded"]
-			}
-			aria-pressed={
-				typeof props["aria-pressed"] === "boolean"
-					? props["aria-pressed"]
-						? "true"
-						: "false"
-					: props["aria-pressed"]
-			}
-			render={props.as ? renderAs(() => props.as) : undefined}
+		<Element
+			type={(props.as ?? "button") === "button" ? "button" : undefined}
+			data-slot="button"
+			data-variant={props.variant === undefined ? "default" : props.variant}
+			data-size={props.size === undefined ? "default" : props.size}
+			aria-busy={ariaBoolean(props["aria-busy"])}
+			aria-expanded={ariaBoolean(props["aria-expanded"])}
+			aria-pressed={ariaBoolean(props["aria-pressed"])}
 			class={cn(
 				buttonVariants({ variant: props.variant, size: props.size }),
 				props.class,
 			)}
-			{...others}
+			{...rest}
 		/>
 	);
-};
+}
 
 export type { ButtonProps };
 export { Button, buttonVariants };

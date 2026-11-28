@@ -241,7 +241,6 @@
         "clsx": "^2.1.1",
         "media-chrome": "^4.19.4",
         "solid-js": "2.0.4",
-        "solid-sonner": "1.0.0",
         "tailwind-merge": "^3.7.0",
         "tailwindcss-animate": "^1.0.7",
         "uuid": "^14.0.3",
@@ -1979,8 +1978,6 @@
     "sisteransi": ["sisteransi@1.0.5", "", {}, "sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg=="],
 
     "solid-js": ["solid-js@2.0.4", "", { "dependencies": { "@solidjs/signals": "^2.0.4", "seroval": "^1.8.0", "seroval-plugins": "^1.8.0" } }, "sha512-RaBVDtzYGgQEAcMa9QgyT8UdzOayFgXJ1w1/f8vz7aoeF5tQDZwrHLfM1PDTIuprb8RdMWFGZwwyKCXtXEUX0w=="],
-
-    "solid-sonner": ["solid-sonner@1.0.0", "", { "peerDependencies": { "@solidjs/web": "^2.0.0", "solid-js": "^2.0.0" } }, "sha512-KuBUO29W5qykhYJjQyyfsKPFoF4G78sa/Yo+yYPJkHBsClCjnh7dx5mOGrnYczJ45Y8dvA8U90+zIX8NnDAzFg=="],
 
     "sonic-boom": ["sonic-boom@5.0.2", "", { "dependencies": { "atomic-sleep": "^1.0.0" } }, "sha512-/JEruzo6yhNVhsLblTRchgTQHIt7SsdJP0YyrfWaNKjIOQDfrdZv9gwYraYCAsmKV39/LAdV31FLL5NCDpoL/A=="],
 

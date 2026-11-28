@@ -8,7 +8,15 @@ import { renderComponent } from "./render-component";
 const ONE_PIXEL_PNG =
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
-test("previews a dropped image and includes it in the upload", async ({
+function dropFiles(target: Element, ...files: File[]) {
+	const dataTransfer = new DataTransfer();
+	for (const file of files) dataTransfer.items.add(file);
+	target.dispatchEvent(
+		new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }),
+	);
+}
+
+test("previews and appends dropped files before upload", async ({
 	onTestFinished,
 }) => {
 	const file = new File(
@@ -16,7 +24,13 @@ test("previews a dropped image and includes it in the upload", async ({
 		"dropped-image.png",
 		{ type: "image/png" },
 	);
-	const onUploadStart = vi.fn(async () => {});
+	const second = new File([file], "second-image.png", { type: file.type });
+	const duplicate = new File([file], file.name, {
+		type: file.type,
+		lastModified: file.lastModified,
+	});
+	const pending = Promise.withResolvers<void>();
+	const onUploadStart = vi.fn(() => pending.promise);
 	const [open, setOpen] = createSignal(true);
 	onTestFinished(
 		renderComponent(() => (
@@ -37,16 +51,15 @@ test("previews a dropped image and includes it in the upload", async ({
 		.getByRole("button")
 		.filter({ hasText: t("uploadMediaModal.dragAndDropFiles") });
 	await expect.element(dropZone).toBeVisible();
-	const dataTransfer = new DataTransfer();
-	dataTransfer.items.add(file);
-	dropZone
-		.element()
-		.dispatchEvent(
-			new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }),
-		);
+	dropFiles(dropZone.element(), file);
 
+	const files = dialog.getByRole("listitem");
+	const firstItem = files.getByText(file.name, { exact: true });
+	await expect.element(firstItem).toBeVisible();
+	dropFiles(firstItem.element(), duplicate, second);
+	await expect.element(files).toHaveLength(2);
 	await expect
-		.element(dialog.getByRole("listitem").getByText(file.name, { exact: true }))
+		.element(files.getByText(second.name, { exact: true }))
 		.toBeVisible();
 	await expect
 		.element(dialog.getByLabelText(t("uploadMediaModal.filename")))
@@ -65,8 +78,16 @@ test("previews a dropped image and includes it in the upload", async ({
 	await dialog
 		.getByRole("button", { name: t("uploadMediaModal.upload"), exact: true })
 		.click();
+	await expect
+		.element(
+			dialog.getByRole("button", { name: t("uploadMediaModal.addFiles") }),
+		)
+		.toBeDisabled();
+	dropFiles(firstItem.element(), new File([file], "ignored.png"));
+	await expect.element(files).toHaveLength(2);
+	pending.resolve();
 	await expect.element(dialog).not.toBeInTheDocument();
 	expect(onUploadStart).toHaveBeenCalledExactlyOnceWith(
-		expect.objectContaining({ files: [file], filename: file.name }),
+		expect.objectContaining({ files: [file, second], filename: file.name }),
 	);
 });

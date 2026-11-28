@@ -1,3 +1,5 @@
+// Adapted from the Solid UI v2 command registry recipe.
+import Search from "@lucide/solid/icons/search";
 import { t } from "@solid-imager/i18n";
 import * as CommandPrimitive from "@ui-sdk/solid/command";
 import type { Component, ParentProps, VoidProps } from "solid-js";
@@ -7,8 +9,10 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogHeader,
 	DialogTitle,
 } from "./dialog";
+import { InputGroup, InputGroupAddon } from "./input-group";
 import { cn } from "./utils/cn";
 
 type ClassProps<Props> = Omit<Props, "class" | "children"> & {
@@ -56,12 +60,14 @@ const CommandDialog: Component<CommandDialogProps> = (props) => {
 	return (
 		<Dialog {...others}>
 			<DialogContent class="overflow-hidden p-0">
-				<DialogTitle class="sr-only">
-					{props.title ?? t("command.chooseAnAction")}
-				</DialogTitle>
-				<DialogDescription class="sr-only">
-					{props.description ?? t("command.typeToFilterTheAvailableActions")}
-				</DialogDescription>
+				<DialogHeader class="sr-only">
+					<DialogTitle>
+						{props.title ?? t("command.chooseAnAction")}
+					</DialogTitle>
+					<DialogDescription>
+						{props.description ?? t("command.typeToFilterTheAvailableActions")}
+					</DialogDescription>
+				</DialogHeader>
 				<Command
 					class="[&_[data-command-group-label]]:px-2 [&_[data-command-group-label]]:font-medium [&_[data-command-group-label]]:text-muted-foreground [&_[data-command-group]:not([hidden])_~[data-command-group]]:pt-0 [&_[data-command-input-wrapper]_svg]:size-5 [&_[data-command-input]]:h-12 [&_[data-command-item]]:px-2 [&_[data-command-item]]:py-3 [&_[data-command-item]_svg]:size-5"
 					loop={props.loop}
@@ -78,29 +84,16 @@ const CommandDialog: Component<CommandDialogProps> = (props) => {
 const CommandInput: Component<
 	VoidProps<ClassProps<ComponentProps<typeof CommandPrimitive.CommandInput>>>
 > = (props) => {
-	const others = omit(props, "class");
+	const others = omit(props, "class", "aria-label");
 
 	return (
-		<div
+		<InputGroup
 			class="flex items-center border-b px-3 focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset"
 			data-command-input-wrapper=""
 		>
-			<svg
-				class="mr-2 size-4 shrink-0 opacity-50"
-				fill="none"
-				stroke="currentColor"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				stroke-width="2"
-				viewBox="0 0 24 24"
-				xmlns="http://www.w3.org/2000/svg"
-			>
-				<title>{t("actions.search")}</title>
-				<circle cx="11" cy="11" r="8" />
-				<path d="m21 21-4.3-4.3" />
-			</svg>
 			<CommandPrimitive.CommandInput
 				data-command-input=""
+				data-ui="input-group-control"
 				aria-label={props["aria-label"] ?? t("actions.search")}
 				class={cn(
 					"flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
@@ -108,7 +101,10 @@ const CommandInput: Component<
 				)}
 				{...others}
 			/>
-		</div>
+			<InputGroupAddon class="mr-2">
+				<Search aria-hidden="true" class="size-4 shrink-0 opacity-50" />
+			</InputGroupAddon>
+		</InputGroup>
 	);
 };
 
@@ -202,11 +198,13 @@ const CommandItem: Component<
 	);
 };
 
-const CommandShortcut: Component<ComponentProps<"span">> = (props) => {
+const CommandShortcut: Component<
+	ClassProps<ComponentProps<typeof CommandPrimitive.CommandShortcut>>
+> = (props) => {
 	const others = omit(props, "class");
 
 	return (
-		<span
+		<CommandPrimitive.CommandShortcut
 			class={cn(
 				"ml-auto text-muted-foreground text-xs tracking-widest",
 				props.class,

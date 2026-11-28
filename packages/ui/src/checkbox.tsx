@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 checkbox registry recipe.
 import type { ComponentProps } from "@solidjs/web";
 import {
 	Checkbox as CheckboxPrimitive,
@@ -67,7 +68,7 @@ function CheckboxControl(props: CheckboxControlProps) {
 	const control = useContext(CheckboxContext);
 	return (
 		<CheckboxPrimitive
-			{...omit(props, "class")}
+			{...omit(props, "class", "children")}
 			checked={control.indeterminate ? "indeterminate" : control.checked}
 			defaultChecked={control.defaultChecked}
 			disabled={control.disabled}
@@ -76,18 +77,19 @@ function CheckboxControl(props: CheckboxControlProps) {
 			value={control.value}
 			onCheckedChange={(checked) => control.onChange?.(checked === true)}
 			class={cn(
-				"peer block size-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[checked]:border-none data-[indeterminate]:border-none data-[checked]:bg-primary data-[indeterminate]:bg-primary data-[checked]:text-primary-foreground data-[indeterminate]:text-primary-foreground",
+				"group/checkbox peer block size-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[checked]:border-none data-[indeterminate]:border-none data-[checked]:bg-primary data-[indeterminate]:bg-primary data-[checked]:text-primary-foreground data-[indeterminate]:text-primary-foreground",
 				props.class,
 			)}
 		>
 			<CheckboxIndicator class="flex items-center justify-center text-current">
-				{(state) =>
-					state.indeterminate ? (
-						<Minus class="size-4" aria-hidden="true" />
-					) : (
-						<Check class="size-4" aria-hidden="true" />
-					)
-				}
+				<Check
+					class="size-4 group-data-indeterminate/checkbox:hidden"
+					aria-hidden="true"
+				/>
+				<Minus
+					class="hidden size-4 group-data-indeterminate/checkbox:block"
+					aria-hidden="true"
+				/>
 			</CheckboxIndicator>
 		</CheckboxPrimitive>
 	);

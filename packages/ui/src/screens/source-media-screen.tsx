@@ -1,6 +1,11 @@
 import { useRenderedSearchState } from "../search-initial-state";
 import { t } from "@solid-imager/i18n";
 import Upload from "@lucide/solid/icons/upload";
+import {
+	createFileInputController,
+	FileInput,
+	FileInputTrigger,
+} from "@ui-sdk/solid/file-input";
 import { createSignal, onSettled, Show } from "solid-js";
 import { EmptyState, FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
@@ -24,11 +29,14 @@ import { Image } from "../workspace/icons";
 import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
+const EMPTY_FILE_SELECTION: File[] = [];
+
 /** Renders a source collection with search, upload, preview, and optional virtualized results. */
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const searchState = useRenderedSearchState();
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
+	const filePicker = createFileInputController();
 	const page = () => props.page;
 	const inspector = createCollectionInspector({
 		enabled: () => Boolean(props.renderMediaPreview),
@@ -90,8 +98,16 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		<section
 			aria-label={t("sourceMediaScreen.mediaUploadArea")}
 			class="flex h-full min-h-0 min-w-0 flex-col bg-background"
-			onDragOver={page().handleDragOver}
-			onDrop={page().handleDrop}
+			onDragOver={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+			}}
+			onDrop={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				const files = event.dataTransfer?.files;
+				if (files?.length) filePicker.setValue(Array.from(files));
+			}}
 		>
 			<SearchToolbar
 				actions={
@@ -112,14 +128,14 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 									? t("status.syncing")
 									: t("sourceMediaScreen.syncLoadedItems")}
 							</Button>
-							<Button
+							<FileInputTrigger
 								class="min-h-11 sm:min-h-9"
-								onClick={page().handleAddButtonClick}
-								size="sm"
+								controller={filePicker}
+								render={(partProps) => <Button {...partProps} size="sm" />}
 							>
 								<Upload aria-hidden="true" size={15} />
 								{t("actions.add")}
-							</Button>
+							</FileInputTrigger>
 						</div>
 					</Show>
 				}
@@ -205,10 +221,13 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 										icon={<Image size={20} />}
 										title={t("sourceMediaScreen.noMediaYet")}
 									>
-										<Button onClick={page().handleAddButtonClick}>
+										<FileInputTrigger
+											controller={filePicker}
+											render={(partProps) => <Button {...partProps} />}
+										>
 											<Upload aria-hidden="true" size={16} />
 											{t("actions.add")}
-										</Button>
+										</FileInputTrigger>
 									</EmptyState>
 								) : undefined
 							}
@@ -293,15 +312,33 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				/>
 			</Show>
 
-			<input
+			<FileInput
 				accept="image/*,video/*,audio/*,.json"
+				announcement={() => null}
 				class="hidden"
+				controller={filePicker}
 				multiple
-				onChange={(event) => {
-					void page().handleFileSelect(event);
+				onValueChange={(files, details) => {
+					// A scoped drop updates the controller without applying the picker's filter.
+					if (details.reason === "imperative") {
+						page().openUploadWithFiles(files);
+					}
+					if (details.reason === "picker" && details.rejected.length === 0) {
+						void page().acceptPickedFiles(files);
+					}
 				}}
-				ref={page().setFileInputRef}
-				type="file"
+				onReject={(_files, details) => {
+					// The picker filter is a hint. Forward the full choice when it was overridden.
+					const input = details.event?.target;
+					if (
+						details.reason === "picker" &&
+						input instanceof HTMLInputElement &&
+						input.files
+					) {
+						void page().acceptPickedFiles(Array.from(input.files));
+					}
+				}}
+				value={EMPTY_FILE_SELECTION}
 			/>
 
 			{(() => {

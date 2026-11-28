@@ -1444,6 +1444,7 @@ export function JobsScreen(props: JobsScreenProps) {
 					<Tabs
 						class={detailOpen() ? "grid gap-4" : MANAGEMENT_CATEGORY_GRID}
 						onChange={changeStatus}
+						orientation="vertical"
 						value={activeFilter()}
 					>
 						<TabsList

@@ -5,12 +5,15 @@ import {
 	FieldError,
 	FieldLabel,
 } from "@ui-sdk/solid/field";
-import { Textarea } from "@ui-sdk/solid/textarea";
+import { Textarea as SdkTextarea } from "@ui-sdk/solid/textarea";
 import { cva } from "class-variance-authority";
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, omit, useContext } from "solid-js";
 
+import { Input } from "./input";
+import { Textarea } from "./textarea";
 import { cn } from "./utils/cn";
+import { renderAs } from "./utils/polymorphic";
 
 type ControllableTextField = {
 	value?: string;
@@ -46,6 +49,7 @@ function TextField(props: TextFieldProps) {
 				"readOnly",
 				"validationState",
 			)}
+			data-slot="field"
 			class={cn("flex flex-col gap-1", props.class)}
 			invalid={
 				props.validationState === undefined
@@ -76,6 +80,7 @@ type TextFieldInputProps = Omit<
 
 function TextFieldInput(props: TextFieldInputProps) {
 	const field = useContext(TextFieldContext);
+	const renderInput = renderAs(() => Input);
 	return (
 		<FieldControl
 			{...omit(
@@ -87,7 +92,9 @@ function TextFieldInput(props: TextFieldInputProps) {
 				"minLength",
 				"readOnly",
 				"onInput",
+				"render",
 			)}
+			render={props.render ?? renderInput}
 			type={props.type ?? "text"}
 			value={props.value ?? field.value}
 			defaultValue={props.defaultValue ?? field.defaultValue}
@@ -105,23 +112,25 @@ function TextFieldInput(props: TextFieldInputProps) {
 			maxlength={props.maxlength ?? props.maxLength}
 			minlength={props.minlength ?? props.minLength}
 			class={cn(
-				"flex min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background transition-colors file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground",
+				"shadow-none ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground",
 				props.class,
 			)}
 		/>
 	);
 }
 
-type TextFieldTextAreaProps = ClassProps<ComponentProps<typeof Textarea>> & {
+type TextFieldTextAreaProps = ClassProps<ComponentProps<typeof SdkTextarea>> & {
 	maxLength?: number;
 	readOnly?: boolean;
 };
 
 function TextFieldTextArea(props: TextFieldTextAreaProps) {
 	const field = useContext(TextFieldContext);
+	const renderTextarea = renderAs(() => Textarea);
 	return (
-		<Textarea
-			{...omit(props, "class", "maxLength", "readOnly")}
+		<SdkTextarea
+			{...omit(props, "class", "maxLength", "readOnly", "render")}
+			render={props.render ?? renderTextarea}
 			value={props.value ?? field.value}
 			defaultValue={props.defaultValue ?? field.defaultValue}
 			onValueChange={props.onValueChange ?? field.onChange}
@@ -129,7 +138,7 @@ function TextFieldTextArea(props: TextFieldTextAreaProps) {
 			readonly={props.readonly ?? props.readOnly ?? field.readOnly}
 			maxlength={props.maxlength ?? props.maxLength}
 			class={cn(
-				"flex min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground",
+				"min-h-20 resize-y data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground",
 				props.class,
 			)}
 		/>
@@ -157,7 +166,11 @@ type TextFieldLabelProps = ClassProps<ComponentProps<typeof FieldLabel>>;
 function TextFieldLabel(props: TextFieldLabelProps) {
 	const others = omit(props, "class");
 	return (
-		<FieldLabel class={cn(textFieldLabelVariants(), props.class)} {...others} />
+		<FieldLabel
+			data-slot="field-label"
+			class={cn(textFieldLabelVariants(), props.class)}
+			{...others}
+		/>
 	);
 }
 
@@ -169,6 +182,7 @@ function TextFieldDescription(props: TextFieldDescriptionProps) {
 	const others = omit(props, "class");
 	return (
 		<FieldDescription
+			data-slot="field-description"
 			class={cn(
 				textFieldLabelVariants({ variant: "description" }),
 				props.class,
@@ -184,6 +198,7 @@ function TextFieldErrorMessage(props: TextFieldErrorMessageProps) {
 	const others = omit(props, "class");
 	return (
 		<FieldError
+			data-slot="field-error"
 			class={cn(textFieldLabelVariants({ variant: "error" }), props.class)}
 			{...others}
 		/>

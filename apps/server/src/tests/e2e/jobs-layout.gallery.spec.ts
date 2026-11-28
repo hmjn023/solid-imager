@@ -106,9 +106,16 @@ test(
 		const panel = page.getByRole("tabpanel");
 		const rows = panel.locator("tbody tr");
 		await expect(rows).toHaveCount(3);
+		const statusTabs = page.getByRole("tablist", {
+			name: "ジョブの状態で絞り込む",
+		});
+		await expect(statusTabs).toHaveAttribute("aria-orientation", "vertical");
 		await expectDomPreserved({ panel, firstRow: rows.first() }, async () => {
-			const activeTab = page.getByRole("tab", { name: /^実行中・待機中/ });
-			await activeTab.click();
+			const allTab = statusTabs.getByRole("tab", { selected: true });
+			const activeTab = statusTabs.getByRole("tab", {
+				name: /^実行中・待機中/,
+			});
+			await allTab.press("ArrowDown");
 			await expect(activeTab).toHaveAttribute("aria-selected", "true");
 			await expect(activeTab).toBeFocused();
 			await expect(panel).toHaveAccessibleName(/^実行中・待機中/);
@@ -120,10 +127,18 @@ test(
 		});
 
 		await expectDomPreserved({ panel }, async () => {
-			await page.getByRole("tab", { name: /^失敗/ }).click();
+			await page.keyboard.press("ArrowDown");
+			await expect(
+				statusTabs.getByRole("tab", { name: /^失敗/ }),
+			).toBeFocused();
 			await expect(
 				panel.getByText("条件に一致するジョブがありません"),
 			).toBeVisible();
+			await page.keyboard.press("ArrowUp");
+			await expect(
+				statusTabs.getByRole("tab", { name: /^実行中・待機中/ }),
+			).toBeFocused();
+			await expect(rows).toHaveCount(3);
 		});
 	},
 );

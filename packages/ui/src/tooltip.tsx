@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 tooltip registry recipe.
 import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
 import {
 	popupAlign,
@@ -5,17 +6,17 @@ import {
 	type PopupPlacement,
 } from "./utils/popup-placement";
 import {
-	Tooltip as Primitive,
-	TooltipTrigger as TriggerPrimitive,
-	TooltipContent as ContentPrimitive,
+	Tooltip as SdkTooltip,
+	TooltipArrow as SdkTooltipArrow,
+	TooltipTrigger as SdkTooltipTrigger,
+	TooltipContent as SdkTooltipContent,
 } from "@ui-sdk/solid/tooltip";
-import { createContext, useContext } from "solid-js";
+import { createContext, omit, Show, useContext } from "solid-js";
 import type { ComponentProps, ValidComponent } from "@solidjs/web";
-import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
-type TooltipProps = ComponentProps<typeof Primitive> & {
+type TooltipProps = ComponentProps<typeof SdkTooltip> & {
 	placement?: PopupPlacement;
 	gutter?: number;
 	openDelay?: number;
@@ -28,9 +29,16 @@ const TooltipContext = createContext<
 function Tooltip(props: TooltipProps) {
 	return (
 		<TooltipContext value={props}>
-			<Primitive
-				{...omit(props, "placement", "gutter", "openDelay", "closeDelay")}
-				delay={props.openDelay}
+			<SdkTooltip
+				{...omit(
+					props,
+					"placement",
+					"gutter",
+					"openDelay",
+					"closeDelay",
+					"delay",
+				)}
+				delay={props.openDelay ?? props.delay}
 				closeDelay={props.closeDelay}
 			/>
 		</TooltipContext>
@@ -38,12 +46,12 @@ function Tooltip(props: TooltipProps) {
 }
 
 function TooltipTrigger<Tag extends ValidComponent = "button">(
-	props: PolymorphicProps<Tag, ComponentProps<typeof TriggerPrimitive>>,
+	props: PolymorphicProps<Tag, ComponentProps<typeof SdkTooltipTrigger>>,
 ) {
-	const partProps: ComponentProps<typeof TriggerPrimitive> & { as?: Tag } =
+	const partProps: ComponentProps<typeof SdkTooltipTrigger> & { as?: Tag } =
 		props;
 	return (
-		<TriggerPrimitive
+		<SdkTooltipTrigger
 			{...omit(partProps, "as")}
 			render={props.as ? renderAs(() => props.as) : props.render}
 		/>
@@ -51,18 +59,25 @@ function TooltipTrigger<Tag extends ValidComponent = "button">(
 }
 
 type TooltipContentProps = Omit<
-	ComponentProps<typeof ContentPrimitive>,
+	ComponentProps<typeof SdkTooltipContent>,
 	"class"
-> & { class?: string | undefined };
+> & { class?: string | undefined; showArrow?: boolean };
 
 const TooltipContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, TooltipContentProps>,
 ) => {
 	const partProps: TooltipContentProps & { as?: ValidComponent } = props;
-	const others = omit(partProps, "class", "as", "render");
+	const others = omit(
+		partProps,
+		"class",
+		"as",
+		"render",
+		"children",
+		"showArrow",
+	);
 	const context = useContext(TooltipContext);
 	return (
-		<ContentPrimitive
+		<SdkTooltipContent
 			side={popupSide(context.placement)}
 			align={popupAlign(context.placement)}
 			sideOffset={context.gutter ?? 4}
@@ -72,7 +87,12 @@ const TooltipContent = <T extends ValidComponent = "div">(
 				props.class,
 			)}
 			{...others}
-		/>
+		>
+			{props.children}
+			<Show when={props.showArrow}>
+				<SdkTooltipArrow class="z-50 -mt-0.5 size-2.5 -translate-y-1/2 rotate-45 rounded-xs bg-popover fill-popover" />
+			</Show>
+		</SdkTooltipContent>
 	);
 };
 

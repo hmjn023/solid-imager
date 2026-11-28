@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 progress registry recipe.
 import {
 	ProgressIndicator as ProgressPrimitiveFill,
 	ProgressLabel as ProgressPrimitiveLabel,
@@ -21,7 +22,7 @@ type ProgressRootProps = Omit<
 	maxValue?: number;
 };
 
-const ProgressRoot: Component<ProgressRootProps> = (props) => {
+const Progress: Component<ProgressRootProps> = (props) => {
 	const rest = omit(
 		props,
 		"children",
@@ -45,6 +46,9 @@ const ProgressRoot: Component<ProgressRootProps> = (props) => {
 			{...rest}
 		>
 			{props.children}
+			<ProgressPrimitiveTrack class="h-full w-full flex-1 bg-secondary transition-all">
+				<ProgressPrimitiveFill class="h-full w-(--progress-value) bg-primary transition-all duration-500 ease-in-out motion-reduce:transition-none" />
+			</ProgressPrimitiveTrack>
 		</ProgressPrimitiveRoot>
 	);
 };
@@ -56,13 +60,5 @@ const ProgressLabel: Component<
 const ProgressValueLabel: Component<
 	ComponentProps<typeof ProgressPrimitiveValueLabel>
 > = (props) => <ProgressPrimitiveValueLabel {...props} />;
-
-const Progress: Component<ProgressRootProps> = (props) => (
-	<ProgressRoot {...props}>
-		<ProgressPrimitiveTrack class="h-full w-full flex-1 bg-secondary transition-all">
-			<ProgressPrimitiveFill class="h-full w-(--progress-value) bg-primary transition-all duration-500 ease-in-out motion-reduce:transition-none" />
-		</ProgressPrimitiveTrack>
-	</ProgressRoot>
-);
 
 export { Progress, ProgressLabel, ProgressValueLabel };

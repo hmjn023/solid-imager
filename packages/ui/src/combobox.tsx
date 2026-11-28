@@ -1,6 +1,7 @@
+// Adapted from the Solid UI v2 combobox registry recipe.
 import Check from "@lucide/solid/icons/check";
 import { t } from "@solid-imager/i18n";
-import type { JSX } from "@solidjs/web";
+import type { ComponentProps, JSX } from "@solidjs/web";
 import * as Sdk from "@ui-sdk/solid/combobox";
 import {
 	createContext,
@@ -11,8 +12,9 @@ import {
 	onCleanup,
 	omit,
 	useContext,
-	type ComponentProps,
 } from "solid-js";
+import { Button } from "./button";
+import { InputGroup } from "./input-group";
 import { cn } from "./utils/cn";
 import { createVirtualizer } from "./utils/virtualizer";
 
@@ -216,7 +218,7 @@ function Combobox<T>(props: ComboboxProps<T>) {
 
 function ComboboxControl(props: JSX.IntrinsicElements["div"]) {
 	return (
-		<div
+		<InputGroup
 			{...omit(props, "class")}
 			class={cn(
 				"flex h-10 items-center rounded-md border border-input px-3 focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
@@ -231,6 +233,7 @@ function ComboboxInput(props: ComponentProps<typeof Sdk.ComboboxInput>) {
 	return (
 		<Sdk.ComboboxInput
 			{...omit(props, "class", "onFocus", "placeholder")}
+			data-ui="input-group-control"
 			class={cn(
 				"flex size-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
 				props.class,
@@ -278,7 +281,14 @@ function ComboboxItem<T>(
 }
 
 function ComboboxItemLabel(props: JSX.IntrinsicElements["span"]) {
-	return <span {...props} />;
+	// Render the caller's rich label instead of the SDK's plain-text match segments.
+	return (
+		<Sdk.ComboboxItemText
+			{...omit(props, "children", "style")}
+			style={props.style || undefined}
+			children={() => props.children}
+		/>
+	);
 }
 
 function ComboboxItemIndicator(
@@ -295,6 +305,9 @@ function ComboboxTrigger(props: ComponentProps<typeof Sdk.ComboboxTrigger>) {
 	return (
 		<Sdk.ComboboxTrigger
 			aria-label={t("controls.toggleOptions")}
+			render={(partProps) => (
+				<Button {...partProps} size="icon" variant="ghost" />
+			)}
 			{...omit(props, "class")}
 			class={cn(
 				"flex min-h-11 min-w-11 items-center justify-center opacity-50",
@@ -332,7 +345,16 @@ function itemKeys(items: Sdk.ListData<unknown>): string[] {
 	});
 }
 
-const listClass = "m-0 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1";
+function ComboboxList(props: ComponentProps<typeof Sdk.ComboboxList>) {
+	return (
+		<Sdk.ComboboxList
+			{...omit(props, "class")}
+			class={cn("m-0 overflow-y-auto overscroll-contain p-1", props.class)}
+		/>
+	);
+}
+
+const popupListClass = "min-h-0 flex-1";
 
 function ComboboxListItems(props: { items: Sdk.ListData<unknown> }) {
 	const context = useContext(ComboboxContext);
@@ -361,7 +383,7 @@ function VirtualComboboxList(props: { items: Sdk.ListData<unknown> }) {
 	onCleanup(() => context.registerScroll(() => {}));
 
 	return (
-		<Sdk.ComboboxList class={listClass} ref={setScrollElement}>
+		<ComboboxList class={popupListClass} ref={setScrollElement}>
 			<div
 				class="relative w-full virtualized-combobox-list"
 				style={{ "--combobox-list-height": `${virtualizer.getTotalSize()}px` }}
@@ -380,7 +402,7 @@ function VirtualComboboxList(props: { items: Sdk.ListData<unknown> }) {
 					)}
 				</For>
 			</div>
-		</Sdk.ComboboxList>
+		</ComboboxList>
 	);
 }
 
@@ -398,9 +420,9 @@ function ComboboxPopup(props: ContentProps & { virtual?: boolean }) {
 				<Show
 					when={props.virtual}
 					fallback={
-						<Sdk.ComboboxList class={listClass}>
+						<ComboboxList class={popupListClass}>
 							<ComboboxListItems items={state.items} />
-						</Sdk.ComboboxList>
+						</ComboboxList>
 					}
 				>
 					<VirtualComboboxList items={state.items} />
@@ -421,8 +443,8 @@ function VirtualComboboxContent(props: ContentProps) {
 function ComboboxInlineListbox() {
 	const context = useContext(ComboboxContext);
 	return (
-		<Sdk.ComboboxList
-			class="m-0 max-h-60 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground"
+		<ComboboxList
+			class="max-h-60 rounded-md border bg-popover text-popover-foreground"
 			onMouseDown={(event) => {
 				if (event.button === 0) event.preventDefault();
 			}}
@@ -430,7 +452,7 @@ function ComboboxInlineListbox() {
 			<For each={context.visibleKeys()}>
 				{(key) => <>{context.renderItem(key)}</>}
 			</For>
-		</Sdk.ComboboxList>
+		</ComboboxList>
 	);
 }
 

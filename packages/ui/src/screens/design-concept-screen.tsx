@@ -3662,17 +3662,10 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 	function requestModalClose() {
 		if (isModalDirty()) {
 			setDiscardTarget("modal");
-			return;
+			return false;
 		}
 		closeModal();
-	}
-
-	function handleModalOpenChange(open: boolean) {
-		if (open) {
-			setModalOpen(true);
-			return;
-		}
-		requestModalClose();
+		return true;
 	}
 
 	function resetDrawerDraft() {
@@ -3688,17 +3681,10 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 	function requestDrawerClose() {
 		if (isDrawerDirty()) {
 			setDiscardTarget("drawer");
-			return;
+			return false;
 		}
 		closeDrawer();
-	}
-
-	function handleDrawerOpenChange(open: boolean) {
-		if (open) {
-			setDrawerOpen(true);
-			return;
-		}
-		requestDrawerClose();
+		return true;
 	}
 
 	function updateDrawerDraft(key: keyof DrawerDraft, value: string) {
@@ -3822,23 +3808,20 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 						label="FOCUSED / MODAL"
 						title="Modal"
 					>
-						<Dialog onOpenChange={handleModalOpenChange} open={modalOpen()}>
+						<Dialog
+							onOpenChange={(open, details) => {
+								if (open) {
+									setModalOpen(true);
+								} else if (!requestModalClose()) {
+									details.cancel();
+								}
+							}}
+							open={modalOpen()}
+						>
 							<DialogTrigger as={Button} class="w-full hover:bg-primary">
 								一括編集を開く
 							</DialogTrigger>
-							<DialogContent
-								class="border-border bg-background motion-reduce:animate-none"
-								onEscapeKeyDown={(event) => {
-									if (!isModalDirty()) return;
-									event.preventDefault();
-									setDiscardTarget("modal");
-								}}
-								onPointerDownOutside={(event) => {
-									if (!isModalDirty()) return;
-									event.preventDefault();
-									setDiscardTarget("modal");
-								}}
-							>
+							<DialogContent class="border-border bg-background motion-reduce:animate-none">
 								<DialogHeader>
 									<DialogTitle>選択した12件を一括編集</DialogTitle>
 									<DialogDescription>
@@ -3874,7 +3857,16 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 						label="CONTEXTUAL / MODAL"
 						title="Drawer"
 					>
-						<Dialog onOpenChange={handleDrawerOpenChange} open={drawerOpen()}>
+						<Dialog
+							onOpenChange={(open, details) => {
+								if (open) {
+									setDrawerOpen(true);
+								} else if (!requestDrawerClose()) {
+									details.cancel();
+								}
+							}}
+							open={drawerOpen()}
+						>
 							<DialogTrigger
 								as={Button}
 								class="w-full border-border bg-white shadow-none"
@@ -3882,20 +3874,7 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 							>
 								詳細編集を開く
 							</DialogTrigger>
-							<DialogContent
-								class="gap-0 bg-background p-0"
-								onEscapeKeyDown={(event) => {
-									if (!isDrawerDirty()) return;
-									event.preventDefault();
-									setDiscardTarget("drawer");
-								}}
-								onPointerDownOutside={(event) => {
-									if (!isDrawerDirty()) return;
-									event.preventDefault();
-									setDiscardTarget("drawer");
-								}}
-								placement="right"
-							>
+							<DialogContent class="gap-0 bg-background p-0" placement="right">
 								<DialogHeader class="border-border border-b px-5 py-4 pr-12">
 									<div class="flex items-center gap-2">
 										<DialogTitle class="text-base">

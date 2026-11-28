@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 radio-group registry recipe.
 import type { ComponentProps } from "@solidjs/web";
 import { Field, FieldLabel } from "@ui-sdk/solid/field";
 import {
@@ -47,10 +48,10 @@ function RadioGroupItem(props: RadioGroupItemProps) {
 			<Radio
 				value={props.value}
 				disabled={props.disabled}
-				class="aspect-square size-4 shrink-0 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				class="peer relative aspect-square size-4 shrink-0 rounded-full border border-primary text-primary ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-disabled:cursor-not-allowed data-disabled:opacity-50"
 			>
 				<RadioIndicator class="flex h-full items-center justify-center">
-					<span class="size-2.5 rounded-full bg-current" />
+					<span class="size-2.5 rounded-full bg-current" aria-hidden="true" />
 				</RadioIndicator>
 			</Radio>
 			{props.children}

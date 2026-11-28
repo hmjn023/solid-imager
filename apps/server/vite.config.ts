@@ -409,7 +409,6 @@ export default defineConfig({
 			"@ui-sdk/core",
 			"@lucide/solid",
 			"@tanstack/charts",
-			"solid-sonner",
 		],
 		external: [
 			"bun",

@@ -1,4 +1,5 @@
-import type { PolymorphicProps } from "./utils/polymorphic";
+// Adapted from the Solid UI v2 tabs registry recipe.
+import { renderAs, type PolymorphicProps } from "./utils/polymorphic";
 import {
 	TabsPanel as TabsContentPrimitive,
 	TabsList as TabsListPrimitive,
@@ -19,7 +20,9 @@ type TabsProps = Omit<
 };
 const Tabs = (props: TabsProps) => (
 	<TabsRoot
-		{...omit(props, "onChange", "activationMode")}
+		{...omit(props, "onChange", "activationMode", "orientation")}
+		data-orientation={props.orientation ?? "horizontal"}
+		orientation={props.orientation ?? "horizontal"}
 		activation={props.activationMode}
 		onValueChange={(value) => {
 			if (value !== null) props.onChange?.(value);
@@ -34,14 +37,20 @@ type TabsListProps = Omit<ComponentProps<typeof TabsListPrimitive>, "class"> & {
 const TabsList = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, TabsListProps>,
 ) => {
-	const others = omit(props as TabsListProps, "class");
+	const others = omit(
+		props as TabsListProps & { as?: T },
+		"class",
+		"as",
+		"render",
+	);
 	return (
 		<TabsListPrimitive
+			{...others}
+			render={props.as ? renderAs(() => props.as) : props.render}
 			class={cn(
 				"inline-flex min-h-10 max-w-full items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
 				props.class,
 			)}
-			{...others}
 		/>
 	);
 };
@@ -56,14 +65,20 @@ type TabsTriggerProps = Omit<
 const TabsTrigger = <T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, TabsTriggerProps>,
 ) => {
-	const others = omit(props as TabsTriggerProps, "class");
+	const others = omit(
+		props as TabsTriggerProps & { as?: T },
+		"class",
+		"as",
+		"render",
+	);
 	return (
 		<TabsTriggerPrimitive
+			{...others}
+			render={props.as ? renderAs(() => props.as) : props.render}
 			class={cn(
 				"inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 font-medium text-sm ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-background data-[selected]:text-foreground data-[selected]:shadow-sm",
 				props.class,
 			)}
-			{...others}
 		/>
 	);
 };
@@ -74,7 +89,10 @@ type TabsContentProps = Omit<
 > & {
 	forceMount?: boolean;
 	"aria-hidden"?:
-		| ComponentProps<typeof TabsContentPrimitive>["aria-hidden"]
+		| Exclude<
+				ComponentProps<typeof TabsContentPrimitive>["aria-hidden"],
+				boolean
+		  >
 		| boolean;
 	class?: string | undefined;
 };
@@ -83,13 +101,17 @@ const TabsContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, TabsContentProps>,
 ) => {
 	const others = omit(
-		props as TabsContentProps,
+		props as TabsContentProps & { as?: T },
 		"class",
+		"as",
+		"render",
 		"forceMount",
 		"aria-hidden",
 	);
 	return (
 		<TabsContentPrimitive
+			{...others}
+			render={props.as ? renderAs(() => props.as) : props.render}
 			keepMounted={props.forceMount}
 			aria-hidden={
 				typeof props["aria-hidden"] === "boolean"
@@ -102,7 +124,6 @@ const TabsContent = <T extends ValidComponent = "div">(
 				"mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 				props.class,
 			)}
-			{...others}
 		/>
 	);
 };

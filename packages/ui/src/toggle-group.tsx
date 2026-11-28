@@ -1,20 +1,14 @@
-import type { PolymorphicProps } from "./utils/polymorphic";
+// Adapted from the Solid UI v2 toggle-group registry recipe.
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { ToggleGroup as SdkToggleGroup } from "@ui-sdk/solid/toggle";
 import type { VariantProps } from "class-variance-authority";
-import type { JSX, ValidComponent } from "@solidjs/web";
-import {
-	createContext,
-	createMemo,
-	createSignal,
-	omit,
-	useContext,
-} from "solid-js";
+import { createContext, createMemo, omit, useContext } from "solid-js";
 
 import { Toggle, type ToggleProps, type toggleVariants } from "./toggle";
 import { cn } from "./utils/cn";
+import type { PolymorphicProps } from "./utils/polymorphic";
 
-type ToggleGroupOrientation = "horizontal" | "vertical";
-
-type ToggleGroupSelectionProps =
+type ToggleGroupOptions =
 	| {
 			multiple?: false;
 			value?: string | null;
@@ -28,292 +22,113 @@ type ToggleGroupSelectionProps =
 			onChange?: (value: string[]) => void;
 	  };
 
-type ToggleGroupContextValue = VariantProps<typeof toggleVariants> & {
-	disabled: boolean;
-	orientation: ToggleGroupOrientation;
-	isSelected: (value: string) => boolean;
-	onItemToggle: (value: string, pressed: boolean) => void;
-};
+type ToggleVariants = VariantProps<typeof toggleVariants>;
 
-const ToggleGroupContext = createContext<ToggleGroupContextValue>({
-	size: "default",
-	variant: "default",
-	disabled: false,
-	orientation: "horizontal",
-	isSelected: () => false,
-	onItemToggle: () => {},
-});
+const ToggleGroupContext = createContext<ToggleVariants>({});
 
-function normalizeSelection(
-	value: string | string[] | null | undefined,
-): string[] {
-	if (Array.isArray(value)) {
-		return value;
-	}
-	if (typeof value === "string") {
-		return [value];
-	}
-	return [];
-}
-
-function emitSelectionChange(
-	props: ToggleGroupSelectionProps,
-	nextValues: string[],
-) {
-	if (props.multiple) {
-		props.onChange?.(nextValues);
-		return;
-	}
-	props.onChange?.(nextValues[0] ?? null);
-}
-
-type NavigationTarget = 1 | -1 | "first" | "last";
-
-function resolveNavigationTarget(
-	key: string,
-	orientation: ToggleGroupOrientation,
-	isRtl: boolean,
-): NavigationTarget | null {
-	if (key === "Home") {
-		return "first";
-	}
-	if (key === "End") {
-		return "last";
-	}
-	if (orientation === "horizontal") {
-		if (key === "ArrowRight") {
-			return isRtl ? -1 : 1;
-		}
-		if (key === "ArrowLeft") {
-			return isRtl ? 1 : -1;
-		}
-		return null;
-	}
-	if (key === "ArrowDown") {
-		return 1;
-	}
-	if (key === "ArrowUp") {
-		return -1;
-	}
-	return null;
-}
-
-function focusAdjacentToggleItem(
-	group: Element,
-	currentItem: Element,
-	direction: NavigationTarget,
-) {
-	const items = Array.from(
-		group.querySelectorAll<HTMLElement>(
-			"[data-toggle-group-item]:not([disabled]):not([data-disabled])",
-		),
-	).filter((item) => item.closest("[data-toggle-group]") === group);
-	if (items.length === 0) {
-		return false;
-	}
-	if (direction === "first") {
-		items[0]?.focus();
-		return true;
-	}
-	if (direction === "last") {
-		items[items.length - 1]?.focus();
-		return true;
-	}
-	const currentIndex = items.findIndex((item) => item === currentItem);
-	const nextIndex =
-		currentIndex === -1
-			? direction === 1
-				? 0
-				: items.length - 1
-			: (currentIndex + direction + items.length) % items.length;
-	items[nextIndex]?.focus();
-	return true;
-}
-
-function invokeKeyDownHandler<T extends HTMLElement>(
-	handler: JSX.EventHandlerUnion<T, KeyboardEvent> | undefined,
-	event: KeyboardEvent & { currentTarget: T; target: Element },
-) {
-	if (typeof handler === "function") {
-		handler(event);
-		return;
-	}
-	if (Array.isArray(handler)) {
-		const [fn, data] = handler;
-		fn(data, event);
-	}
-}
-
-type ToggleGroupRootProps = ToggleGroupSelectionProps &
-	VariantProps<typeof toggleVariants> &
-	Omit<JSX.HTMLAttributes<HTMLDivElement>, "children" | "onChange"> & {
-		class?: string | undefined;
+type ToggleGroupProps = ToggleGroupOptions &
+	ToggleVariants &
+	Omit<
+		ComponentProps<typeof SdkToggleGroup<string>>,
+		| "class"
+		| "children"
+		| "value"
+		| "defaultValue"
+		| "onValueChange"
+		| "deselectable"
+	> & {
+		class?: string;
 		children?: JSX.Element;
-		disabled?: boolean;
-		orientation?: ToggleGroupOrientation;
 		disallowEmptySelection?: boolean;
 	};
 
-// The registry root consumes Escape to clear selection. Let parent dialogs handle it.
-const ToggleGroup = (props: ToggleGroupRootProps) => {
-	const others = omit(
-		props,
-		"class",
-		"children",
-		"size",
-		"variant",
-		"multiple",
-		"value",
-		"defaultValue",
-		"onChange",
-		"disabled",
-		"orientation",
-		"disallowEmptySelection",
-	);
+function groupValues(value: string | string[] | null | undefined): string[] {
+	if (Array.isArray(value)) return value;
+	return typeof value === "string" ? [value] : [];
+}
 
-	const [uncontrolledValues, setUncontrolledValues] = createSignal<string[]>(
-		normalizeSelection(props.defaultValue),
+function ToggleGroup(props: ToggleGroupProps) {
+	const value = createMemo(() =>
+		props.value === undefined ? undefined : groupValues(props.value),
 	);
-	const selectedValues = createMemo(() =>
-		props.value !== undefined
-			? normalizeSelection(props.value)
-			: uncontrolledValues(),
-	);
+	const defaultValue = groupValues(props.defaultValue);
+	let uncontrolledSelection = defaultValue;
 	const orientation = () => props.orientation ?? "horizontal";
-
-	const handleItemToggle = (itemValue: string, pressed: boolean) => {
-		if (props.disabled) {
-			return;
-		}
-		const current = selectedValues();
-		let nextValues: string[];
-		if (props.multiple) {
-			if (pressed) {
-				nextValues = current.includes(itemValue)
-					? current
-					: [...current, itemValue];
-			} else {
-				if (
-					props.disallowEmptySelection &&
-					current.length <= 1 &&
-					current.includes(itemValue)
-				) {
-					return;
-				}
-				nextValues = current.filter((v) => v !== itemValue);
-			}
-		} else if (pressed) {
-			nextValues = [itemValue];
-		} else if (props.disallowEmptySelection) {
-			return;
-		} else {
-			nextValues = [];
-		}
-
-		if (props.value === undefined) {
-			setUncontrolledValues(nextValues);
-		}
-		emitSelectionChange(props, nextValues);
+	const variants: ToggleVariants = {
+		get size() {
+			return props.size;
+		},
+		get variant() {
+			return props.variant;
+		},
 	};
-
 	return (
-		<div
-			// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- WAI-ARIA button toggle group avoids native <fieldset> box-layout quirks.
-			role="group"
+		<SdkToggleGroup
+			{...omit(
+				props,
+				"class",
+				"children",
+				"size",
+				"variant",
+				"value",
+				"defaultValue",
+				"onChange",
+				"orientation",
+				"disallowEmptySelection",
+			)}
 			data-toggle-group=""
 			aria-disabled={props.disabled ? "true" : undefined}
-			data-orientation={orientation()}
 			class={cn(
 				"flex items-center justify-center gap-1",
 				orientation() === "vertical" && "flex-col",
 				props.class,
 			)}
-			{...others}
+			orientation={orientation()}
+			value={value()}
+			defaultValue={props.value === undefined ? defaultValue : undefined}
+			deselectable={!props.disallowEmptySelection}
+			onValueChange={(selection, details) => {
+				if (props.disallowEmptySelection && selection.length === 0) {
+					details.cancel();
+					return;
+				}
+				// Controlled callers can decline the change by leaving value unchanged.
+				if (props.value !== undefined) details.cancel();
+				if (props.multiple) {
+					const previous = props.value ?? uncontrolledSelection;
+					const next = [
+						...previous.filter((item) => selection.includes(item)),
+						...selection.filter((item) => !previous.includes(item)),
+					];
+					if (props.value === undefined) uncontrolledSelection = next;
+					props.onChange?.(next);
+				} else {
+					props.onChange?.(selection[0] ?? null);
+				}
+			}}
 		>
-			<ToggleGroupContext
-				value={{
-					get size() {
-						return props.size;
-					},
-					get variant() {
-						return props.variant;
-					},
-					get disabled() {
-						return Boolean(props.disabled);
-					},
-					get orientation() {
-						return orientation();
-					},
-					isSelected: (value) => selectedValues().includes(value),
-					onItemToggle: handleItemToggle,
-				}}
-			>
-				{props.children}
-			</ToggleGroupContext>
-		</div>
+			<ToggleGroupContext value={variants}>{props.children}</ToggleGroupContext>
+		</SdkToggleGroup>
 	);
-};
+}
 
 type ToggleGroupItemProps = Omit<
 	ToggleProps,
 	"pressed" | "defaultPressed" | "onChange"
-> & {
-	value: string;
-	onKeyDown?: JSX.EventHandlerUnion<HTMLElement, KeyboardEvent>;
-};
+> & { value: string };
 
-const ToggleGroupItem = <T extends ValidComponent = "button">(
+function ToggleGroupItem<T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, ToggleGroupItemProps>,
-) => {
-	const others = omit(
-		props as ToggleGroupItemProps,
-		"size",
-		"variant",
-		"value",
-		"disabled",
-		"onKeyDown",
-	);
+) {
 	const context = useContext(ToggleGroupContext);
-
-	const handleKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (
-		event,
-	) => {
-		invokeKeyDownHandler(props.onKeyDown, event);
-		if (event.defaultPrevented || context.disabled || props.disabled) {
-			return;
-		}
-		const group = event.currentTarget.closest("[data-toggle-group]");
-		if (!group) {
-			return;
-		}
-		// Only intercept navigation keys so Escape and Tab continue to reach enclosing dialogs/popovers.
-		const isRtl = getComputedStyle(group).direction === "rtl";
-		const target = resolveNavigationTarget(
-			event.key,
-			context.orientation,
-			isRtl,
-		);
-		if (target === null) {
-			return;
-		}
-		if (focusAdjacentToggleItem(group, event.currentTarget, target)) {
-			event.preventDefault();
-		}
-	};
-
 	return (
 		<Toggle
+			{...omit(props as ToggleGroupItemProps, "size", "variant")}
 			data-toggle-group-item=""
-			data-orientation={context.orientation}
-			pressed={context.isSelected(props.value)}
-			disabled={context.disabled || props.disabled}
-			onChange={(pressed) => context.onItemToggle(props.value, pressed)}
-			onKeyDown={handleKeyDown}
 			size={context.size || props.size}
 			variant={context.variant || props.variant}
-			{...others}
 		/>
 	);
-};
+}
 
 export { ToggleGroup, ToggleGroupItem };

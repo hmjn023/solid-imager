@@ -285,13 +285,14 @@ export function MediaActions(props: MediaActionsProps) {
 	};
 
 	const handleDelete = async () => {
-		if (!props.onDelete || isDeleting()) return;
+		if (!props.onDelete || isDeleting()) return false;
 		setIsDeleting(true);
 		setDeleteError(undefined);
 		try {
 			await props.onDelete();
 			setIsDeleteDialogOpen(false);
 			toast.success(t("mediaActions.mediaDeleted"));
+			return true;
 		} catch (error) {
 			const message = getErrorMessage(error);
 			setDeleteError(message);
@@ -300,6 +301,7 @@ export function MediaActions(props: MediaActionsProps) {
 					value0: String(message),
 				}),
 			);
+			return false;
 		} finally {
 			setIsDeleting(false);
 		}

@@ -4,6 +4,10 @@ import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import {
+	captureSearchSnapshotResponseSchema,
+	defaultState,
+} from "@solid-imager/core/search";
+import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
 	getE2eRuntimeDir,
@@ -55,7 +59,33 @@ for (const collection of [
 		});
 		expect(created.ok()).toBe(true);
 		try {
-			await page.goto(collection.route);
+			const snapshot = await apiRequest(
+				page.request,
+				"searchSnapshots/capture",
+				{
+					state: {
+						...defaultState,
+						mode: "pro",
+						advancedCondition: {
+							type: "group",
+							operator: "and",
+							children: [
+								{
+									type: "criterion",
+									target: "fileName",
+									operator: "equals",
+									value: E2E_PRIMARY_FILE_NAME,
+								},
+							],
+						},
+					},
+				},
+			);
+			await expect(snapshot).toBeOK();
+			const { id: searchId } = captureSearchSnapshotResponseSchema.parse(
+				await snapshot.json(),
+			);
+			await page.goto(`${collection.route}?search=${searchId}`);
 			await waitForAppHydration(page);
 			const item = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 			await item.click({ button: "right" });
@@ -126,21 +156,30 @@ for (const collection of [
 				name: "メディアを削除",
 				exact: true,
 			});
+			const deleteButton = confirmDelete.getByRole("button", {
+				name: "削除",
+				exact: true,
+			});
+			const pendingDelete = confirmDelete.getByRole("button", {
+				name: "削除中...",
+				exact: true,
+			});
 			await expect(confirmDelete).toContainText(E2E_PRIMARY_FILE_NAME);
 			const releaseDelete = await delayMutationFailure(page, "delete");
 			try {
-				await confirmDelete
-					.getByRole("button", { name: "削除", exact: true })
-					.click();
-				await expect(
-					confirmDelete.getByRole("button", { name: "削除中...", exact: true }),
-				).toBeDisabled();
+				await deleteButton.focus();
+				await deleteButton.press("Enter");
+				await expect(pendingDelete).toBeDisabled();
+				await expect(pendingDelete).toBeFocused();
+				await expect(pendingDelete).toHaveAttribute("aria-busy", "true");
 				await expect(
 					confirmDelete.getByRole("button", {
 						name: "キャンセル",
 						exact: true,
 					}),
 				).toBeDisabled();
+				await page.keyboard.press("Escape");
+				await expect(confirmDelete).toBeVisible();
 			} finally {
 				releaseDelete();
 			}
@@ -148,6 +187,17 @@ for (const collection of [
 				"メディアの削除に失敗しました",
 			);
 			await expect(confirmDelete).toContainText(E2E_PRIMARY_FILE_NAME);
+			const releaseDeleteRetry = await delayMutationFailure(page, "delete");
+			try {
+				await deleteButton.click();
+				await expect(pendingDelete).toBeFocused();
+				await expect(confirmDelete.getByRole("alert")).toHaveCount(0);
+			} finally {
+				releaseDeleteRetry();
+			}
+			await expect(confirmDelete.getByRole("alert")).toContainText(
+				"メディアの削除に失敗しました",
+			);
 			await confirmDelete
 				.getByRole("button", { name: "キャンセル", exact: true })
 				.click();

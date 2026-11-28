@@ -33,7 +33,8 @@ test("restores an archive's original media and metadata into the selected source
 	const root = await mkdtemp(path.join(getE2eRuntimeDir(), "restore-"));
 	const destination = path.join(root, "destination");
 	const contents = path.join(root, "contents");
-	const archive = path.join(root, "restore.tar");
+	// The chooser may show all files. The chosen restore format governs validation.
+	const archive = path.join(root, "restore.backup");
 	const sourceId = randomUUID();
 	const sourceName = `Restore destination ${sourceId}`;
 	const fileName = "restored-image.png";
@@ -91,9 +92,14 @@ test("restores an archive's original media and metadata into the selected source
 		await page
 			.getByRole("button", { name: "ダンプファイルを選択", exact: true })
 			.click();
-		await (await chooser).setFiles(archive);
-		await page
-			.getByRole("alertdialog")
+		const fileChooser = await chooser;
+		expect(await fileChooser.element().getAttribute("accept")).toBe(
+			".tar,application/x-tar,application/tar",
+		);
+		await fileChooser.setFiles(archive);
+		const confirmation = page.getByRole("alertdialog");
+		await expect(confirmation).toContainText(path.basename(archive));
+		await confirmation
 			.getByRole("button", { name: "復元を実行", exact: true })
 			.click();
 		const response = await queued;

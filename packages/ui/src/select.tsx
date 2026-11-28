@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 select registry recipe.
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { Check, ChevronsUpDown } from "@lucide/solid";
 import { FieldDescription, FieldError } from "@ui-sdk/solid/field";
@@ -282,10 +283,13 @@ function SelectItem<Option>(
 				props.class,
 			)}
 		>
-			<SelectItemIndicator class="absolute right-2 flex size-3.5 items-center justify-center">
+			<SelectItemText
+				class="min-w-0 flex-1"
+				children={() => props.children ?? props.item.label}
+			/>
+			<SelectItemIndicator class="pointer-events-none absolute right-2 flex size-3.5 items-center justify-center">
 				<Check class="size-4" aria-hidden="true" />
 			</SelectItemIndicator>
-			{props.children ?? <SelectItemText />}
 		</SelectPrimitiveItem>
 	);
 }
@@ -303,7 +307,10 @@ type SelectValueProps<Option> = Omit<
 function SelectValue<Option>(props: SelectValueProps<Option>) {
 	const context = useContext(SelectContext);
 	return (
-		<SelectPrimitiveValue {...omit(props, "children")}>
+		<SelectPrimitiveValue
+			{...omit(props, "children", "class")}
+			class={cn("min-w-0 flex-1 text-left", props.class)}
+		>
 			{(state) => {
 				if (state.placeholder)
 					return props.placeholder ?? context.placeholder();

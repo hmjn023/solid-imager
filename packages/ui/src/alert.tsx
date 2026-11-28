@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 alert registry recipe.
 import { Polymorphic, type PolymorphicProps } from "./utils/polymorphic";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
@@ -43,6 +44,7 @@ const Alert = <T extends ValidComponent = "div">(
 	return (
 		<Polymorphic
 			as={props.as ?? "div"}
+			data-slot="alert"
 			role="alert"
 			class={cn(alertVariants({ variant: props.variant }), props.class)}
 			{...others}
@@ -50,23 +52,20 @@ const Alert = <T extends ValidComponent = "div">(
 	);
 };
 
-const AlertTitle: Component<ComponentProps<"h5">> = (props) => {
-	const others = omit(props, "class", "children");
-	return (
-		<h5
-			class={cn("mb-1 font-medium leading-none tracking-tight", props.class)}
-			{...others}
-		>
-			{props.children}
-		</h5>
-	);
-};
+const AlertTitle: Component<ComponentProps<"h5">> = (props) => (
+	<h5
+		data-slot="alert-title"
+		{...props}
+		class={cn("mb-1 font-medium leading-none tracking-tight", props.class)}
+	/>
+);
 
-const AlertDescription: Component<ComponentProps<"div">> = (props) => {
-	const others = omit(props, "class");
-	return (
-		<div class={cn("text-sm [&_p]:leading-relaxed", props.class)} {...others} />
-	);
-};
+const AlertDescription: Component<ComponentProps<"div">> = (props) => (
+	<div
+		data-slot="alert-description"
+		{...props}
+		class={cn("text-sm [&_p]:leading-relaxed", props.class)}
+	/>
+);
 
 export { Alert, AlertDescription, AlertTitle, alertVariants };

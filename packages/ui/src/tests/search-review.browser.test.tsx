@@ -92,7 +92,7 @@ test("hides old suggestions while the next prefix is debouncing", async ({
 	expect(selected).not.toHaveBeenCalled();
 });
 
-test("mounts cached grid and list data with working action menus", async ({
+test("reuses the action menu while selecting the current grid or list item", async ({
 	onTestFinished,
 }) => {
 	const media: Media = {
@@ -110,40 +110,78 @@ test("mounts cached grid and list data with working action menus", async ({
 		indexedAt: new Date(0),
 		status: "active",
 	};
+	const video: Media = {
+		...media,
+		id: "00000000-0000-4000-8000-000000000003",
+		filePath: "cached.webm",
+		fileName: "cached.webm",
+		mediaType: "video",
+	};
 	const open = vi.fn();
+	const preview = vi.fn();
+	const [results, setResults] = createSignal([media, video]);
 	const [viewMode, setViewMode] = createSignal<"grid" | "list">("grid");
 	onTestFinished(
 		renderComponent(() => (
 			<SourceMediaGrid
-				mediaResults={() => [media]}
+				mediaResults={results}
 				mediaSourceId={() => media.mediaSourceId}
 				state={() => ({
 					phase: "data",
 					fetchState: "idle",
-					data: [media],
+					data: results(),
 					error: undefined,
 				})}
 				isFetchingNextPage={false}
 				setLoadMoreRef={() => {}}
 				renderItem={(item) => <span>{item.fileName}</span>}
 				onOpenMediaDetail={open}
+				onPreviewSelect={preview}
 				viewMode={viewMode}
 			/>
 		)),
 	);
-	const menuTrigger = page.getByRole("button", {
-		name: t("sourceList.actionsForValue", { value0: media.fileName }),
+	const triggerFor = (fileName: string) =>
+		page.getByRole("button", {
+			name: t("sourceList.actionsForValue", { value0: fileName }),
+			exact: true,
+		});
+	const imageTrigger = triggerFor(media.fileName);
+	const videoTrigger = triggerFor(video.fileName);
+	const menu = page.getByRole("menu");
+	const openDetails = menu.getByRole("menuitem", {
+		name: t("collectionInspector.openDetails"),
 	});
-	await menuTrigger.click();
-	await page
-		.getByRole("menuitem", {
-			name: t("collectionInspector.openDetails"),
-			exact: false,
-		})
-		.click();
-	expect(open).toHaveBeenCalledExactlyOnceWith(media);
+	const copyImage = menu.getByRole("menuitem", {
+		name: t("actions.copyImage"),
+	});
+	await imageTrigger.click();
+	await expect.element(copyImage).toBeVisible();
+	const openMenu = menu.element();
+	await videoTrigger.click();
+	await expect.element(videoTrigger).toHaveAttribute("aria-expanded", "true");
+	await expect.element(imageTrigger).toHaveAttribute("aria-expanded", "false");
+	await expect.element(copyImage).not.toBeInTheDocument();
+	expect(menu.element()).toBe(openMenu);
+	await openDetails.click();
+	expect(open).toHaveBeenCalledExactlyOnceWith(video);
+	await expect.element(videoTrigger).toHaveFocus();
+
 	setViewMode("list");
 	await expect.element(page.getByRole("table")).toBeVisible();
+	await imageTrigger.click();
+	await expect.element(copyImage).toBeVisible();
+	const updatedMedia = { ...media, fileName: "updated.png" };
+	setResults([updatedMedia, video]);
+	await expect.element(menu.getByText(updatedMedia.fileName)).toBeVisible();
+	await userEvent.keyboard("{Escape}");
+	const updatedTrigger = triggerFor(updatedMedia.fileName);
+	await expect.element(updatedTrigger).toHaveFocus();
+	await updatedTrigger.click();
+	await openDetails.click();
+	expect(open).toHaveBeenCalledTimes(2);
+	expect(open).toHaveBeenLastCalledWith(updatedMedia);
+	expect(preview).not.toHaveBeenCalled();
 });
 
 test("explains the UTC calendar used by date search", async ({
@@ -252,8 +290,24 @@ test("measures mobile bulk rows and preserves DOM for rows that stay in the virt
 	expect(retainedRow()).toBe(row);
 	expect(document.activeElement).toBe(row);
 
+	const trigger = page.getByRole("button", {
+		name: t("sourceList.actionsForValue", { value0: "image-4.png" }),
+		exact: true,
+	});
+	const menu = page.getByRole("menu");
+	const collection = page
+		.getByRole("region", { name: t("sourceMediaGrid.mediaListActionTarget") })
+		.element()
+		.closest('[tabindex="-1"]');
+	expect(collection).not.toBeNull();
+	await trigger.click();
+	await expect.element(menu).toBeVisible();
 	scroll.scrollTop = 1500;
 	await expect.poll(() => Number(rows()[0]?.dataset.index)).toBeGreaterThan(10);
+	await expect.element(trigger).not.toBeInTheDocument();
+	await expect.element(menu).not.toBeInTheDocument();
+	await expect.poll(() => document.activeElement).toBe(collection);
+	expect(scroll.scrollTop).toBe(1500);
 	const firstIndex = Number(rows()[0]?.dataset.index);
 	const spacerHeight = scroll
 		.querySelector("tbody tr[aria-hidden] div")

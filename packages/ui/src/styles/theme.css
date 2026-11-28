@@ -185,13 +185,6 @@
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	[data-sonner-toaster] [data-sonner-toast] {
-		animation: none;
-		transition-duration: 0s;
-	}
-}
-
 * {
 	scrollbar-color: hsl(var(--scrollbar-thumb)) transparent;
 	scrollbar-width: thin;
@@ -223,25 +216,53 @@
 	}
 }
 
-[data-sonner-toaster] {
-	--normal-bg: hsl(var(--popover));
-	--normal-border: hsl(var(--border));
-	--normal-text: hsl(var(--popover-foreground));
-	--success-bg: hsl(var(--success));
-	--success-border: hsl(var(--success-foreground) / 0.35);
-	--success-text: hsl(var(--success-foreground));
-	--info-bg: hsl(var(--info));
-	--info-border: hsl(var(--info-foreground) / 0.35);
-	--info-text: hsl(var(--info-foreground));
-	--warning-bg: hsl(var(--warning));
-	--warning-border: hsl(var(--warning-foreground) / 0.35);
-	--warning-text: hsl(var(--warning-foreground));
-	--error-bg: hsl(var(--error));
-	--error-border: hsl(var(--error-foreground) / 0.35);
-	--error-text: hsl(var(--error-foreground));
+.toast-notifications {
+	--toast-gap: 10px;
+	height: var(--toast-front-height, 0px);
 }
 
-[data-sonner-toaster] [data-sonner-toast] {
-	font-family: inherit;
-	border-radius: var(--radius);
+.toast-notifications[data-expanded] {
+	height: calc(
+		var(--toast-stack-height, 0px) + max(0, var(--toast-count, 0) - 1) *
+			var(--toast-gap)
+	);
+}
+
+.toast-notification {
+	--toast-y: calc(var(--toast-index, 0) * var(--toast-gap));
+	z-index: calc(5 - var(--toast-index, 0));
+	translate: var(--toast-swipe-x, 0px)
+		calc(var(--toast-y) + var(--toast-swipe-y, 0px));
+	scale: calc(1 - var(--toast-index, 0) * 0.04);
+	transform-origin: top;
+	transition:
+		translate 200ms,
+		scale 200ms,
+		opacity 200ms;
+}
+
+.toast-notification:not([data-front], [data-expanded]) {
+	height: var(--toast-front-height, auto);
+	overflow: hidden;
+}
+
+.toast-notification[data-expanded] {
+	--toast-y: calc(
+		var(--toast-offset, 0px) + var(--toast-index, 0) * var(--toast-gap)
+	);
+	scale: 1;
+}
+
+.toast-notification:is([data-starting-style], [data-ending-style]) {
+	opacity: 0;
+}
+
+.toast-notification[data-swiping] {
+	transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.toast-notification {
+		transition: none;
+	}
 }

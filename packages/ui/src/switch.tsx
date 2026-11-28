@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 switch registry recipe.
 import type { ComponentProps } from "@solidjs/web";
 import {
 	Field,
@@ -63,7 +64,7 @@ function SwitchControl(props: SwitchControlProps) {
 	const control = useContext(SwitchContext);
 	return (
 		<SwitchPrimitive
-			{...omit(props, "class")}
+			{...omit(props, "class", "children")}
 			checked={control.checked}
 			defaultChecked={control.defaultChecked}
 			disabled={control.disabled}
@@ -76,7 +77,9 @@ function SwitchControl(props: SwitchControlProps) {
 				"inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-input transition-colors transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[disabled]:cursor-not-allowed data-[checked]:bg-primary data-[disabled]:opacity-50",
 				props.class,
 			)}
-		/>
+		>
+			{props.children ?? <SwitchThumb />}
+		</SwitchPrimitive>
 	);
 }
 

@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 sidebar registry recipe.
 import { t } from "@solid-imager/i18n";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
@@ -20,7 +21,13 @@ import type { ButtonProps } from "./button";
 import { Button } from "./button";
 import { Separator } from "./separator";
 import { SidebarTooltip } from "./layouts/sidebar-tooltip";
-import { Sheet, SheetContent } from "./sheet";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "./sheet";
 import { Skeleton } from "./skeleton";
 import { TextField, TextFieldInput } from "./text-field";
 import { TooltipContent, TooltipTrigger } from "./tooltip";
@@ -150,6 +157,7 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
 	return (
 		<SidebarContext value={contextValue}>
 			<div
+				data-slot="sidebar-wrapper"
 				class={cn(
 					"group/sidebar-wrapper flex min-h-dvh w-full text-foreground has-[[data-variant=inset]]:bg-background",
 					local.class,
@@ -193,6 +201,7 @@ const Sidebar: Component<SidebarProps> = (rawProps) => {
 		<Switch>
 			<Match when={local.collapsible === "none"}>
 				<div
+					data-slot="sidebar"
 					class={cn(
 						"flex h-full w-64 flex-col bg-background text-foreground",
 						local.class,
@@ -203,13 +212,22 @@ const Sidebar: Component<SidebarProps> = (rawProps) => {
 				</div>
 			</Match>
 			<Match when={isMobile()}>
-				<Sheet onOpenChange={setOpenMobile} open={openMobile()} {...others}>
+				<Sheet onOpenChange={setOpenMobile} open={openMobile()}>
 					<SheetContent
 						class="w-72 bg-background p-0 text-foreground [&>button]:hidden"
 						data-mobile="true"
 						data-sidebar="sidebar"
+						data-slot="sidebar"
 						position={local.side}
+						{...omit(others, "style")}
+						style={others.style || undefined}
 					>
+						<SheetHeader class="sr-only">
+							<SheetTitle>{t("appShell.applicationSidebar")}</SheetTitle>
+							<SheetDescription>
+								{t("sidebar.primaryNavigation")}
+							</SheetDescription>
+						</SheetHeader>
 						<div class="flex size-full flex-col">{local.children}</div>
 					</SheetContent>
 				</Sheet>
@@ -217,14 +235,16 @@ const Sidebar: Component<SidebarProps> = (rawProps) => {
 			<Match when={!isMobile()}>
 				<div
 					class="group peer hidden md:block"
+					data-slot="sidebar"
 					data-collapsible={state() === "collapsed" ? local.collapsible : ""}
 					data-side={local.side}
 					data-state={state()}
 					data-variant={local.variant}
 				>
 					<div
+						data-slot="sidebar-gap"
 						class={cn(
-							"relative h-dvh w-64 bg-transparent transition-width duration-200 ease-linear motion-reduce:transition-none",
+							"relative h-dvh w-64 bg-transparent transition-[width] duration-200 ease-linear motion-reduce:transition-none",
 							"group-data-[collapsible=offcanvas]:w-0",
 							"group-data-[side=right]:rotate-180",
 							local.variant === "floating" || local.variant === "inset"
@@ -233,8 +253,9 @@ const Sidebar: Component<SidebarProps> = (rawProps) => {
 						)}
 					/>
 					<div
+						data-slot="sidebar-container"
 						class={cn(
-							"fixed inset-y-0 z-10 hidden h-dvh w-64 transition-all duration-200 ease-linear motion-reduce:transition-none md:flex",
+							"fixed inset-y-0 z-10 hidden h-dvh w-64 transition-[left,right,width] duration-200 ease-linear motion-reduce:transition-none md:flex",
 							local.side === "left"
 								? "left-0 group-data-[collapsible=offcanvas]:-left-64"
 								: "right-0 group-data-[collapsible=offcanvas]:-right-64",
@@ -248,6 +269,7 @@ const Sidebar: Component<SidebarProps> = (rawProps) => {
 						<div
 							class="flex size-full flex-col bg-background group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-border group-data-[variant=floating]:shadow"
 							data-sidebar="sidebar"
+							data-slot="sidebar-inner"
 						>
 							{local.children}
 						</div>
@@ -276,6 +298,7 @@ const SidebarTrigger = <T extends ValidComponent = "button">(
 			variant="ghost"
 			size="icon"
 			data-sidebar="trigger"
+			data-slot="sidebar-trigger"
 			onClick={(event: MouseEvent) => {
 				local.onClick?.(event);
 				toggleSidebar();
@@ -316,6 +339,7 @@ const SidebarRail: Component<ComponentProps<"button">> = (props) => {
 				local.class,
 			)}
 			data-sidebar="rail"
+			data-slot="sidebar-rail"
 			onClick={toggleSidebar}
 			tabindex={-1}
 			title={t("definitions.toggleSidebar")}
@@ -330,6 +354,7 @@ const SidebarInset: Component<ComponentProps<"main">> = (props) => {
 	const others = omit(local, "class");
 	return (
 		<main
+			data-slot="sidebar-inset"
 			class={cn(
 				"relative flex min-h-dvh flex-1 flex-col bg-background",
 				"peer-data-[variant=inset]:min-h-dvh md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
@@ -355,6 +380,7 @@ const SidebarInput = <T extends ValidComponent = "input">(
 					local.class,
 				)}
 				data-sidebar="input"
+				data-slot="sidebar-input"
 				render={local.as ? renderAs(() => local.as) : undefined}
 				{...others}
 			/>
@@ -369,6 +395,7 @@ const SidebarHeader: Component<ComponentProps<"div">> = (props) => {
 		<div
 			class={cn("flex flex-col gap-2 p-2", local.class)}
 			data-sidebar="header"
+			data-slot="sidebar-header"
 			{...others}
 		/>
 	);
@@ -381,6 +408,7 @@ const SidebarFooter: Component<ComponentProps<"div">> = (props) => {
 		<div
 			class={cn("flex flex-col gap-2 p-2", local.class)}
 			data-sidebar="footer"
+			data-slot="sidebar-footer"
 			{...others}
 		/>
 	);
@@ -397,6 +425,7 @@ const SidebarSeparator = <T extends ValidComponent = "hr">(
 		<Separator
 			class={cn("mx-2 h-px w-auto shrink-0 bg-border", local.class)}
 			data-sidebar="separator"
+			data-slot="sidebar-separator"
 			{...others}
 		/>
 	);
@@ -412,6 +441,7 @@ const SidebarContent: Component<ComponentProps<"div">> = (props) => {
 				local.class,
 			)}
 			data-sidebar="content"
+			data-slot="sidebar-content"
 			{...others}
 		/>
 	);
@@ -424,6 +454,7 @@ const SidebarGroup: Component<ComponentProps<"div">> = (props) => {
 		<div
 			class={cn("relative flex w-full min-w-0 flex-col p-2", local.class)}
 			data-sidebar="group"
+			data-slot="sidebar-group"
 			{...others}
 		/>
 	);
@@ -447,6 +478,7 @@ const SidebarGroupLabel = <T extends ValidComponent = "div">(
 				local.class,
 			)}
 			data-sidebar="group-label"
+			data-slot="sidebar-group-label"
 			{...others}
 		/>
 	);
@@ -470,6 +502,7 @@ const SidebarGroupAction = <T extends ValidComponent = "button">(
 				local.class,
 			)}
 			data-sidebar="group-action"
+			data-slot="sidebar-group-action"
 			{...others}
 		/>
 	);
@@ -482,6 +515,7 @@ const SidebarGroupContent: Component<ComponentProps<"div">> = (props) => {
 		<div
 			class={cn("w-full text-sm", local.class)}
 			data-sidebar="group-content"
+			data-slot="sidebar-group-content"
 			{...others}
 		/>
 	);
@@ -494,6 +528,7 @@ const SidebarMenu: Component<ComponentProps<"ul">> = (props) => {
 		<ul
 			class={cn("flex w-full min-w-0 flex-col gap-1", local.class)}
 			data-sidebar="menu"
+			data-slot="sidebar-menu"
 			{...others}
 		/>
 	);
@@ -506,6 +541,7 @@ const SidebarMenuItem: Component<ComponentProps<"li">> = (props) => {
 		<li
 			class={cn("group/menu-item relative", local.class)}
 			data-sidebar="menu-item"
+			data-slot="sidebar-menu-item"
 			{...others}
 		/>
 	);
@@ -584,6 +620,7 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 					)}
 					data-active={local.isActive}
 					data-sidebar="menu-button"
+					data-slot="sidebar-menu-button"
 					data-size={local.size}
 					style={local.style}
 					type={buttonType()}
@@ -612,6 +649,7 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 					)}
 					data-active={local.isActive}
 					data-sidebar="menu-button"
+					data-slot="sidebar-menu-button"
 					data-size={local.size}
 					style={local.style || undefined}
 					type={buttonType()}
@@ -650,6 +688,7 @@ const SidebarMenuAction = <T extends ValidComponent = "button">(
 				local.class,
 			)}
 			data-sidebar="menu-action"
+			data-slot="sidebar-menu-action"
 			{...others}
 		/>
 	);
@@ -670,6 +709,7 @@ const SidebarMenuBadge: Component<ComponentProps<"div">> = (props) => {
 				local.class,
 			)}
 			data-sidebar="menu-badge"
+			data-slot="sidebar-menu-badge"
 			{...others}
 		/>
 	);
@@ -688,6 +728,7 @@ const SidebarMenuSkeleton: Component<SidebarMenuSkeletonProps> = (rawProps) => {
 		<div
 			class={cn("flex h-8 items-center gap-2 rounded-md px-2", local.class)}
 			data-sidebar="menu-skeleton"
+			data-slot="sidebar-menu-skeleton"
 			{...others}
 		>
 			{local.showIcon && (
@@ -709,6 +750,7 @@ const SidebarMenuSub: Component<ComponentProps<"ul">> = (props) => {
 				local.class,
 			)}
 			data-sidebar="menu-sub"
+			data-slot="sidebar-menu-sub"
 			{...others}
 		/>
 	);
@@ -744,6 +786,7 @@ const SidebarMenuSubButton = <T extends ValidComponent = "a">(
 			)}
 			data-active={local.isActive}
 			data-sidebar="menu-sub-button"
+			data-slot="sidebar-menu-sub-button"
 			data-size={local.size}
 			{...others}
 		/>

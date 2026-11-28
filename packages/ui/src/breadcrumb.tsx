@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 breadcrumb registry recipe.
 import { Polymorphic, type PolymorphicProps } from "./utils/polymorphic";
 import { t } from "@solid-imager/i18n";
 import type { Component } from "solid-js";
@@ -7,31 +8,31 @@ import { Show, omit } from "solid-js";
 import { cn } from "./utils/cn";
 
 const Breadcrumb: Component<ComponentProps<"nav">> = (props) => (
-	<nav aria-label={t("appShell.navigation")} {...props} />
+	<nav
+		data-slot="breadcrumb"
+		aria-label={t("appShell.navigation")}
+		{...props}
+	/>
 );
 
-const BreadcrumbList: Component<ComponentProps<"ol">> = (props) => {
-	const others = omit(props, "class");
-	return (
-		<ol
-			class={cn(
-				"flex flex-wrap items-center gap-1.5 break-words text-muted-foreground text-sm sm:gap-2.5",
-				props.class,
-			)}
-			{...others}
-		/>
-	);
-};
+const BreadcrumbList: Component<ComponentProps<"ol">> = (props) => (
+	<ol
+		data-slot="breadcrumb-list"
+		{...props}
+		class={cn(
+			"flex flex-wrap items-center gap-1.5 break-words text-muted-foreground text-sm sm:gap-2.5",
+			props.class,
+		)}
+	/>
+);
 
-const BreadcrumbItem: Component<ComponentProps<"li">> = (props) => {
-	const others = omit(props, "class");
-	return (
-		<li
-			class={cn("inline-flex items-center gap-1.5", props.class)}
-			{...others}
-		/>
-	);
-};
+const BreadcrumbItem: Component<ComponentProps<"li">> = (props) => (
+	<li
+		data-slot="breadcrumb-item"
+		{...props}
+		class={cn("inline-flex items-center gap-1.5", props.class)}
+	/>
+);
 
 type BreadcrumbLinkProps = ComponentProps<"a"> & { current?: boolean } & {
 	class?: string | undefined;
@@ -49,6 +50,7 @@ const BreadcrumbLink = <T extends ValidComponent = "a">(
 	return (
 		<Polymorphic
 			as={props.as ?? "a"}
+			data-slot="breadcrumb-link"
 			aria-current={props.current ? "page" : undefined}
 			data-current={props.current ? "" : undefined}
 			class={cn(
@@ -78,6 +80,8 @@ const BreadcrumbSeparator = <T extends ValidComponent = "span">(
 		<Polymorphic
 			as={props.as ?? "span"}
 			aria-hidden="true"
+			data-slot="breadcrumb-separator"
+			role="presentation"
 			class={cn("[&>svg]:size-3.5", props.class)}
 			{...others}
 		>
@@ -108,6 +112,7 @@ const BreadcrumbEllipsis: Component<ComponentProps<"span">> = (props) => {
 	const others = omit(props, "class");
 	return (
 		<span
+			data-slot="breadcrumb-ellipsis"
 			class={cn("flex size-9 items-center justify-center", props.class)}
 			{...others}
 		>

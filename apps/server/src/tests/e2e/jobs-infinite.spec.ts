@@ -67,7 +67,7 @@ test("keeps the active job status visible on a phone", async ({ page }) => {
 	});
 	await page.goto("/jobs");
 	await waitForAppHydration(page);
-	const status = page.getByRole("button", { name: "ジョブの状態で絞り込む" });
+	const status = page.getByRole("combobox", { name: "ジョブの状態で絞り込む" });
 	await expect(status).toHaveText("すべての状態");
 	await status.click();
 	const updated = page.waitForRequest(
@@ -171,7 +171,7 @@ test("loads more jobs on scroll and counts all status/type matches beyond the fi
 		).toBeVisible();
 	}
 	await page.getByRole("tab", { name: /^実行中・待機中/ }).click();
-	const type = page.getByRole("button", { name: "ジョブの種類で絞り込む" });
+	const type = page.getByRole("combobox", { name: "ジョブの種類で絞り込む" });
 	await type.click();
 	await page.getByRole("option", { name: "AIタグ付け", exact: true }).click();
 	await expect(

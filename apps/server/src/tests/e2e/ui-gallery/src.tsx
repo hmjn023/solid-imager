@@ -102,6 +102,7 @@ import {
 } from "@solid-imager/ui/text-field";
 import { ThumbnailImage } from "@solid-imager/ui/thumbnail-image";
 import { Toaster, toast } from "@solid-imager/ui/toast";
+import { ToggleGroup, ToggleGroupItem } from "@solid-imager/ui/toggle-group";
 import { createEffect, createSignal, Show } from "solid-js";
 import { render } from "@solidjs/web";
 import { ComboboxGallery } from "./combobox-gallery";
@@ -316,6 +317,7 @@ function VirtualGridGallery() {
 function Gallery() {
 	const [dark, setDark] = createSignal(false);
 	const [contextActionCount, setContextActionCount] = createSignal(0);
+	const [layout, setLayout] = createSignal<string | null>("grid");
 	return (
 		<div class={{ dark: dark() }}>
 			<Toaster />
@@ -360,7 +362,9 @@ function Gallery() {
 										placeholder="Compatibility input"
 									/>
 									<Progress aria-label="Import progress" value={60}>
-										<ProgressLabel>Import progress</ProgressLabel>
+										<ProgressLabel class="sr-only">
+											Import progress
+										</ProgressLabel>
 									</Progress>
 									<Skeleton class="h-8 w-full" />
 								</div>
@@ -495,7 +499,17 @@ function Gallery() {
 										Focus stays inside until dismissed.
 									</DialogDescription>
 								</DialogHeader>
-								<DialogFooter>Dialog actions</DialogFooter>
+								<DialogFooter>
+									<ToggleGroup
+										aria-label="Layout"
+										value={layout()}
+										onChange={setLayout}
+										disallowEmptySelection
+									>
+										<ToggleGroupItem value="grid">Grid</ToggleGroupItem>
+										<ToggleGroupItem value="list">List</ToggleGroupItem>
+									</ToggleGroup>
+								</DialogFooter>
 							</DialogContent>
 						</Dialog>
 						<AlertDialog>

@@ -76,7 +76,7 @@ export function useMediaItemActions(options: {
 	};
 	const confirmDelete = async () => {
 		const media = deleteTarget();
-		if (!media || deletePending) return;
+		if (!media || deletePending) return false;
 		deletePending = true;
 		setIsDeleteSubmitting(true);
 		setDeleteError(undefined);
@@ -88,7 +88,7 @@ export function useMediaItemActions(options: {
 					value0: getErrorMessage(error),
 				}),
 			);
-			return;
+			return false;
 		} finally {
 			deletePending = false;
 			setIsDeleteSubmitting(false);
@@ -96,6 +96,7 @@ export function useMediaItemActions(options: {
 		setDeleteTarget(undefined);
 		options.notify.success(t("useSourceMediaPage.mediaDeletedSuccessfully"));
 		options.onDeleted(media);
+		return true;
 	};
 	const openCopyMove = (id: string, mode: "copy" | "move") => {
 		if (moveCopyPending) return;

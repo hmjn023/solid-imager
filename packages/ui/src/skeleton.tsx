@@ -1,3 +1,4 @@
+// The decorative Skeleton uses the Solid UI v2 skeleton registry recipe.
 import type { ParentProps } from "solid-js";
 import type { ComponentProps } from "@solidjs/web";
 import { For } from "solid-js";
@@ -21,14 +22,12 @@ export type SkeletonProps = Omit<ComponentProps<"div">, "aria-hidden">;
 
 /** Decorative placeholder. Announce loading once on the containing region. */
 export function Skeleton(props: SkeletonProps) {
-	const local = props,
-		others = omit(props, "class");
-
 	return (
 		<div
+			data-slot="skeleton"
+			{...props}
 			aria-hidden="true"
-			class={cn("motion-safe:animate-pulse rounded-md bg-muted", local.class)}
-			{...others}
+			class={cn("motion-safe:animate-pulse rounded-md bg-muted", props.class)}
 		/>
 	);
 }
@@ -189,5 +188,3 @@ export function ConfigSkeleton(props: ConfigSkeletonProps) {
 		</div>
 	);
 }
-
-import { omit } from "solid-js";

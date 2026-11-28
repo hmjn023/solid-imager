@@ -1,23 +1,21 @@
-import { t } from "@solid-imager/i18n";
+// Adapted from the Solid UI v2 sheet registry recipe.
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import type { Component } from "solid-js";
+import { merge, omit, Show, type Component } from "solid-js";
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { DialogContent as SheetPrimitiveContent } from "@ui-sdk/solid/dialog";
+import { DialogContent as SdkDialogContent } from "@ui-sdk/solid/dialog";
 import {
 	Dialog as Sheet,
 	DialogTrigger as SheetTrigger,
 	DialogClose as SheetClose,
+	DialogCloseButton,
 	DialogOverlay as SheetOverlay,
-	DialogTitle as SheetPrimitiveTitle,
-	DialogDescription as SheetPrimitiveDescription,
+	DialogTitle,
+	DialogDescription,
 	dialogFinalFocus,
 	dialogInitialFocus,
-	useDialogDismissHandlers,
 	type DialogFocusHandlers,
-	type DialogDismissHandlers,
 } from "./dialog";
-import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
@@ -41,68 +39,67 @@ const sheetVariants = cva(
 );
 
 type DialogContentProps = Omit<
-	ComponentProps<typeof SheetPrimitiveContent>,
+	ComponentProps<typeof SdkDialogContent>,
 	"class" | "children"
 > &
 	DialogFocusHandlers &
-	DialogDismissHandlers &
 	VariantProps<typeof sheetVariants> & {
 		class?: string | undefined;
 		children?: JSX.Element;
+		side?: "top" | "right" | "bottom" | "left";
+		showCloseButton?: boolean;
+		"data-slot"?: string;
 	};
 
 const SheetContent = (props: DialogContentProps) => {
-	useDialogDismissHandlers(props);
 	const others = omit(
 		props as DialogContentProps,
 		"position",
+		"side",
+		"showCloseButton",
+		"render",
+		"data-slot",
 		"class",
 		"children",
 		"onOpenAutoFocus",
 		"onCloseAutoFocus",
-		"onEscapeKeyDown",
-		"onPointerDownOutside",
 		"initialFocus",
 		"finalFocus",
 	);
+	const side = () => props.side ?? props.position ?? "right";
+	const renderContent: DialogContentProps["render"] = (part, state) => {
+		const attributes = merge(part, () => ({
+			"data-slot": props["data-slot"] ?? "sheet-content",
+		}));
+		return props.render ? (
+			props.render(attributes, state)
+		) : (
+			<div {...attributes} />
+		);
+	};
 	return (
 		<>
 			<SheetOverlay />
-			<SheetPrimitiveContent
+			<SdkDialogContent
+				data-side={side()}
 				initialFocus={dialogInitialFocus(
 					props.onOpenAutoFocus,
 					props.initialFocus,
 				)}
 				finalFocus={dialogFinalFocus(props.onCloseAutoFocus, props.finalFocus)}
 				class={cn(
-					sheetVariants({ position: props.position }),
+					sheetVariants({ position: side() }),
 					props.class,
 					"max-h-dvh overflow-y-auto overscroll-contain",
 				)}
 				{...others}
+				render={renderContent}
 			>
 				{props.children}
-				<SheetClose
-					aria-label={t("actions.close")}
-					class="absolute top-2.5 right-2.5 z-20 grid size-11 place-items-center rounded-sm text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:text-foreground hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none sm:size-8"
-				>
-					<svg
-						aria-hidden="true"
-						class="size-4"
-						fill="none"
-						stroke="currentColor"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						viewBox="0 0 24 24"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<path d="M18 6l-12 12" />
-						<path d="M6 6l12 12" />
-					</svg>
-					<span class="sr-only">{t("actions.close")}</span>
-				</SheetClose>
-			</SheetPrimitiveContent>
+				<Show when={props.showCloseButton !== false}>
+					<DialogCloseButton />
+				</Show>
+			</SdkDialogContent>
 		</>
 	);
 };
@@ -111,6 +108,7 @@ const SheetHeader: Component<ComponentProps<"div">> = (props) => {
 	const others = omit(props, "class");
 	return (
 		<div
+			data-slot="sheet-header"
 			class={cn(
 				"flex flex-col space-y-2 pr-12 text-center sm:text-left",
 				props.class,
@@ -124,6 +122,7 @@ const SheetFooter: Component<ComponentProps<"div">> = (props) => {
 	const others = omit(props, "class");
 	return (
 		<div
+			data-slot="sheet-footer"
 			class={cn(
 				"flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
 				props.class,
@@ -133,17 +132,14 @@ const SheetFooter: Component<ComponentProps<"div">> = (props) => {
 	);
 };
 
-type DialogTitleProps = Omit<
-	ComponentProps<typeof SheetPrimitiveTitle>,
-	"class"
-> & {
+type DialogTitleProps = Omit<ComponentProps<typeof DialogTitle>, "class"> & {
 	class?: string | undefined;
 };
 
 const SheetTitle = (props: DialogTitleProps) => {
 	const others = omit(props as DialogTitleProps, "class");
 	return (
-		<SheetPrimitiveTitle
+		<DialogTitle
 			class={cn("font-semibold text-foreground text-lg", props.class)}
 			{...others}
 		/>
@@ -151,14 +147,14 @@ const SheetTitle = (props: DialogTitleProps) => {
 };
 
 type DialogDescriptionProps = Omit<
-	ComponentProps<typeof SheetPrimitiveDescription>,
+	ComponentProps<typeof DialogDescription>,
 	"class"
 > & { class?: string | undefined };
 
 const SheetDescription = (props: DialogDescriptionProps) => {
 	const others = omit(props as DialogDescriptionProps, "class");
 	return (
-		<SheetPrimitiveDescription
+		<DialogDescription
 			class={cn("text-muted-foreground text-sm", props.class)}
 			{...others}
 		/>

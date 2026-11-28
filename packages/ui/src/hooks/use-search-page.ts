@@ -20,7 +20,13 @@ import {
 	type QueryOptions,
 	useQueryClient,
 } from "@tanstack/solid-query";
-import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
+import {
+	type Accessor,
+	createMemo,
+	createSignal,
+	onCleanup,
+	untrack,
+} from "solid-js";
 import { isServer } from "@solidjs/web";
 import { buildSearchResultsQueryOptions } from "../query-options";
 import { sameMediaResultsOptions } from "../query-options/search-query";
@@ -152,7 +158,7 @@ export function useSearchPage(
 		enableVirtualization = false,
 	} = options;
 	const queryClient = useQueryClient();
-	const initialSearch = useInitialSearch()?.initial();
+	const initialSearch = untrack(() => useInitialSearch()?.initial());
 	const tagsQueryKey = queries.tags().queryKey;
 	const sourcesQueryKey = queries.sources().queryKey;
 	const projectsQueryKey = queries.projects().queryKey;

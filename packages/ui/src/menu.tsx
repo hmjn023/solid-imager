@@ -1,3 +1,4 @@
+// Adapted from the Solid UI v2 dropdown-menu and context-menu registry recipes.
 import {
 	Portal,
 	type ComponentProps,
@@ -91,23 +92,25 @@ export function MenuContextTrigger<Tag extends ValidComponent = "div">(
 
 type ClassProps<Props> = Omit<Props, "class"> & { class?: string };
 
-type MenuContentProps = ClassProps<
-	ComponentProps<typeof MenuContentPrimitive>
+type MenuContentProps<Payload> = ClassProps<
+	ComponentProps<typeof MenuContentPrimitive<Payload>>
 > & {
 	onCloseAutoFocus?: (event: Event) => void;
 };
 
-export function MenuContent(props: MenuContentProps) {
+export function MenuContent<Payload = unknown>(
+	props: MenuContentProps<Payload>,
+) {
 	const root = useContext(MenuContext).props;
 	return (
-		<MenuContentPrimitive
+		<MenuContentPrimitive<Payload>
 			side={popupSide(root.placement)}
 			align={popupAlign(root.placement)}
 			sideOffset={root.gutter ?? 4}
 			{...omit(props, "class", "onCloseAutoFocus", "finalFocus")}
 			finalFocus={dialogFinalFocus(props.onCloseAutoFocus, props.finalFocus)}
 			class={cn(
-				"z-50 max-h-popover-fit-available min-w-32 origin-(--transform-origin) overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md motion-safe:data-[closed]:animate-out motion-safe:data-[open]:animate-content-show motion-safe:data-[closed]:fade-out-0",
+				"z-50 max-h-popover-fit-available min-w-32 origin-(--transform-origin) overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none data-closed:overflow-hidden motion-safe:data-[closed]:animate-out motion-safe:data-[open]:animate-content-show motion-safe:data-[closed]:fade-out-0",
 				props.class,
 			)}
 		/>
@@ -115,21 +118,27 @@ export function MenuContent(props: MenuContentProps) {
 }
 
 const menuItemClass =
-	"relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[disabled]:opacity-50";
+	"relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-muted focus:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-muted data-highlighted:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0";
+
+type MenuItemProps = ClassProps<ComponentProps<typeof MenuItemPrimitive>> & {
+	inset?: boolean;
+	variant?: "default" | "destructive";
+};
 
 export function MenuItem<Tag extends ValidComponent = "div">(
-	props: PolymorphicProps<
-		Tag,
-		ClassProps<ComponentProps<typeof MenuItemPrimitive>>
-	>,
+	props: PolymorphicProps<Tag, MenuItemProps>,
 ) {
-	const partProps: ClassProps<ComponentProps<typeof MenuItemPrimitive>> & {
-		as?: Tag;
-	} = props;
+	const partProps: MenuItemProps & { as?: Tag } = props;
 	return (
 		<MenuItemPrimitive
-			{...omit(partProps, "as", "class")}
-			class={cn(menuItemClass, props.class)}
+			{...omit(partProps, "as", "class", "inset", "variant")}
+			data-inset={props.inset ? "" : undefined}
+			data-variant={props.variant ?? "default"}
+			class={cn(
+				menuItemClass,
+				"data-inset:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:data-highlighted:text-destructive",
+				props.class,
+			)}
 			render={props.as ? renderAs(() => props.as) : props.render}
 		/>
 	);
@@ -153,9 +162,11 @@ export function MenuCheckboxItem(props: CheckboxItemProps) {
 			onCheckedChange={props.onChange}
 			class={cn(menuItemClass, "pr-2 pl-8", props.class)}
 		>
-			<MenuItemIndicator class="absolute left-2 flex size-3.5 items-center justify-center">
-				<Check class="size-4" aria-hidden="true" />
-			</MenuItemIndicator>
+			<span class="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+				<MenuItemIndicator>
+					<Check class="size-4" aria-hidden="true" />
+				</MenuItemIndicator>
+			</span>
 			{props.children}
 		</MenuCheckboxItemPrimitive>
 	);
@@ -187,9 +198,11 @@ export function MenuRadioItem(
 			{...omit(props, "class", "children")}
 			class={cn(menuItemClass, "pr-2 pl-8", props.class)}
 		>
-			<MenuItemIndicator class="absolute left-2 flex size-3.5 items-center justify-center">
-				<Circle class="size-2 fill-current" aria-hidden="true" />
-			</MenuItemIndicator>
+			<span class="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+				<MenuItemIndicator>
+					<Circle class="size-2 fill-current" aria-hidden="true" />
+				</MenuItemIndicator>
+			</span>
 			{props.children}
 		</MenuRadioItemPrimitive>
 	);
@@ -248,7 +261,8 @@ export function MenuSubTrigger(
 	return (
 		<MenuSubTriggerPrimitive
 			{...omit(props, "class", "children", "inset")}
-			class={cn(menuItemClass, props.inset && "pl-8", props.class)}
+			data-inset={props.inset ? "" : undefined}
+			class={cn(menuItemClass, "data-inset:pl-8", props.class)}
 		>
 			{props.children}
 			<ChevronRight aria-hidden="true" class="ml-auto size-4" />

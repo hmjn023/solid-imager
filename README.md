@@ -74,7 +74,7 @@ Runtime: Bun
 Framework: Solid 2 + TanStack Start
 API: oRPC v2
 UI: Solid UI + UI SDK + Tailwind CSS
-Notifications: solid-sonner
+Notifications: UI SDK Toast
 Database: PostgreSQL / PGlite
 ORM: Drizzle ORM
 Validation: Zod

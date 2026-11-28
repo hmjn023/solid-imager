@@ -1,3 +1,4 @@
+import Star from "@lucide/solid/icons/star";
 import { getLocale, t } from "@solid-imager/i18n";
 import type {
 	MediaActivity,
@@ -5,7 +6,8 @@ import type {
 	MediaPreferencesPatch,
 } from "@solid-imager/core/media";
 import { useMutation, useQueryClient } from "@tanstack/solid-query";
-import { onSettled, Show } from "solid-js";
+import { Rating, RatingItem } from "@ui-sdk/solid/rating";
+import { createUniqueId, onSettled, Show } from "solid-js";
 import { v7 as uuidv7 } from "uuid";
 import { Button } from "./button";
 import {
@@ -13,13 +15,6 @@ import {
 	searchQueryKeys,
 	sourceMediaQueryKeys,
 } from "./query-options";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./select";
 import { toast } from "./toast";
 import { Toggle } from "./toggle";
 
@@ -31,17 +26,12 @@ export type MediaActivityApi = {
 	): Promise<MediaActivity>;
 };
 
-const ratings = [
-	t("mediaActivityControls.unrated"),
-	t("mediaActivityControls.oneStar"),
-	...[2, 3, 4, 5].map((count) => t("mediaActivityControls.stars", { count })),
-];
-
 export function MediaActivityControls(props: {
 	media: MediaDetails;
 	api: MediaActivityApi;
 }) {
 	const client = useQueryClient();
+	const ratingLabelId = createUniqueId();
 	const location = () => ({
 		sourceId: props.media.mediaSourceId,
 		mediaId: props.media.id,
@@ -93,6 +83,23 @@ export function MediaActivityControls(props: {
 		onError: () =>
 			toast.error(t("mediaActivityControls.couldNotSaveMediaPreferences")),
 	}));
+	let savingPreferences = false;
+	const savePreferences = async (data: MediaPreferencesPatch) => {
+		if (savingPreferences) return;
+		savingPreferences = true;
+		try {
+			await save.mutate({ ...location(), data });
+		} catch {
+			// The mutation displays the error and leaves the saved preference intact.
+		} finally {
+			savingPreferences = false;
+		}
+	};
+	const rating = () => props.media.activity?.rating ?? 0;
+	const saveRating = (score: number | null) => {
+		const nextRating = score ?? 0;
+		if (nextRating !== rating()) void savePreferences({ rating: nextRating });
+	};
 	const lastViewed = () => props.media.activity?.lastViewedAt;
 
 	return (
@@ -100,16 +107,11 @@ export function MediaActivityControls(props: {
 			<h2 class="font-semibold text-sm">
 				{t("mediaActivityControls.activity")}
 			</h2>
-			<div class="flex flex-wrap items-center gap-2">
+			<div>
 				<Toggle
 					class="min-h-11 gap-2 hover:bg-muted hover:text-foreground data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary-hover data-[pressed]:hover:text-primary-foreground sm:min-h-9"
 					disabled={save.isPending}
-					onChange={(favorite) =>
-						save.mutate({
-							...location(),
-							data: { favorite },
-						})
-					}
+					onChange={(favorite) => void savePreferences({ favorite })}
 					pressed={props.media.activity?.favorite ?? false}
 					variant="outline"
 				>
@@ -118,32 +120,47 @@ export function MediaActivityControls(props: {
 					</span>{" "}
 					{t("mediaActivityControls.favorite")}
 				</Toggle>
-				<Select
-					options={ratings}
-					value={ratings[props.media.activity?.rating ?? 0]}
-					disabled={save.isPending}
-					onChange={(value) => {
-						if (value && value !== ratings[props.media.activity?.rating ?? 0]) {
-							save.mutate({
-								...location(),
-								data: { rating: ratings.indexOf(value) },
-							});
-						}
+			</div>
+			<div class="flex flex-wrap items-center gap-x-1">
+				<span class="w-full text-muted-foreground text-xs" id={ratingLabelId}>
+					{t("sortOptions.rating")}
+				</span>
+				<Rating
+					aria-disabled={save.isPending ? "true" : undefined}
+					aria-labelledby={ratingLabelId}
+					class="flex shrink-0"
+					getValueLabel={(value) =>
+						value === 1
+							? t("mediaActivityControls.oneStar")
+							: t("mediaActivityControls.stars", { count: value })
+					}
+					onValueChange={(value, details) => {
+						// Keep the confirmed rating and the tab stop active during the save.
+						details.cancel();
+						saveRating(value);
 					}}
-					itemComponent={(item) => (
-						<SelectItem item={item.item}>{item.item.rawValue}</SelectItem>
-					)}
+					value={rating() || null}
 				>
-					<SelectTrigger
-						aria-label={t("sortOptions.rating")}
-						class="min-h-11 w-auto gap-2 sm:min-h-9"
-					>
-						<SelectValue<string>>
-							{(state) => state.selectedOption()}
-						</SelectValue>
-					</SelectTrigger>
-					<SelectContent />
-				</Select>
+					<RatingItem class="grid size-11 place-items-center rounded-md text-muted-foreground data-[filled]:text-primary has-focus-visible:ring-2 has-focus-visible:ring-inset has-focus-visible:ring-ring sm:size-9">
+						{(state) => (
+							<Star
+								aria-hidden="true"
+								class="pointer-events-none size-5"
+								fill={state.fill === 1 ? "currentColor" : "none"}
+							/>
+						)}
+					</RatingItem>
+				</Rating>
+				<Button
+					aria-disabled={save.isPending ? "true" : undefined}
+					aria-pressed={rating() === 0}
+					class="min-w-11 px-1.5 aria-pressed:bg-muted"
+					onClick={() => saveRating(null)}
+					size="sm"
+					variant="ghost"
+				>
+					{t("mediaActivityControls.unrated")}
+				</Button>
 			</div>
 			<p class="text-xs text-muted-foreground">
 				{t("mediaActivityControls.viewsValue", {

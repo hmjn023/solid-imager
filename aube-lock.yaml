@@ -519,9 +519,6 @@ importers:
       solid-js:
         specifier: 2.0.4
         version: 2.0.4
-      solid-sonner:
-        specifier: 1.0.0
-        version: 1.0.0(@solidjs/web@2.0.4(solid-js@2.0.4))(solid-js@2.0.4)
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
@@ -5034,12 +5031,6 @@ packages:
   solid-js@2.0.4:
     resolution: {integrity: sha512-RaBVDtzYGgQEAcMa9QgyT8UdzOayFgXJ1w1/f8vz7aoeF5tQDZwrHLfM1PDTIuprb8RdMWFGZwwyKCXtXEUX0w==}
     engines: {node: '>=22.12.0'}
-
-  solid-sonner@1.0.0:
-    resolution: {integrity: sha512-KuBUO29W5qykhYJjQyyfsKPFoF4G78sa/Yo+yYPJkHBsClCjnh7dx5mOGrnYczJ45Y8dvA8U90+zIX8NnDAzFg==}
-    peerDependencies:
-      '@solidjs/web': ^2.0.0
-      solid-js: ^2.0.0
 
   sonic-boom@4.2.1:
     resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
@@ -10391,11 +10382,6 @@ snapshots:
       '@solidjs/signals': 2.0.4
       seroval: 1.8.2
       seroval-plugins: 1.8.0(seroval@1.8.2)
-
-  solid-sonner@1.0.0(@solidjs/web@2.0.4(solid-js@2.0.4))(solid-js@2.0.4):
-    dependencies:
-      '@solidjs/web': 2.0.4(solid-js@2.0.4)
-      solid-js: 2.0.4
 
   sonic-boom@4.2.1:
     dependencies:

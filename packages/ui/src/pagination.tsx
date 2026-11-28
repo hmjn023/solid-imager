@@ -1,6 +1,11 @@
+// Adapted from the Solid UI v2 pagination registry recipe.
+import ChevronLeft from "@lucide/solid/icons/chevron-left";
+import ChevronRight from "@lucide/solid/icons/chevron-right";
+import Ellipsis from "@lucide/solid/icons/ellipsis";
 import {
 	Pagination as PaginationPrimitive,
 	PaginationEllipsis as PaginationEllipsisPrimitive,
+	PaginationItem as PaginationItemPrimitive,
 	PaginationLink,
 	PaginationList,
 	PaginationNext as PaginationNextPrimitive,
@@ -43,12 +48,9 @@ function Pagination(props: PaginationRootProps) {
 				"ellipsisComponent",
 			)}
 			pageCount={props.pageCount ?? props.count}
-			class={cn(
-				"[&>*]:flex [&>*]:flex-row [&>*]:items-center [&>*]:gap-1",
-				props.class,
-			)}
+			class={props.class}
 		>
-			<PaginationList>
+			<PaginationList class="flex flex-row items-center gap-1">
 				{(state) => (
 					<PaginationContext value={{ props, state }}>
 						{props.children}
@@ -79,7 +81,7 @@ type PaginationItemProps = ClassProps<ComponentProps<typeof PaginationLink>>;
 const PaginationItem = (props: PaginationItemProps) => {
 	const others = omit(props, "class");
 	return (
-		<li>
+		<PaginationItemPrimitive>
 			<PaginationLink
 				class={cn(
 					buttonVariants({
@@ -90,7 +92,7 @@ const PaginationItem = (props: PaginationItemProps) => {
 				)}
 				{...others}
 			/>
-		</li>
+		</PaginationItemPrimitive>
 	);
 };
 
@@ -101,29 +103,15 @@ type PaginationEllipsisProps = ClassProps<
 const PaginationEllipsis = (props: PaginationEllipsisProps) => {
 	const others = omit(props, "class");
 	return (
-		<li>
+		<PaginationItemPrimitive>
 			<PaginationEllipsisPrimitive
 				class={cn("flex size-10 items-center justify-center", props.class)}
 				{...others}
 			>
-				<svg
-					aria-hidden="true"
-					class="size-4"
-					fill="none"
-					stroke="currentColor"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					viewBox="0 0 24 24"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<circle cx="12" cy="12" r="1" />
-					<circle cx="19" cy="12" r="1" />
-					<circle cx="5" cy="12" r="1" />
-				</svg>
+				<Ellipsis aria-hidden="true" class="size-4" />
 				<span class="sr-only">{t("pagination.morePages")}</span>
 			</PaginationEllipsisPrimitive>
-		</li>
+		</PaginationItemPrimitive>
 	);
 };
 
@@ -134,7 +122,7 @@ type PaginationPreviousProps = ClassProps<
 const PaginationPrevious = (props: PaginationPreviousProps) => {
 	const others = omit(props, "class", "children");
 	return (
-		<li>
+		<PaginationItemPrimitive>
 			<PaginationPreviousPrimitive
 				class={cn(
 					buttonVariants({
@@ -148,19 +136,7 @@ const PaginationPrevious = (props: PaginationPreviousProps) => {
 				<Show
 					fallback={
 						<>
-							<svg
-								aria-hidden="true"
-								class="size-4"
-								fill="none"
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								viewBox="0 0 24 24"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path d="M15 6l-6 6l6 6" />
-							</svg>
+							<ChevronLeft aria-hidden="true" class="size-4" />
 							<span>{t("actions.previous")}</span>
 						</>
 					}
@@ -169,7 +145,7 @@ const PaginationPrevious = (props: PaginationPreviousProps) => {
 					{(children) => children()}
 				</Show>
 			</PaginationPreviousPrimitive>
-		</li>
+		</PaginationItemPrimitive>
 	);
 };
 
@@ -180,7 +156,7 @@ type PaginationNextProps = ClassProps<
 const PaginationNext = (props: PaginationNextProps) => {
 	const others = omit(props, "class", "children");
 	return (
-		<li>
+		<PaginationItemPrimitive>
 			<PaginationNextPrimitive
 				class={cn(
 					buttonVariants({
@@ -195,19 +171,7 @@ const PaginationNext = (props: PaginationNextProps) => {
 					fallback={
 						<>
 							<span>{t("actions.next")}</span>
-							<svg
-								aria-hidden="true"
-								class="size-4"
-								fill="none"
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								viewBox="0 0 24 24"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path d="M9 6l6 6l-6 6" />
-							</svg>
+							<ChevronRight aria-hidden="true" class="size-4" />
 						</>
 					}
 					when={props.children}
@@ -215,7 +179,7 @@ const PaginationNext = (props: PaginationNextProps) => {
 					{(children) => children()}
 				</Show>
 			</PaginationNextPrimitive>
-		</li>
+		</PaginationItemPrimitive>
 	);
 };
 

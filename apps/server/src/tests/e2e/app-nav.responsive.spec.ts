@@ -89,10 +89,17 @@ test("app navigation is responsive and accessible", async ({
 		return;
 	}
 
-	const menuButton = page.getByRole("button", { name: "メニューを開く" });
+	await waitForAppHydration(page);
+	const menuButton = page.getByRole("button", {
+		includeHidden: true,
+		name: "メニューを開く",
+	});
+	await expect(menuButton).toBeEnabled();
+	await expect(menuButton).toHaveAttribute("aria-haspopup", "dialog");
 	await menuButton.click();
-	const dialog = page.getByRole("dialog");
+	const dialog = page.getByRole("dialog", { name: "ナビゲーション" });
 	await expect(dialog).toBeVisible();
+	await expect(menuButton).toHaveAttribute("aria-controls", /-content$/);
 	await expect(
 		dialog.getByRole("navigation", { name: "主要ナビゲーション" }),
 	).toBeVisible();
@@ -112,7 +119,8 @@ test("app navigation is responsive and accessible", async ({
 	await expect(dialog).toBeHidden();
 	await expect(menuButton).toBeFocused();
 
-	await menuButton.click();
+	await menuButton.press("Enter");
+	await expect(dialog).toBeVisible();
 	await dialog.getByRole("link", { name: "ライブラリ", exact: true }).click();
 	await expect(page).toHaveURL((url) => url.pathname === "/search");
 	await expect(dialog).toBeHidden();

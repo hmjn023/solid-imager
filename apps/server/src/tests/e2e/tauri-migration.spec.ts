@@ -3,6 +3,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Page, Request, Response } from "@playwright/test";
 import { mediaContentPath, mediaThumbnailPath } from "@solid-imager/core/http";
+import {
+	captureSearchSnapshotResponseSchema,
+	defaultState,
+} from "@solid-imager/core/search";
 import { apiPathPattern, apiRequest, routeApi } from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
@@ -11,6 +15,7 @@ import {
 	E2E_SIMILAR_MEDIA_ID,
 	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
+	getFixtureMediaPath,
 } from "./support/fixture";
 import { readClipboardImage } from "./support/image-clipboard";
 import {
@@ -384,6 +389,8 @@ test("Tauri Library separates preview selection from current media detail", asyn
 		page.getByRole("button", { name: "リスト表示", exact: true }),
 	).toBeVisible();
 
+	await searchInput.fill(E2E_PRIMARY_FILE_NAME);
+	await searchInput.press("Enter");
 	const media = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 	await expect(media).toBeVisible();
 	await media.click();
@@ -471,7 +478,7 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await expect(page).toHaveURL(new RegExp(`/#${mediaPath}$`));
 	await expectTauriMediaDetail(page);
 	await expect(
-		page.getByRole("combobox", { name: "評価", exact: true }),
+		page.getByRole("radiogroup", { name: "評価", exact: true }),
 	).toBeVisible();
 	await expect(page.getByText(/^閲覧数: [1-9]\d*$/)).toBeVisible();
 	await captureTauriScreenshot(page, "detail");
@@ -533,11 +540,35 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 		page.getByRole("heading", { name: "ページが見つかりません", exact: true }),
 	).toBeVisible();
 
-	await openTauriRoute(page, sourcePath);
+	const snapshot = await apiRequest(page.request, "searchSnapshots/capture", {
+		state: { ...defaultState, searchQuery: E2E_PRIMARY_FILE_NAME },
+	});
+	await expect(snapshot).toBeOK();
+	const { id } = captureSearchSnapshotResponseSchema.parse(
+		await snapshot.json(),
+	);
+	await openTauriRoute(page, `${sourcePath}?search=${id}`);
 	await expectWorkspaceShell(page);
 	await expect(
 		page.getByText(E2E_SOURCE_NAME, { exact: true }).first(),
 	).toBeVisible();
+	const fileChooser = page.waitForEvent("filechooser");
+	await page.getByRole("button", { name: "追加", exact: true }).click();
+	await (
+		await fileChooser
+	).setFiles(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
+	const upload = page.getByRole("dialog", { name: "メディアをアップロード" });
+	await expect(upload.getByLabel("ファイル名", { exact: true })).toHaveValue(
+		E2E_PRIMARY_FILE_NAME,
+	);
+	await upload.getByRole("button", { name: "キャンセル", exact: true }).click();
+	await page
+		.getByRole("alertdialog")
+		.getByRole("button", { name: "破棄して閉じる" })
+		.click();
+	await expect(upload).toHaveCount(0);
+	await expect(page.locator('[data-slot="dialog-backdrop"]')).toHaveCount(0);
+
 	const sourceMedia = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 	await expect(sourceMedia).toBeVisible();
 	await sourceMedia.click();

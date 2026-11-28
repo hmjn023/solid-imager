@@ -1,6 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import Download from "@lucide/solid/icons/download";
 import Upload from "@lucide/solid/icons/upload";
+import { FileInput, FileInputTrigger } from "@ui-sdk/solid/file-input";
 import { createSignal, onCleanup, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -15,7 +16,6 @@ import {
 import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
-import { Input } from "../../input";
 import {
 	Select,
 	SelectContent,
@@ -25,6 +25,8 @@ import {
 	SelectValue,
 } from "../../select";
 import type { ManagerTransferActions, ManagerTransferFormat } from "./types";
+
+const EMPTY_FILE_SELECTION: File[] = [];
 
 function formatOptionLabel(format: ManagerTransferFormat): string {
 	return format === "ndjson"
@@ -50,7 +52,6 @@ export function DataTransferPanel(props: {
 		sourceId: string;
 		sourceName: string;
 	} | null>(null);
-	let fileInput: HTMLInputElement | undefined;
 	let disposed = false;
 	onCleanup(() => {
 		disposed = true;
@@ -65,6 +66,16 @@ export function DataTransferPanel(props: {
 			case "tar":
 				return ".tar,application/x-tar,application/tar";
 		}
+	};
+	const chooseRestoreFile = (file: File | undefined) => {
+		const targetSource = selectedSource();
+		if (!file || !targetSource?.id || importPending()) return;
+		setPendingRestoreFile({
+			file,
+			format: importFormat(),
+			sourceId: targetSource.id,
+			sourceName: targetSource.name,
+		});
 	};
 	const runExport = async () => {
 		const selectedId = sourceId();
@@ -96,10 +107,7 @@ export function DataTransferPanel(props: {
 				sourceId: target.sourceId,
 			});
 		} finally {
-			if (!disposed) {
-				setImportPending(false);
-				if (fileInput) fileInput.value = "";
-			}
+			if (!disposed) setImportPending(false);
 		}
 	};
 
@@ -263,41 +271,36 @@ export function DataTransferPanel(props: {
 								<SelectContent />
 							</Select>
 						</div>
-						<Input
+						<FileInput
 							accept={accept()}
-							aria-label={t("dataTransfer.dumpFileToRestore")}
-							class="sr-only"
+							announcement={() => null}
 							disabled={!sourceId() || importPending()}
-							onChange={(event) => {
-								const file = event.currentTarget.files?.[0];
-								const targetSource = selectedSource();
-								event.currentTarget.value = "";
-								if (file && targetSource?.id) {
-									setPendingRestoreFile({
-										file,
-										format: importFormat(),
-										sourceId: targetSource.id,
-										sourceName: targetSource.name,
-									});
+							onReject={([rejected], details) => {
+								// The chooser filter is advisory. The restore job validates the file contents.
+								if (
+									details.reason === "picker" &&
+									rejected?.reasons.includes("file-type")
+								) {
+									chooseRestoreFile(rejected.file);
 								}
 							}}
-							ref={(element) => {
-								fileInput = element;
+							onValueChange={([file], details) => {
+								if (details.reason === "picker") chooseRestoreFile(file);
 							}}
-							tabindex={-1}
-							type="file"
-						/>
-						<Button
-							aria-busy={importPending()}
-							class="min-h-11 w-full sm:min-h-9 sm:w-auto"
-							disabled={!sourceId() || importPending()}
-							onClick={() => fileInput?.click()}
-							variant="outline"
+							value={EMPTY_FILE_SELECTION}
 						>
-							{importPending()
-								? t("dataTransfer.queueing")
-								: t("dataTransfer.chooseDumpFile")}
-						</Button>
+							<FileInputTrigger
+								aria-busy={importPending() ? "true" : "false"}
+								class="min-h-11 w-full sm:min-h-9 sm:w-auto"
+								render={(partProps) => (
+									<Button {...partProps} variant="outline" />
+								)}
+							>
+								{importPending()
+									? t("dataTransfer.queueing")
+									: t("dataTransfer.chooseDumpFile")}
+							</FileInputTrigger>
+						</FileInput>
 					</div>
 				</section>
 			</div>

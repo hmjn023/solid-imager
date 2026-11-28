@@ -9,7 +9,7 @@ import {
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/solid-query";
 import { Outlet } from "@tanstack/solid-router";
-import { createEffect, createSignal, onSettled } from "solid-js";
+import { createEffect, createSignal, onSettled, untrack } from "solid-js";
 import { ApiActivityIndicator } from "~/components/api-activity-indicator";
 import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { AppShell } from "./app-shell";
@@ -33,7 +33,7 @@ export function AppLayout(props: { jobsReplaySince?: number }) {
 	onSettled(() => {
 		setContext(document.modelContext);
 	});
-	const jobsReplaySince = props.jobsReplaySince;
+	const jobsReplaySince = untrack(() => props.jobsReplaySince);
 	const jobsReplay =
 		jobsReplaySince === undefined
 			? undefined

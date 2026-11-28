@@ -42,7 +42,7 @@ test(
 		await expect(palette).toBeVisible();
 		await expect(palette.getByPlaceholder("操作を検索...")).toBeFocused();
 
-		const items = palette.locator("[cmdk-item]");
+		const items = palette.getByRole("option");
 		await expect(items.first()).toHaveAttribute("aria-selected", "true");
 		await page.keyboard.press("ArrowUp");
 		await expect(items.last()).toHaveAttribute("aria-selected", "true");
@@ -54,6 +54,51 @@ test(
 		await expect(origin).toBeFocused();
 	},
 );
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+	test(
+		`Workspace command palette hands off focus to another dialog (${reducedMotion})`,
+		{ tag: "@desktop-only" },
+		async ({ page }) => {
+			await page.emulateMedia({ reducedMotion });
+			await openSearch(page);
+			const origin = page.getByRole("combobox", {
+				name: "メディアを検索",
+				exact: true,
+			});
+			await origin.focus();
+			const palette = page.getByRole("dialog", { name: "クイック操作" });
+			const commandInput = palette.getByRole("combobox", {
+				name: "クイック操作を検索",
+			});
+
+			for (const [action, title] of [
+				["メディアソースを追加", "ソースを追加"],
+				["キーボードショートカット", "キーボードショートカット"],
+			]) {
+				await page.keyboard.press("ControlOrMeta+KeyK");
+				await expect(commandInput).toBeFocused();
+				await commandInput.fill(action);
+				await expect(
+					palette.getByRole("option", { name: action }),
+				).toHaveAttribute("aria-selected", "true");
+				await commandInput.press("Enter");
+
+				const destination = page.getByRole("dialog", { name: title });
+				await expect(destination).toBeVisible();
+				expect(
+					await page
+						.locator('[data-slot="dialog-backdrop"][data-ending-style]')
+						.count(),
+				).toBe(0);
+				await expect(destination.locator(":focus")).toHaveCount(1);
+				await page.keyboard.press("Escape");
+				await expect(destination).toBeHidden();
+				await expect(origin).toBeFocused();
+			}
+		},
+	);
+}
 
 test(
 	"Workspace slash shortcut focuses search without swallowing slash input",

@@ -187,18 +187,14 @@ export type UseSourceMediaPageResult = {
 	jobProgress: () => JobProgressEvent | null;
 	presetClient: SourceMediaPagePresetClient;
 	handleUpload: (options: UploadOptions) => Promise<void>;
-	handleFileSelect: (e: Event) => Promise<void>;
-	handleAddButtonClick: () => void;
-	handleDrop: (e: DragEvent) => void;
-	handleDragOver: (e: DragEvent) => void;
+	acceptPickedFiles: (files: readonly File[]) => Promise<void>;
+	openUploadWithFiles: (files: File[]) => void;
 	handleDelete: (mediaId: string) => void;
-	confirmDelete: () => Promise<void>;
+	confirmDelete: () => Promise<boolean>;
 	handleCopyMove: (mediaId: string, mode: "copy" | "move") => void;
 	handleConfirmCopyMove: (targetSourceId: string) => Promise<void>;
 	handleSyncLoadedMedia: () => Promise<void>;
 	handleSyncSingleMedia: (mediaId: string) => Promise<void>;
-	fileInputRef: HTMLInputElement | undefined;
-	setFileInputRef: (el: HTMLInputElement) => void;
 };
 
 export function useSourceMediaPage(
@@ -387,11 +383,6 @@ export function useSourceMediaPage(
 		null,
 	);
 
-	let fileInputRef: HTMLInputElement | undefined;
-	const setFileInputRef = (el: HTMLInputElement) => {
-		fileInputRef = el;
-	};
-
 	// --- Refresh helpers ---
 	const refreshMediaQuery = () => {
 		void mediaQuery.refetch();
@@ -576,51 +567,30 @@ export function useSourceMediaPage(
 		}
 	};
 
-	const handleFileSelect = async (e: Event) => {
-		const target = e.target as HTMLInputElement;
-		if (target.files && target.files.length > 0) {
-			const selected = Array.from(target.files);
-			const jsonFiles: File[] = [];
-			const mediaFiles: File[] = [];
-			for (const file of selected) {
-				if (
-					file.type === "application/json" ||
-					file.name.toLowerCase().endsWith(".json")
-				) {
-					jsonFiles.push(file);
-				} else {
-					mediaFiles.push(file);
-				}
-			}
+	const openUploadWithFiles = (files: File[]) => {
+		if (files.length === 0) return;
+		setFilesToUpload(files);
+		setShowUploadModal(true);
+	};
 
-			for (const jsonFile of jsonFiles) {
-				await handleJsonFileUpload(jsonFile);
+	const acceptPickedFiles = async (files: readonly File[]) => {
+		const jsonFiles: File[] = [];
+		const mediaFiles: File[] = [];
+		for (const file of files) {
+			if (
+				file.type === "application/json" ||
+				file.name.toLowerCase().endsWith(".json")
+			) {
+				jsonFiles.push(file);
+			} else {
+				mediaFiles.push(file);
 			}
-			if (mediaFiles.length > 0) {
-				setFilesToUpload(mediaFiles);
-				setShowUploadModal(true);
-			}
-
-			target.value = "";
 		}
-	};
 
-	const handleAddButtonClick = () => {
-		fileInputRef?.click();
-	};
-
-	const handleDrop = (e: DragEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-			setFilesToUpload(Array.from(e.dataTransfer.files));
-			setShowUploadModal(true);
+		for (const jsonFile of jsonFiles) {
+			await handleJsonFileUpload(jsonFile);
 		}
-	};
-
-	const handleDragOver = (e: DragEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
+		openUploadWithFiles(mediaFiles);
 	};
 
 	const handleImagePasteItem = (
@@ -823,17 +793,13 @@ export function useSourceMediaPage(
 		jobProgress,
 		presetClient,
 		handleUpload,
-		handleFileSelect,
-		handleAddButtonClick,
-		handleDrop,
-		handleDragOver,
+		acceptPickedFiles,
+		openUploadWithFiles,
 		handleDelete: itemActions.openDelete,
 		confirmDelete: itemActions.confirmDelete,
 		handleCopyMove: itemActions.openCopyMove,
 		handleConfirmCopyMove: itemActions.confirmCopyMove,
 		handleSyncLoadedMedia,
 		handleSyncSingleMedia,
-		fileInputRef,
-		setFileInputRef,
 	};
 }

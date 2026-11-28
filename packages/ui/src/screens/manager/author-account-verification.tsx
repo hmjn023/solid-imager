@@ -4,7 +4,7 @@ import type {
 	AuthorAccountVerification,
 } from "@solid-imager/core/authors";
 import { useQuery } from "@tanstack/solid-query";
-import { createSignal, onCleanup, Show } from "solid-js";
+import { createSignal, onCleanup, Show, untrack } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -35,7 +35,7 @@ export function AuthorAccountVerificationPanel(props: {
 	onSaved: () => Promise<void>;
 }) {
 	const [username, setUsername] = createSignal(
-		props.account?.accountId.replace(/^@/, "") ?? "",
+		untrack(() => props.account?.accountId.replace(/^@/, "") ?? ""),
 	);
 	const [preview, setPreview] = createSignal<AuthorAccountVerification | null>(
 		null,
@@ -137,12 +137,13 @@ export function AuthorAccountVerificationPanel(props: {
 		setConfirmed(false);
 	};
 	const requestClose = () => {
-		if (busy()) return;
+		if (busy()) return false;
 		if (isDirty()) {
 			setDiscardOpen(true);
-			return;
+			return false;
 		}
 		closeDialog();
+		return true;
 	};
 	return (
 		<div class="mt-3 space-y-2">
@@ -192,26 +193,15 @@ export function AuthorAccountVerificationPanel(props: {
 			</Show>
 			<Dialog
 				open={open()}
-				onOpenChange={(value) => {
+				onOpenChange={(value, details) => {
 					if (value) {
 						setOpen(true);
-						return;
+					} else if (!requestClose()) {
+						details.cancel();
 					}
-					requestClose();
 				}}
 			>
-				<DialogContent
-					class="max-w-lg"
-					closeDisabled={busy()}
-					onEscapeKeyDown={(event) => {
-						event.preventDefault();
-						requestClose();
-					}}
-					onPointerDownOutside={(event) => {
-						event.preventDefault();
-						requestClose();
-					}}
-				>
+				<DialogContent class="max-w-lg" closeDisabled={busy()}>
 					<DialogHeader>
 						<DialogTitle>
 							{t("authorAccountVerification.verifyXAccount")}

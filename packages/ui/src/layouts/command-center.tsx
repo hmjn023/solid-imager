@@ -2,6 +2,7 @@ import { t } from "@solid-imager/i18n";
 import { useNavigate } from "@tanstack/solid-router";
 import {
 	type Component,
+	createEffect,
 	createMemo,
 	createSignal,
 	For,
@@ -59,6 +60,7 @@ type PaletteAction = {
 	id: string;
 	keywords: string[];
 	label: string;
+	opensDialog?: boolean;
 	run: () => void;
 	shortcutId?: ShortcutId;
 };
@@ -147,6 +149,7 @@ export function CommandCenter(props: CommandCenterProps) {
 				id: "add-media-source",
 				keywords: [addSourceLabel, "import", "folder", "library"],
 				label: addSourceLabel,
+				opensDialog: true,
 				run: () => props.onAddSource(),
 			},
 			{
@@ -170,6 +173,7 @@ export function CommandCenter(props: CommandCenterProps) {
 					"reference",
 				],
 				label: keyboardShortcutsLabel,
+				opensDialog: true,
 				run: () => props.onHelpOpenChange(true),
 				shortcutId: "shortcutHelp",
 			},
@@ -181,41 +185,40 @@ export function CommandCenter(props: CommandCenterProps) {
 		Actions: actions().filter((action) => action.group === "Actions"),
 		Navigate: actions().filter((action) => action.group === "Navigate"),
 	}));
-	let pendingActionFrame: number | undefined;
+	let pendingDialogAction: (() => void) | undefined;
 	onCleanup(() => {
-		if (pendingActionFrame !== undefined) {
-			cancelAnimationFrame(pendingActionFrame);
-		}
+		pendingDialogAction = undefined;
 	});
 	const runAction = (action: PaletteAction) => {
+		if (action.opensDialog) pendingDialogAction = action.run;
 		props.onPaletteOpenChange(false);
-		setQuery("");
-		if (pendingActionFrame !== undefined) {
-			cancelAnimationFrame(pendingActionFrame);
-		}
-		// Let the palette close before running actions that open a secondary modal.
-		pendingActionFrame = requestAnimationFrame(() => {
-			pendingActionFrame = undefined;
-			action.run();
+		if (!action.opensDialog) action.run();
+	};
+	const completePaletteChange = (open: boolean) => {
+		if (open || !pendingDialogAction) return;
+		// A motionless close can notify completion before the SDK restores focus.
+		queueMicrotask(() => {
+			const action = pendingDialogAction;
+			pendingDialogAction = undefined;
+			if (!props.paletteOpen) action?.();
 		});
 	};
-	const setPaletteOpen = (open: boolean) => {
-		if (!open) setQuery("");
-		props.onPaletteOpenChange(open);
-	};
 
-	createTrackedEffect(() => {
-		if (!props.paletteOpen) {
-			setQuery("");
-		}
-	});
+	createEffect(
+		() => props.paletteOpen,
+		(open) => {
+			if (open) pendingDialogAction = undefined;
+			else setQuery("");
+		},
+	);
 
 	return (
 		<>
 			<CommandDialog
 				description={t("commandCenter.searchNavigationAndApplicationActions")}
 				loop
-				onOpenChange={setPaletteOpen}
+				onOpenChange={props.onPaletteOpenChange}
+				onOpenChangeComplete={completePaletteChange}
 				open={props.paletteOpen}
 				title={t("sidebar.quickActions")}
 				query={query()}
@@ -314,5 +317,3 @@ export function CommandCenter(props: CommandCenterProps) {
 		</>
 	);
 }
-
-import { createTrackedEffect } from "solid-js";
