@@ -169,49 +169,54 @@ export function SourceList(props: SourceListProps) {
 						}
 						when={props.mediaSources.length > 0}
 					>
-						<For each={props.mediaSources}>
+						<For
+							each={props.mediaSources}
+							keyed={(source) => source.id ?? source}
+						>
 							{(source) => (
 								<div
 									class={`group/source flex min-h-11 items-center rounded-md pr-1 ${
-										isCurrentSource(source.id) ? "bg-accent" : "hover:bg-muted"
+										isCurrentSource(source().id)
+											? "bg-accent"
+											: "hover:bg-muted"
 									}`}
 								>
 									<Link
 										aria-current={
-											isCurrentSource(source.id) ? "page" : undefined
+											isCurrentSource(source().id) ? "page" : undefined
 										}
 										class="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										onClick={props.onNavigate}
-										params={{ mediaSourceId: source.id ?? "" }}
+										params={{ mediaSourceId: source().id ?? "" }}
 										to="/sources/$mediaSourceId"
 									>
 										<span
 											class="block truncate font-medium text-foreground text-xs"
-											title={source.name}
+											title={source().name}
 										>
-											{source.name}
+											{source().name}
 										</span>
 										<span class="mt-0.5 block text-label-xs text-muted-foreground">
 											{t("sourceList.valueValueValueItems", {
-												value0: String(sourceTypeLabel(source)),
+												value0: String(sourceTypeLabel(source())),
 												value2: String(
-													source.mediaCount?.toLocaleString() ?? "—",
+													source().mediaCount?.toLocaleString() ?? "—",
 												),
 											})}
 										</span>
 										<span
 											class="mt-0.5 block truncate text-label-xs text-muted-foreground"
-											title={source.lastSyncError ?? undefined}
+											title={source().lastSyncError ?? undefined}
 										>
-											{sourceSyncDetail(source)}
+											{sourceSyncDetail(source())}
 										</span>
 									</Link>
 									<SourceActions
-										onDelete={() => props.onDeleteSource(source)}
-										onEdit={() => props.onEditSource(source)}
-										onSync={() => props.onSyncSource(source)}
-										isSyncing={source.syncStatus === "syncing"}
-										sourceName={source.name}
+										onDelete={() => props.onDeleteSource(source())}
+										onEdit={() => props.onEditSource(source())}
+										onSync={() => props.onSyncSource(source())}
+										isSyncing={source().syncStatus === "syncing"}
+										sourceName={source().name}
 									/>
 								</div>
 							)}

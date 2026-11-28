@@ -1,4 +1,3 @@
-import { createRequest } from "./utils/create-request";
 import { useRenderedSearchState } from "./search-initial-state";
 import { t } from "@solid-imager/i18n";
 import {
@@ -13,7 +12,13 @@ import {
 import { type Preset } from "@solid-imager/core/presets";
 import Trash2 from "@lucide/solid/icons/trash";
 import { deepEqual } from "@solid-imager/core/utils";
-import { createSignal, Show } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	refresh,
+	Show,
+} from "solid-js";
 import type { StoreSetter } from "solid-js";
 import {
 	AlertDialog,
@@ -91,35 +96,16 @@ function createClearedSearchState(state: SearchState): SearchState {
 }
 
 export function PresetManager(props: PresetManagerProps) {
-	const { data, refetch } = createRequest(
-		() => props.presetClient,
-		(client) => client.list(),
+	const presets = createMemo(
+		async () =>
+			(await props.presetClient.list()).filter(
+				(preset) => !preset.name.startsWith("current"),
+			),
+		{ ssrSource: "client" },
 	);
 	const renderedState = useRenderedSearchState();
 	const currentState = () => props.state ?? renderedState();
 	const updateState = props.setState ?? setSearchState;
-
-	const presets = () =>
-		data()?.filter((preset) => !preset.name.startsWith("current"));
-
-	createTrackedEffect(() => {
-		const availablePresets = presets();
-		const state = currentState();
-		if (!availablePresets || state.activePresetId !== null) {
-			return;
-		}
-		const condition = normalizeSearchCondition(
-			getSearchConditionFromState(state),
-		);
-		const matchingPreset = availablePresets.find((preset) =>
-			deepEqual(normalizeSearchCondition(preset.value), condition),
-		);
-		if (matchingPreset) {
-			updateState((draft) => {
-				draft.activePresetId = matchingPreset.id;
-			});
-		}
-	});
 
 	const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 	const [confirmSaveDiscard, setConfirmSaveDiscard] = createSignal(false);
@@ -131,7 +117,10 @@ export function PresetManager(props: PresetManagerProps) {
 	const [isDeleting, setIsDeleting] = createSignal(false);
 	const [deleteError, setDeleteError] = createSignal<string | null>(null);
 	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
-		null,
+		() => {
+			const active = currentState().activePresetId;
+			return active ? String(active) : null;
+		},
 	);
 	const isSaveDirty = () => newPresetName().trim().length > 0;
 	const requestCloseSaveDialog = () => {
@@ -143,15 +132,6 @@ export function PresetManager(props: PresetManagerProps) {
 		setIsSaveDialogOpen(false);
 		setSaveError(null);
 	};
-
-	createTrackedEffect(() => {
-		const active = currentState().activePresetId;
-		if (active) {
-			setSelectedPresetId(String(active));
-		} else {
-			setSelectedPresetId(null);
-		}
-	});
 
 	const handleSave = async (event: Event) => {
 		event.preventDefault();
@@ -179,7 +159,7 @@ export function PresetManager(props: PresetManagerProps) {
 			});
 			setIsSaveDialogOpen(false);
 			setNewPresetName("");
-			void refetch().catch(() => undefined);
+			void refresh(presets).catch(() => undefined);
 			toast.success(t("presetManager.presetSaved"));
 			props.onAction?.();
 		} catch {
@@ -209,7 +189,7 @@ export function PresetManager(props: PresetManagerProps) {
 			if (selectedPresetId() === String(id)) {
 				setSelectedPresetId(null);
 			}
-			void refetch().catch(() => undefined);
+			void refresh(presets).catch(() => undefined);
 			setIsDeleteDialogOpen(false);
 			setPresetToDelete(null);
 		} catch {
@@ -225,7 +205,7 @@ export function PresetManager(props: PresetManagerProps) {
 		if (!id) {
 			return;
 		}
-		const preset = presets()?.find((item: Preset) => item.id === Number(id));
+		const preset = presets().find((item) => item.id === Number(id));
 		if (preset) {
 			updateState((draft) => {
 				Object.assign(draft, preparePresetState(preset, currentState()));
@@ -242,7 +222,7 @@ export function PresetManager(props: PresetManagerProps) {
 		props.onAction?.();
 	};
 
-	return (
+	const renderControls = () => (
 		<div class={cn("flex w-full flex-col gap-2", props.class)}>
 			<AlertDialog
 				onOpenChange={(open) => {
@@ -291,8 +271,8 @@ export function PresetManager(props: PresetManagerProps) {
 				<div class="min-w-0 flex-1">
 					<Select<string>
 						itemComponent={(itemProps) => {
-							const preset = presets()?.find(
-								(item: Preset) => String(item.id) === itemProps.item.rawValue,
+							const preset = presets().find(
+								(item) => String(item.id) === itemProps.item.rawValue,
 							);
 							return (
 								<SelectItem
@@ -304,9 +284,7 @@ export function PresetManager(props: PresetManagerProps) {
 							);
 						}}
 						onChange={setSelectedPresetId}
-						options={
-							presets()?.map((preset: Preset) => String(preset.id)) || []
-						}
+						options={presets().map((preset) => String(preset.id))}
 						placeholder={t("presetManager.selectAPreset")}
 						value={selectedPresetId()}
 					>
@@ -316,9 +294,8 @@ export function PresetManager(props: PresetManagerProps) {
 						>
 							<SelectValue<string>>
 								{(state) => {
-									const preset = presets()?.find(
-										(item: Preset) =>
-											String(item.id) === state.selectedOption(),
+									const preset = presets().find(
+										(item) => String(item.id) === state.selectedOption(),
 									);
 									return (
 										<span class="truncate">
@@ -493,6 +470,29 @@ export function PresetManager(props: PresetManagerProps) {
 			</div>
 		</div>
 	);
+	return (
+		<Show when={presets()}>
+			{(availablePresets) => {
+				createEffect(
+					() => {
+						const state = currentState();
+						if (state.activePresetId !== null) return;
+						const condition = normalizeSearchCondition(
+							getSearchConditionFromState(state),
+						);
+						return availablePresets().find((preset) =>
+							deepEqual(normalizeSearchCondition(preset.value), condition),
+						)?.id;
+					},
+					(matchingPresetId) => {
+						if (matchingPresetId === undefined) return;
+						updateState((draft) => {
+							draft.activePresetId = matchingPresetId;
+						});
+					},
+				);
+				return renderControls();
+			}}
+		</Show>
+	);
 }
-
-import { createTrackedEffect } from "solid-js";

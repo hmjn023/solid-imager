@@ -16,7 +16,13 @@ export function createCollectionInspector(options: {
 }) {
 	const [isWide, setIsWide] = createSignal(false);
 	const [isOpen, setIsOpen] = createSignal(true);
-	const [previewId, setPreviewId] = createSignal<string | null>(null);
+	const [previewId, setPreviewId] = createSignal<string | null>(
+		(previousId) =>
+			options.enabled()
+				? reconcileCollectionPreviewId(options.media(), previousId)
+				: null,
+		{ loadingValue: null },
+	);
 	const canPreview = () => isWide() && options.enabled();
 	const isVisible = () =>
 		canPreview() &&
@@ -32,12 +38,6 @@ export function createCollectionInspector(options: {
 		return () => viewport.removeEventListener("change", update);
 	});
 
-	createTrackedEffect(() => {
-		const nextId = options.enabled()
-			? reconcileCollectionPreviewId(options.media(), previewId())
-			: null;
-		if (nextId !== previewId()) setPreviewId(nextId);
-	});
 	const selectMedia = (media: Media) => {
 		setPreviewId(media.id);
 		setIsOpen(true);
@@ -203,5 +203,3 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 		</aside>
 	);
 }
-
-import { createTrackedEffect } from "solid-js";
