@@ -1,7 +1,7 @@
 import { mediaTypeLabel } from "./display-labels";
 import { t } from "@solid-imager/i18n";
 import type { MediaSafe } from "@solid-imager/core/media";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 import { Card } from "./card";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";

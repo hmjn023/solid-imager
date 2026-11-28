@@ -1,7 +1,7 @@
 import { t } from "@solid-imager/i18n";
-import Ellipsis from "lucide-solid/icons/ellipsis";
-import Globe from "lucide-solid/icons/globe";
-import type { JSX } from "solid-js";
+import Ellipsis from "@lucide/solid/icons/ellipsis";
+import Globe from "@lucide/solid/icons/globe";
+import type { JSX } from "@solidjs/web";
 import { Button } from "../button";
 import {
 	DropdownMenu,
@@ -23,7 +23,7 @@ export function ViewerActionsMenu(props: {
 				as={Button}
 				variant="outline"
 				size="icon"
-				class="size-11 shrink-0"
+				class="size-11 shrink-0 sm:size-11"
 				aria-label={t("mediaActions.moreActions")}
 				title={t("mediaActions.moreActions")}
 			>

@@ -6,8 +6,8 @@ import {
 	watcherErrorEventSchema,
 } from "@solid-imager/core/events";
 import type { QueryClient, QueryKey } from "@tanstack/solid-query";
-import { type Accessor, createEffect, onCleanup } from "solid-js";
-import { isServer } from "solid-js/web";
+import { type Accessor } from "solid-js";
+import { isServer } from "@solidjs/web";
 import { toast } from "../toast";
 
 export type RawEventHandler = (event: SourceEvent) => void;
@@ -28,7 +28,7 @@ export type UseSourcesEventsOptions = {
 };
 
 export function useSourcesEvents(options: UseSourcesEventsOptions): void {
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (isServer) {
 			return;
 		}
@@ -121,6 +121,8 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 			}
 		});
 
-		onCleanup(cleanup);
+		return cleanup;
 	});
 }
+
+import { createTrackedEffect } from "solid-js";

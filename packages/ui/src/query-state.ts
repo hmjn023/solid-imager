@@ -12,9 +12,20 @@ export type QueryUiState<T> = {
 export type QueryStateLike<T> = {
 	data: T | undefined;
 	error?: unknown;
+	isPending?: boolean;
+	isLoadingError?: boolean;
 	status: "pending" | "error" | "success";
 	fetchStatus: "idle" | "fetching" | "paused";
 };
+
+export function readQueryData<T>(query: {
+	readonly data: T;
+	readonly isPending?: boolean;
+	readonly isLoadingError?: boolean;
+}): T | undefined {
+	if (query.isPending || query.isLoadingError) return undefined;
+	return query.data;
+}
 
 export type ToQueryUiStateOptions<T> = {
 	isEmpty?: (data: T) => boolean;
@@ -33,7 +44,8 @@ export function toQueryUiState<T>(
 	query: QueryStateLike<T>,
 	options: ToQueryUiStateOptions<T> = {},
 ): QueryUiState<T> {
-	const hasData = query.data !== undefined;
+	const data = readQueryData(query);
+	const hasData = data !== undefined;
 	const error = query.error ?? undefined;
 	const fetchState: QueryUiFetchState =
 		query.fetchStatus === "paused"
@@ -42,11 +54,11 @@ export function toQueryUiState<T>(
 				? "background-fetching"
 				: "idle";
 
-	if (query.data !== undefined) {
+	if (hasData) {
 		return {
-			phase: options.isEmpty?.(query.data) ? "empty" : "data",
+			phase: options.isEmpty?.(data) ? "empty" : "data",
 			fetchState,
-			data: query.data,
+			data,
 			error,
 		};
 	}

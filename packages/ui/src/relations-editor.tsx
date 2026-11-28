@@ -215,8 +215,13 @@ export function RelationsEditor(props: Props) {
 		ips: groupDraft(props.groups.ips),
 		characters: groupDraft(props.groups.characters),
 	});
-	const [baseline, setBaseline] = createSignal(readDraft());
-	const [drafts, setDrafts] = createSignal(baseline());
+	const emptyDraft: Record<RelationGroup, Draft> = {
+		projects: { ids: [], names: [], query: "" },
+		ips: { ids: [], names: [], query: "" },
+		characters: { ids: [], names: [], query: "" },
+	};
+	const [baseline, setBaseline] = createSignal(emptyDraft);
+	const [drafts, setDrafts] = createSignal(emptyDraft);
 	const [createdItems, setCreatedItems] = createSignal<
 		Record<RelationGroup, Item[]>
 	>({
@@ -238,7 +243,15 @@ export function RelationsEditor(props: Props) {
 			);
 		}),
 	);
-	createEffect(() => props.onDirtyChange?.(open() && (dirty() || saving())));
+	createEffect(
+		() => ({
+			onDirtyChange: props.onDirtyChange,
+			dirty: open() && (dirty() || saving()),
+		}),
+		({ onDirtyChange, dirty }) => {
+			onDirtyChange?.(dirty);
+		},
+	);
 	const begin = () => {
 		const initial = readDraft();
 		setBaseline(initial);

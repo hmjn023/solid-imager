@@ -18,14 +18,23 @@ export function MediaDeleteDialog(props: {
 	isSubmitting: boolean;
 	error?: string;
 	onOpenChange: (open: boolean) => void;
-	onConfirm: () => Promise<void>;
+	onConfirm: () => Promise<boolean>;
 }) {
+	let confirmSucceeded = false;
 	return (
 		<AlertDialog
 			open={props.open}
-			onOpenChange={(open) => {
-				if (!props.isSubmitting) props.onOpenChange(open);
+			onOpenChange={(open, details) => {
+				if (
+					props.isSubmitting ||
+					(details.reason === "action" && !confirmSucceeded)
+				) {
+					details.cancel();
+					return;
+				}
+				props.onOpenChange(open);
 			}}
+			pendingAnnouncement={t("status.deleting")}
 		>
 			<AlertDialogContent data-workspace-theme="">
 				<AlertDialogHeader>
@@ -44,16 +53,11 @@ export function MediaDeleteDialog(props: {
 					</Alert>
 				</Show>
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={props.isSubmitting}>
-						{t("actions.cancel")}
-					</AlertDialogCancel>
+					<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						variant="destructive"
-						aria-busy={props.isSubmitting}
-						disabled={props.isSubmitting}
-						onClick={(event) => {
-							event.preventDefault();
-							void props.onConfirm();
+						action={async () => {
+							confirmSucceeded = await props.onConfirm();
 						}}
 					>
 						{props.isSubmitting ? t("status.deleting") : t("actions.delete")}

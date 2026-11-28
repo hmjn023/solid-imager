@@ -1,10 +1,10 @@
 import type { ParentProps } from "solid-js";
-import { createEffect, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 import { Tooltip } from "../tooltip";
 
 export function SidebarTooltip(props: ParentProps<{ disabled: boolean }>) {
 	const [open, setOpen] = createSignal(false);
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (props.disabled) setOpen(false);
 	});
 
@@ -19,3 +19,5 @@ export function SidebarTooltip(props: ParentProps<{ disabled: boolean }>) {
 		</Tooltip>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

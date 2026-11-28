@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { defineConfig, type Plugin } from "vite";
-import solidPlugin from "vite-plugin-solid";
+import solidPlugin from "@solidjs/vite-plugin";
 
 const fixtureDirectory = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.resolve(fixtureDirectory, "../../../../");
@@ -50,7 +50,23 @@ const outputDirectory = path.join(runtimeDirectory, "tauri-dist");
 const apiTarget = `http://127.0.0.1:${serverPort}`;
 const fixtureOrigin = `http://127.0.0.1:${tauriPort}`;
 const routerModulePath = path.join(tauriRoot, "src/router.tsx");
+const rpcClientPath = path.join(tauriRoot, "src/orpc-client.ts");
 const adapterDirectory = path.join(fixtureDirectory, "adapters");
+
+function useBrowserHttpAdapter(): Plugin {
+	return {
+		name: "solid-imager-e2e-tauri-browser-http",
+		enforce: "pre",
+		transform(code, id) {
+			if (path.resolve(id.split("?", 1)[0]) !== rpcClientPath) return null;
+			const adapterPath = path.join(adapterDirectory, "http.ts");
+			return {
+				code: `import { fetch } from ${JSON.stringify(adapterPath)};\n${code}`,
+				map: null,
+			};
+		},
+	};
+}
 
 function rewriteRouteTreeImport(): Plugin {
 	return {
@@ -136,8 +152,22 @@ export default defineConfig({
 	base: "./",
 	cacheDir: path.join(runtimeDirectory, "tauri-vite-cache"),
 	optimizeDeps: {
+		exclude: ["@ui-sdk/core"],
 		// Split routes can first expose these dependencies after navigation starts.
-		include: ["@tanstack/solid-db", "@tanstack/solid-virtual"],
+		include: [
+			"@orpc/client",
+			"@orpc/contract",
+			"@orpc/contract/plugins",
+			"@orpc/openapi",
+			"@orpc/openapi/fetch",
+			"@tanstack/db",
+			"@tanstack/form-core",
+			"@tanstack/solid-hotkeys",
+			"@tanstack/virtual-core",
+			"clsx",
+			"tailwind-merge",
+			"uuid",
+		],
 	},
 	resolve: {
 		alias: {
@@ -156,7 +186,7 @@ export default defineConfig({
 			"@tanstack/solid-query",
 			"@tanstack/solid-router",
 			"solid-js",
-			"solid-js/web",
+			"@solidjs/web",
 			"zod",
 		],
 	},
@@ -164,6 +194,7 @@ export default defineConfig({
 		host: "127.0.0.1",
 		port: tauriPort,
 		strictPort: true,
+		cors: { origin: fixtureOrigin },
 		hmr: {
 			host: "127.0.0.1",
 			port: tauriHmrPort,
@@ -179,6 +210,7 @@ export default defineConfig({
 		host: "127.0.0.1",
 		port: tauriPort,
 		strictPort: true,
+		cors: { origin: fixtureOrigin },
 		proxy,
 	},
 	build: {
@@ -191,6 +223,7 @@ export default defineConfig({
 	},
 	plugins: [
 		binaryMediaProxy(),
+		useBrowserHttpAdapter(),
 		tanstackRouter({
 			target: "solid",
 			routesDirectory: path.join(tauriRoot, "src/routes"),

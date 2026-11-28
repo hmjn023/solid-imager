@@ -1,6 +1,11 @@
 type BrowserFetchInput = Parameters<typeof globalThis.fetch>[0];
 type BrowserFetchInit = Parameters<typeof globalThis.fetch>[1];
 
+// Each desktop window owns its HTTP client. Give its streams a separate
+// Chromium connection pool so two fixture tabs cannot starve the Vite proxy.
+const eventOrigin = new URL(window.location.origin);
+eventOrigin.hostname = `tauri-${crypto.randomUUID()}.localhost`;
+
 /**
  * Browser substitute for the native Tauri HTTP plugin.
  *
@@ -17,10 +22,18 @@ export async function fetch(
 	// Native HTTP can reach a separate server without browser CORS. Forward that
 	// server's calls through the fixture proxy when emulating the plugin in Chromium.
 	const url = new URL(request.url);
+	const usesServerProxy = url.origin === import.meta.env.VITE_API_URL;
+	const fixtureRequest =
+		usesServerProxy || url.origin === window.location.origin;
+	const requestPath = url.pathname + url.search;
+	const isEventStream =
+		url.pathname.startsWith("/api/") && url.pathname.endsWith("/events");
 	const target =
-		url.origin === import.meta.env.VITE_API_URL
-			? url.pathname + url.search
-			: request.url;
+		fixtureRequest && isEventStream
+			? new URL(requestPath, eventOrigin)
+			: usesServerProxy
+				? requestPath
+				: request.url;
 	return globalThis.fetch(target, {
 		body,
 		cache: request.cache,

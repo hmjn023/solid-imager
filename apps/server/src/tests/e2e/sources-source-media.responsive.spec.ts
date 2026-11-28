@@ -175,16 +175,17 @@ test("source media exposes mobile filters and touch selection", async ({
 	if (usesMobileControls(testInfo.project.name))
 		await expectTouchTarget(filterButton);
 	await filterButton.click();
-	const filterDialog = page.getByRole("dialog", {
-		name: "検索フィルター",
-		exact: true,
+	const filterDialog = page.getByRole("dialog").filter({
+		has: page.getByRole("heading", { name: "検索フィルター", exact: true }),
 	});
 	const fileNameInput = filterDialog.getByRole("textbox", {
 		name: "ファイル名検索",
 		exact: true,
 	});
 	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
-	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
+	await filterDialog
+		.getByRole("button", { name: "閉じる", exact: true })
+		.click();
 	await expect(filterDialog).toBeHidden();
 	await expect(resultCount).toHaveText("1件");
 	await expect(

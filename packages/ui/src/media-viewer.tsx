@@ -1,16 +1,21 @@
+import { cn } from "./utils/cn";
 import { t } from "@solid-imager/i18n";
 import {
-	createEffect,
+	Toolbar,
+	ToolbarButton,
+	ToolbarSeparator,
+} from "@ui-sdk/solid/toolbar";
+import {
 	createMemo,
 	createSignal,
 	For,
 	Match,
 	onCleanup,
-	onMount,
+	onSettled,
 	Show,
 	Switch,
 } from "solid-js";
-import { Button } from "./button";
+import { Button, buttonVariants } from "./button";
 import {
 	Dialog,
 	DialogContent,
@@ -18,7 +23,6 @@ import {
 	DialogTitle,
 } from "./dialog";
 import { clampMediaPan, type MediaPan } from "./media-viewer-pan";
-import { Separator } from "./separator";
 import { LoadingRegion, Skeleton } from "./skeleton";
 import { VideoPlayer } from "./video-player";
 import { Maximize2, Minus, Plus, RotateCcw } from "./workspace/icons";
@@ -95,6 +99,11 @@ const PAN_DIRECTIONS = [
 		y: 0,
 	},
 ] as const;
+
+const ZOOM_ICON_BUTTON_CLASS = cn(
+	buttonVariants({ size: "icon", variant: "ghost" }),
+	"size-11 p-0 data-disabled:pointer-events-none data-disabled:opacity-50 sm:size-8",
+);
 
 export function MediaViewer(props: MediaViewerProps) {
 	const mediaSource = createMemo(() => props.source);
@@ -180,7 +189,7 @@ export function MediaViewer(props: MediaViewerProps) {
 			resetView();
 			return;
 		}
-		if (zoom() <= 1 || event.shiftKey) return;
+		if (event.target !== panHandle || zoom() <= 1 || event.shiftKey) return;
 		const direction = PAN_DIRECTIONS.find(
 			(item) => event.key.toLowerCase() === `arrow${item.name}`,
 		);
@@ -303,7 +312,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		}
 	};
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const source = mediaSource();
 		void retryCount();
 		const controller = new AbortController();
@@ -331,25 +340,25 @@ export function MediaViewer(props: MediaViewerProps) {
 			}
 		})();
 
-		onCleanup(() => {
+		return () => {
 			disposed = true;
 			controller.abort();
 			if (currentUrl && source.revokeUrl) {
 				source.revokeUrl(currentUrl);
 			}
-		});
+		};
 	});
-	onMount(() => {
+	onSettled(() => {
 		const handleFullscreenChange = () => {
 			setIsFullscreen(document.fullscreenElement === viewer);
 		};
 		document.addEventListener("fullscreenchange", handleFullscreenChange);
 		const handleResize = () => setPan((current) => clampPan(current));
 		window.addEventListener("resize", handleResize);
-		onCleanup(() =>
-			document.removeEventListener("fullscreenchange", handleFullscreenChange),
-		);
-		onCleanup(() => window.removeEventListener("resize", handleResize));
+		return () => {
+			document.removeEventListener("fullscreenchange", handleFullscreenChange);
+			window.removeEventListener("resize", handleResize);
+		};
 	});
 
 	return (
@@ -441,7 +450,7 @@ export function MediaViewer(props: MediaViewerProps) {
 									<img
 										alt={props.fileName}
 										class="pointer-events-none h-full w-full select-none object-contain"
-										draggable={false}
+										draggable="false"
 										fetchpriority="high"
 										height={props.height}
 										onError={() => handleMediaError(media)}
@@ -479,12 +488,14 @@ export function MediaViewer(props: MediaViewerProps) {
 							"mediaViewer.valueViewerUseArrowKeysToPanTheEnlarged",
 							{ value0: String(props.fileName) },
 						)}
-						class="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring media-viewer-stage"
-						classList={{
-							"cursor-grabbing": isPanning(),
-							"cursor-grab": !isPanning() && zoom() > 1,
-							"cursor-zoom-in": !isPanning() && zoom() <= 1,
-						}}
+						class={cn(
+							"relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring media-viewer-stage",
+							{
+								"cursor-grabbing": isPanning(),
+								"cursor-grab": !isPanning() && zoom() > 1,
+								"cursor-zoom-in": !isPanning() && zoom() <= 1,
+							},
+						)}
 						data-media-viewer-interactive
 						onDblClick={() => {
 							if (zoom() > 1) resetView();
@@ -532,7 +543,7 @@ export function MediaViewer(props: MediaViewerProps) {
 								<img
 									alt={props.fileName}
 									class="media-viewer-transform pointer-events-none h-full w-full select-none object-contain motion-safe:transition-transform"
-									draggable={false}
+									draggable="false"
 									height={props.height}
 									onError={() => handleMediaError(media)}
 									onLoad={() => setPan((current) => clampPan(current))}
@@ -579,55 +590,47 @@ export function MediaViewer(props: MediaViewerProps) {
 									)}
 								</For>
 							</fieldset>
-							<div
+							<Toolbar
 								aria-label={t("mediaViewer.imageZoomControls")}
 								class="flex items-center gap-0.5 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
-								role="toolbar"
 							>
-								<Button
+								<ToolbarButton
 									aria-label={t("mediaViewer.zoomOut")}
-									class="size-11 p-0 sm:size-8"
+									class={ZOOM_ICON_BUTTON_CLASS}
 									disabled={zoom() <= 1}
 									onClick={() => setZoomAroundPoint(zoom() / 1.25)}
-									size="icon"
-									variant="ghost"
 								>
 									<Minus aria-hidden="true" size={15} />
-								</Button>
-								<button
+								</ToolbarButton>
+								<ToolbarButton
 									aria-label={t("mediaViewer.resetZoomToFit")}
 									class="flex min-h-11 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-label-sm tabular-nums hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8"
 									onClick={resetView}
-									type="button"
 								>
 									<RotateCcw aria-hidden="true" size={12} />
 									{zoomPercent()}%
-								</button>
-								<Button
+								</ToolbarButton>
+								<ToolbarButton
 									aria-label={t("mediaViewer.zoomIn")}
-									class="size-11 p-0 sm:size-8"
+									class={ZOOM_ICON_BUTTON_CLASS}
 									disabled={zoom() >= 8}
 									onClick={() => setZoomAroundPoint(zoom() * 1.25)}
-									size="icon"
-									variant="ghost"
 								>
 									<Plus aria-hidden="true" size={15} />
-								</Button>
-								<Separator class="mx-0.5 h-5" orientation="vertical" />
-								<Button
+								</ToolbarButton>
+								<ToolbarSeparator class="mx-0.5 h-5 w-px shrink-0 bg-border" />
+								<ToolbarButton
 									aria-label={
 										isFullscreen()
 											? t("mediaViewer.exitFullscreen")
 											: t("mediaViewer.enterFullscreen")
 									}
-									class="size-11 p-0 sm:size-8"
+									class={ZOOM_ICON_BUTTON_CLASS}
 									onClick={() => void toggleFullscreen()}
-									size="icon"
-									variant="ghost"
 								>
 									<Maximize2 aria-hidden="true" size={15} />
-								</Button>
-							</div>
+								</ToolbarButton>
+							</Toolbar>
 						</fieldset>
 						<span aria-live="polite" class="sr-only">
 							{t("mediaViewer.zoomValuePercentValue", {
@@ -641,3 +644,5 @@ export function MediaViewer(props: MediaViewerProps) {
 		</>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

@@ -9,15 +9,8 @@ import type {
 	ClusteringRunSummary,
 	StartCharacterClustering,
 } from "@solid-imager/core/characters";
-import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
-import {
-	batch,
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	Show,
-} from "solid-js";
+import { useInfiniteQuery, useQuery } from "@tanstack/solid-query";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import {
 	EmptyState,
 	ErrorState,
@@ -293,13 +286,13 @@ export function CharacterClusteringReviewPanel(props: {
 	const [detailOrder, setDetailOrder] =
 		createSignal<ClusteringMediaRequest["order"]>("weak");
 	const [large, setLarge] = createSignal(false);
-	const runs = createQuery(() => ({
+	const runs = useQuery(() => ({
 		queryKey: ["character-clustering", "runs"],
 		queryFn: props.actions.listRuns,
 		staleTime: 30_000,
 	}));
 	// Read resource-backed data only after its initial pending phase; keep controls mounted.
-	const runsData = () => (runs.isPending ? undefined : runs.data);
+	const runsData = () => (runs.isPending ? undefined : readQueryData(runs));
 	const current = createMemo(
 		() =>
 			runsData()?.find((run) => run.id === chosenRun()) ??
@@ -315,7 +308,7 @@ export function CharacterClusteringReviewPanel(props: {
 		comparisonOptions().find((run) => run.id === chosenComparison()),
 	);
 	const runId = () => current()?.id ?? "";
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const run = current();
 		if (run) writePreference("run", run.id);
 		writePreference("comparison", chosenComparison());
@@ -327,7 +320,7 @@ export function CharacterClusteringReviewPanel(props: {
 		comparisonRunId: comparison()?.id,
 		query: appliedQuery(),
 	});
-	const groups = createInfiniteQuery(() => {
+	const groups = useInfiniteQuery(() => {
 		const request = { ...input(), sort: sort(), limit: PAGE };
 		return {
 			queryKey: ["character-clustering", "groups-scroll", request],
@@ -345,7 +338,7 @@ export function CharacterClusteringReviewPanel(props: {
 			enabled: Boolean(current()) && view() === "groups",
 		};
 	});
-	const noise = createInfiniteQuery(() => {
+	const noise = useInfiniteQuery(() => {
 		const request = {
 			...input(),
 			clusterId: -1,
@@ -376,7 +369,7 @@ export function CharacterClusteringReviewPanel(props: {
 		query: "",
 		order: detailOrder(),
 	});
-	const detail = createInfiniteQuery(() => {
+	const detail = useInfiniteQuery(() => {
 		const request = detailInput();
 		return {
 			queryKey: ["character-clustering", "detail-scroll", request],
@@ -394,9 +387,11 @@ export function CharacterClusteringReviewPanel(props: {
 			enabled: Boolean(current()) && detailId() !== null,
 		};
 	});
-	const groupsData = () => (groups.isPending ? undefined : groups.data);
-	const noiseData = () => (noise.isPending ? undefined : noise.data);
-	const detailData = () => (detail.isPending ? undefined : detail.data);
+	const groupsData = () =>
+		groups.isPending ? undefined : readQueryData(groups);
+	const noiseData = () => (noise.isPending ? undefined : readQueryData(noise));
+	const detailData = () =>
+		detail.isPending ? undefined : readQueryData(detail);
 	const groupItems = createMemo(
 		() => groupsData()?.pages.flatMap((page) => page.groups) ?? [],
 	);
@@ -422,7 +417,7 @@ export function CharacterClusteringReviewPanel(props: {
 	const follow = (cluster: number) => {
 		const other = comparison();
 		if (!other) return;
-		batch(() => {
+		{
 			const previous = runId();
 			setChosenRun(other.id);
 			setChosenComparison(previous);
@@ -430,7 +425,7 @@ export function CharacterClusteringReviewPanel(props: {
 			setView(cluster < 0 ? "noise" : "groups");
 			setQuery("");
 			setAppliedQuery("");
-		});
+		}
 	};
 	const refresh = () => {
 		void runs.refetch();
@@ -515,11 +510,10 @@ export function CharacterClusteringReviewPanel(props: {
 								optionValue="id"
 								optionTextValue={title}
 								onChange={(value) => {
-									if (value && value.id !== runId())
-										batch(() => {
-											setChosenRun(value.id);
-											reset();
-										});
+									if (value && value.id !== runId()) {
+										setChosenRun(value.id);
+										reset();
+									}
 								}}
 								itemComponent={(item) => (
 									<SelectItem item={item.item}>
@@ -552,10 +546,9 @@ export function CharacterClusteringReviewPanel(props: {
 										optionTextValue={title}
 										placeholder={t("characterClustering.chooseComparison")}
 										onChange={(value) => {
-											if (value?.id !== chosenComparison())
-												batch(() => {
-													setChosenComparison(value?.id ?? "");
-												});
+											if (value?.id !== chosenComparison()) {
+												setChosenComparison(value?.id ?? "");
+											}
 										}}
 										itemComponent={(item) => (
 											<SelectItem item={item.item}>
@@ -663,10 +656,10 @@ export function CharacterClusteringReviewPanel(props: {
 								class="flex-wrap justify-start gap-2"
 								onChange={(value) => {
 									if (value === "groups" || value === "noise") {
-										batch(() => {
+										{
 											setView(value);
 											reset();
-										});
+										}
 									}
 								}}
 								value={view()}
@@ -699,9 +692,9 @@ export function CharacterClusteringReviewPanel(props: {
 							class="flex flex-wrap items-end gap-2"
 							onSubmit={(event) => {
 								event.preventDefault();
-								batch(() => {
+								{
 									setAppliedQuery(query());
-								});
+								}
 							}}
 						>
 							<TextField
@@ -722,10 +715,10 @@ export function CharacterClusteringReviewPanel(props: {
 							<Show when={appliedQuery()}>
 								<Button
 									onClick={() =>
-										batch(() => {
+										(() => {
 											setQuery("");
 											setAppliedQuery("");
-										})
+										})()
 									}
 									variant="outline"
 								>
@@ -742,9 +735,9 @@ export function CharacterClusteringReviewPanel(props: {
 										value === "mixed" ||
 										value === "weak"
 									) {
-										batch(() => {
+										{
 											setSort(value);
-										});
+										}
 									}
 								}}
 								value={sort()}
@@ -860,10 +853,10 @@ export function CharacterClusteringReviewPanel(props: {
 											)}
 											class="absolute inset-0 z-10 h-full w-full rounded-lg p-0 hover:bg-transparent"
 											onClick={() =>
-												batch(() => {
+												(() => {
 													setDetailId(group.id);
 													setDetailOrder("weak");
-												})
+												})()
 											}
 											variant="ghost"
 										>
@@ -918,10 +911,10 @@ export function CharacterClusteringReviewPanel(props: {
 													<Button
 														class="relative z-20 h-auto min-h-11 sm:min-h-8 max-w-full whitespace-normal px-1 text-xs"
 														onClick={() =>
-															batch(() => {
+															(() => {
 																setQuery(character.name);
 																setAppliedQuery(character.name);
-															})
+															})()
 														}
 														variant="link"
 													>
@@ -1063,9 +1056,9 @@ export function CharacterClusteringReviewPanel(props: {
 							class="flex-wrap justify-start gap-2"
 							onChange={(value) => {
 								if (value === "weak" || value === "strong") {
-									batch(() => {
+									{
 										setDetailOrder(value);
-									});
+									}
 								}
 							}}
 							value={detailOrder()}
@@ -1138,3 +1131,7 @@ export function CharacterClusteringReviewPanel(props: {
 		</div>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";
+
+import { readQueryData } from "../../query-state";

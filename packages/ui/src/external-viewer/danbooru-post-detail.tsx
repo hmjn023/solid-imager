@@ -12,7 +12,7 @@ import {
 	getDanbooruPreview,
 	type DanbooruPost,
 } from "@solid-imager/core/danbooru";
-import { For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 import { EmptyState } from "../async-state";
 import {
 	formatBytes,
@@ -44,24 +44,30 @@ export function DanbooruPostDetail(
 	return (
 		<ViewerDetail {...props} provider="Danbooru">
 			{(post) => {
-				const title = t("danbooruScreen.danbooruValue", {
-					value0: String(post.id),
+				const title = () =>
+					t("danbooruScreen.danbooruValue", {
+						value0: String(post.id),
+					});
+				const source = createMemo(() => {
+					const preview = getDanbooruPreview(post);
+					return preview
+						? { type: preview.type, getUrl: () => preview.url }
+						: undefined;
 				});
-				const preview = getDanbooruPreview(post);
-				const item = danbooruPostToDownloadItem(post);
+				const item = createMemo(() => danbooruPostToDownloadItem(post));
 				return (
 					<MediaDetailLayout
 						header={
 							<ViewerToolbar
 								{...props}
-								title={title}
+								title={title()}
 								provider="Danbooru"
 								actions={
 									<ViewerActions
-										item={item}
+										item={item()}
 										imports={props.imports}
 										importLabel={
-											preview?.type === "video"
+											source()?.type === "video"
 												? t("danbooruPostDetail.addVideoToImportInbox")
 												: t("danbooruPostDetail.addImageToImportInbox")
 										}
@@ -72,21 +78,26 @@ export function DanbooruPostDetail(
 							/>
 						}
 						viewer={
-							preview ? (
-								<MediaViewer
-									source={{ type: preview.type, getUrl: () => preview.url }}
-									fileName={title}
-									width={post.width}
-									height={post.height}
-								/>
-							) : (
-								<EmptyState
-									title={t("danbooruPostDetail.thisPostHasNoPreview")}
-									description={t(
-										"danbooruPostDetail.visibilityOrFileFormatPreventsPreviewingCheckItOn",
-									)}
-								/>
-							)
+							<Show
+								when={source()}
+								fallback={
+									<EmptyState
+										title={t("danbooruPostDetail.thisPostHasNoPreview")}
+										description={t(
+											"danbooruPostDetail.visibilityOrFileFormatPreventsPreviewingCheckItOn",
+										)}
+									/>
+								}
+							>
+								{(mediaSource) => (
+									<MediaViewer
+										source={mediaSource()}
+										fileName={title()}
+										width={post.width}
+										height={post.height}
+									/>
+								)}
+							</Show>
 						}
 						sidebar={
 							<MediaDetailInspector label={t("danbooruPostDetail.postDetails")}>
@@ -161,7 +172,7 @@ export function DanbooruPostDetail(
 										[t("danbooruPostDetail.score"), post.score],
 									]}
 								/>
-								<Show when={!item}>
+								<Show when={!item()}>
 									<p class="py-4 text-muted-foreground text-xs">
 										{t("danbooruPostDetail.unsupportedImport")}
 									</p>

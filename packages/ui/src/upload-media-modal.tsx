@@ -1,15 +1,21 @@
+import { cn } from "./utils/cn";
 import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { createForm } from "@tanstack/solid-form";
-import X from "lucide-solid/icons/x";
+import { createForm } from "./utils/create-form";
+import X from "@lucide/solid/icons/x";
 import {
-	batch,
+	FileInput,
+	FileInputDropzone,
+	FileInputTrigger,
+	type FileInputValueChangeDetails,
+} from "@ui-sdk/solid/file-input";
+import {
 	createEffect,
 	createSignal,
 	For,
-	on,
 	onCleanup,
 	Show,
+	untrack,
 } from "solid-js";
 import { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "./alert";
@@ -114,6 +120,7 @@ const EMPTY_UPLOAD_FORM: UploadFormValues = {
 	sourceUrl: "",
 	conflictResolution: "skip",
 };
+const EMPTY_FILE_SELECTION: File[] = [];
 
 function fileSizeLabel(file: File) {
 	if (file.size < 1024) {
@@ -140,13 +147,9 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const isFetchingUrl = draft.fetching;
 	const asyncError = draft.error;
 	const setAsyncError = draft.setError;
-	const [isDragging, setIsDragging] = createSignal(false);
 	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
-	const [filePickMode, setFilePickMode] = createSignal<"append" | "replace">(
-		"replace",
-	);
-	let fileInputRef: HTMLInputElement | undefined;
+	let filePickMode: "append" | "replace" = "replace";
 
 	const form = createForm(() => ({
 		defaultValues: EMPTY_UPLOAD_FORM,
@@ -234,11 +237,6 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 		setFiles(next);
 	};
 
-	const openFilePicker = (mode: "append" | "replace") => {
-		setFilePickMode(mode);
-		fileInputRef?.click();
-	};
-
 	const handleUrlFetch = async (url: string) => {
 		const epoch = draft.version();
 		const file = await draft.loadUrl(url);
@@ -246,76 +244,90 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			form.setFieldValue("filename", file.name);
 	};
 
-	const handleDroppedFiles = (
-		files: FileList | null | undefined,
-		mode: "append" | "replace",
+	const receiveFiles = (
+		files: File[],
+		details: FileInputValueChangeDetails,
 	) => {
-		if (!(files && files.length > 0)) {
+		details.cancel();
+		if (details.reason !== "picker" && details.reason !== "drop") return;
+		if (
+			details.reason === "drop" &&
+			details.event?.target instanceof Node &&
+			!details.event.target.isConnected
+		) {
 			return;
 		}
+
 		setAsyncError(null);
-		const nextFiles = Array.from(files);
-		if (mode === "append" && selectedFiles().length > 0) {
-			appendFiles(nextFiles);
+		const replace = details.reason === "picker" && filePickMode === "replace";
+		if (details.reason === "picker") filePickMode = "replace";
+		if (replace || selectedFiles().length === 0) {
+			setFiles(files);
 		} else {
-			setFiles(nextFiles);
+			appendFiles(files);
 		}
 	};
 
 	createEffect(
-		on(
-			() => props.isOpen,
-			(isOpen) => {
-				if (!isOpen) {
-					draft.close();
-					return;
-				}
-				batch(() => {
-					const initial = props.initialFiles?.length
-						? props.initialFiles
-						: props.initialFile
-							? [props.initialFile]
-							: [];
-					draft.open(initial);
-					form.reset({
-						...EMPTY_UPLOAD_FORM,
-						filename: initial[0]?.name ?? "",
-						sourceUrl: props.pastedUrl ?? "",
-					});
-					setSubmitError(null);
-					setShowDiscardDialog(false);
-				});
-			},
-		),
+		() => props.isOpen,
+		(isOpen) => {
+			if (!isOpen) {
+				draft.close();
+				return;
+			}
+			// Take a new draft snapshot only when the dialog opens.
+			const { files, pastedUrl } = untrack(() => {
+				const { initialFile, initialFiles } = props;
+				return {
+					files: initialFiles?.length
+						? [...initialFiles]
+						: initialFile
+							? [initialFile]
+							: [],
+					pastedUrl: props.pastedUrl ?? "",
+				};
+			});
+			filePickMode = "replace";
+			draft.open(files);
+			form.reset({
+				...EMPTY_UPLOAD_FORM,
+				filename: files[0]?.name ?? "",
+				sourceUrl: pastedUrl,
+			});
+			setSubmitError(null);
+			setShowDiscardDialog(false);
+		},
 	);
 	createEffect(
-		on(
-			() => [props.isOpen, sourceUrl()] as const,
-			([open, url]) => {
-				draft.changeUrl(url);
-				if (
-					open &&
-					selectedFiles().length === 0 &&
-					url &&
-					props.onFetchUrl &&
-					z.url().safeParse(url).success &&
-					url !== draft.lastFetchedUrl()
-				)
-					void handleUrlFetch(url);
-			},
-		),
+		() => ({
+			open: props.isOpen,
+			url: sourceUrl(),
+			canFetch: Boolean(props.onFetchUrl) && selectedFiles().length === 0,
+		}),
+		({ open, url, canFetch }) => {
+			draft.changeUrl(url);
+			if (
+				open &&
+				canFetch &&
+				url &&
+				z.url().safeParse(url).success &&
+				url !== draft.lastFetchedUrl()
+			)
+				void handleUrlFetch(url);
+		},
 	);
 
 	onCleanup(draft.close);
 
 	const requestClose = () => {
-		if (isSubmitting()) return;
+		if (isSubmitting()) return false;
 		if (form.state.isDirty || selectedFiles().length > 0 || isFetchingUrl()) {
 			setShowDiscardDialog(true);
-			return;
+			return false;
 		}
 		draft.close();
 		props.onClose();
+		return true;
 	};
 	const discardAndClose = () => {
 		setShowDiscardDialog(false);
@@ -327,8 +339,8 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	return (
 		<>
 			<Dialog
-				onOpenChange={(open) => {
-					if (!open && !isSubmitting()) requestClose();
+				onOpenChange={(open, details) => {
+					if (!open && !requestClose()) details.cancel();
 				}}
 				open={props.isOpen}
 			>
@@ -351,148 +363,117 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 						}}
 					>
 						<div class="grid gap-4 py-4">
-							<Show
-								when={selectedFiles().length > 0}
-								fallback={
-									<button
-										class="rounded-lg border-2 border-dashed p-6 text-center transition-colors"
-										classList={{
-											"border-primary bg-primary/5": isDragging(),
-											"border-muted": !isDragging(),
-										}}
-										onClick={() => openFilePicker("replace")}
-										onDragEnter={(event) => {
-											event.preventDefault();
-											setIsDragging(true);
-										}}
-										onDragLeave={(event) => {
-											event.preventDefault();
-											if (
-												!event.currentTarget.contains(
-													event.relatedTarget as Node | null,
-												)
-											) {
-												setIsDragging(false);
-											}
-										}}
-										onDragOver={(event) => event.preventDefault()}
-										onDrop={(event) => {
-											event.preventDefault();
-											setIsDragging(false);
-											handleDroppedFiles(event.dataTransfer?.files, "replace");
-										}}
-										type="button"
-									>
-										<p class="font-medium text-sm">
-											{t("uploadMediaModal.dragAndDropFiles")}
-										</p>
-										<p class="mt-1 text-muted-foreground text-xs">
-											{t("uploadMediaModal.orAddFilesUsingTheFilePicker")}
-										</p>
-										<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-											{t("uploadMediaModal.chooseFiles")}
-										</span>
-									</button>
-								}
-							>
-								<div
-									class="rounded-md border p-3 transition-colors"
-									classList={{
-										"border-primary bg-primary/5": isDragging(),
-									}}
-									onDragEnter={(event) => {
-										event.preventDefault();
-										setIsDragging(true);
-									}}
-									onDragLeave={(event) => {
-										event.preventDefault();
-										if (
-											!event.currentTarget.contains(
-												event.relatedTarget as Node | null,
-											)
-										) {
-											setIsDragging(false);
-										}
-									}}
-									onDragOver={(event) => event.preventDefault()}
-									onDrop={(event) => {
-										event.preventDefault();
-										setIsDragging(false);
-										handleDroppedFiles(event.dataTransfer?.files, "append");
-									}}
-								>
-									<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-										<p class="font-medium text-sm">
-											{t("uploadMediaModal.selectedFiles")} (
-											{selectedFiles().length})
-										</p>
-										<div class="flex flex-wrap gap-2">
-											<Button
-												class="min-h-11 sm:min-h-9"
-												disabled={isSubmitting()}
-												onClick={() => openFilePicker("append")}
-												size="sm"
-												type="button"
-												variant="outline"
-											>
-												{t("uploadMediaModal.addFiles")}
-											</Button>
-											<Button
-												class="min-h-11 sm:min-h-9"
-												disabled={isSubmitting()}
-												onClick={() => openFilePicker("replace")}
-												size="sm"
-												type="button"
-												variant="outline"
-											>
-												{t("uploadMediaModal.changeFiles")}
-											</Button>
-										</div>
-									</div>
-									<ul class="max-h-40 space-y-1 overflow-y-auto overscroll-contain pr-1">
-										<For each={selectedFiles()}>
-											{(file, index) => (
-												<li class="flex items-center justify-between gap-2 text-sm">
-													<span
-														class="min-w-0 flex-1 truncate"
-														title={file.name}
-													>
-														{file.name}
-													</span>
-													<span class="shrink-0 text-muted-foreground text-xs">
-														{fileSizeLabel(file)}
-													</span>
-													<Button
-														aria-label={t("uploadMediaModal.removeFileValue", {
-															value0: file.name,
-														})}
-														class="size-11 shrink-0 sm:size-8"
-														disabled={isSubmitting()}
-														onClick={() => removeFileAt(index())}
-														size="icon"
-														type="button"
-														variant="ghost"
-													>
-														<X aria-hidden="true" class="size-4" />
-													</Button>
-												</li>
-											)}
-										</For>
-									</ul>
-								</div>
-							</Show>
-							<input
-								class="hidden"
+							{/* The draft owns the selection. The picker only reports each incoming batch. */}
+							<FileInput
+								announcement={() => null}
+								disabled={isSubmitting()}
 								multiple
-								onChange={(event) => {
-									handleDroppedFiles(event.currentTarget.files, filePickMode());
-									event.currentTarget.value = "";
-								}}
-								ref={(element) => {
-									fileInputRef = element;
-								}}
-								type="file"
-							/>
+								onValueChange={receiveFiles}
+								value={EMPTY_FILE_SELECTION}
+							>
+								<FileInputDropzone
+									class={cn(
+										"transition-colors data-[dragging]:border-primary data-[dragging]:bg-primary/5",
+										selectedFiles().length > 0
+											? "rounded-md border p-3"
+											: "rounded-lg border-2 border-dashed border-muted",
+									)}
+								>
+									<Show
+										when={selectedFiles().length > 0}
+										fallback={
+											<FileInputTrigger
+												class="block w-full rounded-lg p-6 text-center ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+												onClick={() => {
+													filePickMode = "replace";
+												}}
+											>
+												<span class="block font-medium text-sm">
+													{t("uploadMediaModal.dragAndDropFiles")}
+												</span>
+												<span class="mt-1 block text-muted-foreground text-xs">
+													{t("uploadMediaModal.orAddFilesUsingTheFilePicker")}
+												</span>
+												<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+													{t("uploadMediaModal.chooseFiles")}
+												</span>
+											</FileInputTrigger>
+										}
+									>
+										<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+											<p class="font-medium text-sm">
+												{t("uploadMediaModal.selectedFiles")} (
+												{selectedFiles().length})
+											</p>
+											<div class="flex flex-wrap gap-2">
+												<FileInputTrigger
+													class="min-h-11 sm:min-h-9"
+													onClick={() => {
+														filePickMode = "append";
+													}}
+													render={(partProps) => (
+														<Button
+															{...partProps}
+															size="sm"
+															variant="outline"
+														/>
+													)}
+												>
+													{t("uploadMediaModal.addFiles")}
+												</FileInputTrigger>
+												<FileInputTrigger
+													class="min-h-11 sm:min-h-9"
+													onClick={() => {
+														filePickMode = "replace";
+													}}
+													render={(partProps) => (
+														<Button
+															{...partProps}
+															size="sm"
+															variant="outline"
+														/>
+													)}
+												>
+													{t("uploadMediaModal.changeFiles")}
+												</FileInputTrigger>
+											</div>
+										</div>
+										<ul class="max-h-40 space-y-1 overflow-y-auto overscroll-contain pr-1">
+											<For each={selectedFiles()}>
+												{(file, index) => (
+													<li class="flex items-center justify-between gap-2 text-sm">
+														<span
+															class="min-w-0 flex-1 truncate"
+															title={file.name}
+														>
+															{file.name}
+														</span>
+														<span class="shrink-0 text-muted-foreground text-xs">
+															{fileSizeLabel(file)}
+														</span>
+														<Button
+															aria-label={t(
+																"uploadMediaModal.removeFileValue",
+																{
+																	value0: file.name,
+																},
+															)}
+															class="size-11 shrink-0 sm:size-8"
+															disabled={isSubmitting()}
+															onClick={() => removeFileAt(index())}
+															size="icon"
+															type="button"
+															variant="ghost"
+														>
+															<X aria-hidden="true" class="size-4" />
+														</Button>
+													</li>
+												)}
+											</For>
+										</ul>
+									</Show>
+								</FileInputDropzone>
+							</FileInput>
 							<form.Field name="filename">
 								{(field) => (
 									<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
@@ -502,7 +483,11 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 										<div class="space-y-2 sm:col-span-3">
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(event) =>
@@ -554,7 +539,11 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 										<div class="relative space-y-2 sm:col-span-3">
 											<Input
 												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
+												aria-invalid={
+													field().state.meta.errors.length > 0
+														? "true"
+														: "false"
+												}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(event) =>
@@ -713,7 +702,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 							>
 								{(state) => (
 									<Button
-										aria-busy={state().isSubmitting}
+										aria-busy={state().isSubmitting ? "true" : "false"}
 										disabled={
 											!state().canSubmit ||
 											state().isSubmitting ||

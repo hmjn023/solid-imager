@@ -5,7 +5,7 @@ export function createDebouncedSignal<T>(
 	initialValue: T,
 	delayMs: number,
 ): [() => T, (value: T) => void] {
-	const [debounced, setDebounced] = createSignal<T>(initialValue);
+	const [debounced, setDebounced] = createSignal<T>(() => initialValue);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
 	const setter = (newValue: T) => {

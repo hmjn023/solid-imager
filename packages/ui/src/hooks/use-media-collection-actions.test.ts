@@ -1,12 +1,8 @@
 import type { Media } from "@solid-imager/core/media";
 import { t } from "@solid-imager/i18n";
-import { createRoot, createSignal } from "solid-js";
+import { createRoot, createSignal, flush } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useMediaCollectionActions } from "./use-media-collection-actions";
-
-vi.mock("solid-js", async () =>
-	vi.importActual<typeof import("solid-js")>("solid-js/dist/solid.js"),
-);
 
 function media(id: string, mediaSourceId = "source-a"): Media {
 	return {
@@ -61,18 +57,21 @@ describe("shared media collection workflows", () => {
 		const { actions, setItems } = setup();
 		actions.selectMedia("one", "replace");
 		actions.selectMedia("three", "range");
+		flush();
 		expect(actions.selectedMediaItems()).toEqual([
 			{ mediaId: "one", mediaSourceId: "source-a" },
 			{ mediaId: "two", mediaSourceId: "source-b" },
 			{ mediaId: "three", mediaSourceId: "source-a" },
 		]);
 		setItems([media("three"), media("one")]);
+		flush();
 		expect([...actions.selection.selectedIds()]).toEqual(["one", "three"]);
 		expect(actions.selectedMediaItems().map((item) => item.mediaId)).toEqual([
 			"three",
 			"one",
 		]);
 		actions.clearSelection();
+		flush();
 		expect(actions.isBulkSelectMode()).toBe(false);
 		expect(actions.selectedMediaItems()).toEqual([]);
 	});
@@ -80,10 +79,13 @@ describe("shared media collection workflows", () => {
 	it("removes confirmed successes and retains unresolved selection after partial results", () => {
 		const { actions, refresh } = setup();
 		actions.selectAll();
+		flush();
 		actions.onBulkSuccess(true, ["one"]);
+		flush();
 		expect([...actions.selection.selectedIds()]).toEqual(["two", "three"]);
 		expect(actions.isBulkSelectMode()).toBe(true);
 		actions.onBulkSuccess(false, ["two", "three"]);
+		flush();
 		expect(actions.selection.selectedIds().size).toBe(0);
 		expect(actions.isBulkSelectMode()).toBe(false);
 		expect(refresh).toHaveBeenCalledTimes(2);
@@ -92,9 +94,12 @@ describe("shared media collection workflows", () => {
 	it("does not delete cancelled or unknown targets", async () => {
 		const { actions, operations } = setup();
 		actions.openDelete("missing");
+		flush();
 		expect(actions.isDeleteDialogOpen()).toBe(false);
 		actions.openDelete("one");
+		flush();
 		actions.changeDeleteOpen(false);
+		flush();
 		await actions.confirmDelete();
 		expect(operations.deleteMedia).not.toHaveBeenCalled();
 	});
@@ -105,11 +110,14 @@ describe("shared media collection workflows", () => {
 		operations.deleteMedia.mockReturnValueOnce(pending.promise);
 		actions.selectAll();
 		actions.openDelete("two");
+		flush();
 		const deleting = actions.confirmDelete();
 		actions.changeDeleteOpen(false);
 		actions.openDelete("three");
+		const duplicate = actions.confirmDelete();
+		flush();
 		expect(actions.isDeleteDialogOpen()).toBe(true);
-		await actions.confirmDelete();
+		await duplicate;
 		expect(operations.deleteMedia).toHaveBeenCalledExactlyOnceWith(
 			"source-b",
 			"two",
@@ -132,14 +140,17 @@ describe("shared media collection workflows", () => {
 		operations.deleteMedia.mockRejectedValueOnce(new Error("offline"));
 		actions.selectMedia("one", "replace");
 		actions.openDelete("one");
+		flush();
 		await actions.confirmDelete();
 		expect(actions.selection.isSelected("one")).toBe(true);
 		expect(actions.deleteError()).toBe(
 			t("mediaActions.failedToDeleteMediaValue", { value0: "offline" }),
 		);
 		expect(refresh).not.toHaveBeenCalled();
+		const duplicate = actions.confirmDelete();
+		flush();
 		expect(actions.isDeleteDialogOpen()).toBe(true);
-		await actions.confirmDelete();
+		await duplicate;
 		expect(actions.deleteError()).toBeUndefined();
 		expect(actions.isDeleteDialogOpen()).toBe(false);
 		expect(actions.isBulkSelectMode()).toBe(false);
@@ -151,6 +162,7 @@ describe("shared media collection workflows", () => {
 		async (mode) => {
 			const { actions, operations, refresh } = setup();
 			actions.openCopyMove("two", mode);
+			flush();
 			await actions.confirmCopyMove("destination");
 			const action =
 				mode === "copy" ? operations.copyMedia : operations.moveMedia;
@@ -167,6 +179,7 @@ describe("shared media collection workflows", () => {
 		const { actions, operations } = setup();
 		operations.copyMedia.mockRejectedValueOnce(new Error("connection lost"));
 		actions.openCopyMove("one", "copy");
+		flush();
 		await actions.confirmCopyMove("destination");
 		expect(actions.moveCopyError()).toBe(
 			t("useSourceMediaPage.copyOutcomeUnknown"),
@@ -174,6 +187,7 @@ describe("shared media collection workflows", () => {
 		await actions.confirmCopyMove("destination");
 		actions.changeCopyMoveOpen(false);
 		actions.openCopyMove("one", "copy");
+		flush();
 		await actions.confirmCopyMove("destination");
 		expect(operations.copyMedia).toHaveBeenCalledExactlyOnceWith(
 			"one",
@@ -191,6 +205,7 @@ describe("shared media collection workflows", () => {
 		const pending = Promise.withResolvers<void>();
 		operations.moveMedia.mockReturnValueOnce(pending.promise);
 		actions.openCopyMove("one", "move");
+		flush();
 		const moving = actions.confirmCopyMove("destination");
 		await actions.confirmCopyMove("other-destination");
 		actions.changeCopyMoveOpen(false);

@@ -1,5 +1,4 @@
 import { t } from "@solid-imager/i18n";
-import { useDialogContext } from "@kobalte/core/dialog";
 import { For, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -13,7 +12,7 @@ import {
 } from "../alert-dialog";
 import { EmptyState } from "../async-state";
 import { Button } from "../button";
-import { DialogContent, DialogTitle } from "../dialog";
+import { DialogContent, DialogTitle, useDialogContext } from "../dialog";
 import type { ViewerSearchHistoryEntry } from "./viewer-search-history";
 
 export function ViewerSearchHistoryContent(props: {
@@ -27,6 +26,7 @@ export function ViewerSearchHistoryContent(props: {
 	return (
 		<DialogContent
 			class="workspace-theme flex flex-col gap-3 overflow-hidden"
+			animateOnClose={false}
 			onCloseAutoFocus={props.onCloseAutoFocus}
 		>
 			<DialogTitle
@@ -52,7 +52,7 @@ export function ViewerSearchHistoryContent(props: {
 										variant="ghost"
 										class="h-auto min-h-11 w-full flex-col items-start gap-1 whitespace-normal break-all px-2 text-left"
 										onClick={() => {
-											dialog.close();
+											void dialog.close();
 											props.onSelect(entry);
 										}}
 									>

@@ -45,15 +45,13 @@ function IpPickerInput() {
 		<ComboboxInput
 			id="manager-entity-ips"
 			placeholder={t("dialogs.selectIPs")}
-			on:keydown={(event: KeyboardEvent) => {
+			onKeyDown={(event: KeyboardEvent) => {
 				if (event.key === "Enter" && !combobox.isOpen() && !event.isComposing)
 					event.preventDefault();
 				if (event.key !== "Escape" || !combobox.isOpen()) return;
 				event.preventDefault();
 				event.stopPropagation();
-				combobox.resetInputValue(
-					combobox.listState().selectionManager().selectedKeys(),
-				);
+				combobox.setInputValue("");
 				combobox.close();
 			}}
 		/>
@@ -104,37 +102,28 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 		}));
 	};
 	const requestFormClose = () => {
-		if (props.manager.isSavingEntity()) return;
+		if (props.manager.isSavingEntity()) return false;
 		if (entityFormIsDirty(props.manager)) {
 			setDiscardDialogOpen(true);
-			return;
+			return false;
 		}
 		props.manager.setIsDialogOpen(false);
-	};
-	const handleFormOpenChange = (open: boolean) => {
-		if (open) {
-			props.manager.setIsDialogOpen(true);
-			return;
-		}
-		requestFormClose();
+		return true;
 	};
 
 	return (
 		<>
 			<Dialog
-				onOpenChange={handleFormOpenChange}
+				onOpenChange={(open, details) => {
+					if (open) {
+						props.manager.setIsDialogOpen(true);
+					} else if (!requestFormClose()) {
+						details.cancel();
+					}
+				}}
 				open={props.manager.isDialogOpen()}
 			>
-				<DialogContent
-					onEscapeKeyDown={(event) => {
-						event.preventDefault();
-						requestFormClose();
-					}}
-					onPointerDownOutside={(event) => {
-						event.preventDefault();
-						requestFormClose();
-					}}
-				>
+				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>
 							{t(

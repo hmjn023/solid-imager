@@ -1,9 +1,11 @@
+// Adapted from the Solid UI v2 badge registry recipe.
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import type { JSX } from "solid-js";
-import { splitProps } from "solid-js";
+import type { ComponentProps, ValidComponent } from "@solidjs/web";
+import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
+import { Polymorphic, type PolymorphicProps } from "./utils/polymorphic";
 
 const badgeVariants = cva(
 	"inline-flex items-center rounded-md border px-2 py-0.5 font-semibold text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -25,14 +27,20 @@ const badgeVariants = cva(
 	},
 );
 
-type BadgeProps = JSX.HTMLAttributes<HTMLDivElement> &
-	VariantProps<typeof badgeVariants>;
+type BadgeProps<Tag extends ValidComponent = "div"> = PolymorphicProps<
+	Tag,
+	ComponentProps<"div"> & VariantProps<typeof badgeVariants>
+>;
 
-function Badge(props: BadgeProps) {
-	const [local, others] = splitProps(props, ["class", "variant"]);
+function Badge<Tag extends ValidComponent = "div">(props: BadgeProps<Tag>) {
+	const local: Omit<BadgeProps, "as"> & { as?: ValidComponent } = props;
+	const others = omit(local, "as", "class", "variant");
 	return (
-		<div
-			class={cn(badgeVariants({ variant: local.variant }), local.class)}
+		<Polymorphic
+			as={props.as ?? "div"}
+			data-slot="badge"
+			data-variant={props.variant}
+			class={cn(badgeVariants({ variant: props.variant }), props.class)}
 			{...others}
 		/>
 	);

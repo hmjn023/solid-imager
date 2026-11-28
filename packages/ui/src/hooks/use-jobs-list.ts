@@ -1,6 +1,6 @@
 import type { AppContractClient } from "@solid-imager/core/contract";
 import type { JobListRequest } from "@solid-imager/core/jobs";
-import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal } from "solid-js";
 import {
 	buildInfiniteJobsQueryOptions,
@@ -26,14 +26,14 @@ export function useJobsList(
 ) {
 	const [status, setStatus] = createSignal<JobListRequest["status"]>();
 	const [type, setType] = createSignal<string>();
-	const query = createInfiniteQuery(() =>
+	const query = useInfiniteQuery(() =>
 		buildInfiniteJobsQueryOptions(
 			{ status: status(), type: type() },
 			(input, signal) => client.list(input, { signal }),
 		),
 	);
-	const types = createQuery(() => jobTypesQueryOptions(client));
-	const data = createMemo(() => flattenJobPages(query.data));
+	const types = useQuery(() => jobTypesQueryOptions(client));
+	const data = createMemo(() => flattenJobPages(readQueryData(query)));
 	const list = {
 		get data() {
 			return data();
@@ -71,3 +71,5 @@ export function useJobsList(
 		},
 	};
 }
+
+import { readQueryData } from "../query-state";

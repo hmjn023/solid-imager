@@ -1,7 +1,6 @@
 import type { JobEvent } from "@solid-imager/core/events";
-import type { Accessor } from "solid-js";
-import { createEffect, onCleanup } from "solid-js";
-import { isServer } from "solid-js/web";
+import { createEffect, type Accessor } from "solid-js";
+import { isServer } from "@solidjs/web";
 import { subscribeToEventStream } from "../event-stream";
 
 /** Opens an abortable stream of job events. */
@@ -21,12 +20,10 @@ export function useJobEvents(
 	onEvent: (event: JobEvent) => void,
 	enabled: Accessor<boolean> = () => true,
 ): void {
-	createEffect(() => {
-		if (isServer || !enabled()) {
-			return;
-		}
-
-		const cleanup = subscribeToEventStream(openStream, onEvent);
-		onCleanup(cleanup);
-	});
+	createEffect(
+		() => !isServer && enabled(),
+		(active) => {
+			if (active) return subscribeToEventStream(openStream, onEvent);
+		},
+	);
 }

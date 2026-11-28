@@ -3,6 +3,10 @@ import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { mediaSearchResponseSchema } from "@solid-imager/core/media";
 import {
+	captureSearchSnapshotResponseSchema,
+	defaultState,
+} from "@solid-imager/core/search";
+import {
 	apiPathPattern,
 	apiRequest,
 	apiResponse,
@@ -11,6 +15,7 @@ import {
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
+	E2E_SIMILAR_FILE_NAME,
 	E2E_SIMILAR_MEDIA_ID,
 	getE2eRuntimeDir,
 } from "./support/fixture";
@@ -25,6 +30,11 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 	// previous refresh can still be pending. Only its deliberate abort is allowed.
 	browserHealth.allowRequestFailure(
 		apiPathPattern("sources/list"),
+		"net::ERR_ABORTED",
+	);
+	// The mutations also cancel superseded collection searches before refreshing their results.
+	browserHealth.allowRequestFailure(
+		apiPathPattern("media/search"),
 		"net::ERR_ABORTED",
 	);
 	const sources = ["Copy destination", "Move destination"].map((name) => {
@@ -63,7 +73,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 				exact: true,
 			}),
 		});
-		await dialog.getByRole("button", { name: /^保存先ソース/ }).click();
+		await dialog.getByRole("combobox", { name: /^保存先ソース/ }).click();
 		await page
 			.locator('[role="listbox"]')
 			.getByText(destination.name, { exact: true })
@@ -100,8 +110,31 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 			});
 			expect(response.ok()).toBe(true);
 		}
+		const snapshot = await apiRequest(page.request, "searchSnapshots/capture", {
+			state: {
+				...defaultState,
+				mode: "pro",
+				advancedCondition: {
+					type: "group",
+					operator: "and",
+					children: [
+						{
+							type: "criterion",
+							target: "fileName",
+							operator: "in",
+							value: [E2E_PRIMARY_FILE_NAME, E2E_SIMILAR_FILE_NAME],
+						},
+					],
+				},
+			},
+		});
+		await expect(snapshot).toBeOK();
+		const { id } = captureSearchSnapshotResponseSchema.parse(
+			await snapshot.json(),
+		);
+		const searchPath = `/search?search=${id}`;
 		await page.goto(
-			testInfo.project.name === "tauri" ? "/#/search" : "/search",
+			testInfo.project.name === "tauri" ? `/#${searchPath}` : searchPath,
 		);
 		if (testInfo.project.name !== "tauri") await waitForAppHydration(page);
 		await expect(mediaItem(E2E_PRIMARY_MEDIA_ID)).toBeVisible();

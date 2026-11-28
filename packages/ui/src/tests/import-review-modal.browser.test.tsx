@@ -119,7 +119,7 @@ test("chooses a local import destination when the remembered default is remote",
 	const dialog = page.getByRole("dialog", {
 		name: t("navigation.importInbox"),
 	});
-	const destination = dialog.getByRole("button", {
+	const destination = dialog.getByRole("combobox", {
 		name: new RegExp(`^${t("importReviewModal.targetSource")}`),
 	});
 	await expect
@@ -176,7 +176,7 @@ test("keeps a long destination list inside the short dialog's scroll boundaries"
 	const dialog = page.getByRole("dialog", {
 		name: t("navigation.importInbox"),
 	});
-	const destination = dialog.getByRole("button", {
+	const destination = dialog.getByRole("combobox", {
 		name: new RegExp(`^${t("importReviewModal.targetSource")}`),
 	});
 	const lastLabel = `Archive · ${sourceTypeLabel("local")}`;
@@ -228,7 +228,7 @@ test("keeps the chosen jobs and destination after an import request fails", asyn
 	const dialog = page.getByRole("dialog", {
 		name: t("navigation.importInbox"),
 	});
-	const destination = dialog.getByRole("button", {
+	const destination = dialog.getByRole("combobox", {
 		name: new RegExp(`^${t("importReviewModal.targetSource")}`),
 	});
 	const archiveLabel = `Archive · ${sourceTypeLabel("local")}`;

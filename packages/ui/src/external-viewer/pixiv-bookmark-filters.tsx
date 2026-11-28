@@ -1,8 +1,9 @@
 import type { PixivBookmarkFilter } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { Show } from "solid-js";
 import { Button } from "../button";
+import { readQueryData } from "../query-state";
 import {
 	RadioGroup,
 	RadioGroupItem,
@@ -25,7 +26,7 @@ export function PixivBookmarkFilters(props: {
 	) => Promise<string[]>;
 	onChange: (filter: PixivBookmarkFilter) => void;
 }) {
-	const tags = createQuery(() => {
+	const tags = useQuery(() => {
 		const visibility = props.filter.visibility;
 		return {
 			queryKey: ["pixiv", "bookmark-tags", ...props.scope, visibility],
@@ -38,7 +39,7 @@ export function PixivBookmarkFilters(props: {
 	const options = () => [
 		"",
 		...new Set(
-			[...(tags.isSuccess ? tags.data : []), props.filter.tag].filter(Boolean),
+			[...(readQueryData(tags) ?? []), props.filter.tag].filter(Boolean),
 		),
 	];
 	const label = (tag: string) => tag || t("pixivBookmarks.allTags");

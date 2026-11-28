@@ -1,5 +1,6 @@
 import { routeApi } from "./support/api";
 import type { Page } from "@playwright/test";
+import { mediaContentPath } from "@solid-imager/core/http";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -97,19 +98,57 @@ test("IME confirmation preserves the search draft and focused suggestions", asyn
 	});
 });
 
-test("zoomed images support keyboard and single-click panning", async ({
+test("image viewer toolbar roves focus while the image supports panning", async ({
 	page,
 }) => {
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	const dialog = await openImageViewer(page);
-	for (let step = 0; step < 4; step++) {
-		await dialog.getByRole("button", { name: "拡大", exact: true }).click();
-	}
 	const stage = dialog.locator("[data-media-viewer-pan-handle]");
 	const image = dialog.getByRole("img", {
 		name: E2E_PRIMARY_FILE_NAME,
 		exact: true,
 	});
+	const toolbar = dialog.getByRole("toolbar", { name: "画像のズーム操作" });
+	const zoomIn = toolbar.getByRole("button", { name: "拡大", exact: true });
+	const zoomOut = toolbar.getByRole("button", { name: "縮小", exact: true });
+	const reset = toolbar.getByRole("button", { name: "画面に合わせる" });
+	const fullscreen = toolbar.getByRole("button", {
+		name: "全画面表示",
+		exact: true,
+	});
+	await expect(toolbar.locator('button[tabindex="0"]')).toHaveCount(1);
+	await stage.focus();
+	await page.keyboard.press("Tab");
+	await expect(toolbar.locator(":focus")).toHaveCount(1);
+	await page.keyboard.press("Tab");
+	await expect(toolbar.locator(":focus")).toHaveCount(0);
+	await page.keyboard.press("Shift+Tab");
+	await expect(toolbar.locator(":focus")).toHaveCount(1);
+
+	await reset.focus();
+	await page.keyboard.press("ArrowLeft");
+	await expect(zoomOut).toBeFocused();
+	await expect(zoomOut).toHaveAttribute("aria-disabled", "true");
+	await page.keyboard.press("Space");
+	await expect(reset).toHaveText("100%");
+	await page.keyboard.press("ArrowRight");
+	await expect(reset).toBeFocused();
+	await page.keyboard.press("ArrowRight");
+	await expect(zoomIn).toBeFocused();
+	await page.keyboard.press("Space");
+	await expect(reset).toHaveText("125%");
+	await page.keyboard.press("ArrowRight");
+	await expect(fullscreen).toBeFocused();
+	await page.keyboard.press("ArrowLeft");
+	await expect(zoomIn).toBeFocused();
+	await page.keyboard.press("ArrowDown");
+	await expect(zoomIn).toBeFocused();
+	await expect(image).toHaveCSS("--media-pan-x", "0px");
+	await expect(image).toHaveCSS("--media-pan-y", "0px");
+
+	for (let step = 0; step < 3; step++) {
+		await zoomIn.click();
+	}
 	await stage.focus();
 	await expect(stage).toBeFocused();
 	await stage.press("ArrowRight");
@@ -128,11 +167,9 @@ test("zoomed images support keyboard and single-click panning", async ({
 			),
 		)
 		.toBeGreaterThan(0);
-	await dialog
-		.getByRole("button", { name: "画面に合わせる", exact: true })
-		.click();
+	await reset.click();
 	for (let step = 0; step < 4; step++) {
-		await dialog.getByRole("button", { name: "拡大", exact: true }).click();
+		await zoomIn.click();
 	}
 	await dialog
 		.getByRole("button", { name: "画像を左へ移動", exact: true })
@@ -203,25 +240,24 @@ test("manager source and format selectors expose their visible labels", async ({
 	await waitForAppHydration(page);
 	const navigation = page.locator('nav[aria-label="管理カテゴリ"]:visible');
 	await navigation.getByRole("button", { name: /データ転送/ }).click();
-	const target = page.getByRole("button", { name: /^保存先ソース/ });
+	const target = page.getByRole("combobox", { name: /^保存先ソース/ });
 	await expect(target).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: /^エクスポート形式/ }),
+		page.getByRole("combobox", { name: /^エクスポート形式/ }),
 	).toBeVisible();
-	await expect(page.getByRole("button", { name: /^復元形式/ })).toBeVisible();
+	await expect(page.getByRole("combobox", { name: /^復元形式/ })).toBeVisible();
 	await target.click();
 	await page
 		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
 		.click();
-	await expect(target).toHaveAccessibleName(
-		new RegExp(`保存先ソース.*${E2E_SOURCE_NAME}`),
-	);
+	await expect(target).toHaveAccessibleName(/^保存先ソース/);
+	await expect(target).toContainText(E2E_SOURCE_NAME);
 	for (const category of ["一括タグ付け", "サムネイル", "重複検出"]) {
 		await navigation
 			.getByRole("button", { name: new RegExp(category) })
 			.click();
 		await expect(
-			page.getByRole("button", { name: /^対象ソース/ }),
+			page.getByRole("combobox", { name: /^対象ソース/ }),
 		).toBeVisible();
 	}
 });
@@ -229,7 +265,7 @@ test("manager source and format selectors expose their visible labels", async ({
 test("media content supports byte ranges and HEAD in the serving runtime", async ({
 	request,
 }) => {
-	const url = `/api${mediaPath()}`;
+	const url = mediaContentPath(E2E_SOURCE_ID, E2E_PRIMARY_MEDIA_ID);
 	const head = await request.head(url);
 	expect(head.status()).toBe(200);
 	expect(await head.body()).toHaveLength(0);
@@ -251,7 +287,7 @@ for (const mediaType of ["audio", "video"] as const) {
 		page,
 		browserHealth,
 	}) => {
-		const contentPath = `/api/sources/${E2E_SOURCE_ID}/media/${E2E_PRIMARY_MEDIA_ID}/content`;
+		const contentPath = mediaContentPath(E2E_SOURCE_ID, E2E_PRIMARY_MEDIA_ID);
 		let release: () => void = () => {};
 		const gate = new Promise<void>((resolve) => {
 			release = resolve;
@@ -287,24 +323,36 @@ for (const mediaType of ["audio", "video"] as const) {
 		try {
 			await page.goto("/search");
 			await waitForAppHydration(page);
+			const search = page.getByRole("combobox", {
+				name: "メディアを検索",
+				exact: true,
+			});
+			await search.fill(E2E_PRIMARY_FILE_NAME);
+			await search.press("Enter");
 			await page
 				.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`)
-				.dblclick();
+				.press("Enter");
 			await expect(page).toHaveURL(mediaPath());
-			await expect.poll(() => requested).toBe(true);
 			const media = page.locator(mediaType);
+			const controls =
+				mediaType === "audio"
+					? media
+					: page.getByRole("button", {
+							name: "動画のループ再生を切り替える",
+							exact: true,
+						});
 			await expect(media).toBeVisible();
+			await expect(controls).toBeVisible();
+			await expect(media).toHaveAttribute("src", contentPath);
 			if (mediaType === "audio") {
 				await expect(media).toHaveAttribute("controls", "");
-			} else {
-				await expect(
-					page.getByRole("button", {
-						name: "動画のループ再生を切り替える",
-						exact: true,
-					}),
-				).toBeVisible();
+				// The browser may defer metadata preload until loading is requested.
+				if (!requested) {
+					await media.evaluate((element: HTMLAudioElement) => element.load());
+				}
 			}
-			await expect(media).toHaveAttribute("src", contentPath);
+			await expect.poll(() => requested).toBe(true);
+			await expect(controls).toBeVisible();
 			release();
 			await expect
 				.poll(() =>

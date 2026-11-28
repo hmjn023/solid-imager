@@ -1,12 +1,9 @@
 import { QueryClient } from "@tanstack/solid-query";
-import { createRoot } from "solid-js";
+import { createRoot, flush } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "../toast";
 import { useSourcesPage, type SourcesPageActions } from "./use-sources-page";
 
-vi.mock("solid-js", async () =>
-	vi.importActual<typeof import("solid-js")>("solid-js/dist/solid.js"),
-);
 vi.mock("../toast", () => ({
 	toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() },
 }));
@@ -116,8 +113,10 @@ describe("source synchronization feedback", () => {
 			>();
 		vi.mocked(actions.syncMediaSources).mockReturnValueOnce(request.promise);
 		const syncing = page.handleSyncSource(source("one"));
+		const duplicate = page.handleSyncAll([source("two")]);
+		flush();
 		expect(page.isSyncing()).toBe(true);
-		await page.handleSyncAll([source("two")]);
+		await duplicate;
 		expect(actions.syncMediaSources).toHaveBeenCalledExactlyOnceWith(["one"]);
 		request.resolve({ results: [successful("one")] });
 		await syncing;
@@ -135,13 +134,16 @@ describe("source deletion confirmation", () => {
 		vi.mocked(actions.deleteMediaSource).mockReturnValueOnce(request.promise);
 
 		page.handleDeleteSource(source("one"));
+		flush();
 		expect(page.showDeleteModal()).toBe(true);
 		expect(page.deletingSource()?.id).toBe("one");
 
 		const deleting = page.handleDeleteConfirm("one");
+		const duplicate = page.handleDeleteConfirm("one");
+		flush();
 		expect(page.isDeleting()).toBe(true);
 
-		await page.handleDeleteConfirm("one");
+		await duplicate;
 		expect(actions.deleteMediaSource).toHaveBeenCalledExactlyOnceWith("one");
 
 		request.resolve(undefined);
@@ -165,6 +167,7 @@ describe("source deletion confirmation", () => {
 
 		page.setShowDeleteModal(false);
 		page.handleDeleteSource(source("two"));
+		flush();
 		expect(page.showDeleteModal()).toBe(true);
 		expect(page.deletingSource()?.id).toBe("two");
 

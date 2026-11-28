@@ -1,11 +1,4 @@
-import {
-	createEffect,
-	createSignal,
-	on,
-	onCleanup,
-	onMount,
-	type Accessor,
-} from "solid-js";
+import { createEffect, createSignal, onSettled, type Accessor } from "solid-js";
 import { z } from "zod";
 
 export function createViewerRecentHistory<Entry>(
@@ -45,19 +38,17 @@ export function createViewerRecentHistory<Entry>(
 		if (stored) setSnapshot({ key: storageKey, entries: stored });
 	}
 
-	createEffect(
-		on(key, (storageKey) => {
-			if (storageKey) refresh(storageKey);
-		}),
-	);
-	onMount(() => {
+	createEffect(key, (storageKey) => {
+		if (storageKey) refresh(storageKey);
+	});
+	onSettled(() => {
 		const sync = (event: StorageEvent) => {
 			const storageKey = key();
 			if (storageKey && (event.key === storageKey || event.key === null))
 				refresh(storageKey);
 		};
 		window.addEventListener("storage", sync);
-		onCleanup(() => window.removeEventListener("storage", sync));
+		return () => window.removeEventListener("storage", sync);
 	});
 
 	function update(apply: (current: Entry[]) => Entry[]) {

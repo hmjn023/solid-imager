@@ -1,14 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import { useIsFetching, useIsMutating } from "@tanstack/solid-query";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
-import { isServer } from "solid-js/web";
+import { createMemo, createSignal, onSettled, Show } from "solid-js";
+import { isServer } from "@solidjs/web";
 
 const SLOW_REQUEST_DELAY_MS = 900;
 
@@ -39,7 +32,7 @@ export function ApiActivityIndicator() {
 	const isActive = createMemo(() => activeCount() > 0);
 	const isVisible = createMemo(() => !isOnline() || showSlowRequest());
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (!isActive()) {
 			setShowSlowRequest(false);
 			return;
@@ -49,12 +42,12 @@ export function ApiActivityIndicator() {
 			setShowSlowRequest(true);
 		}, SLOW_REQUEST_DELAY_MS);
 
-		onCleanup(() => {
+		return () => {
 			clearTimeout(timer);
-		});
+		};
 	});
 
-	onMount(() => {
+	onSettled(() => {
 		setIsOnline(getOnlineStatus());
 		const handleOnline = () => setIsOnline(true);
 		const handleOffline = () => setIsOnline(false);
@@ -62,10 +55,10 @@ export function ApiActivityIndicator() {
 		window.addEventListener("online", handleOnline);
 		window.addEventListener("offline", handleOffline);
 
-		onCleanup(() => {
+		return () => {
 			window.removeEventListener("online", handleOnline);
 			window.removeEventListener("offline", handleOffline);
-		});
+		};
 	});
 
 	return (
@@ -92,3 +85,5 @@ export function ApiActivityIndicator() {
 		</div>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

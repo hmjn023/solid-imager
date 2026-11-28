@@ -53,6 +53,16 @@ test("rejects a conflicting shortcut and applies the replacement across mounts",
 		exact: true,
 	});
 	const feedback = page.getByRole("status");
+	const pressNonConvert = (target: Element) => {
+		const options = {
+			key: "NonConvert",
+			code: "NonConvert",
+			bubbles: true,
+			cancelable: true,
+		};
+		target.dispatchEvent(new KeyboardEvent("keydown", options));
+		target.dispatchEvent(new KeyboardEvent("keyup", options));
+	};
 	await expect.element(gridBinding).toHaveValue("1");
 	await expect.element(listBinding).toHaveValue("2");
 	gridBinding.element().focus();
@@ -77,8 +87,8 @@ test("rejects a conflicting shortcut and applies the replacement across mounts",
 	await expect.element(listBinding).toHaveValue("2");
 
 	await gridBinding.click();
-	await userEvent.keyboard("3");
-	await expect.element(gridBinding).toHaveValue("3");
+	pressNonConvert(gridBinding.element());
+	await expect.element(gridBinding).toHaveValue("NonConvert");
 	await expect.element(gridBinding).not.toHaveAttribute("aria-invalid");
 	await expect.element(feedback).toHaveTextContent(
 		t("shortcutSettingsPanel.valueWasUpdatedForThisDevice", {
@@ -88,13 +98,13 @@ test("rejects a conflicting shortcut and applies the replacement across mounts",
 	await heading.click();
 	await userEvent.keyboard("1");
 	expect(onGrid).not.toHaveBeenCalled();
-	await userEvent.keyboard("3");
+	pressNonConvert(heading.element());
 	expect(onGrid).toHaveBeenCalledTimes(1);
 
 	dispose();
 	dispose = mountSettings();
-	await expect.element(gridBinding).toHaveValue("3");
+	await expect.element(gridBinding).toHaveValue("NonConvert");
 	await heading.click();
-	await userEvent.keyboard("3");
+	pressNonConvert(heading.element());
 	expect(onGrid).toHaveBeenCalledTimes(2);
 });

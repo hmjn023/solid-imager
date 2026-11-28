@@ -1,8 +1,9 @@
 import { Button } from "./button";
 import { t } from "@solid-imager/i18n";
-import { createQuery } from "@tanstack/solid-query";
-import type { JSX, ParentProps } from "solid-js";
-import { Show, Suspense } from "solid-js";
+import { useQuery } from "@tanstack/solid-query";
+import type { ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { Show, Loading } from "solid-js";
 import { Badge, type BadgeProps } from "./badge";
 import { ClipboardCopy } from "./clipboard-copy";
 import {
@@ -61,12 +62,12 @@ function MediaTagWikiPreview(props: {
 	lookup: WikiLookup;
 	source?: string;
 }) {
-	const detail = createQuery(() => ({
+	const detail = useQuery(() => ({
 		...tagDictionaryDetailQuery(props.lookup, props.name),
 		retry: false,
 	}));
 	const excerpt = () => {
-		const body = detail.data?.body;
+		const body = readQueryData(detail)?.body;
 		if (!body) return null;
 		return (
 			plainTagWikiText(body)
@@ -77,7 +78,9 @@ function MediaTagWikiPreview(props: {
 	};
 	return (
 		<div class="space-y-1 break-words">
-			<p class="font-semibold">{detail.data?.japanese ?? props.name}</p>
+			<p class="font-semibold">
+				{readQueryData(detail)?.japanese ?? props.name}
+			</p>
 			<Show when={detail.isError}>
 				<p class="text-muted-foreground">{t("tagDictionary.detailError")}</p>
 			</Show>
@@ -99,7 +102,7 @@ function MediaTagWikiPreview(props: {
 }
 
 export function MediaTagBadge(
-	props: Pick<BadgeProps, "variant" | "classList" | "title"> & {
+	props: Pick<BadgeProps, "variant" | "class" | "title"> & {
 		name: string;
 		copyLabel?: string;
 		onSearch?: () => void;
@@ -108,9 +111,12 @@ export function MediaTagBadge(
 	},
 ) {
 	const badgeProps = () => ({
-		class: "max-w-full break-all",
+		class: [
+			"max-w-full break-all",
+			props.class,
+			{ "cursor-help": !!props.wikiLookup },
+		],
 		variant: props.variant,
-		classList: { ...props.classList, "cursor-help": !!props.wikiLookup },
 	});
 	const searchLabel = () =>
 		props.searchLabel ??
@@ -142,7 +148,7 @@ export function MediaTagBadge(
 		<Show
 			when={props.wikiLookup}
 			fallback={
-				<Badge {...badgeProps()} title={props.title}>
+				<Badge {...badgeProps()} title={props.title || undefined}>
 					{contents()}
 				</Badge>
 			}
@@ -159,16 +165,20 @@ export function MediaTagBadge(
 					</TooltipTrigger>
 					<TooltipContent class="w-popover-small px-3 py-2">
 						{/* Keep the media inspector mounted while the Wiki request resolves. */}
-						<Suspense fallback={<p>{t("status.loading")}</p>}>
+						<Loading fallback={<p>{t("status.loading")}</p>}>
 							<MediaTagWikiPreview
 								name={props.name}
 								lookup={lookup()}
-								source={props.title}
+								source={
+									typeof props.title === "string" ? props.title : undefined
+								}
 							/>
-						</Suspense>
+						</Loading>
 					</TooltipContent>
 				</Tooltip>
 			)}
 		</Show>
 	);
 }
+
+import { readQueryData } from "./query-state";

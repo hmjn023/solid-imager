@@ -1,16 +1,16 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "allowJs": true,
-    "types": ["bun-types", "vitest/globals", "webmcp-types"],
-    "isolatedModules": true,
-    "paths": {
-      "#route-tree": ["./src/routeTree.gen.ts"],
-      "~/*": ["./src/*"]
-    }
-  },
-    "include": ["src", "src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
-  "exclude": ["node_modules", ".vinxi", ".output", "dist"]
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"jsx": "preserve",
+		"jsxImportSource": "@solidjs/web",
+		"allowJs": true,
+		"types": ["bun-types", "vitest/globals", "webmcp-types"],
+		"isolatedModules": true,
+		"paths": {
+			"#route-tree": ["./src/routeTree.gen.ts"],
+			"~/*": ["./src/*"]
+		}
+	},
+	"include": ["src", "src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
+	"exclude": ["node_modules", ".vinxi", ".output", "dist"]
 }

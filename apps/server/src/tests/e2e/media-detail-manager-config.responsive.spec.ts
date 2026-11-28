@@ -428,7 +428,7 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 
 	await selectManagerCategory(page, "一括タグ付け");
 	if (testInfo.project.name !== "responsive-desktop") {
-		const currentCategory = page.getByRole("button", {
+		const currentCategory = page.getByRole("combobox", {
 			name: /^管理カテゴリ/,
 		});
 		await expect(currentCategory).toHaveText("一括タグ付け");
@@ -454,12 +454,13 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		name: "変更を保存",
 		exact: true,
 	});
+	await selectSettingsCategory(page, "ジョブ");
 	const concurrencyInput = page.getByLabel("同時実行数", { exact: true });
 	await concurrencyInput.fill("0");
 	await expect(concurrencyInput).toHaveAttribute("aria-invalid", "true");
 	await expect(saveButton).toBeDisabled();
 	await concurrencyInput.fill("3");
-	await expect(concurrencyInput).toHaveAttribute("aria-invalid", "false");
+	await expect(concurrencyInput).not.toHaveAttribute("aria-invalid", "true");
 	await expect(saveButton).toBeEnabled();
 
 	const compactCategory = settingsCategorySelect(page);

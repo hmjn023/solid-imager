@@ -1,9 +1,10 @@
-import * as AlertPrimitive from "@kobalte/core/alert";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+// Adapted from the Solid UI v2 alert registry recipe.
+import { Polymorphic, type PolymorphicProps } from "./utils/polymorphic";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import type { Component, ComponentProps, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+import type { Component } from "solid-js";
+import type { ComponentProps, ValidComponent } from "@solidjs/web";
+import { omit } from "solid-js";
 
 import { cn } from "./utils/cn";
 
@@ -28,42 +29,43 @@ const alertVariants = cva(
 	},
 );
 
-type AlertRootProps<T extends ValidComponent = "div"> =
-	AlertPrimitive.AlertRootProps<T> &
-		VariantProps<typeof alertVariants> & { class?: string | undefined };
+type AlertRootProps = ComponentProps<"div"> &
+	VariantProps<typeof alertVariants> & { class?: string | undefined };
 
 const Alert = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, AlertRootProps<T>>,
+	props: PolymorphicProps<T, AlertRootProps>,
 ) => {
-	const [local, others] = splitProps(props as AlertRootProps, [
+	const others = omit(
+		props as AlertRootProps & { as?: ValidComponent },
 		"class",
 		"variant",
-	]);
+		"as",
+	);
 	return (
-		<AlertPrimitive.Root
-			class={cn(alertVariants({ variant: local.variant }), local.class)}
+		<Polymorphic
+			as={props.as ?? "div"}
+			data-slot="alert"
+			role="alert"
+			class={cn(alertVariants({ variant: props.variant }), props.class)}
 			{...others}
 		/>
 	);
 };
 
-const AlertTitle: Component<ComponentProps<"h5">> = (props) => {
-	const [local, others] = splitProps(props, ["class", "children"]);
-	return (
-		<h5
-			class={cn("mb-1 font-medium leading-none tracking-tight", local.class)}
-			{...others}
-		>
-			{local.children}
-		</h5>
-	);
-};
+const AlertTitle: Component<ComponentProps<"h5">> = (props) => (
+	<h5
+		data-slot="alert-title"
+		{...props}
+		class={cn("mb-1 font-medium leading-none tracking-tight", props.class)}
+	/>
+);
 
-const AlertDescription: Component<ComponentProps<"div">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
-	return (
-		<div class={cn("text-sm [&_p]:leading-relaxed", local.class)} {...others} />
-	);
-};
+const AlertDescription: Component<ComponentProps<"div">> = (props) => (
+	<div
+		data-slot="alert-description"
+		{...props}
+		class={cn("text-sm [&_p]:leading-relaxed", props.class)}
+	/>
+);
 
 export { Alert, AlertDescription, AlertTitle, alertVariants };

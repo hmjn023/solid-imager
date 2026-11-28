@@ -6,7 +6,7 @@ import type {
 } from "@solid-imager/core/media";
 import type { Project } from "@solid-imager/core/projects";
 import {
-	createQuery,
+	useQuery,
 	type QueryFunctionContext,
 	useQueryClient,
 } from "@tanstack/solid-query";
@@ -84,22 +84,22 @@ export type MediaSidebarContentProps = {
 export function MediaSidebarContent(props: MediaSidebarContentProps) {
 	const queryClient = useQueryClient();
 
-	const projects = createQuery<Project[]>(() => {
+	const projects = useQuery<Project[]>(() => {
 		const options = props.projectsForMediaQueryOptions(
 			props.media.mediaSourceId,
 			props.media.id,
 		);
 		return options;
 	});
-	const allProjects = createQuery<Project[]>(() => {
+	const allProjects = useQuery<Project[]>(() => {
 		const options = props.allProjectsQueryOptions();
 		return options;
 	});
-	const allIps = createQuery<Ip[]>(() => {
+	const allIps = useQuery<Ip[]>(() => {
 		const options = props.allIpsQueryOptions();
 		return options;
 	});
-	const allCharacters = createQuery<Character[]>(() => {
+	const allCharacters = useQuery<Character[]>(() => {
 		const options = props.allCharactersQueryOptions();
 		return options;
 	});
@@ -113,9 +113,9 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 		<MediaSidebar
 			activityApi={props.activityApi}
 			tagDictionaryLookup={props.tagDictionaryLookup}
-			allCharacters={allCharacters.data || []}
-			allIps={allIps.data || []}
-			allProjects={allProjects.data || []}
+			allCharacters={readQueryData(allCharacters) || []}
+			allIps={readQueryData(allIps) || []}
+			allProjects={readQueryData(allProjects) || []}
 			isAllCharactersLoading={allCharacters.isLoading}
 			isAllIpsLoading={allIps.isLoading}
 			isProjectsLoading={projects.isLoading}
@@ -200,7 +200,9 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 			}}
 			onSearchTag={props.onSearchTag}
 			onUpdate={props.onUpdate}
-			projects={projects.data || []}
+			projects={readQueryData(projects) || []}
 		/>
 	);
 }
+
+import { readQueryData } from "./query-state";

@@ -1,5 +1,7 @@
-import type { ComponentProps, ParentProps } from "solid-js";
-import { For, splitProps } from "solid-js";
+// The decorative Skeleton uses the Solid UI v2 skeleton registry recipe.
+import type { ParentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
+import { Repeat } from "solid-js";
 import { Card, CardContent, CardHeader } from "./card";
 import { cn } from "./utils/cn";
 
@@ -20,13 +22,12 @@ export type SkeletonProps = Omit<ComponentProps<"div">, "aria-hidden">;
 
 /** Decorative placeholder. Announce loading once on the containing region. */
 export function Skeleton(props: SkeletonProps) {
-	const [local, others] = splitProps(props, ["class"]);
-
 	return (
 		<div
+			data-slot="skeleton"
+			{...props}
 			aria-hidden="true"
-			class={cn("motion-safe:animate-pulse rounded-md bg-muted", local.class)}
-			{...others}
+			class={cn("motion-safe:animate-pulse rounded-md bg-muted", props.class)}
 		/>
 	);
 }
@@ -72,6 +73,10 @@ export type CardGridSkeletonProps = {
 	count?: number;
 };
 
+function normalizeSkeletonCount(count: number): number {
+	return count > 0 ? Math.trunc(count) : 0;
+}
+
 export function CardGridSkeleton(props: CardGridSkeletonProps) {
 	return (
 		<div
@@ -79,9 +84,9 @@ export function CardGridSkeleton(props: CardGridSkeletonProps) {
 			class={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-3", props.class)}
 			data-skeleton="card-grid"
 		>
-			<For each={Array.from({ length: props.count ?? 6 })}>
+			<Repeat count={normalizeSkeletonCount(props.count ?? 6)}>
 				{() => <CardSkeleton />}
-			</For>
+			</Repeat>
 		</div>
 	);
 }
@@ -98,14 +103,14 @@ export function ListSkeleton(props: ListSkeletonProps) {
 			class={cn("space-y-4", props.class)}
 			data-skeleton="list"
 		>
-			<For each={Array.from({ length: props.count ?? 5 })}>
+			<Repeat count={normalizeSkeletonCount(props.count ?? 5)}>
 				{() => (
 					<div class="space-y-2">
 						<Skeleton class="h-4 w-1/3" />
 						<Skeleton class="h-10 w-full" />
 					</div>
 				)}
-			</For>
+			</Repeat>
 		</div>
 	);
 }
@@ -124,7 +129,7 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 			data-skeleton="media-grid"
 		>
 			<div class={cn(mediaGridClassName, props.class)}>
-				<For each={Array.from({ length: props.count ?? 32 })}>
+				<Repeat count={normalizeSkeletonCount(props.count ?? 32)}>
 					{() => (
 						<Skeleton
 							class={cn(
@@ -136,7 +141,7 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 							)}
 						/>
 					)}
-				</For>
+				</Repeat>
 			</div>
 		</div>
 	);
@@ -158,9 +163,9 @@ export function ManagerSkeleton(props: ManagerSkeletonProps) {
 			data-skeleton="manager"
 		>
 			<div class="flex gap-4 overflow-hidden border-b">
-				<For each={Array.from({ length: 6 })}>
+				<Repeat count={6}>
 					{() => <Skeleton class="h-10 w-24 shrink-0 rounded-none" />}
-				</For>
+				</Repeat>
 			</div>
 			<div class="min-h-6" />
 			<CardGridSkeleton />
@@ -176,9 +181,7 @@ export function ConfigSkeleton(props: ConfigSkeletonProps) {
 			data-skeleton="config"
 		>
 			<div class="grid h-10 grid-cols-6 gap-1">
-				<For each={Array.from({ length: 6 })}>
-					{() => <Skeleton class="h-10 w-full" />}
-				</For>
+				<Repeat count={6}>{() => <Skeleton class="h-10 w-full" />}</Repeat>
 			</div>
 			<div class="space-y-5 rounded-md border p-4">
 				<Skeleton class="h-7 w-1/3" />

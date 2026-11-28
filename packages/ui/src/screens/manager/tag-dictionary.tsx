@@ -1,16 +1,14 @@
+import { cn } from "../../utils/cn";
+import { readQueryData } from "../../query-state";
 import type {
 	TagDictionarySource,
 	TagDictionaryStatus,
 } from "@solid-imager/core/tags";
 import { getLocale, t, type StaticMessageKey } from "@solid-imager/i18n";
-import {
-	createMutation,
-	createQuery,
-	useQueryClient,
-} from "@tanstack/solid-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/solid-query";
 import { Link } from "@tanstack/solid-router";
-import { createEffect, createUniqueId, For, Show } from "solid-js";
-import { isServer } from "solid-js/web";
+import { createUniqueId, For, Show } from "solid-js";
+import { isServer } from "@solidjs/web";
 import { ErrorState } from "../../async-state";
 import { Badge } from "../../badge";
 import { Button } from "../../button";
@@ -78,7 +76,7 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 	const titleId = createUniqueId();
 	const searchTitleId = createUniqueId();
 	const client = useQueryClient();
-	const status = createQuery(() => ({
+	const status = useQuery(() => ({
 		queryKey: STATUS_QUERY_KEY,
 		queryFn: () => props.actions.dictionaryStatus(),
 		enabled: !isServer,
@@ -95,7 +93,7 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 		])
 			void client.invalidateQueries({ queryKey });
 	};
-	const refresh = createMutation(() => ({
+	const refresh = useMutation(() => ({
 		mutationFn: () => props.actions.dictionaryRefresh(),
 		onSuccess: invalidate,
 	}));
@@ -106,7 +104,7 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 			invalidateLibrary();
 		}
 	};
-	const jobId = () => status.data?.job?.id ?? null;
+	const jobId = () => readQueryData(status)?.job?.id ?? null;
 	const finish = () => {
 		refreshLibraryFor(jobId());
 		void invalidate();
@@ -133,18 +131,20 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 			},
 		},
 	);
-	createEffect(() => {
+	createTrackedEffect(() => {
 		// The persisted job outcome also covers terminal events missed while disconnected.
-		const job = status.data?.job;
+		const job = readQueryData(status)?.job;
 		if (job && job.status !== "pending" && job.status !== "in_progress") {
 			refreshLibraryFor(job.id);
 		}
 	});
 	const active = () =>
-		status.data?.job?.status === "pending" ||
-		status.data?.job?.status === "in_progress";
+		readQueryData(status)?.job?.status === "pending" ||
+		readQueryData(status)?.job?.status === "in_progress";
 	const snapshotFor = (source: TagDictionarySource) =>
-		status.data?.snapshots.find((snapshot) => snapshot.source === source);
+		readQueryData(status)?.snapshots.find(
+			(snapshot) => snapshot.source === source,
+		);
 	const installed = () => Boolean(snapshotFor("tags"));
 
 	return (
@@ -167,7 +167,7 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 					<Button
 						type="button"
 						class="min-h-12 w-full @sm:min-h-9 @sm:w-auto"
-						disabled={!status.data || refresh.isPending || active()}
+						disabled={!readQueryData(status) || refresh.isPending || active()}
 						onClick={() => refresh.mutate()}
 					>
 						<Show when={installed()} fallback={<Download size={16} />}>
@@ -189,8 +189,9 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 				<div aria-live="polite" aria-atomic="true">
 					<Show when={status.isPending || refresh.isPending || refresh.isError}>
 						<p
-							class="border-t px-4 py-3 text-sm text-muted-foreground"
-							classList={{ "bg-error text-destructive": refresh.isError }}
+							class={cn("border-t px-4 py-3 text-sm text-muted-foreground", {
+								"bg-error text-destructive": refresh.isError,
+							})}
 						>
 							{t(
 								refresh.isError
@@ -201,7 +202,7 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 							)}
 						</p>
 					</Show>
-					<Show when={status.data?.job}>
+					<Show when={readQueryData(status)?.job}>
 						{(job) => (
 							<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t bg-muted px-4 py-3 text-sm">
 								<div class="min-w-0 space-y-1">
@@ -214,12 +215,11 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 											variant={
 												job().status === "failed" ? "destructive" : "outline"
 											}
-											class="rounded-full"
-											classList={{
+											class={cn("rounded-full", {
 												"bg-info text-info-foreground": active(),
 												"bg-success text-success-foreground":
 													job().status === "completed",
-											}}
+											})}
 										>
 											{t(JOB_LABELS[job().status])}
 										</Badge>
@@ -247,7 +247,7 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 					</Show>
 				</div>
 
-				<Show when={status.data}>
+				<Show when={readQueryData(status)}>
 					<dl class="grid divide-y border-t @3xl:grid-cols-3 @3xl:divide-x @3xl:divide-y-0">
 						<For each={SOURCES}>
 							{(source) => (
@@ -328,3 +328,5 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 		</section>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

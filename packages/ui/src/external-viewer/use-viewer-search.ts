@@ -8,27 +8,26 @@ import {
 	type ViewerProvider,
 } from "@solid-imager/core/external-viewer";
 import {
-	createInfiniteQuery,
+	useInfiniteQuery,
 	type InfiniteData,
 	useQueryClient,
 } from "@tanstack/solid-query";
 import {
-	batch,
 	createEffect,
 	createMemo,
 	createSignal,
-	on,
 	onCleanup,
-	onMount,
+	onSettled,
 } from "solid-js";
 import { z } from "zod";
-import { toQueryUiState } from "../query-state";
+import { readQueryData, toQueryUiState } from "../query-state";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
 import type { ViewerGridHandle } from "./results-grid";
 import type { ViewerSearchHistoryEntry } from "./viewer-search-history";
 import {
 	type PixivCollection,
 	viewerPagination,
+	type ViewerQueryPage,
 	viewerSearchKey,
 } from "./query-options";
 
@@ -79,7 +78,7 @@ export function createViewerSearch<T extends ViewerPage>(
 	onCommitSearch?: (entry: ViewerSearchHistoryEntry) => void,
 ) {
 	const client = useQueryClient();
-	const initialScope = JSON.stringify(identity?.scope() ?? []);
+	const initialScope = () => JSON.stringify(identity?.scope() ?? []);
 	const [author, setAuthor] = createSignal<z.infer<typeof authorSchema>>();
 	const [literalPixivTag, setLiteralPixivTag] = createSignal(false);
 	const [pixivFeed, setPixivFeed] = createSignal<PixivCollection>("daily");
@@ -106,34 +105,37 @@ export function createViewerSearch<T extends ViewerPage>(
 	let scrollTop = 0;
 	let anchor: ScrollAnchor | undefined;
 	let detailPage: number | undefined;
-	const persist = () => {
-		if (scope() === undefined) return;
+	const getSessionSnapshot = () => {
+		const currentScope = scope();
+		if (currentScope === undefined) return;
+		const currentFeed = pixivFeed();
+		return {
+			tags: tags(),
+			pixivFeed: currentFeed,
+			bookmarkFilter:
+				currentFeed === "bookmarks" ? bookmarkFilter() : undefined,
+			author: author(),
+			literalPixivTag: literalPixivTag(),
+			page: anchor?.page ?? firstPage(),
+			anchor: anchor && { index: anchor.index, offset: anchor.offset },
+			choices: choices(),
+			detailPage,
+			draft: draft(),
+			provider,
+			scope: currentScope,
+			scrollTop,
+		};
+	};
+	const persist = (snapshot = getSessionSnapshot()) => {
+		if (!snapshot) return;
 		try {
-			sessionStorage.setItem(
-				key,
-				JSON.stringify({
-					tags: tags(),
-					pixivFeed: pixivFeed(),
-					bookmarkFilter:
-						pixivFeed() === "bookmarks" ? bookmarkFilter() : undefined,
-					author: author(),
-					literalPixivTag: literalPixivTag(),
-					page: anchor?.page ?? firstPage(),
-					anchor: anchor && { index: anchor.index, offset: anchor.offset },
-					choices: choices(),
-					detailPage,
-					draft: draft(),
-					provider,
-					scope: scope(),
-					scrollTop,
-				}),
-			);
+			sessionStorage.setItem(key, JSON.stringify(snapshot));
 		} catch {
 			/* optional browser storage */
 		}
 	};
 
-	function resetScroll() {
+	function resetScroll(area: HTMLDivElement | undefined) {
 		revision++;
 		restoreAfterPage = undefined;
 		setPrepending(false);
@@ -143,80 +145,89 @@ export function createViewerSearch<T extends ViewerPage>(
 		setFirstPage(1);
 		setHasScrolled(false);
 		setRestoring(false);
-		const area = scrollArea();
 		if (area) area.scrollTop = 0;
 	}
 
-	onMount(() => setMounted(true));
+	onSettled(() => {
+		setMounted(true);
+	});
 	createEffect(
-		on(
-			() =>
-				mounted() && (identity?.ready() ?? true)
-					? JSON.stringify(identity?.scope() ?? [])
-					: undefined,
-			(currentScope) => {
-				if (currentScope === undefined) return;
-				if (scope() !== undefined) {
-					// The same Pixiv screen can change accounts while it is mounted.
-					batch(() => {
-						resetScroll();
-						setBookmarkFilter(defaultBookmarkFilter);
-						if (pixivFeed() === "bookmarks") setPixivFeed("daily");
-						setScope(currentScope);
-					});
-					return;
-				}
-				try {
-					const raw =
-						readUiStorageValue(sessionStorage, key) ??
-						readUiStorageValue(sessionStorage, UI_STORAGE_KEYS.danbooruSearch);
-					const parsed = session.safeParse(raw ? JSON.parse(raw) : null);
-					if (parsed.success) {
-						const saved = parsed.data;
-						setLiteralPixivTag(
-							provider === "pixiv" &&
-								saved.provider === provider &&
-								saved.literalPixivTag,
-						);
-						setAuthor(
-							provider === "pixiv" && saved.provider === provider
-								? saved.author
-								: undefined,
-						);
-						setPixivFeed(
-							provider === "pixiv" &&
-								saved.provider === provider &&
-								((saved.pixivFeed !== "follow" &&
-									saved.pixivFeed !== "bookmarks") ||
-									saved.scope === currentScope)
-								? (saved.pixivFeed ?? "daily")
-								: "daily",
-						);
-						if (pixivFeed() === "bookmarks")
-							setBookmarkFilter(saved.bookmarkFilter ?? defaultBookmarkFilter);
-						setTags(saved.tags);
-						setDraft(saved.draft);
-						setChoices(saved.choices);
-						if (
-							saved.provider === provider &&
-							(saved.scope === currentScope ||
-								(!identity && saved.scope === undefined))
-						) {
-							if (saved.anchor) anchor = { page: saved.page, ...saved.anchor };
-							scrollTop = saved.scrollTop;
-							detailPage = selectedPostId?.() ? saved.detailPage : undefined;
-							setFirstPage(detailPage ?? saved.page);
-							setRestoring(Boolean(anchor || scrollTop));
-						}
-					}
-				} catch {
-					/* A malformed session must not prevent browsing. */
-				}
+		() => {
+			if (!mounted() || (identity && !identity.ready())) return;
+			const currentScope = initialScope();
+			const previousScope = scope();
+			if (currentScope === previousScope) return;
+			return {
+				currentScope,
+				previousScope,
+				area: scrollArea(),
+				feed: pixivFeed(),
+				onDetail: selectedPostId?.() !== undefined,
+			};
+		},
+		(scopeUpdate) => {
+			if (!scopeUpdate) return;
+			const { currentScope, previousScope, area, feed, onDetail } = scopeUpdate;
+			if (previousScope !== undefined) {
+				// The same Pixiv screen can change accounts while it is mounted.
+				resetScroll(area);
+				setBookmarkFilter(defaultBookmarkFilter);
+				if (feed === "bookmarks") setPixivFeed("daily");
 				setScope(currentScope);
-			},
-		),
+				return;
+			}
+			try {
+				const raw =
+					readUiStorageValue(sessionStorage, key) ??
+					readUiStorageValue(sessionStorage, UI_STORAGE_KEYS.danbooruSearch);
+				const parsed = session.safeParse(raw ? JSON.parse(raw) : null);
+				if (parsed.success) {
+					const saved = parsed.data;
+					setLiteralPixivTag(
+						provider === "pixiv" &&
+							saved.provider === provider &&
+							saved.literalPixivTag,
+					);
+					setAuthor(
+						provider === "pixiv" && saved.provider === provider
+							? saved.author
+							: undefined,
+					);
+					const savedFeed =
+						provider === "pixiv" &&
+						saved.provider === provider &&
+						((saved.pixivFeed !== "follow" &&
+							saved.pixivFeed !== "bookmarks") ||
+							saved.scope === currentScope)
+							? (saved.pixivFeed ?? "daily")
+							: "daily";
+					setPixivFeed(savedFeed);
+					if (savedFeed === "bookmarks")
+						setBookmarkFilter(saved.bookmarkFilter ?? defaultBookmarkFilter);
+					setTags(saved.tags);
+					setDraft(saved.draft);
+					setChoices(saved.choices);
+					if (
+						saved.provider === provider &&
+						(saved.scope === currentScope ||
+							(!identity && saved.scope === undefined))
+					) {
+						if (saved.anchor) anchor = { page: saved.page, ...saved.anchor };
+						scrollTop = saved.scrollTop;
+						detailPage = onDetail ? saved.detailPage : undefined;
+						setFirstPage(detailPage ?? saved.page);
+						setRestoring(Boolean(anchor || scrollTop));
+					}
+				}
+			} catch {
+				/* A malformed session must not prevent browsing. */
+			}
+			setScope(currentScope);
+		},
 	);
-	createEffect(persist);
+	createEffect(getSessionSnapshot, (snapshot) => {
+		if (snapshot) persist(snapshot);
+	});
 	onCleanup(() => {
 		revision++;
 		persist();
@@ -233,7 +244,7 @@ export function createViewerSearch<T extends ViewerPage>(
 	) =>
 		viewerSearchKey(
 			provider,
-			scope() ?? initialScope,
+			scope() ?? initialScope(),
 			page,
 			word,
 			mappings,
@@ -242,10 +253,10 @@ export function createViewerSearch<T extends ViewerPage>(
 			feed,
 			bookmark,
 		);
-	const results = createInfiniteQuery<
-		T,
+	const results = useInfiniteQuery<
+		ViewerQueryPage<T>,
 		Error,
-		InfiniteData<T, number>,
+		InfiniteData<ViewerQueryPage<T>, number>,
 		ReturnType<typeof queryKey>,
 		number
 	>(() => {
@@ -257,8 +268,9 @@ export function createViewerSearch<T extends ViewerPage>(
 			bookmark = showingBookmarks() ? bookmarkFilter() : undefined;
 		return {
 			queryKey: queryKey(word, mappings, literal, userId ?? null, feed),
-			queryFn: ({ pageParam }) =>
-				run(
+			queryFn: async ({ pageParam }) => ({
+				id: pageParam,
+				result: await run(
 					{
 						tags: word,
 						page: pageParam,
@@ -271,6 +283,7 @@ export function createViewerSearch<T extends ViewerPage>(
 					userId,
 					bookmark,
 				),
+			}),
 			...viewerPagination(firstPage()),
 			enabled: scope() !== undefined,
 			gcTime: identity ? 0 : undefined,
@@ -283,13 +296,16 @@ export function createViewerSearch<T extends ViewerPage>(
 		};
 	});
 	const collection = createMemo(() => {
+		// A newly connected account must not keep clickable tiles from its predecessor.
+		if (identity && mounted() && scope() !== initialScope()) return;
 		// Pending data suspends the entire route, including the focused search input.
-		const data = results.isPending ? undefined : results.data;
+		const data = readQueryData(results);
 		if (!data || !data.pages.length) return;
 		const positions = new Map<number, Position>();
 		const posts: T["posts"][number][] = [];
-		const firstOnly = new Set(data.pages[0].posts.map((post) => post.id));
-		const grows = data.pages.map((page, i) => {
+		const firstPage = data.pages[0].result;
+		const firstOnly = new Set(firstPage.posts.map((post) => post.id));
+		const grows = data.pages.map(({ result: page }, i) => {
 			const length = posts.length;
 			page.posts.forEach((post, index) => {
 				if (i > 0) firstOnly.delete(post.id);
@@ -300,7 +316,7 @@ export function createViewerSearch<T extends ViewerPage>(
 			return posts.length > length;
 		});
 		return {
-			result: { ...data.pages[0], posts, hasNextPage: results.hasNextPage },
+			result: { ...firstPage, posts, hasNextPage: results.hasNextPage },
 			pages: data,
 			positions,
 			lastPageGrew: grows.at(-1) === true,
@@ -338,60 +354,87 @@ export function createViewerSearch<T extends ViewerPage>(
 			setHasScrolled(true);
 		rememberScroll();
 	}
-	function rememberDetail(id: number | undefined) {
-		const position =
-			id === undefined ? undefined : collection()?.positions.get(id);
-		if (position) detailPage = position.page;
-		else if (id === undefined) detailPage = undefined;
-		persist();
-	}
+	createEffect(
+		() => {
+			const id = selectedPostId?.();
+			return {
+				id,
+				position:
+					id === undefined ? undefined : collection()?.positions.get(id),
+				snapshot: getSessionSnapshot(),
+			};
+		},
+		({ id, position, snapshot }) => {
+			if (position) detailPage = position.page;
+			else if (id === undefined) detailPage = undefined;
+			if (snapshot) persist({ ...snapshot, detailPage });
+		},
+	);
 
 	// Restoring by page and ordinal avoids storing remote posts (including private
 	// artwork IDs) and allows a cold reload to start near the last visible tile.
-	createEffect(() => {
-		const area = scrollArea(),
-			handle = gridHandle(),
-			loaded = collection();
-		if (
-			!restorePending() ||
-			prepending() ||
-			!area ||
-			!loaded ||
-			(restoreAfterPage !== undefined &&
-				loaded.pages.pageParams[0] !== restoreAfterPage) ||
-			(loaded.result.posts.length && !handle)
-		)
-			return;
-		const saved = anchor;
-		const pageIndex = saved ? loaded.pages.pageParams.indexOf(saved.page) : -1;
-		if (saved && pageIndex < 0 && firstPage() !== saved.page) {
-			// Reloading a detail can start on a different page than its collection
-			// viewport. Jump directly to the viewport's page when returning.
-			restoreAfterPage = saved.page;
-			setFirstPage(saved.page);
-			return;
-		}
-		const post = saved && loaded.pages.pages[pageIndex]?.posts[saved.index];
-		let cancelled = false;
-		const restore = async () => {
-			if (post && saved && handle) {
-				await handle.restoreAnchor({ id: post.id, offset: saved.offset });
-			} else {
-				area.scrollTop = scrollTop;
+	createEffect(
+		() => {
+			const area = scrollArea();
+			const handle = gridHandle();
+			const loaded = collection();
+			if (
+				!restorePending() ||
+				prepending() ||
+				!area ||
+				!loaded ||
+				(restoreAfterPage !== undefined &&
+					loaded.pages.pageParams[0] !== restoreAfterPage) ||
+				(loaded.result.posts.length && !handle)
+			)
+				return;
+			const saved = anchor;
+			const pageIndex = saved
+				? loaded.pages.pageParams.indexOf(saved.page)
+				: -1;
+			const jumpPage =
+				saved && pageIndex < 0 && firstPage() !== saved.page
+					? saved.page
+					: undefined;
+			const post =
+				saved && loaded.pages.pages[pageIndex]?.result.posts[saved.index];
+			return {
+				area,
+				handle,
+				jumpPage,
+				anchor:
+					post && saved ? { id: post.id, offset: saved.offset } : undefined,
+			};
+		},
+		(target) => {
+			if (!target) return;
+			if (target.jumpPage !== undefined) {
+				// A reloaded detail can start on a different page than its collection's viewport.
+				restoreAfterPage = target.jumpPage;
+				setFirstPage(target.jumpPage);
+				return;
 			}
-			if (!cancelled) {
-				restoreAfterPage = undefined;
-				setRestoring(false);
-			}
-		};
-		const frame = requestAnimationFrame(() => {
-			void restore();
-		});
-		onCleanup(() => {
-			cancelled = true;
-			cancelAnimationFrame(frame);
-		});
-	});
+			let cancelled = false;
+			const restore = async () => {
+				if (target.anchor && target.handle) {
+					await target.handle.restoreAnchor(target.anchor);
+				} else {
+					target.area.scrollTop = scrollTop;
+				}
+				if (!cancelled) {
+					restoreAfterPage = undefined;
+					setRestoring(false);
+				}
+			};
+			const frame = requestAnimationFrame(() => {
+				void restore();
+			});
+			return () => {
+				cancelled = true;
+				cancelAnimationFrame(frame);
+			};
+		},
+	);
 	function registerGrid(handle: ViewerGridHandle | undefined) {
 		setGridHandle(handle);
 		if (!handle && (anchor || scrollTop)) setRestoring(true);
@@ -463,15 +506,13 @@ export function createViewerSearch<T extends ViewerPage>(
 			1,
 		);
 		const cached = client.getQueryState(nextKey);
-		batch(() => {
-			resetScroll();
-			setAuthor(nextAuthor);
-			setPixivFeed(feed);
-			setBookmarkFilter(bookmark);
-			setLiteralPixivTag(literal);
-			setTags(word);
-			setChoices(mappings);
-		});
+		resetScroll(scrollArea());
+		setAuthor(nextAuthor);
+		setPixivFeed(feed);
+		setBookmarkFilter(bookmark);
+		setLiteralPixivTag(literal);
+		setTags(word);
+		setChoices(mappings);
 		if (cached) void client.resetQueries({ queryKey: nextKey, exact: true });
 	}
 	function submit(value = draft(), literal?: boolean) {
@@ -527,7 +568,6 @@ export function createViewerSearch<T extends ViewerPage>(
 		state,
 		rememberScroll,
 		handleScroll,
-		rememberDetail,
 		scrollArea,
 		setScrollArea,
 		gridHandle,

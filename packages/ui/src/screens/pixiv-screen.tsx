@@ -8,20 +8,13 @@ import type {
 	PixivCard,
 	PixivSearchResult,
 } from "@solid-imager/core/external-viewer";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { ClientOnly } from "@tanstack/solid-router";
-import Clock3 from "lucide-solid/icons/clock-3";
-import Search from "lucide-solid/icons/search";
-import UserRound from "lucide-solid/icons/user-round";
+import Clock3 from "@lucide/solid/icons/clock-3";
+import Search from "@lucide/solid/icons/search";
+import UserRound from "@lucide/solid/icons/user-round";
 import { Button } from "../button";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	on,
-	Show,
-} from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Dialog } from "../dialog";
 import { DropdownMenuItem, DropdownMenuSeparator } from "../dropdown-menu";
 import { ViewerActionsMenu } from "../external-viewer/actions-menu";
@@ -46,6 +39,7 @@ import { createViewerSearch } from "../external-viewer/use-viewer-search";
 import { viewerPostQueryOptions } from "../external-viewer/query-options";
 import { PixivBookmarkFilters } from "../external-viewer/pixiv-bookmark-filters";
 import { PixivBookmarkAction } from "../external-viewer/pixiv-bookmark-action";
+import { readQueryData } from "../query-state";
 import {
 	ViewerWorkspace,
 	type ViewerNavigation,
@@ -130,10 +124,18 @@ function PixivSearchInfo(props: {
 	);
 }
 export function PixivScreen(props: PixivProps) {
+	return (
+		<Show when={props.apiBase()} keyed>
+			{(base) => <PixivScreenForServer {...props} base={base} />}
+		</Show>
+	);
+}
+
+function PixivScreenForServer(props: PixivProps & { base: string }) {
 	const account = createPixivAccount(
-		props.apiBase(),
-		props.createViewer,
-		props.fetch,
+		props.base,
+		(base, request) => props.createViewer(base, request),
+		(url, init) => props.fetch?.(url, init) ?? fetch(url, init),
 	);
 	const [toolbarDialog, setToolbarDialog] = createSignal<PixivToolbarDialog>();
 	let pendingToolbarDialog: PixivToolbarDialog | undefined;
@@ -183,19 +185,17 @@ export function PixivScreen(props: PixivProps) {
 	);
 	const relatedHistory = new Map<string, PixivRelatedSnapshot>();
 	createEffect(
-		on(
-			() => (account.ready() ? JSON.stringify(account.scope()) : undefined),
-			(scope, previous) => {
-				if (previous && previous !== scope) {
-					relatedHistory.clear();
-					clearPixivRelatedSnapshots();
-					if (!account.session() && browse.pixivFeed() === "follow")
-						browse.selectFeed("daily");
-				}
-			},
-		),
+		() => (account.ready() ? JSON.stringify(account.scope()) : undefined),
+		(scope, previous) => {
+			if (previous && previous !== scope) {
+				relatedHistory.clear();
+				clearPixivRelatedSnapshots();
+				if (!account.session() && browse.pixivFeed() === "follow")
+					browse.selectFeed("daily");
+			}
+		},
 	);
-	const detail = createQuery(() => ({
+	const detail = useQuery(() => ({
 		...viewerPostQueryOptions(
 			"pixiv",
 			props.selectedPostId,
@@ -207,17 +207,14 @@ export function PixivScreen(props: PixivProps) {
 	}));
 	const history = createPixivViewingHistory(historyScope);
 	createEffect(
-		on(
-			() => {
-				const id = props.selectedPostId;
-				return account.ready() && detail.isSuccess && detail.data?.id === id
-					? id
-					: undefined;
-			},
-			(id, previous) => {
-				if (id && id !== previous && detail.data) history.record(detail.data);
-			},
-		),
+		() => {
+			if (!account.ready() || !detail.isSuccess) return;
+			const post = readQueryData(detail);
+			return post?.id === props.selectedPostId ? post : undefined;
+		},
+		(post, previous) => {
+			if (post && post.id !== previous?.id) history.record(post);
+		},
 	);
 	const describePost = (post: PixivCard) => ({
 		title:

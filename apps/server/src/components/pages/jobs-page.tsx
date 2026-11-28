@@ -1,11 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { useWorkspaceView } from "~/presentation/workspace-view";
-import {
-	useJobInspection,
-	useJobsList,
-	useJobsQueryEvents,
-} from "@solid-imager/ui/jobs";
+import { useJobInspection, useJobsList } from "@solid-imager/ui/jobs";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import { jobsQueryKeys } from "@solid-imager/ui/query";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs";
@@ -17,7 +13,7 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 const BULK_RETRY_CONCURRENCY = 8;
 
-export function JobsPage(props: { replaySince?: number }) {
+export function JobsPage() {
 	const jobsList = useJobsList(orpc.jobs);
 	const jobsQuery = jobsList.query;
 	const workspace = useWorkspaceNavigation();
@@ -35,13 +31,6 @@ export function JobsPage(props: { replaySince?: number }) {
 		failed: inspection.failed(),
 	}));
 	const queryClient = useQueryClient();
-
-	const replaySince = props.replaySince;
-	useJobsQueryEvents((signal) =>
-		orpc.jobs.events(replaySince === undefined ? undefined : { replaySince }, {
-			signal,
-		}),
-	);
 
 	return (
 		<JobsScreen

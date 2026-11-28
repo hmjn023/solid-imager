@@ -5,7 +5,8 @@ import type {
 	ThumbnailGeneratedEvent,
 } from "@solid-imager/core/events";
 import type { QueryOptions } from "@tanstack/solid-query";
-import type { Accessor, JSX } from "solid-js";
+import type { Accessor } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import type { MediaSourceEventTransport } from "../hooks/use-media-source-events";
 
 export type MediaDetailScreenProps = {

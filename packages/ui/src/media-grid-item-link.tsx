@@ -1,6 +1,6 @@
 import type { Media } from "@solid-imager/core/media";
 import { Link, type RouterHistory } from "@tanstack/solid-router";
-import { children, createComputed, createEffect, Show } from "solid-js";
+import { children, createMemo, Show } from "solid-js";
 import type { MediaGridLinkProps } from "./media-grid-item";
 import {
 	createRelatedMediaReturnMarker,
@@ -39,7 +39,7 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 	};
 	let pendingFocusRestore = false;
 
-	createComputed((previous?: boolean) => {
+	const isBulkMode = createMemo((previous?: boolean) => {
 		const current = Boolean(props.isBulkSelectMode);
 		if (
 			previous !== undefined &&
@@ -51,8 +51,8 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 		return current;
 	});
 
-	createEffect(() => {
-		void props.isBulkSelectMode;
+	createTrackedEffect(() => {
+		void isBulkMode();
 		if (!pendingFocusRestore) return;
 		pendingFocusRestore = false;
 		tileRef?.focus({ preventScroll: true });
@@ -158,9 +158,9 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 	);
 
 	return (
-		<Show fallback={detailLink()} when={props.isBulkSelectMode}>
+		<Show fallback={detailLink()} when={isBulkMode()}>
 			<button
-				aria-pressed={props.isSelected}
+				aria-pressed={props.isSelected ? "true" : "false"}
 				class={props.linkProps.class}
 				data-media-id={props.linkProps["data-media-id"]}
 				onClick={(event) => {
@@ -180,3 +180,5 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 		</Show>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

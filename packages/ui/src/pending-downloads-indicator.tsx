@@ -25,7 +25,7 @@ export function PendingDownloadsIndicator(
 				const hasPendingImports = () => (pendingCount() ?? 0) > 0;
 				return (
 					<button
-						aria-disabled={!hasPendingImports()}
+						aria-disabled={hasPendingImports() ? "false" : "true"}
 						aria-label={t("pendingDownloadsIndicator.importInboxValue", {
 							value0: String(
 								hasPendingImports()

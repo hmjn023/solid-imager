@@ -5,7 +5,7 @@ import {
 	type UseMediaSourceEventsOptions,
 	useMediaSourceEvents as useMediaSourceEventsShared,
 } from "@solid-imager/ui/source-events";
-import { type Accessor, mergeProps } from "solid-js";
+import { type Accessor, merge } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 export type {
@@ -47,5 +47,5 @@ export function useMediaSourceEvents(
 ): void {
 	const transport = createTauriTransport(mediaSourceId);
 
-	useMediaSourceEventsShared(mergeProps(options, { transport }));
+	useMediaSourceEventsShared(merge(options, { transport }));
 }

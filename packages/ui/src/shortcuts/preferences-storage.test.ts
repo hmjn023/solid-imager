@@ -51,7 +51,7 @@ describe("shortcut preference storage", () => {
 				bindings: {
 					commandPalette: 42,
 					focusSearch: "",
-					viewGrid: "NotARealKey",
+					viewGrid: "F25",
 				},
 			}),
 		).toEqual(DEFAULT_SHORTCUT_BINDINGS);
@@ -72,6 +72,13 @@ describe("shortcut preference storage", () => {
 });
 
 describe("shortcut normalization and conflicts", () => {
+	it.each(["NonConvert", "Convert", "MediaPlayPause", "AudioVolumeUp"])(
+		"accepts the recorder's %s key name",
+		(key) => {
+			expect(parseShortcutBinding(key)).toEqual({ valid: true, binding: key });
+		},
+	);
+
 	it("normalizes aliases using the selected platform", () => {
 		expect(normalizeShortcutBinding("Control+K", "windows")).toBe("Mod+K");
 		expect(normalizeShortcutBinding("Meta+K", "mac")).toBe("Mod+K");

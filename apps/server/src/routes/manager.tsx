@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import { jobsQueryKeys } from "@solid-imager/ui/query";
 import { ManagerPage } from "~/components/pages/manager-page";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";

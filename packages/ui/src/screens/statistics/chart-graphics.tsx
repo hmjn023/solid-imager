@@ -1,13 +1,27 @@
 import { t } from "@solid-imager/i18n";
 import type { MediaType } from "@solid-imager/core/media";
 import type { LibraryStatistics } from "@solid-imager/core/statistics";
-import { areaY, barY, defineChart, lineY } from "@tanstack/charts";
+import {
+	areaY,
+	barY,
+	defineChart,
+	lineY,
+	type ChartHostOptions,
+	type ChartValue,
+} from "@tanstack/charts";
+import { createChartAdapter } from "@tanstack/charts/adapter";
 import { pie, polar, radialArc } from "@tanstack/charts/polar";
 import { scaleBand } from "@tanstack/charts/scales/band";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
-import { Chart } from "@tanstack/charts/solid";
 import { tooltip } from "@tanstack/charts/tooltip";
-import { createMemo } from "solid-js";
+import {
+	createMemo,
+	createRenderEffect,
+	createUniqueId,
+	onCleanup,
+	onSettled,
+	untrack,
+} from "solid-js";
 
 const chartPrimary = "hsl(var(--primary))";
 const chartTheme = {
@@ -16,6 +30,46 @@ const chartTheme = {
 	grid: "hsl(var(--border))",
 	background: "hsl(var(--card))",
 };
+
+function Chart<TDatum, TXValue extends ChartValue, TYValue extends ChartValue>(
+	props: ChartHostOptions<TDatum, TXValue, TYValue> & { height: number },
+) {
+	const idPrefix = `ts-chart-${createUniqueId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+	const options = () => ({
+		definition: props.definition,
+		height: props.height,
+		ariaLabel: props.ariaLabel,
+		onSelect: props.onSelect,
+		idPrefix,
+	});
+	const adapter = createChartAdapter(untrack(options));
+	const initialSvg = adapter.prerender();
+	let surface: HTMLDivElement | undefined;
+	createRenderEffect(options, adapter.update);
+	onSettled(() => {
+		if (surface) adapter.mount(surface);
+	});
+	onCleanup(adapter.destroy);
+
+	return (
+		<div
+			class="ts-chart-host"
+			style={{
+				position: "relative",
+				width: "100%",
+				height: `${props.height}px`,
+			}}
+		>
+			<div
+				ref={surface}
+				class="ts-chart-surface"
+				style={{ width: "100%", height: "100%" }}
+				innerHTML={initialSvg}
+			/>
+		</div>
+	);
+}
+
 export type TrendGraphProps = {
 	trend: LibraryStatistics["trend"];
 	monthly: boolean;

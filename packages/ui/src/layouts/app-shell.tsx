@@ -1,14 +1,9 @@
 import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
-import type { Accessor, JSX, ParentProps } from "solid-js";
-import {
-	createContext,
-	createEffect,
-	createSignal,
-	onCleanup,
-	onMount,
-	useContext,
-} from "solid-js";
+import { createDialogController } from "@ui-sdk/solid/dialog";
+import type { Accessor, ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createContext, createSignal, onSettled, useContext } from "solid-js";
 import type { UseSourcesPageResult } from "../hooks/use-sources-page";
 import { PendingDownloadsProvider } from "../pending-downloads-indicator-core";
 import {
@@ -19,7 +14,6 @@ import {
 	SheetTitle,
 } from "../sheet";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
-import { hasOpenDialog } from "../shortcuts/preferences-provider";
 import { SidebarProvider } from "../sidebar";
 import { SourceDeleteModal } from "../source-delete-modal";
 import { SourceFormModal } from "../source-form-modal";
@@ -32,8 +26,9 @@ import { type JobsBadgeCounts, Sidebar } from "./sidebar";
 export type { JobsBadgeCounts } from "./sidebar";
 
 /** Provides live active/failed job counts to the shared workspace sidebar. */
-export const JobsBadgeContext =
-	createContext<Accessor<JobsBadgeCounts | undefined>>();
+export const JobsBadgeContext = createContext<Accessor<
+	JobsBadgeCounts | undefined
+> | null>(null);
 
 export type AppShellProps = ParentProps<{
 	apiDocsHref?: string;
@@ -53,7 +48,7 @@ export function WorkspaceSetupFrame(props: ParentProps) {
 			<main
 				class="min-h-0 min-w-0 flex-1 overflow-auto"
 				id="main-content"
-				tabIndex={-1}
+				tabindex={-1}
 			>
 				{props.children}
 			</main>
@@ -72,47 +67,16 @@ export function AppShell(props: AppShellProps) {
 	const [sidebarExpanded, setSidebarExpanded] = createSignal(true);
 	const [sidebarPreferenceReady, setSidebarPreferenceReady] =
 		createSignal(false);
-	const [mobileMenuOpen, setMobileMenuOpen] = createSignal(false);
+	const mobileMenu = createDialogController();
 	const [commandPaletteOpen, setCommandPaletteOpen] = createSignal(false);
 	const [shortcutHelpOpen, setShortcutHelpOpen] = createSignal(false);
-	let mobileMenuTrigger: HTMLButtonElement | undefined;
-	let commandPaletteReturnFocus: HTMLElement | null = null;
-	let focusRestoreFrame: number | undefined;
-
-	const updateCommandPaletteOpen = (open: boolean) => {
-		if (open && !commandPaletteOpen()) {
-			commandPaletteReturnFocus =
-				document.activeElement instanceof HTMLElement
-					? document.activeElement
-					: null;
-		}
-		setCommandPaletteOpen(open);
-		if (open || !commandPaletteReturnFocus) return;
-		const returnFocus = commandPaletteReturnFocus;
-		commandPaletteReturnFocus = null;
-		if (focusRestoreFrame !== undefined)
-			cancelAnimationFrame(focusRestoreFrame);
-		focusRestoreFrame = requestAnimationFrame(() => {
-			focusRestoreFrame = undefined;
-			if (
-				commandPaletteOpen() ||
-				shortcutHelpOpen() ||
-				props.sourcePage.showFormModal() ||
-				props.sourcePage.showDeleteModal() ||
-				hasOpenDialog()
-			) {
-				return;
-			}
-			if (returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
-		});
-	};
 
 	const toggleSidebar = () => setSidebarExpanded((expanded) => !expanded);
-	const navigate = () => setMobileMenuOpen(false);
+	const navigate = () => mobileMenu.close();
 
 	createAppShortcut(
 		"commandPalette",
-		() => updateCommandPaletteOpen(!commandPaletteOpen()),
+		() => setCommandPaletteOpen((open) => !open),
 		() => ({
 			ignoreInputs: false,
 			allowWhenSuspended: commandPaletteOpen(),
@@ -127,7 +91,7 @@ export function AppShell(props: AppShellProps) {
 		createAppShortcut("goSettings", () => props.onNavigate?.("/config"));
 	}
 
-	onMount(() => {
+	onSettled(() => {
 		try {
 			const storedPreference = readUiStorageValue(
 				localStorage,
@@ -140,11 +104,7 @@ export function AppShell(props: AppShellProps) {
 		}
 		setSidebarPreferenceReady(true);
 	});
-	onCleanup(() => {
-		if (focusRestoreFrame !== undefined)
-			cancelAnimationFrame(focusRestoreFrame);
-	});
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (!sidebarPreferenceReady()) return;
 		try {
 			localStorage.setItem(
@@ -200,7 +160,7 @@ export function AppShell(props: AppShellProps) {
 						onDeleteSource={sourcePage.handleDeleteSource}
 						onEditSource={sourcePage.handleEditSource}
 						onNavigate={navigate}
-						onOpenCommandPalette={() => updateCommandPaletteOpen(true)}
+						onOpenCommandPalette={() => setCommandPaletteOpen(true)}
 						onSyncSource={(source) => void sourcePage.handleSyncSource(source)}
 						renderPendingDownloadsIndicator={
 							props.renderPendingDownloadsIndicator
@@ -210,38 +170,27 @@ export function AppShell(props: AppShellProps) {
 
 					<div class="flex min-h-0 min-w-0 flex-col">
 						<MobileHeader
-							onOpenCommandPalette={() => updateCommandPaletteOpen(true)}
-							onOpenMenu={() => setMobileMenuOpen(true)}
+							menuController={mobileMenu}
+							onOpenCommandPalette={() => setCommandPaletteOpen(true)}
 							renderPendingDownloadsIndicator={
 								props.renderPendingDownloadsIndicator
 							}
-							triggerRef={(element) => {
-								mobileMenuTrigger = element;
-							}}
 						/>
 						{props.statusIndicator}
 						<main
 							class="min-h-0 min-w-0 flex-1 overflow-hidden"
 							id="main-content"
-							tabIndex={-1}
+							tabindex={-1}
 						>
-							<AddSourceContext.Provider value={sourcePage.handleAddSource}>
+							<AddSourceContext value={sourcePage.handleAddSource}>
 								{props.children}
-							</AddSourceContext.Provider>
+							</AddSourceContext>
 						</main>
 					</div>
 
-					<Sheet onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
+					<Sheet controller={mobileMenu}>
 						<SheetContent
 							class="workspace-theme overflow-hidden p-0"
-							onCloseAutoFocus={(event) => {
-								event.preventDefault();
-								requestAnimationFrame(() => {
-									if (mobileMenuTrigger?.isConnected) {
-										mobileMenuTrigger.focus({ preventScroll: true });
-									}
-								});
-							}}
 							position="left"
 						>
 							<SheetHeader class="sr-only">
@@ -261,7 +210,7 @@ export function AppShell(props: AppShellProps) {
 								onDeleteSource={sourcePage.handleDeleteSource}
 								onEditSource={sourcePage.handleEditSource}
 								onNavigate={navigate}
-								onOpenCommandPalette={() => updateCommandPaletteOpen(true)}
+								onOpenCommandPalette={() => setCommandPaletteOpen(true)}
 								onSyncSource={(source) =>
 									void sourcePage.handleSyncSource(source)
 								}
@@ -292,7 +241,7 @@ export function AppShell(props: AppShellProps) {
 						helpOpen={shortcutHelpOpen()}
 						onAddSource={sourcePage.handleAddSource}
 						onHelpOpenChange={setShortcutHelpOpen}
-						onPaletteOpenChange={updateCommandPaletteOpen}
+						onPaletteOpenChange={setCommandPaletteOpen}
 						onToggleSidebar={toggleSidebar}
 						paletteOpen={commandPaletteOpen()}
 					/>
@@ -303,3 +252,5 @@ export function AppShell(props: AppShellProps) {
 
 	return renderWorkspace();
 }
+
+import { createTrackedEffect } from "solid-js";

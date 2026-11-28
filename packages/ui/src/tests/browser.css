@@ -1,3 +1,5 @@
+@layer ui-sdk;
+
 @import "tailwindcss" source(none);
 @import "../styles/theme.css";
 @config "../../tailwind.preset.js";

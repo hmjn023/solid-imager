@@ -12,8 +12,9 @@ import {
 	For,
 	onCleanup,
 	Show,
+	untrack,
 } from "solid-js";
-import type { SetStoreFunction } from "solid-js/store";
+import type { StoreSetter } from "solid-js";
 import { Badge } from "./badge";
 import { Button } from "./button";
 import {
@@ -31,7 +32,7 @@ import { createDebouncedSignal } from "./utils/debounce";
 
 type SearchFiltersProps = {
 	state: SearchState;
-	setState: SetStoreFunction<SearchState>;
+	setState: StoreSetter<SearchState>;
 	tags: TagResponse[] | undefined;
 	projects: Project[] | undefined;
 	ips: Ip[] | undefined;
@@ -147,7 +148,7 @@ const FILENAME_DEBOUNCE_MS = 250;
 
 export function SearchFilters(props: SearchFiltersProps) {
 	const [filenameDraft, setFilenameDraft] = createSignal(
-		props.state.searchQuery,
+		untrack(() => props.state.searchQuery),
 	);
 	let isComposingFilename = false;
 	let filenameDebounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -159,19 +160,20 @@ export function SearchFilters(props: SearchFiltersProps) {
 		}
 	};
 
-	createEffect(() => {
-		const externalQuery = props.state.searchQuery;
-		void props.filenameResetRevision;
-		cancelFilenameQuery();
-		if (!isComposingFilename) {
-			setFilenameDraft(externalQuery);
-		}
-	});
+	createEffect(
+		() => [props.state.searchQuery, props.filenameResetRevision] as const,
+		([externalQuery]) => {
+			cancelFilenameQuery();
+			if (!isComposingFilename) setFilenameDraft(externalQuery);
+		},
+	);
 
 	const flushFilenameQuery = (value: string) => {
 		cancelFilenameQuery();
 		if (props.state.searchQuery !== value) {
-			props.setState("searchQuery", value);
+			props.setState((draft) => {
+				draft.searchQuery = value;
+			});
 		}
 	};
 
@@ -185,7 +187,7 @@ export function SearchFilters(props: SearchFiltersProps) {
 	const commitFilename = () => {
 		if (!isComposingFilename) flushFilenameQuery(filenameDraft());
 	};
-	const registerFilenameCommit = props.registerFilenameCommit;
+	const registerFilenameCommit = untrack(() => props.registerFilenameCommit);
 	registerFilenameCommit?.(commitFilename);
 	onCleanup(() => {
 		cancelFilenameQuery();
@@ -194,28 +196,32 @@ export function SearchFilters(props: SearchFiltersProps) {
 
 	const addTag = (tagName: string) => {
 		if (!props.state.selectedTags.includes(tagName)) {
-			props.setState("selectedTags", [...props.state.selectedTags, tagName]);
+			props.setState((draft) => {
+				draft.selectedTags = [...props.state.selectedTags, tagName];
+			});
 		}
 	};
 
 	const removeTag = (tagName: string) => {
-		props.setState(
-			"selectedTags",
-			props.state.selectedTags.filter((t) => t !== tagName),
-		);
+		props.setState((draft) => {
+			draft.selectedTags = props.state.selectedTags.filter(
+				(t) => t !== tagName,
+			);
+		});
 	};
 
 	const addExcludeTag = (tagName: string) => {
 		if (!props.state.excludeTags.includes(tagName)) {
-			props.setState("excludeTags", [...props.state.excludeTags, tagName]);
+			props.setState((draft) => {
+				draft.excludeTags = [...props.state.excludeTags, tagName];
+			});
 		}
 	};
 
 	const removeExcludeTag = (tagName: string) => {
-		props.setState(
-			"excludeTags",
-			props.state.excludeTags.filter((t) => t !== tagName),
-		);
+		props.setState((draft) => {
+			draft.excludeTags = props.state.excludeTags.filter((t) => t !== tagName);
+		});
 	};
 
 	return (
@@ -272,17 +278,17 @@ export function SearchFilters(props: SearchFiltersProps) {
 				items={props.ips}
 				label={t("searchFilters.iP")}
 				onRemove={(name) =>
-					props.setState(
-						"selectedIps",
-						props.state.selectedIps.filter((iName) => iName !== name),
-					)
+					props.setState((draft) => {
+						draft.selectedIps = props.state.selectedIps.filter(
+							(iName) => iName !== name,
+						);
+					})
 				}
 				onSelect={(ip) => {
 					if (!props.state.selectedIps.includes(ip.name)) {
-						props.setState("selectedIps", [
-							...props.state.selectedIps,
-							ip.name,
-						]);
+						props.setState((draft) => {
+							draft.selectedIps = [...props.state.selectedIps, ip.name];
+						});
 					}
 				}}
 				placeholder={t("searchFilters.searchIPs")}
@@ -297,17 +303,20 @@ export function SearchFilters(props: SearchFiltersProps) {
 				items={props.characters}
 				label={t("labels.characters")}
 				onRemove={(name) =>
-					props.setState(
-						"selectedCharacters",
-						props.state.selectedCharacters.filter((cName) => cName !== name),
-					)
+					props.setState((draft) => {
+						draft.selectedCharacters = props.state.selectedCharacters.filter(
+							(cName) => cName !== name,
+						);
+					})
 				}
 				onSelect={(char) => {
 					if (!props.state.selectedCharacters.includes(char.name)) {
-						props.setState("selectedCharacters", [
-							...props.state.selectedCharacters,
-							char.name,
-						]);
+						props.setState((draft) => {
+							draft.selectedCharacters = [
+								...props.state.selectedCharacters,
+								char.name,
+							];
+						});
 					}
 				}}
 				placeholder={t("searchFilters.searchCharacters")}
@@ -334,17 +343,20 @@ export function SearchFilters(props: SearchFiltersProps) {
 				items={props.authors}
 				label={t("labels.authors")}
 				onRemove={(name) =>
-					props.setState(
-						"selectedAuthors",
-						props.state.selectedAuthors.filter((aName) => aName !== name),
-					)
+					props.setState((draft) => {
+						draft.selectedAuthors = props.state.selectedAuthors.filter(
+							(aName) => aName !== name,
+						);
+					})
 				}
 				onSelect={(author) => {
 					if (!props.state.selectedAuthors.includes(author.name)) {
-						props.setState("selectedAuthors", [
-							...props.state.selectedAuthors,
-							author.name,
-						]);
+						props.setState((draft) => {
+							draft.selectedAuthors = [
+								...props.state.selectedAuthors,
+								author.name,
+							];
+						});
 					}
 				}}
 				placeholder={t("searchFilters.searchAuthorsOrIDs")}
@@ -359,17 +371,20 @@ export function SearchFilters(props: SearchFiltersProps) {
 				items={props.projects}
 				label={t("labels.projects")}
 				onRemove={(name) =>
-					props.setState(
-						"selectedProjects",
-						props.state.selectedProjects.filter((pName) => pName !== name),
-					)
+					props.setState((draft) => {
+						draft.selectedProjects = props.state.selectedProjects.filter(
+							(pName) => pName !== name,
+						);
+					})
 				}
 				onSelect={(project) => {
 					if (!props.state.selectedProjects.includes(project.name)) {
-						props.setState("selectedProjects", [
-							...props.state.selectedProjects,
-							project.name,
-						]);
+						props.setState((draft) => {
+							draft.selectedProjects = [
+								...props.state.selectedProjects,
+								project.name,
+							];
+						});
 					}
 				}}
 				placeholder={t("searchFilters.searchProjects")}

@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "../button";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import { SearchComposerField } from "./search-composer-field";
@@ -66,7 +66,12 @@ function SearchTokenChip(props: {
 export function SearchComposer(props: SearchComposerProps) {
 	const [suggestionDraft, setSuggestionDraft] = createDebouncedSignal("", 150);
 	const [removedAnnouncement, setRemovedAnnouncement] = createSignal("");
-	createEffect(() => setSuggestionDraft(props.draft));
+	createEffect(
+		() => props.draft,
+		(draft) => {
+			setSuggestionDraft(draft);
+		},
+	);
 	const suggestions = createMemo(() => {
 		if (!props.draft.trim() || suggestionDraft() !== props.draft) return [];
 		return getSearchComposerSuggestions(
@@ -155,3 +160,5 @@ export function SearchComposer(props: SearchComposerProps) {
 		</SearchComposerField>
 	);
 }
+
+import { createEffect } from "solid-js";

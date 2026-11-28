@@ -4,7 +4,7 @@ import type {
 	SafeMediaSource,
 } from "@solid-imager/core/sources";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { createForm } from "@tanstack/solid-form";
+import { createForm } from "./utils/create-form";
 import { createEffect, createSignal, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -272,18 +272,20 @@ export function SourceFormModal(props: SourceFormModalProps) {
 
 	let wasOpen = false;
 	let restoreFocusElement: HTMLElement | undefined;
-	createEffect(() => {
-		const isOpen = props.isOpen;
-		if (isOpen && !wasOpen) {
-			const activeElement = document.activeElement;
-			restoreFocusElement =
-				activeElement instanceof HTMLElement ? activeElement : undefined;
-			form.reset(defaultValues());
-			setSubmitError(null);
-			setShowDiscardDialog(false);
-		}
-		wasOpen = isOpen;
-	});
+	createEffect(
+		() => (props.isOpen ? defaultValues() : null),
+		(values) => {
+			if (values && !wasOpen) {
+				const activeElement = document.activeElement;
+				restoreFocusElement =
+					activeElement instanceof HTMLElement ? activeElement : undefined;
+				form.reset(values);
+				setSubmitError(null);
+				setShowDiscardDialog(false);
+			}
+			wasOpen = values !== null;
+		},
+	);
 
 	const selectOptions = () =>
 		SOURCE_TYPE_OPTIONS.filter((option) =>
@@ -291,12 +293,13 @@ export function SourceFormModal(props: SourceFormModalProps) {
 		);
 	const fieldError = (errors: unknown[]) => getFormErrorMessage(errors[0]);
 	const requestClose = () => {
-		if (isSubmitting()) return;
+		if (isSubmitting()) return false;
 		if (form.state.isDirty) {
 			setShowDiscardDialog(true);
-			return;
+			return false;
 		}
 		props.onClose();
+		return true;
 	};
 	const discardAndClose = () => {
 		form.reset(defaultValues());
@@ -308,8 +311,8 @@ export function SourceFormModal(props: SourceFormModalProps) {
 	return (
 		<>
 			<Dialog
-				onOpenChange={(open) => {
-					if (!open && !isSubmitting()) requestClose();
+				onOpenChange={(open, details) => {
+					if (!open && !requestClose()) details.cancel();
 				}}
 				open={props.isOpen}
 			>
@@ -478,6 +481,8 @@ export function SourceFormModal(props: SourceFormModalProps) {
 															aria-describedby={`${field().name}-error`}
 															aria-invalid={
 																field().state.meta.errors.length > 0
+																	? "true"
+																	: "false"
 															}
 															id={field().name}
 															min="1"
@@ -632,7 +637,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 							>
 								{(state) => (
 									<Button
-										aria-busy={state().isSubmitting}
+										aria-busy={state().isSubmitting ? "true" : "false"}
 										disabled={!state().canSubmit || state().isSubmitting}
 										type="submit"
 									>

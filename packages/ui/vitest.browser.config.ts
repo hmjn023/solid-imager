@@ -1,21 +1,22 @@
 import tailwindcss from "@tailwindcss/vite";
 import { playwright } from "@vitest/browser-playwright";
-import solidPlugin from "vite-plugin-solid";
+import solidPlugin from "@solidjs/vite-plugin";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
 	plugins: [solidPlugin(), tailwindcss()],
 	optimizeDeps: {
+		exclude: ["@ui-sdk/core"],
 		include: [
 			"@tanstack/solid-hotkeys",
 			"@tanstack/solid-query",
-			"@tanstack/solid-virtual",
+			"@tanstack/virtual-core",
 			"zod",
 		],
 	},
 	resolve: {
 		tsconfigPaths: true,
-		dedupe: ["solid-js", "solid-js/web"],
+		dedupe: ["solid-js", "@solidjs/web"],
 	},
 	test: {
 		attachmentsDir: "./test-results/browser",

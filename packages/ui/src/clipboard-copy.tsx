@@ -1,5 +1,5 @@
 import { t } from "@solid-imager/i18n";
-import { createSignal, onCleanup, splitProps } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import { toast } from "./toast";
 import { cn } from "./utils/cn";
 
@@ -57,13 +57,8 @@ function CheckIcon(props: { size?: number; class?: string }) {
 
 export function ClipboardCopy(props: ClipboardCopyProps) {
 	const [copied, setCopied] = createSignal(false);
-	const [local, others] = splitProps(props, [
-		"text",
-		"label",
-		"class",
-		"iconSize",
-		"compact",
-	]);
+	const local = props,
+		others = omit(props, "text", "label", "class", "iconSize", "compact");
 
 	let timeoutId: number | undefined;
 
@@ -139,3 +134,5 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 		</>
 	);
 }
+
+import { omit } from "solid-js";

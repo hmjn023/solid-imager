@@ -7,9 +7,9 @@ import {
 	type TagDictionarySearchResult,
 } from "@solid-imager/core/tags";
 import { getLocale, t, type StaticMessageKey } from "@solid-imager/i18n";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { createSignal, For, Show } from "solid-js";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import { ErrorState } from "./async-state";
 import { Badge } from "./badge";
 import { Button } from "./button";
@@ -85,8 +85,9 @@ function TagDictionaryDetailView(props: {
 }) {
 	const detailOptions = () =>
 		tagDictionaryDetailQuery(props.api.dictionaryDetail, props.entry.name);
-	const detail = createQuery(detailOptions);
-	const wikiNames = () => detail.data?.wikiNames ?? props.entry.wikiNames;
+	const detail = useQuery(detailOptions);
+	const wikiNames = () =>
+		readQueryData(detail)?.wikiNames ?? props.entry.wikiNames;
 
 	return (
 		<div class="space-y-3 border-t border-border px-3 py-3 text-sm">
@@ -148,7 +149,7 @@ function TagDictionaryDetailView(props: {
 			</Show>
 			<Show when={detail.isSuccess || !detailOptions().enabled}>
 				<Show
-					when={detail.data?.body}
+					when={readQueryData(detail)?.body}
 					fallback={
 						<p class="text-muted-foreground">
 							{t("tagDictionary.noDescription")}
@@ -159,7 +160,7 @@ function TagDictionaryDetailView(props: {
 						<div>
 							<p class="mb-1 font-medium">
 								{t(
-									detail.data?.wikiSource === "danbooru"
+									readQueryData(detail)?.wikiSource === "danbooru"
 										? "tagDictionary.liveDescription"
 										: "tagDictionary.snapshotDescription",
 								)}
@@ -185,7 +186,7 @@ export function TagDictionaryBrowser(props: {
 	const [category, setCategory] = createSignal(CATEGORIES[0]);
 	const [offset, setOffset] = createSignal(0);
 	const [expanded, setExpanded] = createSignal<string>();
-	const results = createQuery(() => {
+	const results = useQuery(() => {
 		const filter = category().category;
 		const input = {
 			query: query(),
@@ -266,7 +267,9 @@ export function TagDictionaryBrowser(props: {
 				/>
 			</Show>
 			<div aria-live="polite" class="text-sm text-muted-foreground">
-				<Show when={results.isSuccess && results.data.items.length === 0}>
+				<Show
+					when={results.isSuccess && readQueryData(results)?.items.length === 0}
+				>
 					{t(
 						query() || category().category !== "all"
 							? "tagDictionary.noMatches"
@@ -274,9 +277,9 @@ export function TagDictionaryBrowser(props: {
 					)}
 				</Show>
 			</div>
-			<Show when={results.data?.items.length}>
+			<Show when={readQueryData(results)?.items.length}>
 				<ul class="divide-y divide-border rounded-lg border border-border">
-					<For each={results.data?.items}>
+					<For each={readQueryData(results)?.items}>
 						{(entry) => (
 							<li>
 								<Button
@@ -320,7 +323,7 @@ export function TagDictionaryBrowser(props: {
 					</For>
 				</ul>
 			</Show>
-			<Show when={offset() > 0 || results.data?.hasMore}>
+			<Show when={offset() > 0 || readQueryData(results)?.hasMore}>
 				<div class="flex justify-between gap-2">
 					<Button
 						type="button"
@@ -333,7 +336,7 @@ export function TagDictionaryBrowser(props: {
 					<Button
 						type="button"
 						variant="outline"
-						disabled={!results.data?.hasMore}
+						disabled={!readQueryData(results)?.hasMore}
 						onClick={() => goTo(offset() + TAG_DICTIONARY_PAGE_SIZE)}
 					>
 						{t("actions.next")}
@@ -343,3 +346,5 @@ export function TagDictionaryBrowser(props: {
 		</div>
 	);
 }
+
+import { readQueryData } from "./query-state";

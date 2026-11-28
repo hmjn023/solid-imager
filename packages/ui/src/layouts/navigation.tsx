@@ -1,5 +1,6 @@
+import { cn } from "../utils/cn";
 import { Link, useLocation } from "@tanstack/solid-router";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 import { SidebarMenuButton, SidebarMenuItem } from "../sidebar";
 import {
@@ -81,8 +82,7 @@ export function NavigationItem(props: {
 			>
 				<Icon aria-hidden="true" class="shrink-0" size={18} />
 				<span
-					class="min-w-0 flex-1 truncate"
-					classList={{ hidden: !props.expanded }}
+					class={cn("min-w-0 flex-1 truncate", { hidden: !props.expanded })}
 				>
 					{props.label}
 				</span>

@@ -1,18 +1,19 @@
 import type { PixivRelatedPage } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
 import {
-	createInfiniteQuery,
+	useInfiniteQuery,
 	onlineManager,
-	useQueryClient,
 	type InfiniteData,
 } from "@tanstack/solid-query";
 import {
+	action,
 	createEffect,
 	createMemo,
+	createOptimistic,
 	createSignal,
 	Match,
 	onCleanup,
-	onMount,
+	onSettled,
 	Show,
 	Switch,
 } from "solid-js";
@@ -23,7 +24,7 @@ import {
 	RetryButton,
 } from "../async-state";
 import { Button } from "../button";
-import { toQueryUiState } from "../query-state";
+import { readQueryData, toQueryUiState } from "../query-state";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { ViewerResultsGrid } from "./results-grid";
 import {
@@ -44,11 +45,14 @@ export function PixivRelatedWorks(props: {
 	onOpenPost: (id: number) => void;
 }) {
 	const key = () => JSON.stringify([props.postId, ...props.scope]);
-	const initialKey = key();
-	const saved =
-		props.history.get(initialKey) ?? readPixivRelatedSnapshot(initialKey);
+	const saved = createMemo(() => {
+		const currentKey = key();
+		return (
+			props.history.get(currentKey) ?? readPixivRelatedSnapshot(currentKey)
+		);
+	});
 	const [isOnline, setOnline] = createSignal(true);
-	let restoring = !!saved;
+	let restoring = false;
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
 	const queryKey = () => [
 		"pixiv",
@@ -56,8 +60,6 @@ export function PixivRelatedWorks(props: {
 		props.postId,
 		...props.scope,
 	];
-	const client = useQueryClient();
-	if (saved) client.setQueryData(queryKey(), saved.data);
 	let restored = false;
 	let disposed = false;
 	let section!: HTMLElement;
@@ -77,9 +79,9 @@ export function PixivRelatedWorks(props: {
 			element = element.parentElement;
 		}
 	}
-	function restoreScroll(top: number) {
+	function restoreScroll(top: number, restoreKey: string) {
 		const restore = () => {
-			if (!disposed && key() === initialKey) {
+			if (!disposed && key() === restoreKey) {
 				const area = scroller();
 				if (!area) return false;
 				area.scrollTop = top;
@@ -94,9 +96,11 @@ export function PixivRelatedWorks(props: {
 		restoreObserver.observe(section);
 	}
 	function remember(focusId?: number) {
-		if (restoring || disposed || !query.data || !section) return;
+		if (disposed || restoring || (!restored && saved()) || !section) return;
+		const data = readQueryData(query);
+		if (!data) return;
 		const snapshot = {
-			data: query.data,
+			data,
 			scrollTop: scroller()?.scrollTop ?? 0,
 			focusId,
 		};
@@ -107,9 +111,9 @@ export function PixivRelatedWorks(props: {
 		remember(id);
 		props.onOpenPost(id);
 	}
-	onMount(() => {
+	onSettled(() => {
 		setOnline(onlineManager.isOnline());
-		onCleanup(onlineManager.subscribe(setOnline));
+		const unsubscribeOnline = onlineManager.subscribe(setOnline);
 		const save = (event: Event) => {
 			if (event.target !== scroller()) return;
 			if (saveTimer !== undefined) clearTimeout(saveTimer);
@@ -123,61 +127,81 @@ export function PixivRelatedWorks(props: {
 		function rememberPage() {
 			remember();
 		}
-		onCleanup(() => {
+		return () => {
+			unsubscribeOnline();
 			document.removeEventListener("scroll", save, true);
 			window.removeEventListener("pagehide", rememberPage);
-		});
+		};
 	});
-	const query = createInfiniteQuery<
+	const query = useInfiniteQuery<
 		PixivRelatedPage,
 		Error,
 		InfiniteData<PixivRelatedPage, number[] | undefined>,
 		(string | number)[],
 		number[] | undefined
-	>(() => ({
-		queryKey: queryKey(),
-
-		refetchOnMount: false,
-		refetchOnWindowFocus: false,
-		refetchOnReconnect: false,
-		initialPageParam: undefined as number[] | undefined,
-		queryFn: ({ pageParam }) =>
-			props.load(props.postId, pageParam?.slice(0, 18)),
-		getNextPageParam: (last, pages, param) => {
-			const seen = new Set([
-				props.postId,
-				...pages.flatMap((page) => page.posts.map((post) => post.id)),
-			]);
-			const remaining = [
-				...new Set(param ? param.slice(18) : last.nextIds),
-			].filter((id) => !seen.has(id));
-			return remaining.length ? remaining : undefined;
-		},
-		enabled: props.enabled,
-		gcTime: 0,
-		staleTime: 30_000,
-		retry: false,
-	}));
+	>(() => {
+		const postId = props.postId;
+		return {
+			queryKey: queryKey(),
+			initialData: saved()?.data,
+			refetchOnMount: false,
+			refetchOnWindowFocus: false,
+			refetchOnReconnect: false,
+			initialPageParam: undefined,
+			queryFn: ({ pageParam }) => props.load(postId, pageParam?.slice(0, 18)),
+			getNextPageParam: (last, pages, param) => {
+				const seen = new Set([
+					postId,
+					...pages.flatMap((page) => page.posts.map((post) => post.id)),
+				]);
+				const remaining = [
+					...new Set(param ? param.slice(18) : last.nextIds),
+				].filter((id) => !seen.has(id));
+				return remaining.length ? remaining : undefined;
+			},
+			enabled: props.enabled,
+			gcTime: 0,
+			staleTime: 30_000,
+			retry: false,
+		};
+	});
+	const fetchStatus = () => (isOnline() ? query.fetchStatus : "paused");
+	const hasData = () => !query.isPending && !query.isLoadingError;
+	const [appending, setAppending] = createOptimistic(false);
+	const fetchState = () => {
+		const status = fetchStatus();
+		if (status === "paused") return "paused";
+		return appending() || (hasData() && query.isFetching)
+			? "background-fetching"
+			: "idle";
+	};
+	const loadMore = action(function* () {
+		if (fetchState() !== "idle") return;
+		setAppending(true);
+		yield query.fetchNextPage({ cancelRefetch: false });
+	});
 	const state = () =>
 		toQueryUiState({
-			data: query.data,
+			data: readQueryData(query),
 			error: query.error,
 			status: query.status,
-			fetchStatus: isOnline() ? query.fetchStatus : "paused",
+			fetchStatus: fetchStatus(),
 		});
 	const retry = async () => {
 		await query.refetch();
 	};
-	createEffect(() => {
-		if (query.data) remember();
-	});
+	createEffect(
+		() => readQueryData(query),
+		(data) => {
+			if (data) remember();
+		},
+	);
 	const posts = createMemo(() => {
-		if (query.isPending || !query.data) return;
+		const data = readQueryData(query);
+		if (!data) return;
 		return [
 			...new Map(
-				query.data.pages
-					.flatMap((page) => page.posts)
-					.map((post) => [post.id, post]),
+				data.pages.flatMap((page) => page.posts).map((post) => [post.id, post]),
 			).values(),
 		];
 	});
@@ -193,14 +217,14 @@ export function PixivRelatedWorks(props: {
 				{t("pixivArtworkDetail.relatedWorks")}
 			</h2>
 			<QueryStatus
-				fetchState={state().fetchState}
-				hasData={state().data !== undefined}
+				fetchState={fetchState()}
+				hasData={hasData()}
 				hasError={query.isRefetchError}
 				hideWhenIdle
 				offlineLabel={t("sourceMediaScreen.offlineShowingSavedData")}
 				updatingLabel={t("pixivArtworkDetail.updatingRelated")}
 			/>
-			<Show when={query.isRefetchError && state().fetchState === "idle"}>
+			<Show when={query.isRefetchError && fetchState() === "idle"}>
 				<RetryButton onRetry={retry} />
 			</Show>
 			<Switch>
@@ -234,17 +258,20 @@ export function PixivRelatedWorks(props: {
 							postHref={props.postHref}
 							onOpenPost={open}
 							onGridReady={(grid) => {
-								if (!grid || !saved || restored || key() !== initialKey) return;
+								const snapshot = saved();
+								if (!grid || !snapshot || restored) return;
+								const restoreKey = key();
 								restored = true;
+								restoring = true;
 								frame = requestAnimationFrame(() => {
 									void (
-										saved.focusId
-											? grid.focusPost(saved.focusId)
+										snapshot.focusId
+											? grid.focusPost(snapshot.focusId)
 											: Promise.resolve(false)
 									).then(() => {
 										if (disposed) return;
 										frame = requestAnimationFrame(() =>
-											restoreScroll(saved.scrollTop),
+											restoreScroll(snapshot.scrollTop, restoreKey),
 										);
 									});
 								});
@@ -268,14 +295,11 @@ export function PixivRelatedWorks(props: {
 			<Show when={query.hasNextPage}>
 				<Button
 					variant="outline"
-					disabled={state().fetchState !== "idle"}
-					aria-busy={query.isFetchingNextPage}
-					onClick={() => {
-						if (state().fetchState === "idle")
-							void query.fetchNextPage({ cancelRefetch: false });
-					}}
+					disabled={fetchState() !== "idle"}
+					aria-busy={appending() ? "true" : "false"}
+					onClick={() => void loadMore()}
 				>
-					{query.isFetchingNextPage
+					{appending()
 						? t("pixivArtworkDetail.loadingRelated")
 						: query.isFetchNextPageError
 							? t("actions.retry")

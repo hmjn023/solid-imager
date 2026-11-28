@@ -4,7 +4,7 @@ import {
 	createContext,
 	createSignal,
 	onCleanup,
-	onMount,
+	onSettled,
 	type ParentComponent,
 	useContext,
 } from "solid-js";
@@ -67,9 +67,9 @@ export interface ShortcutPreferences {
 	readonly setSuspended: (suspended: boolean) => void;
 }
 
-const ShortcutPreferencesContext = createContext<
-	ShortcutPreferences | undefined
->();
+const ShortcutPreferencesContext = createContext<ShortcutPreferences | null>(
+	null,
+);
 
 function unavailableUpdate(): ShortcutBindingUpdateResult {
 	return { status: "unavailable" };
@@ -209,7 +209,7 @@ export const ShortcutPreferencesProvider: ParentComponent = (props) => {
 		modalObserver?.disconnect();
 	});
 
-	onMount(() => {
+	onSettled(() => {
 		const syncModalSuspended = () => {
 			setModalSuspended(hasOpenDialog());
 		};
@@ -243,16 +243,16 @@ export const ShortcutPreferencesProvider: ParentComponent = (props) => {
 	});
 
 	return (
-		<ShortcutPreferencesContext.Provider value={contextValue}>
+		<ShortcutPreferencesContext value={contextValue}>
 			{props.children}
-		</ShortcutPreferencesContext.Provider>
+		</ShortcutPreferencesContext>
 	);
 };
 
 export function useOptionalShortcutPreferences():
 	| ShortcutPreferences
 	| undefined {
-	return useContext(ShortcutPreferencesContext);
+	return useContext(ShortcutPreferencesContext) ?? undefined;
 }
 
 /** Returns the preferences context or a read-only default implementation when no provider is present. */

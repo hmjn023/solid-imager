@@ -4,7 +4,7 @@ import { waitForAppHydration } from "./test";
 export async function selectManagerCategory(page: Page, label: string) {
 	await waitForAppHydration(page);
 	const navigation = page.getByRole("navigation", { name: "管理カテゴリ" });
-	const select = navigation.getByRole("button", { name: /^管理カテゴリ/ });
+	const select = navigation.getByRole("combobox", { name: /^管理カテゴリ/ });
 	const category = navigation.getByRole("button", {
 		name: new RegExp(`^${label}(?: |$)`),
 	});

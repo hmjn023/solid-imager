@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import { getSearchExecutionKind } from "./search-execution";
-import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { createSignal, onCleanup, Show } from "solid-js";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Label } from "./label";
@@ -34,7 +34,7 @@ export function SortControls(props: SortControlsProps) {
 		props.similarityTopK !== undefined ? String(props.similarityTopK) : "",
 	);
 	let topKTimer: ReturnType<typeof setTimeout> | undefined;
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (props.similarityTopK !== undefined) {
 			setTopKDraft(String(props.similarityTopK));
 		}
@@ -105,7 +105,9 @@ export function SortControls(props: SortControlsProps) {
 									: t("searchToolbar.descending")}
 							</SelectItem>
 						)}
-						onChange={(value) => props.onSortOrderChange(value || "desc")}
+						onChange={(value) =>
+							props.onSortOrderChange(value === "asc" ? "asc" : "desc")
+						}
 						options={["asc", "desc"]}
 						placeholder={t("sortControls.order")}
 						value={props.sortOrder}
@@ -217,3 +219,5 @@ export function SortControls(props: SortControlsProps) {
 		</div>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

@@ -1,5 +1,5 @@
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { batch, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 
 /** Owns one open upload draft. Requests from older drafts or file selections can never replace its files or preview. */
 export function createUploadDraft(options: {
@@ -11,29 +11,30 @@ export function createUploadDraft(options: {
 	let generation = 0;
 	let requestId = 0;
 	let fetchedFileUrl: string | null = null;
+	let lastFetchedUrl: string | null = null;
+	let activePreview: string | null = null;
 	let currentRequest: { url: string; promise: Promise<File | null> } | null =
 		null;
 	const [files, setFiles] = createSignal<File[]>([]);
 	const [previewUrl, setPreviewUrl] = createSignal<string | null>(null);
 	const [fetching, setFetching] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
-	const [lastFetchedUrl, setLastFetchedUrl] = createSignal<string | null>(null);
 	function invalidateRequest() {
 		requestId++;
 		currentRequest = null;
 		setFetching(false);
 	}
 	function replaceFiles(next: File[]) {
-		const previousPreview = previewUrl();
-		if (previousPreview) options.revokePreview(previousPreview);
+		if (activePreview) options.revokePreview(activePreview);
+		activePreview = next[0] ? options.createPreview(next[0]) : null;
 		setFiles([...next]);
-		setPreviewUrl(next[0] ? options.createPreview(next[0]) : null);
+		setPreviewUrl(activePreview);
 	}
 	function reset(initialFiles: File[]) {
 		generation++;
 		fetchedFileUrl = null;
 		invalidateRequest();
-		setLastFetchedUrl(null);
+		lastFetchedUrl = null;
 		setError(null);
 		replaceFiles(initialFiles);
 	}
@@ -44,7 +45,7 @@ export function createUploadDraft(options: {
 		const id = ++requestId;
 		const epoch = generation;
 		setFetching(true);
-		setLastFetchedUrl(url);
+		lastFetchedUrl = url;
 		setError(null);
 		const promise = (async () => {
 			try {
@@ -73,33 +74,30 @@ export function createUploadDraft(options: {
 		fetching,
 		error,
 		setError,
-		lastFetchedUrl,
+		lastFetchedUrl: () => lastFetchedUrl,
 		loadUrl,
 		version: () => generation,
 		isCurrent: (epoch: number) => active && generation === epoch,
-		open: (initialFiles: File | File[] | null) =>
-			batch(() => {
-				active = true;
-				const next = Array.isArray(initialFiles)
-					? initialFiles
-					: initialFiles
-						? [initialFiles]
-						: [];
-				reset(next);
-			}),
-		close: () =>
-			batch(() => {
-				active = false;
-				reset([]);
-			}),
-		selectFiles: (next: File[]) =>
-			batch(() => {
-				generation++;
-				fetchedFileUrl = null;
-				invalidateRequest();
-				setError(null);
-				replaceFiles(next);
-			}),
+		open: (initialFiles: File | File[] | null) => {
+			active = true;
+			const next = Array.isArray(initialFiles)
+				? initialFiles
+				: initialFiles
+					? [initialFiles]
+					: [];
+			reset(next);
+		},
+		close: () => {
+			active = false;
+			reset([]);
+		},
+		selectFiles: (next: File[]) => {
+			generation++;
+			fetchedFileUrl = null;
+			invalidateRequest();
+			setError(null);
+			replaceFiles(next);
+		},
 		changeUrl: (url: string) => {
 			if (fetchedFileUrl && fetchedFileUrl !== url) {
 				generation++;
@@ -107,7 +105,7 @@ export function createUploadDraft(options: {
 				replaceFiles([]);
 			}
 			if (currentRequest && currentRequest.url !== url) invalidateRequest();
-			if (lastFetchedUrl() !== url) setLastFetchedUrl(null);
+			if (lastFetchedUrl !== url) lastFetchedUrl = null;
 		},
 	};
 }

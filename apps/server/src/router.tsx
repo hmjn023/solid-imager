@@ -2,10 +2,10 @@ import { isTransientApiError } from "@solid-imager/client";
 import { createAppQueryClientConfig } from "@solid-imager/ui/query";
 import { RouteErrorScreen } from "@solid-imager/ui/router-status";
 import { NotFoundScreen } from "@solid-imager/ui/screens/not-found";
-import { QueryClient } from "@tanstack/solid-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
-import { setupRouterSsrQueryIntegration } from "@tanstack/solid-router-ssr-query";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
+import type { ParentProps } from "solid-js";
 import { routeTree } from "#route-tree";
 import type { logger as LoggerInstance } from "./infrastructure/logger";
 
@@ -64,7 +64,7 @@ export function getRouter() {
 
 		// Keep the current screen visible during navigation. The app shell
 		// indicates route loading and each screen owns its data placeholders.
-		const router = createTanStackRouter({
+		return createTanStackRouter({
 			routeTree,
 			context: { queryClient },
 			scrollRestoration: true,
@@ -74,9 +74,12 @@ export function getRouter() {
 			defaultPreloadStaleTime: 0,
 			defaultErrorComponent: RouteErrorScreen,
 			defaultNotFoundComponent: NotFoundScreen,
+			Wrap: (props: ParentProps) => (
+				<QueryClientProvider client={queryClient}>
+					{props.children}
+				</QueryClientProvider>
+			),
 		});
-		setupRouterSsrQueryIntegration({ router, queryClient });
-		return router;
 	} catch (error) {
 		if (isServer && serverLogger) {
 			serverLogger.error({ err: error }, "[Router] Error creating router");

@@ -1,4 +1,5 @@
 import type { JobDto } from "@solid-imager/core/jobs";
+import { flush } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createManagerBatchState,
@@ -45,18 +46,21 @@ describe("Manager batch request ownership", () => {
 		const state = createManagerBatchState(persist);
 		const first = required(state.begin("start", tagging));
 		const second = required(state.begin("start", vectors));
-		expect(state.pending("tagging")).toBe("start");
 		expect(state.begin("start", tagging)).toBeNull();
+		flush();
+		expect(state.pending("tagging")).toBe("start");
 		state.acceptStart(second, "newer");
 		state.finish(second);
 		state.acceptStart(first, "older");
 		state.finish(first);
+		flush();
 		expect(state.trackedRun()?.jobId).toBe("newer");
 		expect(persist.mock.calls.map(([run]) => run.jobId)).toEqual(["newer"]);
 		state.observe({
 			event: "job-progress",
 			data: { jobId: "older", processed: 2, total: 4 },
 		});
+		flush();
 		expect(state.display("tagging")?.progress?.processed).toBe(2);
 		expect(state.display("vectors")?.progress).toBeNull();
 		expect(state.activeJobId()).toBe("newer");
@@ -66,6 +70,7 @@ describe("Manager batch request ownership", () => {
 		const pending = required(state.begin("start", tagging));
 		state.select({ ...tagging, jobId: "chosen" });
 		state.acceptStart(pending, "late");
+		flush();
 		expect(state.trackedRun()?.jobId).toBe("chosen");
 		expect(state.display("tagging")?.jobId).toBe("chosen");
 	});
@@ -82,6 +87,7 @@ describe("Manager batch request ownership", () => {
 		const request = required(state.begin("scan", tagging));
 		state.setRequestMessage(request, "3 items found.");
 		state.finish(request);
+		flush();
 		expect(state.display("tagging")).toEqual({
 			kind: "scan",
 			message: "3 items found.",
@@ -98,6 +104,7 @@ describe("Manager batch request ownership", () => {
 		state.invalidateScans();
 		state.setRequestMessage(request, "stale result");
 		state.finish(request);
+		flush();
 		expect(state.display("tagging")).toBeNull();
 	});
 });
@@ -111,9 +118,11 @@ describe("Manager GET and SSE observations", () => {
 			event: "job-cancellation-requested",
 			data: { jobId: "cancel" },
 		});
+		flush();
 		expect(state.display("tagging")?.status).toBe("in_progress");
 		expect(state.activeJobId()).toBe("cancel");
 		state.observe({ event: "job-cancelled", data: { jobId: "cancel" } });
+		flush();
 		expect(state.display("tagging")?.status).toBe("cancelled");
 		expect(state.activeJobId()).toBeNull();
 	});
@@ -125,6 +134,7 @@ describe("Manager GET and SSE observations", () => {
 		state.select({ ...vectors, jobId: "selected" });
 		state.failRead("selected", "Selected batch unavailable");
 		state.acceptSnapshot(job("old"), oldRead);
+		flush();
 		expect(state.display("vectors")?.message).toBe(
 			"Selected batch unavailable",
 		);
@@ -134,6 +144,7 @@ describe("Manager GET and SSE observations", () => {
 		expect(
 			state.acceptSnapshot(job("selected"), state.version("selected")),
 		).toBe(true);
+		flush();
 		expect(state.display("vectors")?.message).toBe("処理中...");
 	});
 	it("rejects a GET started before a newer event and accepts a fresh snapshot", () => {
@@ -145,6 +156,7 @@ describe("Manager GET and SSE observations", () => {
 			data: { jobId: "tracked", processed: 4, total: 5 },
 		});
 		expect(state.acceptSnapshot(job("tracked"), oldRead)).toBe(false);
+		flush();
 		expect(state.display("tagging")?.progress?.processed).toBe(4);
 		expect(
 			state.acceptSnapshot(
@@ -152,6 +164,7 @@ describe("Manager GET and SSE observations", () => {
 				state.version("tracked"),
 			),
 		).toBe(true);
+		flush();
 		expect(state.display("tagging")?.progress?.failed).toBe(1);
 	});
 	it("does not regress terminal events to running progress or an old attempt; a retry allows a new attempt", () => {
@@ -166,6 +179,7 @@ describe("Manager GET and SSE observations", () => {
 		expect(state.acceptSnapshot(job("tracked"), state.version("tracked"))).toBe(
 			false,
 		);
+		flush();
 		expect(state.display("tagging")?.status).toBe("completed");
 		state.observe({ event: "job-retried", data: { jobId: "tracked" } });
 		expect(
@@ -184,6 +198,7 @@ describe("Manager GET and SSE observations", () => {
 				state.version("tracked"),
 			),
 		).toBe(false);
+		flush();
 		expect(state.display("tagging")?.status).toBe("in_progress");
 	});
 	it("ignores unrelated job events during restored tracking", () => {
@@ -193,6 +208,7 @@ describe("Manager GET and SSE observations", () => {
 			event: "job-failed",
 			data: { jobId: "other-client", error: "unrelated" },
 		});
+		flush();
 		expect(state.activeJobId()).toBe("restored");
 		expect(state.display("vectors")?.status).toBe("pending");
 	});

@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/solid-query";
-import { createRoot } from "solid-js";
+import { createRoot, flush } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getRestoreImportStrategies } from "./restore-import";
 import {
@@ -9,18 +9,15 @@ import {
 	type SourceMediaPageQueryStates,
 } from "./use-source-media-page";
 
-vi.mock("solid-js", async () =>
-	vi.importActual<typeof import("solid-js")>("solid-js/dist/solid.js"),
-);
 vi.mock("@tanstack/solid-query", async () => {
 	const actual = await vi.importActual<typeof import("@tanstack/solid-query")>(
 		"@tanstack/solid-query",
 	);
 	return {
 		...actual,
-		createInfiniteQuery: vi.fn(() => ({
+		useInfiniteQuery: vi.fn(() => ({
 			dataUpdatedAt: 0,
-			isPlaceholderData: false,
+			isFetching: false,
 			error: null,
 			status: "success" as const,
 			fetchStatus: "idle" as const,
@@ -160,12 +157,15 @@ describe("useSourceMediaPage delete confirmation", () => {
 		vi.mocked(actions.deleteMedia).mockReturnValueOnce(request.promise);
 
 		page.handleDelete("media-a");
+		flush();
 		expect(page.deleteDialogOpen()).toBe(true);
 
 		const firstConfirm = page.confirmDelete();
+		const duplicate = page.confirmDelete();
+		flush();
 		expect(page.isDeletingMedia()).toBe(true);
 
-		await page.confirmDelete();
+		await duplicate;
 		expect(actions.deleteMedia).toHaveBeenCalledExactlyOnceWith(
 			"source-1",
 			"media-a",
@@ -186,10 +186,12 @@ describe("useSourceMediaPage delete confirmation", () => {
 			.mockResolvedValueOnce(undefined);
 
 		page.handleDelete("media-a");
+		flush();
 		const deletingA = page.confirmDelete();
 
 		page.setDeleteDialogOpen(false);
 		page.handleDelete("media-b");
+		flush();
 		expect(page.deleteDialogOpen()).toBe(true);
 
 		requestA.resolve(undefined);
@@ -200,6 +202,7 @@ describe("useSourceMediaPage delete confirmation", () => {
 		expect(actions.deleteMedia).toHaveBeenCalledOnce();
 
 		page.handleDelete("media-b");
+		flush();
 		await page.confirmDelete();
 		expect(actions.deleteMedia).toHaveBeenCalledTimes(2);
 		expect(actions.deleteMedia).toHaveBeenNthCalledWith(

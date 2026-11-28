@@ -49,12 +49,17 @@ export function useSearchWorkspace(options: SearchWorkspaceOptions) {
 		limit: () => Math.max(state().limit, SEARCH_COLLECTION_PAGE_SIZE),
 		scrollY: () => state().scrollY,
 		setScrollY: (value) => {
-			setSearchState("scrollY", value);
+			setSearchState((draft) => {
+				draft.scrollY = value;
+			});
 			persistSearchScrollPosition("all", value, {
 				historyEntryKey: history.historyEntryKey,
 			});
 		},
-		setOffset: (value) => setSearchState("offset", value),
+		setOffset: (value) =>
+			setSearchState((draft) => {
+				draft.offset = value;
+			}),
 		mode: () => state().mode,
 		similarityAnchorMediaId: () => state().similarityAnchorMediaId,
 		similarityTopK: () => state().similarityTopK,
@@ -77,7 +82,10 @@ export function useSearchWorkspace(options: SearchWorkspaceOptions) {
 		history,
 		actions,
 		selectedSource: () => state().selectedSource,
-		selectSource: (id: string) => setSearchState("selectedSource", id),
+		selectSource: (id: string) =>
+			setSearchState((draft) => {
+				draft.selectedSource = id;
+			}),
 		findSimilar: (media: Media, model?: SimilarityModel) =>
 			activateSimilaritySearch(media.id, model),
 	};

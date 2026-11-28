@@ -68,22 +68,55 @@ test("shared Solid UI components preserve keyboard and overlay behavior", async 
 	await page.getByRole("tab", { name: "Second" }).click();
 	await expect(page.getByText("Second panel", { exact: true })).toBeVisible();
 
+	const select = page.getByRole("combobox", { name: "Select option" });
+	await select.focus();
+	await page.keyboard.press("ArrowDown");
+	await expect(
+		page.getByRole("listbox").getByRole("option").first(),
+	).toBeVisible();
+	await page.keyboard.press("Enter");
+	await expect(select).toHaveText("Alpha");
+	await expect(select).toBeFocused();
+
 	const dialogTrigger = page.getByRole("button", { name: "Open dialog" });
 	await dialogTrigger.click();
-	await expect(page.getByRole("dialog")).toContainText("Example dialog");
+	const dialog = page.getByRole("dialog", { name: "Example dialog" });
+	await expect(dialog).toBeVisible();
+	const layout = dialog.getByRole("group", { name: "Layout" });
+	const grid = layout.getByRole("button", { name: "Grid" });
+	const list = layout.getByRole("button", { name: "List" });
+	await grid.focus();
+	await page.keyboard.press("ArrowRight");
+	await expect(list).toBeFocused();
+	await page.keyboard.press("Space");
+	await expect(list).toHaveAttribute("aria-pressed", "true");
 	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect(dialog).toBeHidden();
 	await expect(dialogTrigger).toBeFocused();
 
 	await page.getByRole("button", { name: "Show toast" }).click();
 	await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+});
 
-	await page
-		.getByText("Right-click target", { exact: true })
-		.click({ button: "right" });
-	await expect(
-		page.getByRole("menuitem", { name: "Context action" }),
-	).toBeVisible();
+test("context menu runs each pointer and keyboard selection once", async ({
+	page,
+}) => {
+	await page.goto(getGalleryUrl());
+	const target = page.getByText("Right-click target", { exact: true });
+	const action = page.getByRole("menuitem", { name: "Context action" });
+	const count = page.getByRole("status", { name: "Context menu actions" });
+
+	await target.click({ button: "right" });
+	await action.click();
+	await expect(count).toHaveText("1");
+	await expect(action).toBeHidden();
+
+	await target.click({ button: "right" });
+	await page.keyboard.press("ArrowDown");
+	await expect(action).toBeFocused();
+	await page.keyboard.press("Enter");
+	await expect(count).toHaveText("2");
+	await expect(action).toBeHidden();
 });
 
 test("shared Solid UI gallery has no narrow viewport overflow", async ({

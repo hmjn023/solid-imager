@@ -1,14 +1,7 @@
 import type { JobDto } from "@solid-imager/core/jobs";
 import type { Media, MediaDetails } from "@solid-imager/core/media";
 import type { QueryUiState } from "@solid-imager/ui/query";
-import {
-	type Accessor,
-	createEffect,
-	createRoot,
-	createSignal,
-	onCleanup,
-	onMount,
-} from "solid-js";
+import { type Accessor, createSignal, onSettled, until } from "solid-js";
 
 type SearchView = {
 	kind: "search";
@@ -34,11 +27,11 @@ const [viewReader, setViewReader] = createSignal<Accessor<WorkspaceView>>();
 export const readWorkspaceView = () => viewReader()?.();
 
 export function useWorkspaceView(read: Accessor<WorkspaceView>) {
-	onMount(() => {
+	onSettled(() => {
 		setViewReader(() => read);
-		onCleanup(() => {
+		return () => {
 			if (viewReader() === read) setViewReader(undefined);
-		});
+		};
 	});
 }
 
@@ -56,28 +49,7 @@ export async function waitForWorkspaceView(
 		return view && accept(view);
 	};
 	do {
-		boundedSignal.throwIfAborted();
-		await new Promise<void>((resolve, reject) => {
-			createRoot((dispose) => {
-				const abort = () => {
-					dispose();
-					reject(boundedSignal.reason);
-				};
-				boundedSignal.addEventListener("abort", abort, { once: true });
-				onCleanup(() => boundedSignal.removeEventListener("abort", abort));
-				createEffect(() => {
-					try {
-						if (ready()) {
-							dispose();
-							resolve();
-						}
-					} catch (error) {
-						dispose();
-						reject(error);
-					}
-				});
-			});
-		});
+		await until(ready, { signal: boundedSignal });
 		await afterWebViewPaint(boundedSignal);
 	} while (!ready());
 }

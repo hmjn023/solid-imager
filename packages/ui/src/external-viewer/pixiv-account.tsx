@@ -13,7 +13,7 @@ import {
 	createMemo,
 	createSignal,
 	onCleanup,
-	onMount,
+	onSettled,
 	Show,
 } from "solid-js";
 import {
@@ -60,6 +60,7 @@ export function createPixivAccount(
 		disposed = true;
 	});
 	let checkPending = false;
+	let checkRestoredSession = false;
 	let nextCheckAt = 0;
 	const [session, setSession] = createSignal<PixivViewerSession>();
 	const [ready, setReady] = createSignal(false);
@@ -105,45 +106,48 @@ export function createPixivAccount(
 			/* Connection still works for the current view without storage. */
 		}
 	}
-	onMount(() => {
+	function check() {
+		const current = session();
+		if (!current || checkPending || Date.now() < nextCheckAt) return;
+		checkPending = true;
+		void transport()
+			.viewer.checkPixivSession()
+			.then(() => {
+				if (session() === current) setNotice("");
+			})
+			.catch(() => {
+				if (session() === current)
+					setNotice(t("pixivAccount.couldNotVerifyThePixivConnection"));
+			})
+			.finally(() => {
+				if (session() === current) {
+					checkPending = false;
+					nextCheckAt = Date.now() + SESSION_CHECK_INTERVAL_MS;
+				}
+			});
+	}
+	onSettled(() => {
 		try {
 			const parsed = pixivViewerSessionSchema.safeParse(
 				JSON.parse(sessionStorage.getItem(storageKey) ?? "null"),
 			);
-			if (parsed.success && parsed.data.expiresAt > Date.now())
+			if (parsed.success && parsed.data.expiresAt > Date.now()) {
+				checkRestoredSession = true;
 				setSession(parsed.data);
-			else save(undefined);
+			} else save(undefined);
 		} catch {
 			save(undefined);
 		}
 		setReady(true);
-		const check = () => {
-			const current = session();
-			if (!current || checkPending || Date.now() < nextCheckAt) return;
-			checkPending = true;
-			void transport()
-				.viewer.checkPixivSession()
-				.then(() => {
-					if (session() === current) setNotice("");
-				})
-				.catch(() => {
-					if (session() === current)
-						setNotice(t("pixivAccount.couldNotVerifyThePixivConnection"));
-				})
-				.finally(() => {
-					if (session() === current) {
-						checkPending = false;
-						nextCheckAt = Date.now() + SESSION_CHECK_INTERVAL_MS;
-					}
-				});
-		};
-		check();
 		window.addEventListener("focus", check);
-		onCleanup(() => window.removeEventListener("focus", check));
+		return () => window.removeEventListener("focus", check);
 	});
-	createEffect(() => {
-		const current = session();
+	createEffect(session, (current) => {
 		if (!current) return;
+		if (checkRestoredSession) {
+			checkRestoredSession = false;
+			check();
+		}
 		const timeout = setTimeout(
 			() => {
 				save(undefined);
@@ -151,7 +155,7 @@ export function createPixivAccount(
 			},
 			Math.max(0, current.expiresAt - Date.now()),
 		);
-		onCleanup(() => clearTimeout(timeout));
+		return () => clearTimeout(timeout);
 	});
 	return {
 		session,
@@ -250,6 +254,7 @@ export function PixivAccountDialog(props: {
 				<DialogContent
 					class="workspace-theme"
 					closeDisabled={busy()}
+					animateOnClose={false}
 					onCloseAutoFocus={props.onCloseAutoFocus}
 				>
 					<DialogHeader>

@@ -180,7 +180,7 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 	).toHaveValue("");
 	await expect.poll(() => requests.at(-1)?.provider).toBe("pixiv");
 	expect(requests.at(-1)?.tags).toBe("landscape");
-	await page.getByRole("button", { name: "landscape の pixiv タグ" }).click();
+	await page.getByRole("combobox", { name: "landscape の pixiv タグ" }).click();
 	await page.getByRole("option", { name: "風景画", exact: true }).click();
 	await expect.poll(() => requests.at(-1)?.choices?.landscape).toBe("風景画");
 	await page.getByRole("link", { name: "海の風景 を開く" }).click();
@@ -246,7 +246,7 @@ test("keeps Pixiv browsing controls on one row and describes empty results by co
 		.locator("header")
 		.getByText("0件を表示", { exact: true });
 	const actions = pixivActions(page);
-	const feed = page.getByRole("button", { name: /^表示する作品/ });
+	const feed = page.getByRole("combobox", { name: "表示する作品" });
 	for (const control of [heading, search, resultCount, actions, feed]) {
 		await expect(control).toBeVisible();
 	}
@@ -335,7 +335,7 @@ test("switches Pixiv rankings and followed works and removes search badges with 
 	});
 	const path = info.project.name === "tauri" ? "/#/pixiv" : "/pixiv";
 	await page.goto(path);
-	const feed = page.getByRole("button", { name: /^表示する作品/ });
+	const feed = page.getByRole("combobox", { name: "表示する作品" });
 	await feed.click();
 	await expect(
 		page.getByRole("option", { name: "フォロー新着", exact: true }),
@@ -479,7 +479,7 @@ test("browses private Pixiv bookmarks by tag, opens a work and restores the sele
 		await route.fulfill({ json: result });
 	});
 	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
-	const feed = page.getByRole("button", { name: /^表示する作品/ });
+	const feed = page.getByRole("combobox", { name: "表示する作品" });
 	const bookmarks = page.getByRole("option", {
 		name: "ブックマーク",
 		exact: true,
@@ -500,7 +500,7 @@ test("browses private Pixiv bookmarks by tag, opens a work and restores the sele
 	await expect(
 		page.getByRole("link", { name: "非公開保存 を開く" }),
 	).toBeVisible();
-	const tag = page.getByRole("button", { name: /^ブックマークタグ/ });
+	const tag = page.getByRole("combobox", { name: /^ブックマークタグ/ });
 	await expect(
 		page
 			.getByRole("status")
@@ -624,7 +624,7 @@ test("adds and removes a Pixiv bookmark from the artwork and refreshes the list"
 	await page.reload();
 	await expect(saved).toBeVisible();
 	await page.getByRole("button", { name: "一覧に戻る" }).click();
-	await page.getByRole("button", { name: /^表示する作品/ }).click();
+	await page.getByRole("combobox", { name: "表示する作品" }).click();
 	await page.getByRole("option", { name: "ブックマーク", exact: true }).click();
 	await artworkLink.click();
 	await saved.click();
@@ -1215,7 +1215,7 @@ test("reapplies Pixiv search history with operators and exact tags after reload"
 	await expect
 		.poll(() => searches.at(-1)?.tags)
 		.toBe("landscape -monochrome ~cat");
-	await page.getByRole("button", { name: /^landscape/ }).click();
+	await page.getByRole("combobox", { name: "landscape の pixiv タグ" }).click();
 	await page.getByRole("option", { name: "景色", exact: true }).click();
 	await expect
 		.poll(() => searches.at(-1)?.choices)
@@ -1330,6 +1330,7 @@ test("reopens recent Pixiv works in order and clears the saved viewing history",
 	const cancel = confirm.getByRole("button", { name: "キャンセル" });
 	await expect(cancel).toBeFocused();
 	await cancel.click();
+	await expect(confirm).toBeHidden();
 	await expect(history.getByRole("link")).toHaveCount(2);
 	await clear.click();
 	await confirm.getByRole("button", { name: "履歴を消去" }).click();

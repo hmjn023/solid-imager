@@ -1,21 +1,22 @@
+import { cn } from "./utils/cn";
 import { t } from "@solid-imager/i18n";
 import {
 	createVirtualizer,
 	createWindowVirtualizer,
 	type Range,
 	type Virtualizer,
-} from "@tanstack/solid-virtual";
+} from "./utils/virtualizer";
 import {
 	createEffect,
 	createMemo,
 	createSignal,
 	For,
 	onCleanup,
-	onMount,
+	onSettled,
 	Show,
 	untrack,
-	type JSX,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { observePageBoundary } from "./hooks/observe-page-boundary";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
 import { getMediaGridColumnCount, mediaGridClassName } from "./skeleton";
@@ -136,7 +137,10 @@ export function MediaTileGrid<T extends { id: string | number }>(
 		get count() {
 			return rowCount();
 		},
-		estimateSize: () => mediaItemHeight() || 320,
+		get estimateSize() {
+			const height = mediaItemHeight() || 320;
+			return () => height;
+		},
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
 		overscan: WINDOW_VIRTUAL_ROWS_OVERSCAN,
@@ -156,7 +160,10 @@ export function MediaTileGrid<T extends { id: string | number }>(
 			return props.scrollMode === "element" && scrollElement() !== null;
 		},
 		getScrollElement: () => scrollElement(),
-		estimateSize: () => mediaItemHeight() || 320,
+		get estimateSize() {
+			const height = mediaItemHeight() || 320;
+			return () => height;
+		},
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
 		overscan: 0,
@@ -217,19 +224,26 @@ export function MediaTileGrid<T extends { id: string | number }>(
 	// estimated viewport at its real scroll position instead of blanking it.
 	const [firstRow, setFirstRow] = createSignal(0);
 	const [viewportHeight, setViewportHeight] = createSignal(0);
-	createEffect(() => {
-		if (!shouldVirtualize() || measuredVirtualRows().length) return;
-		const element = props.scrollMode === "element" ? scrollElement() : null;
-		const target = element ?? window;
-		const updateRange = () => {
-			const offset = (element?.scrollTop ?? window.scrollY) - scrollMargin();
-			setFirstRow(Math.max(0, Math.floor(offset / rowStride())));
-			setViewportHeight(element?.clientHeight ?? window.innerHeight);
-		};
-		updateRange();
-		target.addEventListener("scroll", updateRange, { passive: true });
-		onCleanup(() => target.removeEventListener("scroll", updateRange));
-	});
+	createEffect(
+		() => ({
+			needsEstimate: shouldVirtualize() && measuredVirtualRows().length === 0,
+			element: props.scrollMode === "element" ? scrollElement() : null,
+			margin: scrollMargin(),
+			stride: rowStride(),
+		}),
+		({ needsEstimate, element, margin, stride }) => {
+			if (!needsEstimate) return;
+			const target = element ?? window;
+			const updateRange = () => {
+				const offset = (element?.scrollTop ?? window.scrollY) - margin;
+				setFirstRow(Math.max(0, Math.floor(offset / stride)));
+				setViewportHeight(element?.clientHeight ?? window.innerHeight);
+			};
+			updateRange();
+			target.addEventListener("scroll", updateRange, { passive: true });
+			return () => target.removeEventListener("scroll", updateRange);
+		},
+	);
 	const visibleRows = createMemo(() => {
 		const measured = measuredVirtualRows();
 		if (measured.length || !shouldVirtualize()) return measured;
@@ -353,7 +367,7 @@ export function MediaTileGrid<T extends { id: string | number }>(
 		});
 	};
 
-	onMount(() => {
+	onSettled(() => {
 		setWindowWidth(window.innerWidth);
 		setScrollElement(resolveScrollElement());
 		updateMediaGridMetrics();
@@ -370,7 +384,7 @@ export function MediaTileGrid<T extends { id: string | number }>(
 			resizeObserver.observe(mediaGridRef);
 		}
 
-		onCleanup(() => {
+		return () => {
 			window.removeEventListener("resize", handleResize);
 			if (metricsFrameId !== undefined) {
 				cancelAnimationFrame(metricsFrameId);
@@ -380,31 +394,32 @@ export function MediaTileGrid<T extends { id: string | number }>(
 			if (mediaGridResizeObserver === resizeObserver) {
 				mediaGridResizeObserver = undefined;
 			}
-		});
+		};
 	});
 
-	createEffect(() => {
-		rowCount();
-		mediaItemHeight();
-		columnCount();
-		// The element virtualizer is created before the grid's mount callback
-		// discovers its nested scroller. Re-measure when that scroller or the
-		// content offset becomes available so the initial range is populated
-		// without requiring a user scroll event.
-		scrollElement();
-		scrollMargin();
-		const virtualizer = mediaRowVirtualizer();
-		virtualizer.measure();
-		const element = scrollElement();
-		if (props.scrollMode === "element" && element) {
-			// Element scroll containers do not consistently emit a native scroll
-			// event when their content is replaced or clamped. Window scrolling in
-			// the v1 screen gets that notification from the browser automatically.
-			// Dispatching lets the virtualizer read the element's current offset
-			// without imperatively writing a possibly stale offset back to it.
-			untrack(() => element.dispatchEvent(new Event("scroll")));
-		}
-	});
+	// Re-measure after the grid discovers its scroller or the content offset changes.
+	createEffect(
+		() => ({
+			rowCount: rowCount(),
+			itemHeight: mediaItemHeight(),
+			columnCount: columnCount(),
+			element: scrollElement(),
+			margin: scrollMargin(),
+			virtualizer: mediaRowVirtualizer(),
+			elementMode: props.scrollMode === "element",
+		}),
+		({ element, virtualizer, elementMode }) => {
+			virtualizer.measure();
+			if (elementMode && element) {
+				// Element scroll containers do not consistently emit a native scroll
+				// event when their content is replaced or clamped. Window scrolling in
+				// the v1 screen gets that notification from the browser automatically.
+				// Dispatching lets the virtualizer read the element's current offset
+				// without imperatively writing a possibly stale offset back to it.
+				untrack(() => element.dispatchEvent(new Event("scroll")));
+			}
+		},
+	);
 
 	// A virtualization-enabled library can receive a short page. Observe its
 	// footer until row virtualization takes over; ordinary grids have their
@@ -424,22 +439,28 @@ export function MediaTileGrid<T extends { id: string | number }>(
 	});
 
 	// The visible range and the network request are independent of thumbnail prefetch.
-	createEffect(() => {
-		const onNearEnd = props.onNearEnd;
-		if (!shouldVirtualize() || !onNearEnd) return;
-		const rows = rowCount();
-		const handleScroll = () => {
-			const last = visibleRows().at(-1);
-			if (last && last.index >= rows - LOAD_MORE_ROWS_AHEAD) onNearEnd();
-		};
-		const frameId = requestAnimationFrame(handleScroll);
-		const target = props.scrollMode === "element" ? scrollElement() : window;
-		target?.addEventListener("scroll", handleScroll, { passive: true });
-		onCleanup(() => {
-			cancelAnimationFrame(frameId);
-			target?.removeEventListener("scroll", handleScroll);
-		});
-	});
+	createEffect(
+		() => ({
+			onNearEnd: shouldVirtualize() ? props.onNearEnd : undefined,
+			rows: rowCount(),
+			elementMode: props.scrollMode === "element",
+			element: scrollElement(),
+		}),
+		({ onNearEnd, rows, elementMode, element }) => {
+			if (!onNearEnd) return;
+			const handleScroll = () => {
+				const last = visibleRows().at(-1);
+				if (last && last.index >= rows - LOAD_MORE_ROWS_AHEAD) onNearEnd();
+			};
+			const frameId = requestAnimationFrame(handleScroll);
+			const target = elementMode ? element : window;
+			target?.addEventListener("scroll", handleScroll, { passive: true });
+			return () => {
+				cancelAnimationFrame(frameId);
+				target?.removeEventListener("scroll", handleScroll);
+			};
+		},
+	);
 
 	const tileElement = (id: T["id"]) =>
 		mediaGridRef?.querySelector<HTMLElement>(
@@ -535,7 +556,9 @@ export function MediaTileGrid<T extends { id: string | number }>(
 		return false;
 	}
 
-	onMount(() => props.onReady?.({ getAnchor, restoreAnchor, focusItem }));
+	onSettled(() => {
+		props.onReady?.({ getAnchor, restoreAnchor, focusItem });
+	});
 	onCleanup(() => {
 		disposed = true;
 		props.onReady?.(undefined);
@@ -583,8 +606,9 @@ export function MediaTileGrid<T extends { id: string | number }>(
 	return (
 		// oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Delegated navigation for the focused tile links/buttons.
 		<section
-			class="@container relative min-w-0 w-full"
-			classList={{ "virtualized-media-grid": shouldVirtualize() }}
+			class={cn("@container relative min-w-0 w-full", {
+				"virtualized-media-grid": shouldVirtualize(),
+			})}
 			aria-label={props.ariaLabel ?? t("mediaTileGrid.mediaGrid")}
 			data-media-grid
 			onKeyDown={navigate}
@@ -610,29 +634,31 @@ export function MediaTileGrid<T extends { id: string | number }>(
 									: props.items
 							}
 						>
-							{(item, index) => {
-								const eager = () =>
-									index() < (props.eagerCount ?? initialPriorityMediaCount());
-								const policy: MediaGridImageLoadPolicy | undefined =
-									props.scrollMode === "element"
-										? {
-												enabled: true,
-												get fetchpriority() {
-													return index() < HIGH_PRIORITY_THUMBNAILS
-														? "high"
-														: undefined;
-												},
-												get loading() {
-													return eager() ? "eager" : "lazy";
-												},
-											}
-										: undefined;
-								return props.renderItem(
-									item,
-									policy,
-									policy ? eager() : undefined,
-								);
-							}}
+							{(item, index) =>
+								untrack(() => {
+									const eager = () =>
+										index() < (props.eagerCount ?? initialPriorityMediaCount());
+									const policy: MediaGridImageLoadPolicy | undefined =
+										props.scrollMode === "element"
+											? {
+													enabled: true,
+													get fetchpriority() {
+														return index() < HIGH_PRIORITY_THUMBNAILS
+															? "high"
+															: undefined;
+													},
+													get loading() {
+														return eager() ? "eager" : "lazy";
+													},
+												}
+											: undefined;
+									return props.renderItem(
+										item,
+										policy,
+										policy ? eager() : undefined,
+									);
+								})
+							}
 						</For>
 					</div>
 				}
@@ -649,16 +675,18 @@ export function MediaTileGrid<T extends { id: string | number }>(
 						>
 							<For each={getRowMedia(row.index)}>
 								{(item, index) =>
-									props.renderItem(
-										item,
-										props.scrollMode === "element"
-											? createElementImageLoadPolicy(
-													row.index,
-													row.index * columnCount() + index(),
-												)
-											: undefined,
-										props.scrollMode === "element" &&
-											row.index < INITIAL_PRIORITY_ROWS,
+									untrack(() =>
+										props.renderItem(
+											item,
+											props.scrollMode === "element"
+												? createElementImageLoadPolicy(
+														row.index,
+														row.index * columnCount() + index(),
+													)
+												: undefined,
+											props.scrollMode === "element" &&
+												row.index < INITIAL_PRIORITY_ROWS,
+										),
 									)
 								}
 							</For>

@@ -1,7 +1,7 @@
 import { mediaThumbnailPath } from "@solid-imager/core/http";
 import type { DuplicateGroup } from "@solid-imager/core/media";
 import { t } from "@solid-imager/i18n";
-import ExternalLink from "lucide-solid/icons/external-link";
+import ExternalLink from "@lucide/solid/icons/external-link";
 import { createSignal, For, Show } from "solid-js";
 import { Badge } from "../../badge";
 import { Button } from "../../button";

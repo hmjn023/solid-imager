@@ -17,7 +17,9 @@ export function createViewerImports(
 	type ImportTarget =
 		| { state: "pending" }
 		| { state: "queued"; requestId?: string };
-	const [targets, setTargets] = createSignal(new Map<string, ImportTarget>());
+	// Reserve URLs synchronously so overlapping submissions cannot enqueue them twice.
+	const targets = new Map<string, ImportTarget>();
+	const [targetsVersion, setTargetsVersion] = createSignal(0);
 	let additionsInFlight = 0;
 	let connectionRevision = 0;
 	// A different tab can cancel a committed request before its enqueue response arrives.
@@ -26,7 +28,7 @@ export function createViewerImports(
 	async function add(items: DownloadItem[]) {
 		const batch = new Map<string, DownloadItem>();
 		for (const item of items) {
-			if (item.targetUrl && !targets().has(item.targetUrl)) {
+			if (item.targetUrl && !targets.has(item.targetUrl)) {
 				batch.set(item.targetUrl, item);
 			}
 		}
@@ -35,15 +37,12 @@ export function createViewerImports(
 		function setBatchTargets(
 			targetFor: (url: string) => ImportTarget | undefined,
 		) {
-			setTargets((current) => {
-				const next = new Map(current);
-				for (const url of batch.keys()) {
-					const target = targetFor(url);
-					if (target) next.set(url, target);
-					else next.delete(url);
-				}
-				return next;
-			});
+			for (const url of batch.keys()) {
+				const target = targetFor(url);
+				if (target) targets.set(url, target);
+				else targets.delete(url);
+			}
+			setTargetsVersion((version) => version + 1);
 		}
 		additionsInFlight++;
 		const revision = connectionRevision;
@@ -90,22 +89,21 @@ export function createViewerImports(
 		const cancelled = new Set(jobIds);
 		if (additionsInFlight)
 			for (const id of cancelled) recentlyCancelled.add(id);
-		setTargets((current) => {
-			const next = new Map(current);
-			for (const [url, target] of current) {
-				if (
-					target.state === "queued" &&
-					target.requestId &&
-					cancelled.has(target.requestId)
-				)
-					next.delete(url);
-			}
-			return next.size === current.size ? current : next;
-		});
+		const previousSize = targets.size;
+		for (const [url, target] of targets) {
+			if (
+				target.state === "queued" &&
+				target.requestId &&
+				cancelled.has(target.requestId)
+			)
+				targets.delete(url);
+		}
+		if (targets.size !== previousSize)
+			setTargetsVersion((version) => version + 1);
 	}
 	async function reconcile() {
 		if (!findExisting) return;
-		const jobIds = Array.from(targets().values()).flatMap((target) =>
+		const jobIds = Array.from(targets.values()).flatMap((target) =>
 			target.state === "queued" && target.requestId ? [target.requestId] : [],
 		);
 		if (!jobIds.length) return;
@@ -117,7 +115,10 @@ export function createViewerImports(
 		await reconcile();
 	}
 	return {
-		state: (url?: string) => (url ? targets().get(url)?.state : undefined),
+		state: (url?: string) => {
+			targetsVersion();
+			return url ? targets.get(url)?.state : undefined;
+		},
 		add,
 		clearCancelled,
 		onConnected,

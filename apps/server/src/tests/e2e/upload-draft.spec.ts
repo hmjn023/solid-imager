@@ -1,7 +1,12 @@
 import type { Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { mediaThumbnailPath } from "@solid-imager/core/http";
-import { apiPathPattern, apiRequest, routeApi } from "./support/api";
+import {
+	apiPathPattern,
+	apiRequest,
+	apiRequestInput,
+	routeApi,
+} from "./support/api";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SIMILAR_FILE_NAME,
@@ -45,7 +50,73 @@ async function pasteUrl(page: Page) {
 	}, url);
 }
 
-test("keeps both dialog-selected files through actual upload submission", async ({
+test("source file intake routes picked manifests and dropped files separately", async ({
+	page,
+}) => {
+	const item = { targetUrl: "https://example.com/fixture.png" };
+	const manifest = JSON.stringify([item]);
+	const requests: unknown[] = [];
+	await routeApi(page, "downloads/start", async (route) => {
+		requests.push(apiRequestInput(route.request(), "downloads/start"));
+		await route.fulfill({
+			json: { success: true, jobCount: 1, message: "Queued" },
+		});
+	});
+	await page.goto(sourcePath());
+	await waitForAppHydration(page);
+	const uploadArea = page.getByRole("region", {
+		name: "メディアのアップロード領域",
+	});
+	const addMedia = uploadArea.getByRole("button", {
+		name: "追加",
+		exact: true,
+	});
+	const chosen = page.waitForEvent("filechooser");
+	await addMedia.click();
+	const picker = await chosen;
+	expect(await picker.element().getAttribute("accept")).toBe(
+		"image/*,video/*,audio/*,.json",
+	);
+	await picker.setFiles({
+		name: "download.manifest",
+		mimeType: "application/json",
+		buffer: Buffer.from(manifest),
+	});
+	await expect
+		.poll(() => requests)
+		.toEqual([{ items: [item], mediaSourceId: E2E_SOURCE_ID }]);
+	const dialog = page.getByRole("dialog", { name: "メディアをアップロード" });
+	await expect(dialog).toBeHidden();
+	const dragHandledOutside = await page.evaluate((json) => {
+		const dataTransfer = new DataTransfer();
+		dataTransfer.items.add(new File([json], "download.json"));
+		const drag = new DragEvent("dragover", {
+			bubbles: true,
+			cancelable: true,
+			dataTransfer,
+		});
+		document.body.dispatchEvent(drag);
+		return drag.defaultPrevented;
+	}, manifest);
+	expect(dragHandledOutside).toBe(false);
+
+	await uploadArea.evaluate((area, json) => {
+		const dataTransfer = new DataTransfer();
+		dataTransfer.items.add(
+			new File([json], "download.json", { type: "application/json" }),
+		);
+		area.dispatchEvent(
+			new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }),
+		);
+	}, manifest);
+	await expect(dialog.getByLabel("ファイル名", { exact: true })).toHaveValue(
+		"download.json",
+	);
+	await expect(dialog.getByRole("listitem")).toHaveCount(1);
+	expect(requests).toHaveLength(1);
+});
+
+test("adds, replaces and drops dialog files before upload submission", async ({
 	page,
 	browserHealth,
 }) => {
@@ -60,18 +131,49 @@ test("keeps both dialog-selected files through actual upload submission", async 
 	});
 	await page.goto(sourcePath());
 	await waitForAppHydration(page);
-	await expect(
-		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
-	).toBeVisible();
 	await openFromFile(page);
 	const dialog = page.getByRole("dialog", { name: "メディアをアップロード" });
-	await dialog
-		.locator('input[type="file"]')
-		.setInputFiles([
-			getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
-			getFixtureMediaPath(E2E_SIMILAR_FILE_NAME),
-		]);
-	await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(2);
+	const pickFiles = async (triggerName: string, ...names: string[]) => {
+		const chooser = page.waitForEvent("filechooser");
+		await dialog
+			.getByRole("button", { name: triggerName, exact: true })
+			.click();
+		const fileChooser = await chooser;
+		await fileChooser.setFiles(names.map((name) => getFixtureMediaPath(name)));
+	};
+	const files = dialog.getByRole("list").getByRole("listitem");
+	const filename = dialog.getByLabel("ファイル名", { exact: true });
+
+	await pickFiles(
+		"ファイルを追加",
+		E2E_PRIMARY_FILE_NAME,
+		E2E_SIMILAR_FILE_NAME,
+	);
+	await expect(files).toHaveCount(2);
+	await expect(filename).toHaveValue(E2E_PRIMARY_FILE_NAME);
+	await pickFiles("ファイルを入れ替え", E2E_SIMILAR_FILE_NAME);
+	await expect(files).toHaveCount(1);
+	await expect(filename).toHaveValue(E2E_SIMILAR_FILE_NAME);
+	const primaryImage = await readFile(
+		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
+	);
+	await files.first().evaluate(
+		(item, { name, base64 }) => {
+			const bytes = Uint8Array.from(atob(base64), (byte) => byte.charCodeAt(0));
+			const dataTransfer = new DataTransfer();
+			dataTransfer.items.add(new File([bytes], name, { type: "image/png" }));
+			item.dispatchEvent(
+				new DragEvent("drop", {
+					bubbles: true,
+					cancelable: true,
+					dataTransfer,
+				}),
+			);
+		},
+		{ name: E2E_PRIMARY_FILE_NAME, base64: primaryImage.toString("base64") },
+	);
+	await expect(files).toHaveCount(2);
+	await expect(filename).toHaveValue(E2E_SIMILAR_FILE_NAME);
 	await expect(
 		dialog.getByText(E2E_PRIMARY_FILE_NAME, { exact: true }),
 	).toBeVisible();
@@ -150,7 +252,7 @@ for (const discard of [false, true]) {
 		await page.goto(sourcePath());
 		await waitForAppHydration(page);
 		await expect(
-			page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+			page.getByRole("button", { name: "追加", exact: true }),
 		).toBeVisible();
 		await pasteUrl(page);
 		const dialog = page.getByRole("dialog", { name: "メディアをアップロード" });

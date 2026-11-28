@@ -6,15 +6,9 @@ import type {
 	StartCcipExtractionResponse,
 } from "@solid-imager/core/tagging";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import Copy from "lucide-solid/icons/copy";
-import ExternalLink from "lucide-solid/icons/external-link";
-import {
-	type Accessor,
-	createEffect,
-	createSignal,
-	on,
-	onCleanup,
-} from "solid-js";
+import Copy from "@lucide/solid/icons/copy";
+import ExternalLink from "@lucide/solid/icons/external-link";
+import { type Accessor, createEffect, createSignal, untrack } from "solid-js";
 import { Button } from "./button";
 import {
 	DropdownMenu,
@@ -56,13 +50,13 @@ export type MediaActionsProps = {
 	onDelete?: () => void | Promise<void>;
 	aiTaggingModal?: (
 		props: MediaActionModalProps,
-	) => import("solid-js").JSX.Element;
+	) => import("@solidjs/web").JSX.Element;
 	characterCropModal?: (
 		props: MediaActionModalProps,
-	) => import("solid-js").JSX.Element;
+	) => import("@solidjs/web").JSX.Element;
 	oppaiOracleModal?: (
 		props: MediaActionModalProps,
-	) => import("solid-js").JSX.Element;
+	) => import("@solidjs/web").JSX.Element;
 	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
 	startCcipExtraction?: (
 		force: boolean,
@@ -141,26 +135,22 @@ export function MediaActions(props: MediaActionsProps) {
 	};
 
 	createEffect(
-		on(
-			[
-				() => props.media.id,
-				() => props.media.mediaSourceId,
-				() => props.media.mediaType,
-			],
-			() => {
-				setIsAiTaggingModalOpen(false);
-				setIsOppaiOracleModalOpen(false);
-				setIsCharacterCropModalOpen(false);
-				setMoreActionsOpen(false);
-				setIsExtractingCcip(false);
-				setIsExtractingEmbedding(false);
-				setIsCcipJobPending(false);
+		() => [props.media.id, props.media.mediaSourceId, props.media.mediaType],
+		() => {
+			setIsAiTaggingModalOpen(false);
+			setIsOppaiOracleModalOpen(false);
+			setIsCharacterCropModalOpen(false);
+			setMoreActionsOpen(false);
+			setIsExtractingCcip(false);
+			setIsExtractingEmbedding(false);
+			setIsCcipJobPending(false);
+			setActiveCcipJobId(null);
+			setCcipMissingStatusCount(0);
+			untrack(() => {
 				setCcipStatus(props.getCcipVectorStatus ? "missing" : "ready");
-				setActiveCcipJobId(null);
-				setCcipMissingStatusCount(0);
 				void refreshCcipStatus();
-			},
-		),
+			});
+		},
 	);
 
 	const handleEmbeddingExtraction = async () => {
@@ -267,12 +257,12 @@ export function MediaActions(props: MediaActionsProps) {
 		);
 	}
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (!isCcipJobPending() || !activeCcipJobId()) return;
 		const intervalId = setInterval(() => {
 			void refreshCcipStatus();
 		}, CCIP_STATUS_REFRESH_INTERVAL_MS);
-		onCleanup(() => clearInterval(intervalId));
+		return () => clearInterval(intervalId);
 	});
 
 	const handleDownload = async () => {
@@ -295,13 +285,14 @@ export function MediaActions(props: MediaActionsProps) {
 	};
 
 	const handleDelete = async () => {
-		if (!props.onDelete || isDeleting()) return;
+		if (!props.onDelete || isDeleting()) return false;
 		setIsDeleting(true);
 		setDeleteError(undefined);
 		try {
 			await props.onDelete();
 			setIsDeleteDialogOpen(false);
 			toast.success(t("mediaActions.mediaDeleted"));
+			return true;
 		} catch (error) {
 			const message = getErrorMessage(error);
 			setDeleteError(message);
@@ -310,6 +301,7 @@ export function MediaActions(props: MediaActionsProps) {
 					value0: String(message),
 				}),
 			);
+			return false;
 		} finally {
 			setIsDeleting(false);
 		}
@@ -554,9 +546,11 @@ export function MediaActions(props: MediaActionsProps) {
 
 type ShowActionProps = {
 	when: unknown;
-	children: import("solid-js").JSX.Element;
+	children: import("@solidjs/web").JSX.Element;
 };
 
 function ShowAction(props: ShowActionProps) {
 	return <>{props.when ? props.children : null}</>;
 }
+
+import { createTrackedEffect } from "solid-js";

@@ -5,12 +5,12 @@ import {
 	createMemo,
 	createSignal,
 	Match,
-	on,
-	onCleanup,
+	onSettled,
+	type ParentProps,
 	Show,
 	Switch,
-	type JSX,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import {
 	EmptyState,
 	ErrorState,
@@ -38,6 +38,32 @@ export type ViewerNavigation = {
 
 type ViewerResults = { posts: { id: number }[]; hasNextPage: boolean };
 
+function ViewerScrollArea(
+	props: ParentProps<{
+		providerName: string;
+		onElementChange: (element: HTMLDivElement | undefined) => void;
+		onScroll: () => void;
+	}>,
+) {
+	let area!: HTMLDivElement;
+	onSettled(() => {
+		props.onElementChange(area);
+		return () => props.onElementChange(undefined);
+	});
+	return (
+		<div
+			class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 scrollbar-stable sm:px-4"
+			data-media-scroll={props.providerName}
+			ref={(element) => {
+				area = element;
+			}}
+			onScroll={() => props.onScroll()}
+		>
+			{props.children}
+		</div>
+	);
+}
+
 export function ViewerWorkspace<T extends ViewerResults>(
 	props: ViewerNavigation & {
 		providerName: "Danbooru" | "pixiv";
@@ -57,9 +83,9 @@ export function ViewerWorkspace<T extends ViewerResults>(
 		) => JSX.Element;
 	},
 ) {
-	const browse = props.browse;
-	const results = browse.results;
-	const state = browse.state;
+	const browse = () => props.browse;
+	const results = () => browse().results;
+	const state = () => browse().state();
 	const selectedIndex = createMemo(
 		() =>
 			state().data?.posts.findIndex(
@@ -71,60 +97,70 @@ export function ViewerWorkspace<T extends ViewerResults>(
 			? undefined
 			: state().data?.posts[selectedIndex() + direction]?.id;
 	const retry = async () => {
-		await results.refetch();
+		await results().refetch();
 	};
 	let collectionTitle: HTMLHeadingElement | undefined;
 	const [returnFocusId, setReturnFocusId] = createSignal<number | null>();
 	createEffect(
-		on(
-			() => props.selectedPostId,
-			(id, previous) => {
-				if (id && !previous) setReturnFocusId(id);
-				browse.rememberDetail(id);
-			},
-		),
+		() => props.selectedPostId,
+		(id, previous) => {
+			if (id && !previous) setReturnFocusId(id);
+		},
 	);
-	createEffect(() => {
-		const id = returnFocusId();
-		if (
-			id === undefined ||
-			props.selectedPostId ||
-			state().phase === "pending" ||
-			browse.restoring()
-		)
-			return;
-		const grid = browse.gridHandle();
-		let cancelled = false;
-		const restoreFocus = async () => {
-			const focused = id === null ? false : await grid?.focusPost(id);
-			if (cancelled) return;
-			if (!focused) collectionTitle?.focus({ preventScroll: true });
-			setReturnFocusId(undefined);
-		};
-		const frame = requestAnimationFrame(() => void restoreFocus());
-		onCleanup(() => {
-			cancelled = true;
-			cancelAnimationFrame(frame);
-		});
-	});
+	createEffect(
+		() => {
+			const id = returnFocusId();
+			if (
+				id === undefined ||
+				props.selectedPostId ||
+				state().phase === "pending" ||
+				browse().restoring()
+			)
+				return;
+			return { id, grid: browse().gridHandle() };
+		},
+		(target) => {
+			if (!target) return;
+			const { id, grid } = target;
+			let cancelled = false;
+			const restoreFocus = async () => {
+				const focused = id === null ? false : await grid?.focusPost(id);
+				if (cancelled) return;
+				if (!focused) collectionTitle?.focus({ preventScroll: true });
+				setReturnFocusId(undefined);
+			};
+			const frame = requestAnimationFrame(() => void restoreFocus());
+			return () => {
+				cancelled = true;
+				cancelAnimationFrame(frame);
+			};
+		},
+	);
 	// Keep the next/previous action working when browsing across a loaded page boundary.
-	createEffect(() => {
-		const index = selectedIndex();
-		if (index < 0 || browse.restoring() || results.isFetching) return;
-		if (
-			index === (state().data?.posts.length ?? 0) - 1 &&
-			browse.canAutoLoadNext() &&
-			!results.isFetchNextPageError
-		) {
-			void browse.loadMore();
-		} else if (
-			index === 0 &&
-			browse.canAutoLoadPrevious() &&
-			!results.isFetchPreviousPageError
-		) {
-			void browse.loadPrevious();
-		}
-	});
+	createEffect(
+		() => {
+			const index = selectedIndex();
+			const listing = browse();
+			if (index < 0 || listing.restoring() || results().isFetching) return;
+			if (
+				index === (state().data?.posts.length ?? 0) - 1 &&
+				listing.canAutoLoadNext() &&
+				!results().isFetchNextPageError
+			) {
+				return listing.loadMore;
+			}
+			if (
+				index === 0 &&
+				listing.canAutoLoadPrevious() &&
+				!results().isFetchPreviousPageError
+			) {
+				return listing.loadPrevious;
+			}
+		},
+		(load) => {
+			if (load) void load();
+		},
+	);
 	return (
 		<div class="workspace-theme flex h-full min-h-0 min-w-0 flex-col bg-background text-foreground">
 			<Show
@@ -165,31 +201,29 @@ export function ViewerWorkspace<T extends ViewerResults>(
 									</>
 								}
 								provider={props.providerName}
-								draft={browse.draft()}
-								onDraftChange={browse.setDraft}
-								onSubmit={() => browse.submit()}
+								draft={browse().draft()}
+								onDraftChange={browse().setDraft}
+								onSubmit={(draft) => browse().submit(draft)}
 								suggestTags={props.suggestTags}
 							/>
 							{props.toolbarContent}
 						</CollectionHeader>
-						<div
-							class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 scrollbar-stable sm:px-4"
-							data-media-scroll={props.providerName}
-							ref={(area) => {
-								browse.setScrollArea(area);
-								onCleanup(() => browse.setScrollArea(undefined));
-							}}
-							onScroll={browse.handleScroll}
+						<ViewerScrollArea
+							providerName={props.providerName}
+							onElementChange={browse().setScrollArea}
+							onScroll={browse().handleScroll}
 						>
 							<QueryStatus
 								hideWhenIdle
 								fetchState={
-									results.isFetchingNextPage || results.isFetchingPreviousPage
+									state().data &&
+									(results().isFetchingNextPage ||
+										results().isFetchingPreviousPage)
 										? "idle"
 										: state().fetchState
 								}
 								hasData={!!state().data}
-								hasError={results.isRefetchError}
+								hasError={results().isRefetchError}
 								offlineLabel={t(
 									"searchScreen.offlineShowingSavedSearchResults",
 								)}
@@ -207,7 +241,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 								<Match when={state().phase === "error"}>
 									<ErrorState
 										title={props.errorTitle}
-										description={results.error?.message}
+										description={results().error?.message}
 										onRetry={retry}
 									/>
 								</Match>
@@ -215,19 +249,19 @@ export function ViewerWorkspace<T extends ViewerResults>(
 									{(data) => (
 										<>
 											{props.renderSearchInfo?.(data())}
-											<Show when={browse.hasPreviousPage()}>
+											<Show when={browse().hasPreviousPage()}>
 												<ViewerLoadBoundary
 													direction="previous"
-													root={browse.scrollArea}
+													root={browse().scrollArea}
 													autoLoad={
-														!browse.restoring() &&
-														!results.isFetching &&
-														browse.canAutoLoadPrevious() &&
-														!!browse.gridHandle()
+														!browse().restoring() &&
+														!results().isFetching &&
+														browse().canAutoLoadPrevious() &&
+														!!browse().gridHandle()
 													}
-													loading={results.isFetchingPreviousPage}
-													failed={results.isFetchPreviousPageError}
-													onLoad={browse.loadPrevious}
+													loading={results().isFetchingPreviousPage}
+													failed={results().isFetchPreviousPageError}
+													onLoad={browse().loadPrevious}
 												/>
 											</Show>
 											<Show
@@ -235,7 +269,8 @@ export function ViewerWorkspace<T extends ViewerResults>(
 												fallback={
 													<Show
 														when={
-															!browse.hasNextPage() && !browse.hasPreviousPage()
+															!browse().hasNextPage() &&
+															!browse().hasPreviousPage()
 														}
 													>
 														<EmptyState
@@ -251,16 +286,16 @@ export function ViewerWorkspace<T extends ViewerResults>(
 												<ViewerResultsGrid<T["posts"][number]>
 													posts={data().posts}
 													describe={props.describePost}
-													onGridReady={browse.setGridHandle}
+													onGridReady={browse().setGridHandle}
 													postHref={props.postHref}
 													onOpenPost={(id) => {
-														browse.rememberScroll();
+														browse().rememberScroll();
 														props.onOpenPost(id);
 													}}
 												/>
 											</Show>
 											<Show
-												when={browse.hasNextPage()}
+												when={browse().hasNextPage()}
 												fallback={
 													<Show when={data().posts.length}>
 														<p class="py-3 text-center text-sm text-muted-foreground">
@@ -271,24 +306,24 @@ export function ViewerWorkspace<T extends ViewerResults>(
 											>
 												<ViewerLoadBoundary
 													direction="next"
-													root={browse.scrollArea}
-													onlyFillViewport={browse.onlyFillViewport()}
+													root={browse().scrollArea}
+													onlyFillViewport={browse().onlyFillViewport()}
 													autoLoad={
-														!browse.restoring() &&
-														!results.isFetching &&
-														browse.canAutoLoadNext() &&
-														!!browse.gridHandle()
+														!browse().restoring() &&
+														!results().isFetching &&
+														browse().canAutoLoadNext() &&
+														!!browse().gridHandle()
 													}
-													loading={results.isFetchingNextPage}
-													failed={results.isFetchNextPageError}
-													onLoad={browse.loadMore}
+													loading={results().isFetchingNextPage}
+													failed={results().isFetchNextPageError}
+													onLoad={browse().loadMore}
 												/>
 											</Show>
 										</>
 									)}
 								</Match>
 							</Switch>
-						</div>
+						</ViewerScrollArea>
 					</>
 				}
 			>

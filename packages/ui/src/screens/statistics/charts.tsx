@@ -2,7 +2,7 @@ import { getLocale, t } from "@solid-imager/i18n";
 import type { MediaType } from "@solid-imager/core/media";
 import type { LibraryStatistics } from "@solid-imager/core/statistics";
 import { ClientOnly } from "@tanstack/solid-router";
-import { createMemo, For, lazy, Show, Suspense } from "solid-js";
+import { createMemo, For, lazy, Show, Loading } from "solid-js";
 import { Card } from "../../card";
 import {
 	Collapsible,
@@ -131,9 +131,9 @@ export function ImportTrend(props: {
 			</div>
 			<div class="min-h-48">
 				<ClientOnly>
-					<Suspense>
+					<Loading>
 						<TrendGraph {...props} />
-					</Suspense>
+					</Loading>
 				</ClientOnly>
 			</div>
 			<Collapsible class="mt-auto border-t border-border pt-3 text-xs">
@@ -216,9 +216,9 @@ export function MediaComposition(props: {
 				>
 					<div class="min-h-36">
 						<ClientOnly>
-							<Suspense>
+							<Loading>
 								<CompositionGraph counts={counts()} />
-							</Suspense>
+							</Loading>
 						</ClientOnly>
 					</div>
 				</Show>

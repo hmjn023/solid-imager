@@ -8,27 +8,28 @@ import {
 	type McpToolInfo,
 } from "@solid-imager/core/config";
 import type { AiHealthResponse } from "@solid-imager/core/tagging";
-import { createForm } from "@tanstack/solid-form";
+import { createForm } from "../utils/create-form";
 import { useQueryClient } from "@tanstack/solid-query";
 // oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
-import Bot from "lucide-solid/icons/bot";
-import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
-import DownloadCloud from "lucide-solid/icons/cloud-download";
-import HardDrive from "lucide-solid/icons/hard-drive";
-import Image from "lucide-solid/icons/image";
-import Keyboard from "lucide-solid/icons/keyboard";
-import Languages from "lucide-solid/icons/languages";
-import Logs from "lucide-solid/icons/logs";
-import Wrench from "lucide-solid/icons/wrench";
+import Bot from "@lucide/solid/icons/bot";
+import BriefcaseBusiness from "@lucide/solid/icons/briefcase-business";
+import DownloadCloud from "@lucide/solid/icons/cloud-download";
+import HardDrive from "@lucide/solid/icons/hard-drive";
+import Image from "@lucide/solid/icons/image";
+import Keyboard from "@lucide/solid/icons/keyboard";
+import Languages from "@lucide/solid/icons/languages";
+import Logs from "@lucide/solid/icons/logs";
+import Wrench from "@lucide/solid/icons/wrench";
 import {
 	createEffect,
 	createSignal,
 	For,
-	onCleanup,
-	onMount,
+	onSettled,
 	Show,
+	untrack,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import type { z } from "zod";
 import {
 	AlertDialog,
@@ -41,21 +42,14 @@ import {
 	AlertDialogTitle,
 } from "../alert-dialog";
 import { Button } from "../button";
-import {
-	FormError,
-	FormFieldMessage,
-	getFormErrorMessage,
-} from "../form-message";
+import { FormError, getFormErrorMessage } from "../form-message";
 import { InferenceDeviceFields } from "../inference-device-fields";
-import { Input } from "../input";
 import { LanguageSettings } from "../language-settings";
-import { Label } from "../label";
 import { TAG_DICTIONARY_DETAIL_QUERY_KEY } from "../query-options/tags-query";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
-	SelectLabel,
 	SelectTrigger,
 	SelectValue,
 } from "../select";
@@ -68,7 +62,14 @@ import {
 	SwitchThumb,
 } from "../switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
-import { Textarea } from "../textarea";
+import {
+	TextField,
+	TextFieldDescription,
+	TextFieldErrorMessage,
+	TextFieldInput,
+	TextFieldLabel,
+	TextFieldTextArea,
+} from "../text-field";
 import { toast } from "../toast";
 import { CategoryLabel } from "../workspace/management-layout";
 
@@ -97,35 +98,62 @@ function areStringArraysEqual(
 	return a.length === b.length && a.every((item, index) => item === b[index]);
 }
 
+function ConfigField(props: {
+	name: string;
+	label: string;
+	errors: readonly unknown[];
+	description?: JSX.Element;
+	children: JSX.Element;
+}) {
+	return (
+		<TextField
+			class="gap-2"
+			name={props.name}
+			validationState={props.errors.length > 0 ? "invalid" : "valid"}
+		>
+			<TextFieldLabel>{props.label}</TextFieldLabel>
+			{props.children}
+			<Show when={getFormErrorMessage(props.errors[0])}>
+				{(message) => (
+					<TextFieldErrorMessage class="text-sm leading-5">
+						{message()}
+					</TextFieldErrorMessage>
+				)}
+			</Show>
+			{props.description}
+		</TextField>
+	);
+}
+
 function CommaSeparatedTextarea(props: {
-	id: string;
 	value: string[] | undefined;
 	placeholder?: string;
-	"aria-describedby"?: string;
-	"aria-invalid"?: boolean;
 	onChange: (value: string[]) => void;
 	onBlur: () => void;
 }) {
-	const [draft, setDraft] = createSignal((props.value ?? []).join(", "));
+	const [draft, setDraft] = createSignal(
+		untrack(() => (props.value ?? []).join(", ")),
+	);
 
-	createEffect(() => {
-		const external = props.value ?? [];
-		if (!areStringArraysEqual(parseCommaSeparatedList(draft()), external)) {
-			setDraft(external.join(", "));
-		}
-	});
+	createEffect(
+		() => [...(props.value ?? [])],
+		(external) => {
+			setDraft((current) =>
+				areStringArraysEqual(parseCommaSeparatedList(current), external)
+					? current
+					: external.join(", "),
+			);
+		},
+	);
 
 	return (
-		<Textarea
-			aria-describedby={props["aria-describedby"]}
-			aria-invalid={props["aria-invalid"]}
-			id={props.id}
+		<TextFieldTextArea
+			class="min-h-thumbnail-preview"
 			onBlur={() => {
 				setDraft((props.value ?? []).join(", "));
 				props.onBlur();
 			}}
-			onInput={(e) => {
-				const raw = e.currentTarget.value;
+			onValueChange={(raw) => {
 				setDraft(raw);
 				props.onChange(parseCommaSeparatedList(raw));
 			}}
@@ -307,20 +335,20 @@ export function ConfigScreen(props: ConfigScreenProps) {
 	const [isDesktop, setIsDesktop] = createSignal(true);
 	const [activeTab, setActiveTab] = createSignal("interface");
 
-	onMount(() => {
+	onSettled(() => {
 		const media = window.matchMedia("(min-width: 1024px)");
 		const update = () => setIsDesktop(media.matches);
 		update();
 		media.addEventListener("change", update);
-		onCleanup(() => media.removeEventListener("change", update));
+		return () => media.removeEventListener("change", update);
 	});
 	const [aiHealth, setAiHealth] = createSignal<AiHealthResponse | null>(null);
 	const [aiHealthError, setAiHealthError] = createSignal<string | null>(null);
 	const [isCheckingAiHealth, setIsCheckingAiHealth] = createSignal(false);
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const sectionClass = "min-w-0 space-y-5 border-b border-border pb-8";
-	let baseline = props.data;
-	const [baselineAi, setBaselineAi] = createSignal(props.data.ai);
+	let baseline = untrack(() => props.data);
+	const [baselineAi, setBaselineAi] = createSignal(untrack(() => baseline.ai));
 	const form = createForm(() => ({
 		defaultValues: toFormValues(props.data),
 		validators: {
@@ -377,14 +405,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 		}
 	};
 
-	createEffect(() => {
-		const data = props.data;
-		if (!form.state.isDirty) {
-			baseline = data;
-			setBaselineAi(data.ai);
-			form.reset(toFormValues(data));
-		}
-	});
+	createEffect(
+		() => {
+			const data = props.data;
+			return { data, ai: data.ai };
+		},
+		({ data, ai }) => {
+			if (!form.state.isDirty) {
+				baseline = data;
+				setBaselineAi(ai);
+				form.reset(toFormValues(data));
+			}
+		},
+	);
 
 	return (
 		<div class="min-w-0 space-y-6 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
@@ -420,7 +453,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											invalidCategories().has(category.value);
 										return (
 											<TabsTrigger
-												aria-invalid={hasError() || undefined}
+												aria-invalid={hasError() ? "true" : undefined}
 												class="min-h-11 shrink-0 gap-2.5 whitespace-nowrap rounded-md px-2.5 text-muted-foreground shadow-none hover:bg-muted data-[selected]:bg-accent data-[selected]:text-primary data-[selected]:hover:bg-accent lg:min-h-10 lg:w-full lg:justify-start lg:whitespace-normal"
 												type="button"
 												value={category.value}
@@ -461,14 +494,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 
 								<form.Field name="jobs.concurrency">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.concurrency")}
-											</Label>
-											<Input
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.concurrency")}
+											name={field().name}
+											description={
+												<TextFieldDescription class="text-xs leading-4">
+													{t(
+														"configScreen.numberOfConcurrentDownloadsProcessings",
+													)}
+												</TextFieldDescription>
+											}
+										>
+											<TextFieldInput
 												min={1}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
@@ -479,31 +517,23 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												type="number"
 												value={field().state.value ?? ""}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-											<div class="text-muted-foreground text-xs">
-												{t(
-													"configScreen.numberOfConcurrentDownloadsProcessings",
-												)}
-											</div>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 
 								<form.Field name="jobs.aiConcurrency">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.aIConcurrency")}
-											</Label>
-											<Input
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.aIConcurrency")}
+											name={field().name}
+											description={
+												<TextFieldDescription class="text-xs leading-4">
+													{t("configScreen.numberOfConcurrentAITaggingJobs")}
+												</TextFieldDescription>
+											}
+										>
+											<TextFieldInput
 												min={1}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
@@ -514,29 +544,18 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												type="number"
 												value={field().state.value ?? ""}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-											<div class="text-muted-foreground text-xs">
-												{t("configScreen.numberOfConcurrentAITaggingJobs")}
-											</div>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 
 								<form.Field name="jobs.pollIntervalMs">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.pollIntervalMs")}
-											</Label>
-											<Input
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.pollIntervalMs")}
+											name={field().name}
+										>
+											<TextFieldInput
 												min={100}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
@@ -547,13 +566,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												type="number"
 												value={field().state.value ?? ""}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 
@@ -678,7 +691,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										</form.Subscribe>
 									</div>
 									<Button
-										aria-busy={isCheckingAiHealth()}
+										aria-busy={isCheckingAiHealth() ? "true" : "false"}
 										class="min-h-11 sm:min-h-9"
 										disabled={isCheckingAiHealth()}
 										onClick={() => void checkAiHealth()}
@@ -693,51 +706,39 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								</div>
 								<form.Field name="ai.baseUrl">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.remoteAIServerURLORPC")}
-											</Label>
-											<Input
-												aria-describedby={`${field().name}-help ${field().name}-example ${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.remoteAIServerURLORPC")}
+											name={field().name}
+											description={
+												<>
+													<TextFieldDescription class="text-xs leading-4">
+														{t("configScreen.remoteAiUrlHelp")}
+													</TextFieldDescription>
+													<TextFieldDescription class="text-xs leading-4">
+														{t("configScreen.remoteAiUrlExample", {
+															url: "http://power-machine:3000",
+														})}
+													</TextFieldDescription>
+												</>
+											}
+										>
+											<TextFieldInput
 												onBlur={field().handleBlur}
 												onInput={(e) => field().handleChange(e.target.value)}
 												value={field().state.value ?? ""}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-											<p
-												class="text-muted-foreground text-xs"
-												id={`${field().name}-help`}
-											>
-												{t("configScreen.remoteAiUrlHelp")}
-											</p>
-											<p
-												class="text-muted-foreground text-xs"
-												id={`${field().name}-example`}
-											>
-												{t("configScreen.remoteAiUrlExample", {
-													url: "http://power-machine:3000",
-												})}
-											</p>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 								<form.Field name="ai.timeoutMs">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.timeoutMs")}
-											</Label>
-											<Input
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.timeoutMs")}
+											name={field().name}
+										>
+											<TextFieldInput
 												min={1000}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
@@ -748,13 +749,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												type="number"
 												value={field().state.value ?? ""}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 								<form.Field name="ai.provider">
@@ -811,14 +806,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 
 								<form.Field name="downloads.requestIntervalMs">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.requestIntervalMs")}
-											</Label>
-											<Input
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.requestIntervalMs")}
+											name={field().name}
+										>
+											<TextFieldInput
 												max="60000"
 												min="0"
 												onBlur={field().handleBlur}
@@ -830,13 +823,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												type="number"
 												value={field().state.value ?? ""}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 							</fieldset>
@@ -849,39 +836,29 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								</legend>
 								<form.Field name="storage.thumbnailDir">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.thumbnailDirectory")}
-											</Label>
-											<Input
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.thumbnailDirectory")}
+											name={field().name}
+										>
+											<TextFieldInput
 												onBlur={field().handleBlur}
 												onInput={(e) => field().handleChange(e.target.value)}
 												value={field().state.value ?? ""}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 
 								<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 									<form.Field name="storage.thumbnailSize">
 										{(field) => (
-											<div class="space-y-2">
-												<Label for={field().name}>
-													{t("configScreen.thumbnailSizePx")}
-												</Label>
-												<Input
-													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
-													id={field().name}
+											<ConfigField
+												errors={field().state.meta.errors}
+												label={t("configScreen.thumbnailSizePx")}
+												name={field().name}
+											>
+												<TextFieldInput
 													max={4096}
 													min={64}
 													onBlur={field().handleBlur}
@@ -893,25 +870,17 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													type="number"
 													value={field().state.value ?? ""}
 												/>
-												<FormFieldMessage
-													id={`${field().name}-error`}
-													message={getFormErrorMessage(
-														field().state.meta.errors[0],
-													)}
-												/>
-											</div>
+											</ConfigField>
 										)}
 									</form.Field>
 									<form.Field name="storage.thumbnailQuality">
 										{(field) => (
-											<div class="space-y-2">
-												<Label for={field().name}>
-													{t("configScreen.thumbnailQuality1100")}
-												</Label>
-												<Input
-													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
-													id={field().name}
+											<ConfigField
+												errors={field().state.meta.errors}
+												label={t("configScreen.thumbnailQuality1100")}
+												name={field().name}
+											>
+												<TextFieldInput
 													max={100}
 													min={1}
 													onBlur={field().handleBlur}
@@ -923,13 +892,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													type="number"
 													value={field().state.value ?? ""}
 												/>
-												<FormFieldMessage
-													id={`${field().name}-error`}
-													message={getFormErrorMessage(
-														field().state.meta.errors[0],
-													)}
-												/>
-											</div>
+											</ConfigField>
 										)}
 									</form.Field>
 								</div>
@@ -972,77 +935,55 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 									<form.Field name="media.supportedExtensions.image">
 										{(field) => (
-											<div class="space-y-2">
-												<Label for={field().name}>
-													{t("configScreen.imageExtensions")}
-												</Label>
+											<ConfigField
+												errors={field().state.meta.errors}
+												label={t("configScreen.imageExtensions")}
+												name={field().name}
+												description={
+													<TextFieldDescription class="text-xs leading-4">
+														{t("configScreen.commaSeparated")}
+													</TextFieldDescription>
+												}
+											>
 												<CommaSeparatedTextarea
-													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
-													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
 													placeholder={t("configScreen.jpgPng")}
 													value={field().state.value}
 												/>
-												<FormFieldMessage
-													id={`${field().name}-error`}
-													message={getFormErrorMessage(
-														field().state.meta.errors[0],
-													)}
-												/>
-												<div class="text-muted-foreground text-xs">
-													{t("configScreen.commaSeparated")}
-												</div>
-											</div>
+											</ConfigField>
 										)}
 									</form.Field>
 									<form.Field name="media.supportedExtensions.video">
 										{(field) => (
-											<div class="space-y-2">
-												<Label for={field().name}>
-													{t("configScreen.videoExtensions")}
-												</Label>
+											<ConfigField
+												errors={field().state.meta.errors}
+												label={t("configScreen.videoExtensions")}
+												name={field().name}
+											>
 												<CommaSeparatedTextarea
-													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
-													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
 													placeholder={t("configScreen.mp4Webm")}
 													value={field().state.value}
 												/>
-												<FormFieldMessage
-													id={`${field().name}-error`}
-													message={getFormErrorMessage(
-														field().state.meta.errors[0],
-													)}
-												/>
-											</div>
+											</ConfigField>
 										)}
 									</form.Field>
 									<form.Field name="media.supportedExtensions.audio">
 										{(field) => (
-											<div class="space-y-2">
-												<Label for={field().name}>
-													{t("configScreen.audioExtensions")}
-												</Label>
+											<ConfigField
+												errors={field().state.meta.errors}
+												label={t("configScreen.audioExtensions")}
+												name={field().name}
+											>
 												<CommaSeparatedTextarea
-													aria-describedby={`${field().name}-error`}
-													aria-invalid={field().state.meta.errors.length > 0}
-													id={field().name}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
 													placeholder={t("configScreen.mp3Wav")}
 													value={field().state.value}
 												/>
-												<FormFieldMessage
-													id={`${field().name}-error`}
-													message={getFormErrorMessage(
-														field().state.meta.errors[0],
-													)}
-												/>
-											</div>
+											</ConfigField>
 										)}
 									</form.Field>
 								</div>
@@ -1052,73 +993,49 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								</h3>
 								<form.Field name="media.tagExtraction.comfyui.positiveNodeTypes">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.positiveNodeTypes")}
-											</Label>
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.positiveNodeTypes")}
+											name={field().name}
+										>
 											<CommaSeparatedTextarea
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}
 												value={field().state.value}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 
 								<form.Field name="media.tagExtraction.comfyui.negativeKeywords">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.negativeKeywords")}
-											</Label>
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.negativeKeywords")}
+											name={field().name}
+										>
 											<CommaSeparatedTextarea
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}
 												value={field().state.value}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 
 								<form.Field name="media.tagExtraction.comfyui.negativeTags">
 									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.negativeTags")}
-											</Label>
+										<ConfigField
+											errors={field().state.meta.errors}
+											label={t("configScreen.negativeTags")}
+											name={field().name}
+										>
 											<CommaSeparatedTextarea
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
 												onBlur={field().handleBlur}
 												onChange={field().handleChange}
 												value={field().state.value}
 											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
+										</ConfigField>
 									)}
 								</form.Field>
 							</fieldset>
@@ -1137,9 +1054,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												(option) => option.value === field().state.value,
 											) ?? null;
 										return (
-											<div class="space-y-2">
+											<ConfigField
+												label={t("configScreen.logLevel")}
+												errors={field().state.meta.errors}
+												name={field().name}
+											>
 												<Select<LogLevelOption>
-													class="space-y-2"
 													disallowEmptySelection
 													itemComponent={(itemProps) => (
 														<SelectItem item={itemProps.item}>
@@ -1156,26 +1076,14 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													optionValue="value"
 													value={selectedOption()}
 												>
-													<SelectLabel>
-														{t("configScreen.logLevel")}
-													</SelectLabel>
-													<SelectTrigger
-														class="w-full text-base sm:text-sm"
-														id={field().name}
-													>
+													<SelectTrigger class="w-full text-base sm:text-sm">
 														<SelectValue<LogLevelOption>>
 															{(state) => state.selectedOption()?.label ?? ""}
 														</SelectValue>
 													</SelectTrigger>
 													<SelectContent />
 												</Select>
-												<FormFieldMessage
-													id={`${field().name}-error`}
-													message={getFormErrorMessage(
-														field().state.meta.errors[0],
-													)}
-												/>
-											</div>
+											</ConfigField>
 										);
 									}}
 								</form.Field>

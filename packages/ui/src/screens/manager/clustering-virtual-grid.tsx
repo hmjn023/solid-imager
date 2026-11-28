@@ -2,17 +2,15 @@
 import {
 	createVirtualizer,
 	defaultRangeExtractor,
-} from "@tanstack/solid-virtual";
+} from "../../utils/virtualizer";
 import {
 	createEffect,
 	createMemo,
 	createSignal,
 	For,
-	on,
-	onCleanup,
 	type Accessor,
-	type JSX,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { getMediaGridColumnCount } from "../../skeleton";
 
 /** Uses the Manager or dialog scroller; cards may have different measured heights. */
@@ -61,23 +59,34 @@ export function ClusteringVirtualGrid<T>(props: {
 		get scrollMargin() {
 			return margin();
 		},
-		estimateSize: () =>
-			props.layout === "groups"
-				? width() / columns() / 2 + 180
-				: (width() / columns()) * 0.75 + 130,
-		getItemKey: (index) => {
-			const item = props.items[index * columns()];
-			return item ? props.itemKey(item) : index;
+		get estimateSize() {
+			const columnWidth = width() / columns();
+			const estimate =
+				props.layout === "groups"
+					? columnWidth / 2 + 180
+					: columnWidth * 0.75 + 130;
+			return () => estimate;
+		},
+		get getItemKey() {
+			const items = props.items;
+			const columnsPerRow = columns();
+			const keyOf = props.itemKey;
+			return (index: number) => {
+				const item = items[index * columnsPerRow];
+				return item ? keyOf(item) : index;
+			};
 		},
 		gap: 12,
 		overscan: 2,
 		useAnimationFrameWithResizeObserver: true,
-		rangeExtractor: (range) => {
-			const visible = defaultRangeExtractor(range);
+		get rangeExtractor() {
 			const focused = focusedRow();
-			return focused >= 0 && !visible.includes(focused)
-				? [...visible, focused].sort((a, b) => a - b)
-				: visible;
+			return (range: Parameters<typeof defaultRangeExtractor>[0]) => {
+				const visible = defaultRangeExtractor(range);
+				return focused >= 0 && !visible.includes(focused)
+					? [...visible, focused].sort((a, b) => a - b)
+					: visible;
+			};
 		},
 	});
 	const updateMetrics = () => {
@@ -118,51 +127,54 @@ export function ClusteringVirtualGrid<T>(props: {
 		};
 		measureFrame = requestAnimationFrame(measureVisible);
 	};
-	createEffect(
-		on(scroller, (owner) => {
-			if (!owner || !root) return;
-			updateMetrics();
-			const observer = new ResizeObserver(scheduleMetrics);
-			observer.observe(root);
-			observer.observe(owner);
-			if (root.parentElement) observer.observe(root.parentElement);
-			owner.addEventListener("scroll", updateMetrics, { passive: true });
-			onCleanup(() => {
-				if (metricsFrame !== undefined) cancelAnimationFrame(metricsFrame);
-				if (measureFrame !== undefined) cancelAnimationFrame(measureFrame);
-				observer.disconnect();
-				owner.removeEventListener("scroll", updateMetrics);
-			});
-		}),
-	);
-	createEffect(
-		on(
-			() => props.resetKey,
-			(_key, previous) => {
-				if (previous === undefined) return;
-				setFocusedKey(null);
-				updateMetrics();
-				const owner = scroller();
-				if (owner) owner.scrollTop = Math.min(owner.scrollTop, margin());
-				remeasure();
-				owner?.dispatchEvent(new Event("scroll"));
-			},
-		),
-	);
-	createEffect(
-		on(
-			() => [columns(), width(), props.layout],
-			() => {
-				remeasure();
-				scroller()?.dispatchEvent(new Event("scroll"));
-			},
-		),
-	);
-	createEffect(() => {
-		const last = virtualizer.getVirtualItems().at(-1);
-		if (props.canLoadMore && last && last.index >= rows() - 3)
-			props.onLoadMore();
+	createEffect(scroller, (owner) => {
+		if (!owner || !root) return;
+		updateMetrics();
+		const observer = new ResizeObserver(scheduleMetrics);
+		observer.observe(root);
+		observer.observe(owner);
+		if (root.parentElement) observer.observe(root.parentElement);
+		owner.addEventListener("scroll", updateMetrics, { passive: true });
+		return () => {
+			if (metricsFrame !== undefined) cancelAnimationFrame(metricsFrame);
+			if (measureFrame !== undefined) cancelAnimationFrame(measureFrame);
+			observer.disconnect();
+			owner.removeEventListener("scroll", updateMetrics);
+		};
 	});
+	createEffect(
+		() => props.resetKey,
+		(_key, previous) => {
+			if (previous === undefined) return;
+			setFocusedKey(null);
+			updateMetrics();
+			const owner = scroller();
+			if (owner) owner.scrollTop = Math.min(owner.scrollTop, margin());
+			remeasure();
+			owner?.dispatchEvent(new Event("scroll"));
+		},
+	);
+	createEffect(
+		() => [columns(), width(), props.layout],
+		() => {
+			remeasure();
+			scroller()?.dispatchEvent(new Event("scroll"));
+		},
+	);
+	createEffect(
+		() => {
+			const last = virtualizer.getVirtualItems().at(-1);
+			return {
+				canLoadMore: props.canLoadMore,
+				lastIndex: last?.index,
+				rowCount: rows(),
+			};
+		},
+		({ canLoadMore, lastIndex, rowCount }) => {
+			if (canLoadMore && lastIndex !== undefined && lastIndex >= rowCount - 3)
+				props.onLoadMore();
+		},
+	);
 	return (
 		<ul
 			aria-label={props.label}

@@ -13,7 +13,7 @@ test("manager source selectors expose all sources only where supported", async (
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 
-	const source = page.getByRole("button", { name: /^対象ソース / });
+	const source = page.getByRole("combobox", { name: /^対象ソース(?: |$)/ });
 	const allSources = page.getByRole("option", {
 		name: "すべてのソース",
 		exact: true,
@@ -128,12 +128,22 @@ test("manager character form keeps selected IPs and recovers an Enter submission
 
 		const name = dialog.getByRole("textbox", { name: "名前", exact: true });
 		await name.fill(updatedName);
+		const discard = page.getByRole("alertdialog", {
+			name: "未保存の変更を破棄しますか？",
+		});
+		await name.press("Escape");
+		await expect(discard).toBeVisible();
+		await discard.getByRole("button", { name: "編集を続ける" }).click();
+		await expect(discard).toBeHidden();
+		await expect(name).toHaveValue(updatedName);
+		await expect(secondIp).toBeVisible();
 		await name.press("Enter");
 		await expect(
 			dialog.getByRole("button", { name: "保存中..." }),
 		).toBeDisabled();
 		await dialog.getByRole("button", { name: "閉じる", exact: true }).click();
 		await page.keyboard.press("Escape");
+		await page.mouse.click(2, 2);
 		await expect(dialog).toBeVisible();
 		await expect(page.getByRole("alertdialog")).toHaveCount(0);
 		await expect.poll(() => submissions).toBe(1);
@@ -146,6 +156,7 @@ test("manager character form keeps selected IPs and recovers an Enter submission
 		await expect(secondIp).toBeVisible();
 		await name.press("Enter");
 		await expect(dialog).toBeHidden();
+		await expect(page.locator('[data-slot="dialog-backdrop"]')).toHaveCount(0);
 
 		await page.getByRole("button", { name: updatedName, exact: true }).click();
 		await page
@@ -153,6 +164,9 @@ test("manager character form keeps selected IPs and recovers an Enter submission
 			.click();
 		await expect(firstIp).toHaveCount(0);
 		await expect(secondIp).toBeVisible();
+		await page.keyboard.press("Escape");
+		await expect(dialog).toBeHidden();
+		await expect(discard).toBeHidden();
 		expect(submissions).toBe(2);
 	} finally {
 		release.resolve();

@@ -30,7 +30,9 @@ test("loads a preset without optional settings in the source list", async ({
 		await waitForAppHydration(page);
 		await page.getByRole("button", { name: /^検索フィルター、/ }).click();
 		const filters = page.getByRole("dialog", { name: "検索フィルター" });
-		await filters.getByRole("button", { name: "プリセットを選択..." }).click();
+		await filters
+			.getByRole("combobox", { name: "プリセットを選択..." })
+			.click();
 		await expect(page.getByRole("option", { name: presetName })).toBeVisible();
 	} finally {
 		await apiRequest(request, "presets/delete", { id });
@@ -60,33 +62,60 @@ test("keeps search filters available when presets fail to load", async ({
 		},
 		{ times: 1 },
 	);
-	await page.goto("/search");
+	await page.goto("/about", { waitUntil: "domcontentloaded" });
 	await waitForAppHydration(page);
-	await page.getByRole("button", { name: /^検索フィルター、/ }).click();
+	const mobileMenu = page.getByRole("button", { name: "メニューを開く" });
+	if (await mobileMenu.isVisible()) await mobileMenu.click();
+	await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
+	await expect(page).toHaveURL((url) => url.pathname === "/search");
+	const filterButton = page.getByRole("button", { name: /^検索フィルター、/ });
+	await filterButton.click();
 	const filters = page.getByRole("dialog", { name: "検索フィルター" });
 	const status = filters.getByRole("status");
+	const filename = filters.getByRole("textbox", { name: "ファイル名検索" });
+	const presets = filters.getByRole("combobox", {
+		name: "プリセットを選択...",
+	});
 	try {
+		await expect(
+			filters.getByText("読み込み中...", { exact: true }),
+		).toBeVisible();
 		await expect(status).toHaveText("");
-		await expectDomPreserved({ status }, async () => {
+		await filename.fill(E2E_PRIMARY_FILE_NAME);
+		await expectDomPreserved({ status, filename }, async () => {
 			releaseFailure.resolve();
 			await expect(status).toHaveText("プリセットを取得できませんでした");
 			await expect(status).toBeVisible();
+			await expect(filename).toBeFocused();
+			await expect(filename).toHaveValue(E2E_PRIMARY_FILE_NAME);
 		});
 	} finally {
 		releaseFailure.resolve();
 	}
-	const filename = filters.getByRole("textbox", { name: "ファイル名検索" });
-	await filename.fill(E2E_PRIMARY_FILE_NAME);
 
-	await filters.getByRole("button", { name: "再試行" }).click();
-	await expect(
-		filters.getByRole("button", { name: "プリセットを選択..." }),
-	).toBeVisible();
-	await expect(status).toHaveText("");
-	await expect(filename).toHaveValue(E2E_PRIMARY_FILE_NAME);
+	await expect(filterButton).toHaveAttribute(
+		"aria-label",
+		"検索フィルター、1件の条件",
+	);
+	expect(browserHealth.apiRequestCount(presetsEndpoint)).toBe(1);
+	await expectDomPreserved({ status, filename }, async () => {
+		await Promise.all([
+			page.waitForResponse(
+				(response) => presetsEndpoint.test(response.url()) && response.ok(),
+			),
+			filters.getByRole("button", { name: "再試行" }).click(),
+		]);
+		await expect(presets).toBeVisible();
+		await expect(status).toHaveText("");
+		await expect(filename).toHaveValue(E2E_PRIMARY_FILE_NAME);
+	});
 	await filters.getByRole("button", { name: "閉じる", exact: true }).click();
 	await expect(filters).toBeHidden();
 	await expect(page.getByText("1件", { exact: true })).toBeVisible();
+	await page.reload({ waitUntil: "domcontentloaded" });
+	await waitForAppHydration(page);
+	await filterButton.click();
+	await expect(presets).toBeVisible();
 });
 
 test("search keeps controls usable without horizontal overflow", async ({

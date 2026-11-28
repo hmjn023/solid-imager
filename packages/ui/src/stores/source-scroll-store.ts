@@ -1,4 +1,4 @@
-import { createStore } from "solid-js/store";
+import { createStore } from "solid-js";
 import { z } from "zod";
 
 // Shared browser scroll state for the web and Tauri source pages.
@@ -35,11 +35,11 @@ export const [sourcesState, setSourcesState] =
 	createStore<SourcesState>(getInitialState());
 
 // Helper to persist to sessionStorage
-const persistToStorage = () => {
+const persistToStorage = (scrollPositions: SourcesState["scrollPositions"]) => {
 	if (!canUseSessionStorage) {
 		return;
 	}
-	const data = JSON.stringify(sourcesState);
+	const data = JSON.stringify({ ...sourcesState, scrollPositions });
 	sessionStorage.setItem(STORAGE_KEY, data);
 };
 
@@ -67,11 +67,10 @@ export const setScrollPosition = (
 	scrollY: number,
 	historyEntryKey?: string,
 ) => {
-	setSourcesState(
-		"scrollPositions",
-		getScrollKey(mediaSourceId, historyEntryKey),
-		scrollY,
-	);
-	// Persist immediately after updating
-	persistToStorage();
+	const key = getScrollKey(mediaSourceId, historyEntryKey);
+	const scrollPositions = { ...sourcesState.scrollPositions, [key]: scrollY };
+	setSourcesState((draft) => {
+		draft.scrollPositions = scrollPositions;
+	});
+	persistToStorage(scrollPositions);
 };

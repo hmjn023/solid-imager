@@ -1,11 +1,16 @@
 import { t } from "@solid-imager/i18n";
 import type { DownloadItem } from "@solid-imager/core/media";
-import { type JSX, Match, onCleanup, onMount, Show, Switch } from "solid-js";
+import { Match, onSettled, Show, Switch } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { Button, buttonVariants } from "../button";
 import { MediaDetailSkeleton } from "../media-detail-skeleton";
 import { MediaDetailToolbar } from "../media-detail-layout";
-import { toQueryUiState, type QueryStateLike } from "../query-state";
+import {
+	readQueryData,
+	toQueryUiState,
+	type QueryStateLike,
+} from "../query-state";
 import { LoadingRegion } from "../skeleton";
 import type { createViewerImports } from "./viewer-imports";
 
@@ -72,7 +77,7 @@ export function ViewerActions(props: {
 			<Button
 				class="min-h-11 md:min-h-9"
 				disabled={!props.item?.targetUrl || status() !== undefined}
-				aria-busy={status() === "pending"}
+				aria-busy={status() === "pending" ? "true" : "false"}
 				onClick={() => props.item && void props.imports.add([props.item])}
 			>
 				{status() === "queued"
@@ -98,8 +103,7 @@ export function ViewerDetail<Post extends { id: number }>(
 			value1: String(props.postId),
 		});
 	const selected = () => {
-		const post =
-			props.query.status === "pending" ? undefined : props.query.data;
+		const post = readQueryData(props.query);
 		return post?.id === props.postId ? post : undefined;
 	};
 	const state = () =>
@@ -113,7 +117,7 @@ export function ViewerDetail<Post extends { id: number }>(
 		await props.query.refetch();
 	};
 	let region!: HTMLElement;
-	onMount(() => {
+	onSettled(() => {
 		region.focus({ preventScroll: true });
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (
@@ -156,7 +160,7 @@ export function ViewerDetail<Post extends { id: number }>(
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
-		onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
+		return () => window.removeEventListener("keydown", handleKeyDown);
 	});
 	return (
 		<section

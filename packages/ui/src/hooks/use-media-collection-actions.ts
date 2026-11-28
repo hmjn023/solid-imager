@@ -59,22 +59,25 @@ export function useMediaItemActions(options: {
 	const [isMoveCopySubmitting, setIsMoveCopySubmitting] = createSignal(false);
 	const [moveCopyError, setMoveCopyError] = createSignal<string>();
 	const unconfirmedCopies = new Map<string, Set<string>>();
+	let deletePending = false;
+	let moveCopyPending = false;
 
 	const openDelete = (id: string) => {
-		if (isDeleteSubmitting()) return;
+		if (deletePending) return;
 		const target = options.findMedia(id);
 		if (!target) return;
 		setDeleteError(undefined);
 		setDeleteTarget(target);
 	};
 	const changeDeleteOpen = (open: boolean) => {
-		if (open || isDeleteSubmitting()) return;
+		if (open || deletePending) return;
 		setDeleteTarget(undefined);
 		setDeleteError(undefined);
 	};
 	const confirmDelete = async () => {
 		const media = deleteTarget();
-		if (!media || isDeleteSubmitting()) return;
+		if (!media || deletePending) return false;
+		deletePending = true;
 		setIsDeleteSubmitting(true);
 		setDeleteError(undefined);
 		try {
@@ -85,16 +88,18 @@ export function useMediaItemActions(options: {
 					value0: getErrorMessage(error),
 				}),
 			);
-			return;
+			return false;
 		} finally {
+			deletePending = false;
 			setIsDeleteSubmitting(false);
 		}
 		setDeleteTarget(undefined);
 		options.notify.success(t("useSourceMediaPage.mediaDeletedSuccessfully"));
 		options.onDeleted(media);
+		return true;
 	};
 	const openCopyMove = (id: string, mode: "copy" | "move") => {
-		if (isMoveCopySubmitting()) return;
+		if (moveCopyPending) return;
 		const target = options.findMedia(id);
 		if (!target) return;
 		setMoveCopyMode(mode);
@@ -102,7 +107,7 @@ export function useMediaItemActions(options: {
 		setMoveCopyTarget(target);
 	};
 	const changeCopyMoveOpen = (open: boolean) => {
-		if (open || isMoveCopySubmitting()) return;
+		if (open || moveCopyPending) return;
 		setMoveCopyTarget(undefined);
 		setMoveCopyError(undefined);
 	};
@@ -110,7 +115,7 @@ export function useMediaItemActions(options: {
 		const media = moveCopyTarget();
 		if (
 			!media ||
-			isMoveCopySubmitting() ||
+			moveCopyPending ||
 			!targetSourceId ||
 			targetSourceId === media.mediaSourceId
 		)
@@ -123,6 +128,7 @@ export function useMediaItemActions(options: {
 			setMoveCopyError(t("useSourceMediaPage.copyOutcomeUnknown"));
 			return;
 		}
+		moveCopyPending = true;
 		setIsMoveCopySubmitting(true);
 		setMoveCopyError(undefined);
 		try {
@@ -152,6 +158,7 @@ export function useMediaItemActions(options: {
 			);
 			return;
 		} finally {
+			moveCopyPending = false;
 			setIsMoveCopySubmitting(false);
 		}
 		setMoveCopyTarget(undefined);
@@ -194,11 +201,12 @@ export function useMediaCollectionActions(
 	const selection = useMediaCollectionSelection(visibleIds);
 	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
 	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
-	createEffect(() => {
-		if (visibleIds().length === 0 && isBulkSelectMode()) {
-			setIsBulkSelectMode(false);
-		}
-	});
+	createEffect(
+		() => visibleIds().length === 0 && isBulkSelectMode(),
+		(empty) => {
+			if (empty) setIsBulkSelectMode(false);
+		},
+	);
 	const selectedMediaItems = createMemo(() =>
 		options
 			.media()
@@ -221,24 +229,30 @@ export function useMediaCollectionActions(
 		setIsBulkSelectMode(false);
 		selection.clear();
 	};
-	const forgetSelectedMedia = (id: string) => {
-		if (selection.isSelected(id)) selection.select(id, "toggle");
-		if (selection.selectedIds().size === 0) setIsBulkSelectMode(false);
+	const forgetSelectedMedia = (ids: string[]) => {
+		const selectedIds = selection.selectedIds();
+		let remaining = selectedIds.size;
+		for (const id of new Set(ids)) {
+			if (!selectedIds.has(id)) continue;
+			selection.select(id, "toggle");
+			remaining--;
+		}
+		if (remaining === 0) setIsBulkSelectMode(false);
 	};
 	const itemActions = useMediaItemActions({
 		findMedia: (id) => options.media().find((item) => item.id === id),
 		operations: options.operations,
 		notify: options.notify,
 		onDeleted: (media) => {
-			forgetSelectedMedia(media.id);
+			forgetSelectedMedia([media.id]);
 			options.refresh();
 		},
 		onTransferred: options.refresh,
 	});
 	const onBulkSuccess = (partial: boolean, succeededMediaIds: string[]) => {
-		for (const id of succeededMediaIds) forgetSelectedMedia(id);
-		if (!partial && selection.selectedIds().size === 0)
-			setIsBulkSelectMode(false);
+		if (succeededMediaIds.length > 0 || !partial) {
+			forgetSelectedMedia(succeededMediaIds);
+		}
 		options.refresh();
 	};
 

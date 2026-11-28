@@ -1,101 +1,123 @@
-import type { PolymorphicProps } from "@kobalte/core";
+// Adapted from the Solid UI v2 switch registry recipe.
+import type { ComponentProps } from "@solidjs/web";
 import {
-	Control as SwitchControlPrimitive,
-	type SwitchControlProps as SwitchControlPropsPrimitive,
-	Description as SwitchDescriptionPrimitive,
-	ErrorMessage as SwitchErrorMessagePrimitive,
-	Input as SwitchInput,
-	Label as SwitchLabelPrimitive,
-	type SwitchLabelProps as SwitchLabelPropsPrimitive,
-	Root as SwitchRoot,
-	Thumb as SwitchThumbPrimitive,
-	type SwitchThumbProps as SwitchThumbPropsPrimitive,
-} from "@kobalte/core/switch";
-import type { JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+	Field,
+	FieldDescription,
+	FieldError,
+	FieldLabel,
+} from "@ui-sdk/solid/field";
+import {
+	Switch as SwitchPrimitive,
+	SwitchThumb as SwitchThumbPrimitive,
+} from "@ui-sdk/solid/switch";
+import { createContext, omit, useContext } from "solid-js";
 import { cn } from "./utils/cn";
 
-const Switch = SwitchRoot;
-const SwitchDescription = SwitchDescriptionPrimitive;
-const SwitchErrorMessage = SwitchErrorMessagePrimitive;
+type SwitchOptions = Pick<
+	ComponentProps<typeof SwitchPrimitive>,
+	| "checked"
+	| "defaultChecked"
+	| "disabled"
+	| "name"
+	| "readOnly"
+	| "required"
+	| "value"
+>;
+type SwitchProps = SwitchOptions &
+	Omit<ComponentProps<typeof Field>, "onChange" | "children"> & {
+		children?: import("@solidjs/web").JSX.Element;
+		onChange?: (checked: boolean) => void;
+		validationState?: "valid" | "invalid";
+	};
 
-type SwitchControlProps = SwitchControlPropsPrimitive & {
-	class?: string | undefined;
-	children?: JSX.Element;
-};
+const SwitchContext = createContext<SwitchProps>();
 
-const SwitchControl = <T extends ValidComponent = "input">(
-	props: PolymorphicProps<T, SwitchControlProps>,
-) => {
-	const [local, others] = splitProps(props as SwitchControlProps, [
-		"class",
-		"children",
-	]);
+function Switch(props: SwitchProps) {
 	return (
-		<>
-			<SwitchInput
-				class={cn(
-					"[&:focus-visible+div]:outline-none [&:focus-visible+div]:ring-2 [&:focus-visible+div]:ring-ring [&:focus-visible+div]:ring-offset-2 [&:focus-visible+div]:ring-offset-background",
-					local.class,
-				)}
-			/>
-			<SwitchControlPrimitive
-				class={cn(
-					"inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-input transition-colors transition-shadow data-[disabled]:cursor-not-allowed data-[checked]:bg-primary data-[disabled]:opacity-50",
-					local.class,
-				)}
-				{...others}
-			>
-				{local.children}
-			</SwitchControlPrimitive>
-		</>
+		<Field
+			{...omit(
+				props,
+				"checked",
+				"defaultChecked",
+				"onChange",
+				"readOnly",
+				"required",
+				"value",
+				"validationState",
+			)}
+			invalid={props.validationState === "invalid"}
+			data-checked={props.checked || undefined}
+		>
+			<SwitchContext value={props}>{props.children}</SwitchContext>
+		</Field>
 	);
+}
+
+type SwitchControlProps = Omit<
+	ComponentProps<typeof SwitchPrimitive>,
+	"checked" | "defaultChecked" | "onCheckedChange" | "class"
+> & {
+	class?: string;
 };
 
-type SwitchThumbProps = SwitchThumbPropsPrimitive & {
-	class?: string | undefined;
-};
+function SwitchControl(props: SwitchControlProps) {
+	const control = useContext(SwitchContext);
+	return (
+		<SwitchPrimitive
+			{...omit(props, "class", "children")}
+			checked={control.checked}
+			defaultChecked={control.defaultChecked}
+			disabled={control.disabled}
+			name={control.name}
+			readOnly={control.readOnly}
+			required={control.required}
+			value={control.value}
+			onCheckedChange={control.onChange}
+			class={cn(
+				"inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-input transition-colors transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[disabled]:cursor-not-allowed data-[checked]:bg-primary data-[disabled]:opacity-50",
+				props.class,
+			)}
+		>
+			{props.children ?? <SwitchThumb />}
+		</SwitchPrimitive>
+	);
+}
 
-const SwitchThumb = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, SwitchThumbProps>,
-) => {
-	const [local, others] = splitProps(props as SwitchThumbProps, ["class"]);
+function SwitchThumb(
+	props: Omit<ComponentProps<typeof SwitchThumbPrimitive>, "class"> & {
+		class?: string;
+	},
+) {
 	return (
 		<SwitchThumbPrimitive
+			{...omit(props, "class")}
 			class={cn(
 				"pointer-events-none block size-5 translate-x-0 rounded-full bg-background shadow-lg ring-0 transition-transform data-[checked]:translate-x-5",
-				local.class,
+				props.class,
 			)}
-			{...others}
 		/>
 	);
-};
+}
 
-type SwitchLabelProps = SwitchLabelPropsPrimitive & {
-	class?: string | undefined;
-};
-
-const SwitchLabel = <T extends ValidComponent = "label">(
-	props: PolymorphicProps<T, SwitchLabelProps>,
-) => {
-	const [local, others] = splitProps(props as SwitchLabelProps, ["class"]);
+function SwitchLabel(
+	props: Omit<ComponentProps<typeof FieldLabel>, "class"> & { class?: string },
+) {
 	return (
-		<SwitchLabelPrimitive
+		<FieldLabel
+			{...omit(props, "class")}
 			class={cn(
 				"font-medium text-sm leading-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-70",
-				local.class,
+				props.class,
 			)}
-			{...others}
 		/>
 	);
-};
+}
 
 export {
 	Switch,
 	SwitchControl,
-	SwitchDescription,
-	SwitchErrorMessage,
+	FieldDescription as SwitchDescription,
+	FieldError as SwitchErrorMessage,
 	SwitchLabel,
 	SwitchThumb,
 };

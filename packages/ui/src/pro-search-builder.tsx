@@ -5,15 +5,7 @@ import type { Ip } from "@solid-imager/core/ips";
 import type { SearchCriterion, SearchGroup } from "@solid-imager/core/search";
 import type { Project } from "@solid-imager/core/projects";
 import type { TagResponse } from "@solid-imager/core/tags";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	Index,
-	Match,
-	Show,
-	Switch,
-} from "solid-js";
+import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
 import { Button } from "./button";
 import { Card, CardContent } from "./card";
 import {
@@ -371,7 +363,7 @@ function GroupBuilder(props: {
 				</div>
 
 				<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
-					<Index each={props.group.children}>
+					<For keyed={false} each={props.group.children}>
 						{(child, index) =>
 							child().type === "group" ? (
 								<GroupBuilder
@@ -398,7 +390,7 @@ function GroupBuilder(props: {
 								/>
 							)
 						}
-					</Index>
+					</For>
 					<Show when={props.group.children.length === 0}>
 						<div class="p-2 text-muted-foreground text-sm italic">
 							{t("proSearchBuilder.noConditionsUseConditionToAddOne")}
@@ -466,7 +458,7 @@ function CriterionBuilder(props: {
 	const [listDraft, setListDraft] = createSignal(
 		formatListDraft(props.criterion.value),
 	);
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const value = props.criterion.value;
 		if (!isListOperator(props.criterion.operator)) {
 			setListDraft("");
@@ -742,3 +734,5 @@ function CriterionBuilder(props: {
 		</div>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

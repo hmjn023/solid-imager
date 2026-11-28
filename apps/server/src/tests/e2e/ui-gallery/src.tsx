@@ -102,8 +102,9 @@ import {
 } from "@solid-imager/ui/text-field";
 import { ThumbnailImage } from "@solid-imager/ui/thumbnail-image";
 import { Toaster, toast } from "@solid-imager/ui/toast";
-import { createEffect, createSignal, onCleanup, Show } from "solid-js";
-import { render } from "solid-js/web";
+import { ToggleGroup, ToggleGroupItem } from "@solid-imager/ui/toggle-group";
+import { createEffect, createSignal, Show } from "solid-js";
+import { render } from "@solidjs/web";
 import { ComboboxGallery } from "./combobox-gallery";
 import { JobsGallery } from "./jobs-gallery";
 import { MediaAiGallery } from "./media-ai-gallery";
@@ -169,19 +170,23 @@ function VirtualGridGallery() {
 		setLoadedCount((count) => Math.min(count + 200, VIRTUAL_GRID_ITEM_COUNT));
 		setIsFetchingNextPage(false);
 	};
-	createEffect(() => {
-		const element = loadMoreRef();
-		const hasNextPage = loadedCount() < VIRTUAL_GRID_ITEM_COUNT;
-		if (!element || !hasNextPage) return;
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0]?.isIntersecting) void fetchNextPage();
-			},
-			{ threshold: 0.5, rootMargin: "2400px" },
-		);
-		observer.observe(element);
-		onCleanup(() => observer.disconnect());
-	});
+	createEffect(
+		() => ({
+			element: loadMoreRef(),
+			hasNextPage: loadedCount() < VIRTUAL_GRID_ITEM_COUNT,
+		}),
+		({ element, hasNextPage }) => {
+			if (!element || !hasNextPage) return;
+			const observer = new IntersectionObserver(
+				(entries) => {
+					if (entries[0]?.isIntersecting) void fetchNextPage();
+				},
+				{ threshold: 0.5, rootMargin: "2400px" },
+			);
+			observer.observe(element);
+			return () => observer.disconnect();
+		},
+	);
 	const saveScrollPosition = () => {
 		const scroller = document.querySelector<HTMLElement>(
 			"[data-testid=virtual-grid-scroller]",
@@ -311,8 +316,10 @@ function VirtualGridGallery() {
 
 function Gallery() {
 	const [dark, setDark] = createSignal(false);
+	const [contextActionCount, setContextActionCount] = createSignal(0);
+	const [layout, setLayout] = createSignal<string | null>("grid");
 	return (
-		<div classList={{ dark: dark() }}>
+		<div class={{ dark: dark() }}>
 			<Toaster />
 			<main class="min-h-dvh bg-background p-4 text-foreground sm:p-8">
 				<div class="mx-auto max-w-5xl space-y-8">
@@ -355,7 +362,9 @@ function Gallery() {
 										placeholder="Compatibility input"
 									/>
 									<Progress aria-label="Import progress" value={60}>
-										<ProgressLabel>Import progress</ProgressLabel>
+										<ProgressLabel class="sr-only">
+											Import progress
+										</ProgressLabel>
 									</Progress>
 									<Skeleton class="h-8 w-full" />
 								</div>
@@ -490,7 +499,17 @@ function Gallery() {
 										Focus stays inside until dismissed.
 									</DialogDescription>
 								</DialogHeader>
-								<DialogFooter>Dialog actions</DialogFooter>
+								<DialogFooter>
+									<ToggleGroup
+										aria-label="Layout"
+										value={layout()}
+										onChange={setLayout}
+										disallowEmptySelection
+									>
+										<ToggleGroupItem value="grid">Grid</ToggleGroupItem>
+										<ToggleGroupItem value="list">List</ToggleGroupItem>
+									</ToggleGroup>
+								</DialogFooter>
 							</DialogContent>
 						</Dialog>
 						<AlertDialog>
@@ -521,9 +540,20 @@ function Gallery() {
 								<span class="rounded-md border p-3">Right-click target</span>
 							</ContextMenuTrigger>
 							<ContextMenuContent>
-								<ContextMenuItem>Context action</ContextMenuItem>
+								<ContextMenuItem
+									onSelect={() => {
+										setContextActionCount((count) => count + 1);
+									}}
+								>
+									Context action
+								</ContextMenuItem>
 							</ContextMenuContent>
 						</ContextMenu>
+						<Show when={contextActionCount() > 0}>
+							<output aria-label="Context menu actions">
+								{contextActionCount()}
+							</output>
+						</Show>
 					</section>
 				</div>
 			</main>

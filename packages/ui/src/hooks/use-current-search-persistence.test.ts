@@ -1,4 +1,4 @@
-import { type Accessor, createRoot, createSignal } from "solid-js";
+import { type Accessor, createRoot, createSignal, flush } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	activateSimilaritySearch,
@@ -12,21 +12,6 @@ import {
 	type SearchPersistenceSource,
 	useCurrentSearchPersistence,
 } from "./use-current-search-persistence";
-
-vi.mock("solid-js", async () =>
-	vi.importActual<typeof import("solid-js")>("solid-js/dist/solid.js"),
-);
-vi.mock("solid-js/store", async () =>
-	vi.importActual<typeof import("solid-js/store")>(
-		"solid-js/store/dist/store.js",
-	),
-);
-vi.mock("solid-js/web", async () => ({
-	...(await vi.importActual<typeof import("solid-js/web")>(
-		"solid-js/web/dist/web.js",
-	)),
-	isServer: false,
-}));
 
 class MemoryStorage implements Storage {
 	private readonly values = new Map<string, string>();
@@ -192,12 +177,14 @@ describe("useCurrentSearchPersistence", () => {
 	});
 
 	it("resets to defaults for malformed session JSON", async () => {
-		setSearchState({
-			mode: "pro",
-			searchQuery: "previous route",
-			selectedTags: ["stale-tag"],
-			sortBy: "name",
-			sortOrder: "asc",
+		setSearchState((draft) => {
+			Object.assign(draft, {
+				mode: "pro",
+				searchQuery: "previous route",
+				selectedTags: ["stale-tag"],
+				sortBy: "name",
+				sortOrder: "asc",
+			});
 		});
 		sessionStorage.setItem("solid-imager:search-state:current-all", "not-json");
 
@@ -276,7 +263,10 @@ describe("useCurrentSearchPersistence", () => {
 		expect(
 			sessionStorage.getItem("solid-imager:search-scroll:current-all"),
 		).toBe("1840");
-		setSearchState("scrollY", 2200);
+		setSearchState((draft) => {
+			draft.scrollY = 2200;
+		});
+		flush();
 		expect(searchState.scrollY).toBe(2200);
 		persistSearchScrollPosition("all", searchState.scrollY);
 		await flushMicrotasks();
@@ -288,7 +278,9 @@ describe("useCurrentSearchPersistence", () => {
 	});
 
 	it("restores similarity ordering activated from the detail route", async () => {
-		setSearchState("selectedSource", "source-1");
+		setSearchState((draft) => {
+			draft.selectedSource = "source-1";
+		});
 		activateSimilaritySearch("media-1");
 
 		const mounted = mountPersistence("all");
@@ -377,7 +369,9 @@ describe("useCurrentSearchPersistence", () => {
 		await flushMicrotasks();
 		expect(mounted.isRestored()).toBe(true);
 
-		setSearchState("searchQuery", "pending A");
+		setSearchState((draft) => {
+			draft.searchQuery = "pending A";
+		});
 		setSourceId("source-b");
 		await flushMicrotasks();
 		expect(searchState.searchQuery).toBe("");
@@ -402,7 +396,9 @@ describe("useCurrentSearchPersistence", () => {
 		const mounted = mountPersistence("all");
 		await flushMicrotasks();
 
-		setSearchState("searchQuery", "pending after unmount");
+		setSearchState((draft) => {
+			draft.searchQuery = "pending after unmount";
+		});
 		mounted.dispose();
 		await vi.advanceTimersByTimeAsync(1000);
 

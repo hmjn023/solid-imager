@@ -3,7 +3,7 @@ import {
 	type PixivArtwork,
 } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
-import ChevronDown from "lucide-solid/icons/chevron-down";
+import ChevronDown from "@lucide/solid/icons/chevron-down";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "../button";
 import {
@@ -67,7 +67,7 @@ export function PixivPageImports(props: {
 					{t("pixivArtworkDetail.choosePages")}
 					<ChevronDown
 						aria-hidden="true"
-						class="group-data-[expanded]:rotate-180"
+						class="group-data-[open]:rotate-180"
 					/>
 				</CollapsibleTrigger>
 			</div>

@@ -5,8 +5,8 @@ import {
 	searchStateSchema,
 } from "@solid-imager/core/search";
 import { deepEqual } from "@solid-imager/core/utils";
-import { createEffect, createSignal, For, Show } from "solid-js";
-import { createStore } from "solid-js/store";
+import { createSignal, For, Show } from "solid-js";
+import { createStore } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -209,11 +209,11 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 	let commitSemanticDraft: (() => boolean) | undefined;
 	let wasOpen = false;
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (props.open && !wasOpen) {
 			const snapshot = currentSearchState();
 			setBaseline(snapshot);
-			setDraft(snapshot);
+			setDraft(() => snapshot);
 			setConfirmDiscard(false);
 		}
 		wasOpen = props.open;
@@ -231,13 +231,13 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 	const handleApply = () => {
 		commitSemanticDraft?.();
 		const nextState = copySearchState(draft);
-		setSearchState(nextState);
+		setSearchState(() => nextState);
 		props.onSelectSource?.(nextState.selectedSource);
 		props.onOpenChange(false);
-		props.onSearch();
+		queueMicrotask(() => props.onSearch());
 	};
 	const handleClear = () => {
-		setDraft(createClearedSearchState(draft));
+		setDraft(createClearedSearchState);
 	};
 	return (
 		<>
@@ -339,3 +339,5 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 		</>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

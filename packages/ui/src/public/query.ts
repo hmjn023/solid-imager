@@ -12,4 +12,4 @@ export {
 } from "../query-options";
 export { createAppQueryOptions } from "../query-options/app";
 export type { QueryUiState } from "../query-state";
-export { toQueryUiState } from "../query-state";
+export { readQueryData, toQueryUiState } from "../query-state";

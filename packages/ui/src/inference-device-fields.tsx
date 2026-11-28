@@ -111,7 +111,7 @@ export function InferenceDeviceFields(props: InferenceDeviceFieldsProps) {
 				</Label>
 				<Select
 					aria-describedby={`${idPrefix()}-provider-description ${idPrefix()}-provider-error`}
-					aria-invalid={Boolean(props.providerError)}
+					aria-invalid={props.providerError ? "true" : "false"}
 					aria-labelledby={`${idPrefix()}-provider-label`}
 					itemComponent={(itemProps) => (
 						<SelectItem item={itemProps.item}>
@@ -162,7 +162,7 @@ export function InferenceDeviceFields(props: InferenceDeviceFieldsProps) {
 				</Label>
 				<Input
 					aria-describedby={`${deviceDescriptionId()} ${idPrefix()}-device-error`}
-					aria-invalid={Boolean(props.deviceError)}
+					aria-invalid={props.deviceError ? "true" : "false"}
 					disabled={!deviceIsSupported()}
 					id={`${idPrefix()}-device`}
 					onInput={(event) => props.onDeviceChange(event.currentTarget.value)}

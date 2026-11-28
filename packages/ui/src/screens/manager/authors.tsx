@@ -1,7 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import type { Author, NewAuthor } from "@solid-imager/core/authors";
-import { createQuery } from "@tanstack/solid-query";
-import ChevronDown from "lucide-solid/icons/chevron-down";
+import { useQuery } from "@tanstack/solid-query";
+import ChevronDown from "@lucide/solid/icons/chevron-down";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Alert, AlertDescription } from "../../alert";
 import { Button } from "../../button";
@@ -96,7 +96,7 @@ function AuthorPicker(props: {
 	);
 	const options = createMemo(() => {
 		const selected = props.value;
-		// Kobalte resolves the controlled selection from options, even when filtered out.
+		// Keep the current selection available when the search filters it out.
 		return selected && !filteredIds().has(selected.id)
 			? [...filteredAuthors(), selected]
 			: filteredAuthors();
@@ -156,17 +156,21 @@ export function AuthorManagementPanel(props: {
 	const [remoteId, setRemoteId] = createSignal("");
 	const [platform, setPlatform] =
 		createSignal<NonNullable<NewAuthor["platform"]>>("twitter");
-	const authors = createQuery(() => ({
+	const authors = useQuery(() => ({
 		queryKey: ["authors", "management"],
 		queryFn: props.actions.list,
 	}));
 	const source = createMemo(
-		() => authors.data?.find((author) => author.id === sourceId()) ?? null,
+		() =>
+			readQueryData(authors)?.find((author) => author.id === sourceId()) ??
+			null,
 	);
 	const target = createMemo(
-		() => authors.data?.find((author) => author.id === targetId()) ?? null,
+		() =>
+			readQueryData(authors)?.find((author) => author.id === targetId()) ??
+			null,
 	);
-	const media = createQuery(() => ({
+	const media = useQuery(() => ({
 		queryKey: ["authors", "media", sourceId(), mediaSourceId(), offset()],
 		enabled: Boolean(sourceId()),
 		queryFn: () =>
@@ -248,7 +252,7 @@ export function AuthorManagementPanel(props: {
 				// Stay on a valid page after removing the final rows on the current page.
 				const remaining = Math.max(
 					0,
-					(media.data?.total ?? 0) - result.changedCount,
+					(readQueryData(media)?.total ?? 0) - result.changedCount,
 				);
 				setOffset(
 					Math.min(offset(), Math.max(0, Math.ceil(remaining / 50) - 1) * 50),
@@ -289,7 +293,7 @@ export function AuthorManagementPanel(props: {
 			<div class="grid gap-4 lg:grid-cols-2">
 				<AuthorPicker
 					label={t("authors.authorToCorrect")}
-					options={authors.data ?? []}
+					options={readQueryData(authors) ?? []}
 					value={source()}
 					disabled={busy()}
 					onChange={(author) => {
@@ -300,7 +304,7 @@ export function AuthorManagementPanel(props: {
 				/>
 				<AuthorPicker
 					label={t("authors.correctAuthorDestination")}
-					options={(authors.data ?? []).filter(
+					options={(readQueryData(authors) ?? []).filter(
 						(author) => author.id !== sourceId(),
 					)}
 					value={target()}
@@ -411,7 +415,7 @@ export function AuthorManagementPanel(props: {
 					<span>{t("authors.registerANewDestinationAuthor")}</span>
 					<ChevronDown
 						aria-hidden="true"
-						class="shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-data-[expanded]:rotate-180"
+						class="shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-data-[open]:rotate-180"
 						size={16}
 					/>
 				</CollapsibleTrigger>
@@ -527,7 +531,7 @@ export function AuthorManagementPanel(props: {
 						onRetry={() => void media.refetch()}
 					/>
 				</Show>
-				<Show when={media.data}>
+				<Show when={readQueryData(media)}>
 					{(page) => (
 						<>
 							<div class="flex flex-wrap items-center gap-2">
@@ -754,3 +758,5 @@ export function AuthorManagementPanel(props: {
 		</div>
 	);
 }
+
+import { readQueryData } from "../../query-state";

@@ -86,7 +86,7 @@ export function parseShortcutBinding(
 	if (!validation.valid || validation.warnings.length > 0) {
 		return {
 			valid: false,
-			messages: [...validation.errors, ...validation.warnings],
+			messages: [t("shortcuts.invalidBindingType")],
 		};
 	}
 

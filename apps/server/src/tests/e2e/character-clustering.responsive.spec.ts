@@ -180,7 +180,7 @@ test("virtual groups and images load on scroll, stay bounded and survive compari
 		}),
 	).toBeVisible();
 	await dialog.getByLabel("閉じる", { exact: true }).click();
-	await page.getByRole("button", { name: /^同じ画像の別設定と比較/ }).click();
+	await page.getByRole("combobox", { name: /^同じ画像の別設定と比較/ }).click();
 	await page.getByRole("option", { name: /ts-review-b/ }).click();
 	await page
 		.getByRole("button", { name: "グループ #0 の60枚を確認", exact: true })

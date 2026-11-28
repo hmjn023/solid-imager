@@ -47,7 +47,7 @@ for (const withAccount of [true, false]) {
 		await page
 			.getByRole("button", { name: "プロフィールを取得して確認", exact: true })
 			.click();
-		const dialog = page.getByRole("dialog");
+		const dialog = page.getByRole("dialog", { name: "Xアカウントを確認" });
 		const update = dialog.getByRole("button", {
 			name: "同じアカウントと確認して更新",
 			exact: true,
@@ -75,9 +75,22 @@ for (const withAccount of [true, false]) {
 				displayName: "Observed display",
 			},
 		});
-		await expect(
-			dialog.getByText("Observed display", { exact: true }),
-		).toBeVisible();
+		const observedProfile = dialog.getByText("Observed display", {
+			exact: true,
+		});
+		await expect(observedProfile).toBeVisible();
+		if (withAccount) {
+			await page.mouse.click(2, 2);
+		} else {
+			await dialog.getByRole("button", { name: "閉じる", exact: true }).click();
+		}
+		const discard = page.getByRole("alertdialog", {
+			name: "取得したプロフィールを破棄しますか？",
+		});
+		await expect(discard).toBeVisible();
+		await discard.getByRole("button", { name: "編集を続ける" }).click();
+		await expect(discard).toBeHidden();
+		await expect(observedProfile).toBeVisible();
 		await expect(update).toBeDisabled();
 		const pending = authorAccountVerificationSchema.parse(
 			await callAuthorApi(page, "getAccountVerification", { verificationId }),

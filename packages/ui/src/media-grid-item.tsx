@@ -1,7 +1,7 @@
 import { mediaTypeLabel } from "./display-labels";
 import type { Media } from "@solid-imager/core/media";
-import type { JSX } from "solid-js";
-import { mergeProps, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { merge, Show } from "solid-js";
 import { cn } from "./utils/cn";
 
 export const MEDIA_GRID_IMAGE_SIZES =
@@ -93,7 +93,7 @@ export function MediaGridItem<TMedia extends MediaGridMedia>(
 			fallbackLabel={mediaTypeLabel(props.media.mediaType)}
 			renderThumbnail={(thumbnail) =>
 				props.renderThumbnail(
-					mergeProps(thumbnail, {
+					merge(thumbnail, {
 						get media() {
 							return props.media;
 						},

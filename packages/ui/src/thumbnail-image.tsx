@@ -1,5 +1,5 @@
-import type { JSX } from "solid-js";
-import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createSignal, onSettled, Show } from "solid-js";
 
 export interface ThumbnailSource {
 	getUrl(): string | Promise<string>;
@@ -65,7 +65,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		return source ? (staticFailure() ? undefined : source.srcSet) : srcSet();
 	};
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		const source = props.source;
 		if (!source || "url" in source) return;
 		++loadGeneration;
@@ -139,10 +139,10 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 			loadSrcSet();
 		});
 
-		onCleanup(() => {
+		return () => {
 			cancelled = true;
 			unsubscribe?.();
-		});
+		};
 	});
 
 	const handleLoad = () => {
@@ -186,7 +186,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		})();
 	};
 
-	onMount(() => {
+	onSettled(() => {
 		// An image in server-rendered HTML may have failed before hydration.
 		if (staticSource() && image?.complete && !image.naturalWidth)
 			handleError(image);
@@ -206,7 +206,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 					alt={props.alt}
 					class={props.class}
 					decoding="async"
-					draggable={false}
+					draggable="false"
 					fetchpriority={props.fetchpriority}
 					height={props.height ?? undefined}
 					loading={props.loading}
@@ -226,3 +226,5 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		</Show>
 	);
 }
+
+import { createTrackedEffect } from "solid-js";

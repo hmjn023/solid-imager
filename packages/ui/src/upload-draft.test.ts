@@ -1,3 +1,4 @@
+import { flush } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 import { createUploadDraft } from "./upload-draft";
 
@@ -40,6 +41,7 @@ describe("upload draft ownership", () => {
 		const selection = [first, second];
 		draft.selectFiles(selection);
 		selection.pop();
+		flush();
 		expect(draft.files()).toEqual([first, second]);
 		expect(draft.previewUrl()).toBe("blob:a.png");
 	});
@@ -104,11 +106,13 @@ describe("upload draft ownership", () => {
 		const { draft, revokePreview } = setup();
 		await draft.loadUrl("https://example.com/old.png");
 		draft.changeUrl("https://example.com/new.png");
+		flush();
 		expect(draft.files()).toEqual([]);
 		expect(revokePreview).toHaveBeenCalledWith("blob:url.png");
 		const manual = new File(["manual"], "manual.png");
 		draft.selectFiles([manual]);
 		draft.changeUrl("https://example.com/reference");
+		flush();
 		expect(draft.files()).toEqual([manual]);
 	});
 	it("invalidates pending submission callbacks after discard or selection changes and releases previews", () => {

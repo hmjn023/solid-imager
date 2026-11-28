@@ -11,9 +11,9 @@ import type {
 	MediaSearchResponse,
 } from "@solid-imager/core/media";
 import {
+	hashKey,
 	type InfiniteData,
 	infiniteQueryOptions,
-	keepPreviousData,
 } from "@tanstack/solid-query";
 
 export const MEDIA_RESULTS_STALE_TIME_MS = 1000 * 60 * 5;
@@ -262,7 +262,10 @@ export function buildSearchResultsQueryOptions(
 	input: SearchResultsQueryOptionsInput,
 ) {
 	return infiniteQueryOptions({
-		meta: { usesMediaActivity: usesMediaActivity(input) },
+		meta: {
+			usesMediaActivity: usesMediaActivity(input),
+			preservePreviousResults: getSearchExecutionKind(input) === "ordinary",
+		},
 		queryKey: searchQueryKeys.results({
 			mode: input.mode,
 			sourceId: input.sourceId,
@@ -285,12 +288,6 @@ export function buildSearchResultsQueryOptions(
 			);
 			return loadedCount < lastPage.total ? loadedCount : undefined;
 		},
-		// Similarity result sets have a user-selected size. Keeping the previous
-		// result while changing topK makes selecting 100 look like a no-op.
-		placeholderData:
-			getSearchExecutionKind(input) === "ordinary"
-				? keepPreviousData
-				: undefined,
 		enabled: input.enabled,
 		gcTime: input.gcTime,
 		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
@@ -322,7 +319,10 @@ export function buildSourceMediaResultsQueryOptions(
 	input: SourceMediaResultsQueryOptionsInput,
 ) {
 	return infiniteQueryOptions({
-		meta: { usesMediaActivity: usesMediaActivity(input) },
+		meta: {
+			usesMediaActivity: usesMediaActivity(input),
+			preservePreviousResults: getSearchExecutionKind(input) === "ordinary",
+		},
 		queryKey: sourceMediaQueryKeys.results({
 			similarityAnchorMediaId: input.similarityAnchorMediaId,
 			similarityModel: input.similarityModel,
@@ -367,11 +367,23 @@ export function buildSourceMediaResultsQueryOptions(
 			);
 			return loadedCount < lastPage.total ? loadedCount : undefined;
 		},
-		placeholderData:
-			getSearchExecutionKind(input) === "ordinary"
-				? keepPreviousData
-				: undefined,
 		enabled: input.enabled,
 		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
 	});
+}
+
+type MediaResultsOptions =
+	| ReturnType<typeof buildSearchResultsQueryOptions>
+	| ReturnType<typeof buildSourceMediaResultsQueryOptions>;
+
+/** Keep the observer's options stable during history and search-store synchronization. */
+export function sameMediaResultsOptions(
+	previous: MediaResultsOptions,
+	next: MediaResultsOptions,
+): boolean {
+	return (
+		previous.enabled === next.enabled &&
+		previous.gcTime === next.gcTime &&
+		hashKey(previous.queryKey) === hashKey(next.queryKey)
+	);
 }

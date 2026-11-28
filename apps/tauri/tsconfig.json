@@ -1,13 +1,13 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "isolatedModules": true,
-    "paths": {
-      "~/*": ["./src/*"]
-    }
-  },
-  "include": ["src", "src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", ".vinxi", ".output", "src-tauri"]
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"jsx": "preserve",
+		"jsxImportSource": "@solidjs/web",
+		"isolatedModules": true,
+		"paths": {
+			"~/*": ["./src/*"]
+		}
+	},
+	"include": ["src", "src/**/*.ts", "src/**/*.tsx"],
+	"exclude": ["node_modules", "dist", ".vinxi", ".output", "src-tauri"]
 }

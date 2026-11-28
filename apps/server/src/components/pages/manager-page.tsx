@@ -10,7 +10,7 @@ import { ManagerScreen } from "@solid-imager/ui/screens/manager";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	scanBatchCcipTargets,

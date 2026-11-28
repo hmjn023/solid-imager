@@ -9,8 +9,8 @@ import {
 	DEFAULT_SIMILARITY_TOP_K,
 	type SearchState,
 } from "@solid-imager/core/search";
-import { batch, createSignal } from "solid-js";
-import { createStore } from "solid-js/store";
+import { createSignal } from "solid-js";
+import { createStore } from "solid-js";
 import { getSearchStateStorageKey, getSessionStorage } from "../ui-storage";
 
 export const [searchState, setSearchState] = createStore<SearchState>({
@@ -26,29 +26,37 @@ const [searchFiltersRevision, setSearchFiltersRevision] = createSignal(0);
 export const getSearchFiltersRevision = searchFiltersRevision;
 
 export const resetSearchState = () => {
-	setSearchState({ ...defaultState });
+	setSearchState((draft) => {
+		Object.assign(draft, { ...defaultState });
+	});
 };
 
 export const clearPresetFilters = () => {
 	setSearchFiltersRevision((revision) => revision + 1);
-	setSearchState((prev) => ({
-		...defaultState,
-		mode: prev.mode,
-		selectedSource: prev.selectedSource,
-		sortBy: prev.sortBy,
-		sortOrder: prev.sortOrder,
-		tagMode: prev.tagMode,
-	}));
+	setSearchState((prev) => {
+		Object.assign(prev, {
+			...defaultState,
+			mode: prev.mode,
+			selectedSource: prev.selectedSource,
+			sortBy: prev.sortBy,
+			sortOrder: prev.sortOrder,
+			tagMode: prev.tagMode,
+		});
+	});
 };
 
 export const loadPreset = (preset: Preset) => {
 	const nextState = preparePresetState(preset, searchState);
-	setSearchState({ ...nextState, semanticQuery: "" });
+	setSearchState((draft) => {
+		Object.assign(draft, { ...nextState, semanticQuery: "" });
+	});
 };
 
 export const setSearchMode = (mode: "simple" | "pro") => {
 	const nextState = calculateNextModeState(searchState, mode);
-	setSearchState(nextState);
+	setSearchState((draft) => {
+		Object.assign(draft, nextState);
+	});
 };
 
 function persistSearchState(state: SearchState): void {
@@ -76,10 +84,12 @@ export const activateSimilaritySearch = (
 		offset: 0,
 		scrollY: 0,
 	};
-	batch(() => {
+	{
 		setGlobalSimilarityActivation((current) => current + 1);
-		setSearchState(nextState);
-	});
+		setSearchState((draft) => {
+			Object.assign(draft, nextState);
+		});
+	}
 	try {
 		persistSearchState(nextState);
 	} catch {
@@ -95,7 +105,9 @@ export const clearSimilaritySearch = () => {
 		offset: 0,
 		scrollY: 0,
 	};
-	setSearchState(nextState);
+	setSearchState((draft) => {
+		Object.assign(draft, nextState);
+	});
 	try {
 		persistSearchState(nextState);
 	} catch {
@@ -114,10 +126,12 @@ export const activateTagSearch = (tagName: string) => {
 		limit: searchState.limit,
 		tagMode: searchState.tagMode,
 	};
-	batch(() => {
+	{
 		setSearchFiltersRevision((revision) => revision + 1);
-		setSearchState(nextState);
-	});
+		setSearchState((draft) => {
+			Object.assign(draft, nextState);
+		});
+	}
 	try {
 		persistSearchState(nextState);
 	} catch {

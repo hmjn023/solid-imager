@@ -1,10 +1,12 @@
 import { SCALAR_DOCS_PATH } from "@solid-imager/core/http";
 import { mediaSourceInfoSchema } from "@solid-imager/core/sources";
+import { readQueryData } from "@solid-imager/ui/query";
 import { useSourcesPage } from "@solid-imager/ui/sources";
 import { AppShell as SharedAppShell } from "@solid-imager/ui/app-shell";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
 import type { ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
@@ -16,14 +18,14 @@ import {
 } from "~/infrastructure/api-clients/sources-api";
 
 type AppShellProps = ParentProps<{
-	statusIndicator?: import("solid-js").JSX.Element;
+	statusIndicator?: JSX.Element;
 }>;
 
 /** Server adapter for the shared workspace shell. */
 export function AppShell(props: AppShellProps) {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
-	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const mediaSources = useQuery(mediaSourcesQueryOptions);
 	const sourceEventTransport = createServerTransport(() => "*", {
 		onResumeFromIdle: () => {
 			void queryClient.refetchQueries({
@@ -44,7 +46,7 @@ export function AppShell(props: AppShellProps) {
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		registerEvents: (handler) => sourceEventTransport.listen(handler),
 		getSourceIds: () =>
-			(mediaSources.data ?? []).flatMap((source) =>
+			(readQueryData(mediaSources) ?? []).flatMap((source) =>
 				source.id ? [source.id] : [],
 			),
 	});
@@ -52,7 +54,7 @@ export function AppShell(props: AppShellProps) {
 	return (
 		<SharedAppShell
 			apiDocsHref={SCALAR_DOCS_PATH}
-			mediaSources={() => mediaSources.data ?? []}
+			mediaSources={() => readQueryData(mediaSources) ?? []}
 			onNavigate={(to) => void navigate({ to })}
 			renderPendingDownloadsIndicator={(compact) => (
 				<PendingDownloadsIndicator compact={compact()} />

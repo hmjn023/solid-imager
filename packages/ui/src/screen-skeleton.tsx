@@ -59,7 +59,9 @@ export function ScreenSkeleton(props: ScreenSkeletonProps) {
 						<Show when={props.showDescription && props.description}>
 							{(description) => (
 								<p
-									aria-hidden={description() === props.loadingLabel}
+									aria-hidden={
+										description() === props.loadingLabel ? "true" : "false"
+									}
 									class={cn(
 										"text-muted-foreground",
 										props.layout !== "media-detail" && "mt-2",

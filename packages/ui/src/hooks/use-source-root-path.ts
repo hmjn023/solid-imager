@@ -1,5 +1,5 @@
 import type { SafeMediaSource } from "@solid-imager/core/sources";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 
 export type SourceRootPathResolver = (
 	mediaSourceId: string,
@@ -10,10 +10,10 @@ export function useSourceRootPath(
 	// oxlint-disable-next-line typescript/no-explicit-any -- library type mismatch between oRPC and solid-query
 	sourcesQueryOptions: () => any,
 ): SourceRootPathResolver {
-	const sources = createQuery<SafeMediaSource[]>(sourcesQueryOptions);
+	const sources = useQuery<SafeMediaSource[]>(sourcesQueryOptions);
 
 	return (mediaSourceId: string) => {
-		const list = sources.data;
+		const list = readQueryData(sources);
 		const current = list?.find((item) => item.id === mediaSourceId);
 		if (current?.type !== "local") {
 			return undefined;
@@ -31,3 +31,5 @@ export function createStaticSourceRootPath(
 ): SourceRootPathResolver {
 	return () => path;
 }
+
+import { readQueryData } from "../query-state";

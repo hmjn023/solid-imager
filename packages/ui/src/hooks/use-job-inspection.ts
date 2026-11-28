@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { JobDto, JobListResponse } from "@solid-imager/core/jobs";
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { createMemo, type Accessor } from "solid-js";
 import { jobsQueryKeys } from "../query-options/jobs-query";
 
@@ -22,7 +22,7 @@ export function useJobInspection(
 	clear?: () => void,
 ): JobInspection {
 	const row = createMemo(() => list.data?.items.find((job) => job.id === id()));
-	const detail = createQuery(() => {
+	const detail = useQuery(() => {
 		const jobId = id();
 		return {
 			queryKey: jobsQueryKeys.detail(jobId ?? ""),
@@ -36,10 +36,14 @@ export function useJobInspection(
 	return {
 		select,
 		clear,
-		job: () => row() ?? (detail.data?.id === id() ? detail.data : undefined),
+		job: () =>
+			row() ??
+			(readQueryData(detail)?.id === id() ? readQueryData(detail) : undefined),
 		failed: () => !!id() && !row() && detail.isError,
 		retry: () => {
 			void detail.refetch();
 		},
 	};
 }
+
+import { readQueryData } from "../query-state";

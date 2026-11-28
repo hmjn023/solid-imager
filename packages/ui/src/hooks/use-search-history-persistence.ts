@@ -6,14 +6,14 @@ import {
 import type { HistoryLocation, RouterHistory } from "@tanstack/solid-router";
 import { useLocation, useRouter } from "@tanstack/solid-router";
 import {
-	batch,
 	createEffect,
 	createMemo,
 	createSignal,
+	createTrackedEffect,
 	onCleanup,
 	untrack,
 } from "solid-js";
-import { isServer } from "solid-js/web";
+import { isServer } from "@solidjs/web";
 import type { SearchHistoryClient } from "../search-history-client";
 import { useInitialSearch } from "../search-initial-state";
 import {
@@ -102,7 +102,9 @@ function stateKey(state: SearchSnapshotState): string {
 
 function applySnapshotState(state: SearchSnapshotState, scrollY = 0): void {
 	resetSearchState();
-	setSearchState({ ...state, offset: 0, scrollY });
+	setSearchState((draft) => {
+		Object.assign(draft, { ...state, offset: 0, scrollY });
+	});
 }
 
 function createPathWithoutSnapshot(href: string): string {
@@ -156,7 +158,6 @@ export function useSearchHistoryPersistence(
 ) {
 	const sessionRestored = useCurrentSearchPersistence(sourceId, options);
 	const initialSearch = useInitialSearch();
-	const initialSnapshot = initialSearch?.initial()?.snapshot;
 	const router = useRouter();
 	// The UI package has no registered route tree, so type the library history API here.
 	const history = router.history as RouterHistory;
@@ -169,11 +170,10 @@ export function useSearchHistoryPersistence(
 	let commitTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const isRestored = createMemo(() => sessionRestored() && historyRestored());
-	const finishRestore = () =>
-		batch(() => {
-			setHistoryRestored(true);
-			initialSearch?.finish();
-		});
+	const finishRestore = () => {
+		setHistoryRestored(true);
+		initialSearch?.finish();
+	};
 
 	const currentHref = () => history.location.href;
 	const currentHistoryState = () => history.location.state;
@@ -223,93 +223,104 @@ export function useSearchHistoryPersistence(
 		}
 	};
 
-	createEffect(() => {
-		if (isServer) return;
-		location();
-		const sessionReady = sessionRestored();
-		const href = currentHref();
-		const entryKey = currentEntryKey();
-		if (entryKey === lastEntryKey && sessionReady === lastSessionReady) return;
-		lastEntryKey = entryKey;
-		lastSessionReady = sessionReady;
-		const generation = ++restoreGeneration;
-		setHistoryRestored(false);
-		const queryId = readSnapshotId(href);
-		const localEntry = parseHistoryEntry(currentHistoryState());
-
-		const restore = async () => {
-			let snapshotState: SearchSnapshotState | null = null;
-			if (queryId && localEntry?.id === queryId) {
-				snapshotState = localEntry.state;
-			} else if (queryId) {
-				try {
-					const snapshot: SafeSearchSnapshot =
-						initialSnapshot?.id === queryId
-							? initialSnapshot
-							: await options.client.get(queryId);
-					if (generation !== restoreGeneration) return;
-					snapshotState = snapshot.state;
-					// Keep a server-restored snapshot in the local history entry too.
-					// Otherwise leaving this view captures an identical new entry with
-					// no URL id, whose async capture may finish after navigation.
-					history.replace(
-						href,
-						mergeHistoryEntry(currentHistoryState(), {
-							version: HISTORY_VERSION,
-							id: queryId,
-							state: snapshotState,
-						}),
-						{ ignoreBlocker: true },
-					);
-					history.flush();
-				} catch {
-					if (generation !== restoreGeneration) return;
-					// A deleted/invalid shared snapshot falls back to the current session.
-					history.replace(
-						createPathWithoutSnapshot(href),
-						getRecord(currentHistoryState()),
-						{ ignoreBlocker: true },
-					);
-					history.flush();
-				}
-			} else if (localEntry) {
-				snapshotState = localEntry.state;
-			}
-
-			if (generation !== restoreGeneration) return;
-			if (snapshotState) {
-				applySnapshotState(
-					snapshotState,
-					readPersistedSearchScrollPosition(sourceId, {
-						historyEntryKey: entryKey,
-					}),
-				);
-				skipNextCommitState = stateKey(snapshotState);
-				finishRestore();
-				return;
-			}
-			if (!sessionReady) {
-				setHistoryRestored(false);
-				return;
-			}
-
-			const state = readSnapshotState();
-			if (!state) {
-				finishRestore();
-				return;
-			}
-			skipNextCommitState = stateKey(state);
-			const entry: HistorySnapshotEntry = {
-				version: HISTORY_VERSION,
-				state,
+	createEffect(
+		() => {
+			if (isServer) return;
+			location();
+			return {
+				sessionReady: sessionRestored(),
+				href: currentHref(),
+				entryKey: currentEntryKey(),
+				initialSnapshot: initialSearch?.initial()?.snapshot,
+				source: typeof sourceId === "function" ? sourceId() : sourceId,
 			};
-			const localEntryKey = replaceWithLocalEntry(entry);
-			finishRestore();
-			void captureForCurrentEntry(localEntryKey, state);
-		};
+		},
+		(current) => {
+			if (!current) return;
+			const { sessionReady, href, entryKey, initialSnapshot, source } = current;
+			if (entryKey === lastEntryKey && sessionReady === lastSessionReady)
+				return;
+			lastEntryKey = entryKey;
+			lastSessionReady = sessionReady;
+			const generation = ++restoreGeneration;
+			setHistoryRestored(false);
+			const queryId = readSnapshotId(href);
+			const localEntry = parseHistoryEntry(currentHistoryState());
 
-		void untrack(restore);
-	});
+			const restore = async () => {
+				let snapshotState: SearchSnapshotState | null = null;
+				if (queryId && localEntry?.id === queryId) {
+					snapshotState = localEntry.state;
+				} else if (queryId) {
+					try {
+						const snapshot: SafeSearchSnapshot =
+							initialSnapshot?.id === queryId
+								? initialSnapshot
+								: await options.client.get(queryId);
+						if (generation !== restoreGeneration) return;
+						snapshotState = snapshot.state;
+						// Keep a server-restored snapshot in the local history entry too.
+						// Otherwise leaving this view captures an identical new entry with
+						// no URL id, whose async capture may finish after navigation.
+						history.replace(
+							href,
+							mergeHistoryEntry(currentHistoryState(), {
+								version: HISTORY_VERSION,
+								id: queryId,
+								state: snapshotState,
+							}),
+							{ ignoreBlocker: true },
+						);
+						history.flush();
+					} catch {
+						if (generation !== restoreGeneration) return;
+						// A deleted/invalid shared snapshot falls back to the current session.
+						history.replace(
+							createPathWithoutSnapshot(href),
+							getRecord(currentHistoryState()),
+							{ ignoreBlocker: true },
+						);
+						history.flush();
+					}
+				} else if (localEntry) {
+					snapshotState = localEntry.state;
+				}
+
+				if (generation !== restoreGeneration) return;
+				if (snapshotState) {
+					applySnapshotState(
+						snapshotState,
+						readPersistedSearchScrollPosition(source ?? undefined, {
+							historyEntryKey: entryKey,
+						}),
+					);
+					skipNextCommitState = stateKey(snapshotState);
+					finishRestore();
+					return;
+				}
+				if (!sessionReady) {
+					setHistoryRestored(false);
+					return;
+				}
+
+				const state = untrack(readSnapshotState);
+				if (!state) {
+					finishRestore();
+					return;
+				}
+				skipNextCommitState = stateKey(state);
+				const entry: HistorySnapshotEntry = {
+					version: HISTORY_VERSION,
+					state,
+				};
+				const localEntryKey = replaceWithLocalEntry(entry);
+				finishRestore();
+				void captureForCurrentEntry(localEntryKey, state);
+			};
+
+			void restore();
+		},
+	);
 
 	const commitCurrentState = () => {
 		if (
@@ -379,7 +390,7 @@ export function useSearchHistoryPersistence(
 				},
 			});
 
-	createEffect(() => {
+	createTrackedEffect(() => {
 		if (isServer || !isRestored()) return;
 		const state = readSnapshotState();
 		if (!state) return;

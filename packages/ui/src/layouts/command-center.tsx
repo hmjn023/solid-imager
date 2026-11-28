@@ -60,6 +60,7 @@ type PaletteAction = {
 	id: string;
 	keywords: string[];
 	label: string;
+	opensDialog?: boolean;
 	run: () => void;
 	shortcutId?: ShortcutId;
 };
@@ -148,6 +149,7 @@ export function CommandCenter(props: CommandCenterProps) {
 				id: "add-media-source",
 				keywords: [addSourceLabel, "import", "folder", "library"],
 				label: addSourceLabel,
+				opensDialog: true,
 				run: () => props.onAddSource(),
 			},
 			{
@@ -171,6 +173,7 @@ export function CommandCenter(props: CommandCenterProps) {
 					"reference",
 				],
 				label: keyboardShortcutsLabel,
+				opensDialog: true,
 				run: () => props.onHelpOpenChange(true),
 				shortcutId: "shortcutHelp",
 			},
@@ -182,62 +185,51 @@ export function CommandCenter(props: CommandCenterProps) {
 		Actions: actions().filter((action) => action.group === "Actions"),
 		Navigate: actions().filter((action) => action.group === "Navigate"),
 	}));
-	let pendingActionFrame: number | undefined;
+	let pendingDialogAction: (() => void) | undefined;
 	onCleanup(() => {
-		if (pendingActionFrame !== undefined) {
-			cancelAnimationFrame(pendingActionFrame);
-		}
+		pendingDialogAction = undefined;
 	});
 	const runAction = (action: PaletteAction) => {
+		if (action.opensDialog) pendingDialogAction = action.run;
 		props.onPaletteOpenChange(false);
-		setQuery("");
-		if (pendingActionFrame !== undefined) {
-			cancelAnimationFrame(pendingActionFrame);
-		}
-		// Let the palette close before running actions that open a secondary modal.
-		pendingActionFrame = requestAnimationFrame(() => {
-			pendingActionFrame = undefined;
-			action.run();
+		if (!action.opensDialog) action.run();
+	};
+	const completePaletteChange = (open: boolean) => {
+		if (open || !pendingDialogAction) return;
+		// A motionless close can notify completion before the SDK restores focus.
+		queueMicrotask(() => {
+			const action = pendingDialogAction;
+			pendingDialogAction = undefined;
+			if (!props.paletteOpen) action?.();
 		});
 	};
-	const setPaletteOpen = (open: boolean) => {
-		if (!open) setQuery("");
-		props.onPaletteOpenChange(open);
-	};
 
-	createEffect(() => {
-		if (!props.paletteOpen) {
-			setQuery("");
-		}
-	});
+	createEffect(
+		() => props.paletteOpen,
+		(open) => {
+			if (open) pendingDialogAction = undefined;
+			else setQuery("");
+		},
+	);
 
 	return (
 		<>
 			<CommandDialog
 				description={t("commandCenter.searchNavigationAndApplicationActions")}
 				loop
-				onOpenChange={setPaletteOpen}
+				onOpenChange={props.onPaletteOpenChange}
+				onOpenChangeComplete={completePaletteChange}
 				open={props.paletteOpen}
 				title={t("sidebar.quickActions")}
+				query={query()}
+				onQueryChange={setQuery}
 			>
 				<div class="workspace-theme flex min-h-0 flex-1 flex-col text-popover-foreground">
 					<CommandInput
 						aria-label={t("commandCenter.searchQuickActions")}
 						autofocus
 						class="pr-9"
-						on:keydown={(event) => {
-							// Run before delegated shortcuts and preserve native IME confirmation.
-							if (
-								event.isComposing ||
-								// oxlint-disable-next-line typescript/no-deprecated -- Safari can report IME confirmation only through keyCode 229.
-								(event.key === "Enter" && event.keyCode === 229)
-							) {
-								event.stopPropagation();
-							}
-						}}
-						onValueChange={setQuery}
 						placeholder={t("commandCenter.searchActions")}
-						value={query()}
 					/>
 					<CommandList
 						class="max-h-menu-small overscroll-contain p-1 scrollbar-stable"
@@ -256,6 +248,7 @@ export function CommandCenter(props: CommandCenterProps) {
 												<CommandItem
 													class="gap-3"
 													keywords={action.keywords}
+													label={action.label}
 													onSelect={() => runAction(action)}
 													value={action.id}
 												>
